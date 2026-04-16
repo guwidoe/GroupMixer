@@ -2,17 +2,43 @@ use gm_core::models::{
     ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
     SolverConfiguration, SolverKind, SolverParams, StopConditions,
 };
+use gm_core::solver5::reporting::{
+    inspect_construction, load_default_target_matrix, MatrixCellTarget, Solver5ConstructionInspection,
+};
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct CellSummary {
-    groups: usize,
-    group_size: usize,
+    g: usize,
+    p: usize,
     upper_bound: usize,
     constructed_weeks: usize,
+    target_weeks: usize,
+    gap_to_target: usize,
+    method_abbreviation: Option<String>,
+    family_label: Option<String>,
+    operator_labels: Vec<String>,
+    quality_label: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct MatrixArtifact<'a> {
+    matrix_name: &'a str,
+    matrix_version: u32,
+    scored_bounds: BoundsArtifact,
+    cells: Vec<CellSummary>,
+}
+
+#[derive(Debug, Serialize)]
+struct BoundsArtifact {
+    g_min: usize,
+    g_max: usize,
+    p_min: usize,
+    p_max: usize,
 }
 
 fn main() {
@@ -27,6 +53,7 @@ fn main() {
         idx += 1;
     }
 
+    let target_matrix = load_default_target_matrix().expect("default target matrix should load");
     let mut cells = Vec::new();
     let mut total_constructed_weeks = 0usize;
     let mut frontier_gap_sum = 0usize;
@@ -34,25 +61,26 @@ fn main() {
     let mut exact_frontier_cells = 0usize;
     let mut per_p_totals: BTreeMap<usize, usize> = BTreeMap::new();
 
-    for groups in 2..=10 {
-        for group_size in 2..=10 {
+    for groups in target_matrix.scored_bounds.g_min..=target_matrix.scored_bounds.g_max {
+        for group_size in target_matrix.scored_bounds.p_min..=target_matrix.scored_bounds.p_max {
             let upper_bound = counting_bound(groups, group_size);
-            let constructed_weeks = best_constructed_weeks(groups, group_size, upper_bound);
-            total_constructed_weeks += constructed_weeks;
-            frontier_gap_sum += upper_bound.saturating_sub(constructed_weeks);
-            if constructed_weeks > 0 {
+            let target_weeks = match target_matrix.target_for(groups, group_size) {
+                Some(MatrixCellTarget::Finite(value)) => *value,
+                Some(MatrixCellTarget::Infinite) => upper_bound,
+                None => upper_bound,
+            };
+            let cell = best_constructed_cell(groups, group_size, upper_bound, target_weeks, &target_matrix);
+
+            total_constructed_weeks += cell.constructed_weeks;
+            frontier_gap_sum += upper_bound.saturating_sub(cell.constructed_weeks);
+            if cell.constructed_weeks > 0 {
                 solved_cells += 1;
             }
-            if constructed_weeks == upper_bound {
+            if cell.constructed_weeks == upper_bound {
                 exact_frontier_cells += 1;
             }
-            *per_p_totals.entry(group_size).or_default() += constructed_weeks;
-            cells.push(CellSummary {
-                groups,
-                group_size,
-                upper_bound,
-                constructed_weeks,
-            });
+            *per_p_totals.entry(group_size).or_default() += cell.constructed_weeks;
+            cells.push(cell);
         }
     }
 
@@ -65,22 +93,23 @@ fn main() {
         println!("METRIC p{}_constructed_weeks={}", group_size, total);
     }
     for cell in &cells {
-        println!(
-            "METRIC W_{}_{}={}",
-            cell.groups, cell.group_size, cell.constructed_weeks
-        );
+        println!("METRIC W_{}_{}={}", cell.g, cell.p, cell.constructed_weeks);
     }
 
     if let Some(path) = json_out {
-        let mut json = String::from("{\n  \"cells\": [\n");
-        for (idx, cell) in cells.iter().enumerate() {
-            let comma = if idx + 1 == cells.len() { "" } else { "," };
-            json.push_str(&format!(
-                "    {{\"g\": {}, \"p\": {}, \"upper_bound\": {}, \"constructed_weeks\": {}}}{}\n",
-                cell.groups, cell.group_size, cell.upper_bound, cell.constructed_weeks, comma
-            ));
-        }
-        json.push_str("  ]\n}\n");
+        let artifact = MatrixArtifact {
+            matrix_name: &target_matrix.name,
+            matrix_version: target_matrix.version,
+            scored_bounds: BoundsArtifact {
+                g_min: target_matrix.scored_bounds.g_min,
+                g_max: target_matrix.scored_bounds.g_max,
+                p_min: target_matrix.scored_bounds.p_min,
+                p_max: target_matrix.scored_bounds.p_max,
+            },
+            cells,
+        };
+        let json = serde_json::to_string_pretty(&artifact)
+            .expect("matrix artifact should serialize cleanly");
         fs::write(path, json).expect("should write coverage matrix json");
     }
 }
@@ -89,15 +118,70 @@ fn counting_bound(groups: usize, group_size: usize) -> usize {
     ((groups * group_size) - 1) / (group_size - 1)
 }
 
-fn best_constructed_weeks(groups: usize, group_size: usize, upper_bound: usize) -> usize {
+fn best_constructed_cell(
+    groups: usize,
+    group_size: usize,
+    upper_bound: usize,
+    target_weeks: usize,
+    target_matrix: &gm_core::solver5::reporting::Solver5TargetMatrix,
+) -> CellSummary {
     for weeks in (1..=upper_bound).rev() {
         let input = pure_sgp_input(groups, group_size, weeks);
-        match gm_core::run_solver(&input) {
-            Ok(result) if result.final_score.abs() < 1e-9 => return weeks,
+        match inspect_construction(&input) {
+            Ok(inspection) if inspection.solved_canonically() => {
+                let method_abbreviation = Some(target_matrix.compose_method_abbreviation(
+                    &inspection.family_label,
+                    &inspection.operator_labels,
+                ));
+                return summarize_cell(
+                    groups,
+                    group_size,
+                    upper_bound,
+                    target_weeks,
+                    weeks,
+                    method_abbreviation,
+                    Some(inspection),
+                );
+            }
             Ok(_) | Err(_) => {}
         }
     }
-    0
+
+    summarize_cell(groups, group_size, upper_bound, target_weeks, 0, None, None)
+}
+
+fn summarize_cell(
+    groups: usize,
+    group_size: usize,
+    upper_bound: usize,
+    target_weeks: usize,
+    constructed_weeks: usize,
+    method_abbreviation: Option<String>,
+    inspection: Option<Solver5ConstructionInspection>,
+) -> CellSummary {
+    let gap_to_target = target_weeks.saturating_sub(constructed_weeks);
+    let (family_label, operator_labels, quality_label) = inspection
+        .map(|inspection| {
+            (
+                Some(inspection.family_label),
+                inspection.operator_labels,
+                Some(inspection.quality_label),
+            )
+        })
+        .unwrap_or((None, Vec::new(), None));
+
+    CellSummary {
+        g: groups,
+        p: group_size,
+        upper_bound,
+        constructed_weeks,
+        target_weeks,
+        gap_to_target,
+        method_abbreviation,
+        family_label,
+        operator_labels,
+        quality_label,
+    }
 }
 
 fn pure_sgp_input(groups: usize, group_size: usize, weeks: usize) -> ApiInput {

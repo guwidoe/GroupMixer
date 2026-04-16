@@ -1,3 +1,11 @@
+use super::heuristics::NoopHeuristicPipeline;
+use super::handoff::{NoSearchHandoffPolicy, SearchHandoffDecision, SearchHandoffPolicy};
+use super::problem::PureSgpProblem;
+use super::result::build_solver_result;
+use super::router::attempt_construction;
+use super::types::ConstructionQuality;
+use crate::models::{ApiInput, SolverParams};
+use crate::solver_support::SolverError;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
@@ -81,6 +89,84 @@ impl Solver5TargetMatrix {
     pub fn abbreviation_for(&self, label: &str) -> Option<&str> {
         self.family_abbreviations.get(label).map(String::as_str)
     }
+
+    pub fn compose_method_abbreviation(&self, family_label: &str, operator_labels: &[String]) -> String {
+        let mut abbreviation = self
+            .abbreviation_for(family_label)
+            .unwrap_or_else(|| self.abbreviation_for("unknown").unwrap_or("?"))
+            .to_string();
+        for operator in operator_labels {
+            abbreviation.push_str(
+                self.abbreviation_for(operator)
+                    .unwrap_or_else(|| self.abbreviation_for("unknown").unwrap_or("?")),
+            );
+        }
+        abbreviation
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Solver5ConstructionInspection {
+    pub requested_weeks: usize,
+    pub max_supported_weeks: usize,
+    pub final_score_millis: i64,
+    pub family_label: String,
+    pub operator_labels: Vec<String>,
+    pub quality_label: String,
+}
+
+impl Solver5ConstructionInspection {
+    pub fn solved_canonically(&self) -> bool {
+        self.final_score_millis == 0
+    }
+}
+
+pub fn inspect_construction(
+    input: &ApiInput,
+) -> Result<Solver5ConstructionInspection, SolverError> {
+    let problem = PureSgpProblem::from_input(input)?;
+    match &input.solver.solver_params {
+        SolverParams::Solver5(_) => {}
+        _ => {
+            return Err(SolverError::ValidationError(
+                "solver5 inspection expected solver5 params after solver selection validation"
+                    .into(),
+            ));
+        }
+    }
+
+    let routing = attempt_construction(&problem)
+        .map_err(|failure| SolverError::ValidationError(failure.to_solver_error_message(&problem)))?;
+    let construction = NoopHeuristicPipeline.apply(&problem, routing.result);
+    let construction = match NoSearchHandoffPolicy.decide(&problem, construction) {
+        SearchHandoffDecision::ConstructionOnly { result, .. } => result,
+        SearchHandoffDecision::SearchPreferred { .. } => {
+            return Err(SolverError::ValidationError(
+                "solver5 search handoff is not enabled; construction-only mode remains authoritative"
+                    .into(),
+            ));
+        }
+    };
+    let solver_result = build_solver_result(
+        input,
+        &problem,
+        &construction.schedule,
+        input.solver.seed.unwrap_or(42),
+    )?;
+
+    Ok(Solver5ConstructionInspection {
+        requested_weeks: problem.num_weeks,
+        max_supported_weeks: construction.max_supported_weeks,
+        final_score_millis: (solver_result.final_score * 1000.0).round() as i64,
+        family_label: construction.family.label().to_string(),
+        operator_labels: construction
+            .provenance
+            .operators
+            .iter()
+            .map(|operator| operator.label().to_string())
+            .collect(),
+        quality_label: quality_label(&construction.metadata.quality).to_string(),
+    })
 }
 
 pub fn load_default_target_matrix() -> Result<Solver5TargetMatrix, MatrixDefinitionError> {
@@ -214,4 +300,12 @@ fn validate_bounds(name: &str, bounds: MatrixBounds) -> Result<(), MatrixDefinit
         )));
     }
     Ok(())
+}
+
+fn quality_label(quality: &ConstructionQuality) -> &'static str {
+    match quality {
+        ConstructionQuality::ExactFrontier => "exact_frontier",
+        ConstructionQuality::NearFrontier { .. } => "near_frontier",
+        ConstructionQuality::LowerBound { .. } => "lower_bound",
+    }
 }
