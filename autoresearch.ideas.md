@@ -10,8 +10,12 @@
 - Build out the **general solver5 router** so every relevant `p` in the benchmark matrix trends toward a recognizable family-selection policy.
 - In practice, the next highest-ROI constructive gap is now **`p=4`**. Prioritize reusable theorem-family work over more patch-bank hunting.
 - The finite-field resolvable `(v,4,1)`-BIBD route for `v = 3q + 1` is now landed; do not re-spend cycles on `7-4-9` / `10-4-13` unless a regression appears.
-- The main remaining `p=4` exact gap is now **`9-4-11`**. The most honest live lane is a genuine `RGDD(36,4,3)`-style construction or an explicit source-backed 36-player schedule.
-- The main remaining triples exact gap is now **`8-3-11`**. The best honest lane appears to be `NKTS(24)` rather than more generic cyclic shortcuts.
+- The universal single-round partition lower bound is now landed; do not spend more loop time rediscovering generic `W=1` coverage.
+- The live scored target gaps are now the exact frontier cells **`9-4-11`** and **`8-3-11`**.
+- The main remaining `p=4` exact gap is **`9-4-11`**. The most honest live lane is a genuine `RGDD(36,4,3)`-style construction or an explicit source-backed 36-player schedule.
+- Promising structural derivation to revisit: build `RGDD(36,4,3)` by inflating a resolved `2-(12,4,3)` seed on the 12 size-3 groups with `RTD(4,3)` local classes, provided the three occurrences of each seed pair can be colored across the three local RTD classes.
+- The main remaining triples exact gap is **`8-3-11`**. The best honest lane appears to be `NKTS(24)` rather than more generic cyclic shortcuts.
+- The explicit `KP(30,14)` lane has now been tried as a catalog-backed direct construction; do not spend more loop time rediscovering generic 30-player triples unless a reusable family beyond that case appears.
 - Keep broader **RBIBD / RGDD / URD / RITD / ownSG** work behind the current `9-4-11` / `8-3-11` frontier push.
 - Extend recursive `+G(t)` lifting only as a reusable composition operator, not as cell-specific glue.
 - Keep benchmark honesty: only count score-zero constructions, keep the fixed `2..10 x 2..10` matrix unchanged, and do not hardcode matrix answers into families or patch banks.

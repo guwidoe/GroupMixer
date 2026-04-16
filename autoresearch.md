@@ -131,14 +131,16 @@ Interpretation note:
   - prime-power RTD / MOLS-style transversal-design constructors for `3 <= p <= g`
   - prime-power affine-plane constructors for `p = g`
   - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
+  - a universal single-round partition family for any divisible pure-SGP instance, used as an honest reusable `W=1` lower bound when no stronger family applies
 - Active kept benchmark baseline is now:
-  - commit: `03ec2fb`
-  - `total_constructed_weeks = 370`
-  - `frontier_gap_sum = 216`
-  - `solved_cells = 45`
+  - commit: `079e496`
+  - `total_constructed_weeks = 406`
+  - `frontier_gap_sum = 180`
+  - `solved_cells = 81`
   - `exact_frontier_cells = 23`
-  - `p3_constructed_weeks = 69`
-  - `p4_constructed_weeks = 58`
+  - `unsolved_cells = 0`
+  - `p3_constructed_weeks = 70`
+  - `p4_constructed_weeks = 60`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
@@ -159,19 +161,21 @@ Interpretation note:
 - The main remaining triples frontier is now `8-3-11` (24 players). Any next `p=3` work should target an honest 24-player construction or a structurally justified composition, not another generic cyclic shortcut.
 - Remaining live directions should stay structural constructor families, not search-based cheating:
   - honest 24-player triple coverage for `8-3-11`
-  - stronger `p=4` coverage, especially `9-4-11` and `10-4-10..13`, through explicit published schedules or actual RBIBD / RGDD family work rather than benchmark-shaped glue
-  - the most promising current theorem-family route is a finite-field resolvable `(v,4,1)`-BIBD construction for `v = 3q + 1`; inside the fixed matrix this should honestly target `7-4-9` and `10-4-13`
+  - stronger `p=4` coverage, especially exact `9-4-11`, through explicit published schedules or actual RBIBD / RGDD family work rather than benchmark-shaped glue
+  - honest improvement from `10-3-13` to `10-3-14` if a real 30-player triple construction appears
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
-- Active kept benchmark baseline is now commit `03ec2fb` at `total_constructed_weeks = 370`.
-- The finite-field `v = 3q + 1` resolvable-BIBD family has now landed and paid off exactly as hoped:
-  - `W_7_4: 7 -> 9`
-  - `W_10_4: 9 -> 13`
-  - `p4_constructed_weeks: 52 -> 58`
-  - `exact_frontier_cells: 21 -> 23`
+- Active kept benchmark baseline is now commit `079e496` at `total_constructed_weeks = 406`.
+- The universal single-round lower bound has landed and removed all zero-coverage holes without changing the benchmark question:
+  - `unsolved_cells: 36 -> 0`
+  - many previously empty cells now honestly score `W=1`
+- Only three scored target gaps remain in the fixed matrix:
+  1. `9-4`: current `9`, target `11`
+  2. `8-3`: current `10`, target `11`
+  3. `10-3`: current `13`, target `14`
 - The next feature buildout order is now:
   1. target the remaining exact `p=4` gap at `9-4-11`, likely through an honest `RGDD(36,4,3)`-style family or an explicit source-backed schedule
   2. target the remaining exact triples gap at `8-3-11`, likely through an honest `NKTS(24)` construction or explicit source-backed schedule
-  3. broader catalog-backed patch and design families later
+  3. then consider `10-3-14` only if a real 30-player triples route emerges
 - Keep preferring reusable family logic or justified composition over per-cell glue.
