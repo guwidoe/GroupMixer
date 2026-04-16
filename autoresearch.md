@@ -160,3 +160,12 @@ Lane definition and references live in:
   - regressions to watch: kirkman worsened to `1.1000x`, large-gender-immovable worsened to `1.0316x`, partial-attendance worsened to `1.0116x`
   - hotpath/raw-runtime diagnostics got slower, but the primary broad fixed-time quality metric improved decisively
   - next refinement should preserve the failure-penalty idea while clawing back the regressions outside Sailing and some of the hotpath slowdown
+- Experiment 3: kept the rejected-candidate penalty but removed the no-candidate penalty, leaving missing-candidate handling to the existing candidate-rate/share signal.
+  - outcome: **keep**
+  - primary metric improved further from `101.0107` to `98.1441`
+  - Sailing improved again to `2357.25` mean (`0.9618x`)
+  - kirkman flipped from a regression to a strong win (`1.1000x -> 0.8500x`)
+  - transfer-attribute-balance stayed good (`0.9787x`), social-golfer stayed good (`0.9919x`)
+  - remaining watch item: large-gender-immovable is still weak at `1.0379x`; partial-attendance is basically flat (`1.0001x`)
+  - runtime/hotpath diagnostics also improved materially versus Experiment 2, though they are still secondary to the primary broad-lane objective
+  - takeaway: penalizing failed previews is useful, but penalizing no-candidate attempts separately was too aggressive because candidate-rate-based share correction was already enough
