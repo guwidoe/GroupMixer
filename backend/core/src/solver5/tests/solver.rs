@@ -233,6 +233,16 @@ fn solver5_solves_ownsg_10_9_5_case() {
 }
 
 #[test]
+fn solver5_solves_ritd_10_5_9_case() {
+    let input = pure_input(10, 5, 9);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver.solve(&input).expect("ritd should solve 10-5-9");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 9);
+}
+
+#[test]
 fn solver5_solves_published_6_4_7_case() {
     let input = pure_input(6, 4, 7);
     let solver = SearchEngine::new(&input.solver);

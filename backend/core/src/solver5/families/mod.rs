@@ -15,6 +15,7 @@ mod ownsg;
 mod p4_rbibd;
 mod published;
 mod round_robin;
+mod ritd;
 mod single_round_partition;
 mod transversal_design;
 
@@ -25,6 +26,7 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
         &KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &OWN_SOCIAL_GOLFER_FAMILY,
+        &RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY,
         &AFFINE_PLANE_PRIME_POWER_FAMILY,
         &P4_RESOLVABLE_BIBD_FAMILY,
         &PUBLISHED_SCHEDULE_BANK_FAMILY,
@@ -39,6 +41,7 @@ struct Kirkman6TPlus1Family;
 struct KirkmanTripleSystemFamily;
 struct NearlyKirkmanTripleSystemFamily;
 struct OwnSocialGolferFamily;
+struct ResolvableIncompleteTransversalDesignFamily;
 struct AffinePlanePrimePowerFamily;
 struct P4ResolvableBIBDFamily;
 struct PublishedScheduleBankFamily;
@@ -51,6 +54,8 @@ static KIRKMAN_TRIPLE_SYSTEM_FAMILY: KirkmanTripleSystemFamily = KirkmanTripleSy
 static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
     NearlyKirkmanTripleSystemFamily;
 static OWN_SOCIAL_GOLFER_FAMILY: OwnSocialGolferFamily = OwnSocialGolferFamily;
+static RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY:
+    ResolvableIncompleteTransversalDesignFamily = ResolvableIncompleteTransversalDesignFamily;
 static AFFINE_PLANE_PRIME_POWER_FAMILY: AffinePlanePrimePowerFamily = AffinePlanePrimePowerFamily;
 static P4_RESOLVABLE_BIBD_FAMILY: P4ResolvableBIBDFamily = P4ResolvableBIBDFamily;
 static PUBLISHED_SCHEDULE_BANK_FAMILY: PublishedScheduleBankFamily = PublishedScheduleBankFamily;
@@ -240,6 +245,29 @@ impl ConstructionFamily for OwnSocialGolferFamily {
     fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
         catalog::ownsg::exact_case(problem.num_groups, problem.group_size)
             .map(construct_own_social_golfer)
+    }
+}
+
+impl ConstructionFamily for ResolvableIncompleteTransversalDesignFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::ResolvableIncompleteTransversalDesign
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        let Some(entry) = catalog::ritd::exact_case(problem.num_groups, problem.group_size) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires a catalog-backed resolvable incomplete transversal design case",
+            };
+        };
+
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: entry.complete_parallel_classes + usize::from(entry.add_group_fill_week),
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        catalog::ritd::exact_case(problem.num_groups, problem.group_size)
+            .map(construct_resolvable_incomplete_transversal_design)
     }
 }
 
@@ -512,6 +540,32 @@ pub(super) fn construct_own_social_golfer(
         .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
 }
 
+pub(super) fn construct_resolvable_incomplete_transversal_design(
+    entry: &'static catalog::ritd::RitdCatalogEntry,
+) -> ConstructionResult {
+    let supported_weeks = entry.complete_parallel_classes + usize::from(entry.add_group_fill_week);
+
+    ConstructionResult::new(
+        ritd::construct(entry),
+        ConstructionFamilyId::ResolvableIncompleteTransversalDesign,
+    )
+    .with_quality(classify_quality(
+        entry.num_groups,
+        entry.group_size,
+        supported_weeks,
+    ))
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires a catalog-backed resolvable incomplete transversal design case",
+            "derives complete parallel classes by deleting one source group from an ITD block set",
+            "can add an intra-group filler week when the residual groups support a pure equal-size partition",
+        ],
+    })
+    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::ritd::source().citation)
+    .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
+    .with_evidence(EvidenceSourceKind::StructuralComposition, "ritd_group_fill")
+}
+
 pub(super) fn construct_affine_plane(field: &FiniteField) -> ConstructionResult {
     ConstructionResult::new(
         affine_plane::construct(field),
@@ -629,6 +683,10 @@ fn construct_max_schedule_recursive(
 
     if let Some(entry) = catalog::ownsg::exact_case(num_groups, group_size) {
         return Some(construct_own_social_golfer(entry));
+    }
+
+    if let Some(entry) = catalog::ritd::exact_case(num_groups, group_size) {
+        return Some(construct_resolvable_incomplete_transversal_design(entry));
     }
 
     if let Some(entry) = catalog::published::exact_case(num_groups, group_size) {

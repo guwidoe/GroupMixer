@@ -54,6 +54,8 @@ that achieved the current `W_g,p`.
 Examples:
 - `RR` — round robin / 1-factorization
 - `KTS(6t+3)` — Kirkman / resolvable triple-system route on `6t+3` players
+- `ownSG` — starter-block own-social-golfer construction
+- `RITD` — resolvable incomplete transversal design
 - `RTD` — resolvable transversal design / MOLS route
 - `AP` — affine plane
 - `RTD+G` — resolvable transversal design with recursive lift

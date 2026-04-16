@@ -13,10 +13,13 @@
 - The universal single-round partition lower bound is now landed; do not spend more loop time rediscovering generic `W=1` coverage.
 - The live scored target gaps in the fixed matrix are now closed; do not keep spending loop time on already-landed frontier cells.
 - The exact `9-4-11` lane has now been landed as a source-backed published schedule; treat more 36-player foursomes work as stale unless it yields reusable theory beyond that benchmark cell.
-- Promising structural derivation to revisit: build `RGDD(36,4,3)` by inflating a resolved `2-(12,4,3)` seed on the 12 size-3 groups with `RTD(4,3)` local classes, provided the three occurrences of each seed pair can be colored across the three local RTD classes.
+- Historical structural derivation note only: `RGDD(36,4,3)` via inflating a resolved `2-(12,4,3)` seed with `RTD(4,3)` local classes is no longer a current benchmark priority now that `9-4-11` is already landed; revisit only if pursuing broader post-benchmark `p=4` theory.
 - The exact `NKTS(24)` lane has now been landed as a catalog-backed schedule synthesized in solver5; treat more 24-player triples work as stale unless it yields reusable theory beyond the benchmark cell.
 - The explicit `KP(30,14)` lane has now been tried as a catalog-backed direct construction; do not spend more loop time rediscovering generic 30-player triples unless a reusable family beyond that case appears.
 - Keep broader **RBIBD / RGDD / URD / RITD / ownSG** work behind reusable-theory gains rather than already-closed fixed-matrix frontier cells.
-- Current promising reusable lane: Miller–Valkov–Abel Appendix A ownSG starter blocks appear to support a catalog-backed development family for the large `10-p` rows (`p=6,7,8,9`) by translating each starter block in `+p` steps across the 10 groups. Treat this as a literature-structured family experiment, not as ad hoc per-cell schedule hunting.
+- The Appendix A ownSG starter-block lane is now landed for the benchmark-relevant `10-p` rows with `p=6,7,8,9`; do not re-spend loop time there unless broadening the ownSG catalog beyond the fixed matrix.
+- The small catalog-backed **RITD / +G** lane is now landed for the paper’s `RITD(10,2;5)+G(1)` route; treat `10-5` as covered by the reusable `ritd` family rather than as an open published-schedule-style gap.
+- Current promising reusable lane: a small **MOLR / MOLS lower-bound** family for non-prime-power square orders could honestly raise `10-10` from 3 to 4 via the paper’s `MOLRs(10,10)+G(1)` route and may generalize beyond that one cell.
+- Secondary post-benchmark lane: broaden the new `ritd` family only if additional literature-backed deletion/incomplete-transversal cases can be encoded cleanly without turning it into another benchmark-shaped patch bank.
 - Extend recursive `+G(t)` lifting only as a reusable composition operator, not as cell-specific glue.
 - Keep benchmark honesty: only count score-zero constructions, keep the fixed `2..10 x 2..10` matrix unchanged, and do not hardcode matrix answers into families or patch banks.

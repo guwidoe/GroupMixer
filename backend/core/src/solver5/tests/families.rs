@@ -213,6 +213,22 @@ fn ownsg_family_constructs_90_player_case() {
 }
 
 #[test]
+fn ritd_family_constructs_50_player_case() {
+    let entry = crate::solver5::catalog::ritd::exact_case(10, 5)
+        .expect("ritd catalog should expose the 10-5 case");
+    let result = families::construct_resolvable_incomplete_transversal_design(entry);
+
+    assert_eq!(result.family.label(), "ritd");
+    assert_eq!(result.schedule.len(), 9);
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 3,
+        }
+    );
+}
+
+#[test]
 fn end_to_end_round_robin_schedule_still_scores_zero() {
     let input = pure_input(4, 2, 7);
     let solver = SearchEngine::new(&input.solver);
@@ -240,6 +256,7 @@ fn family_registry_exposes_current_portfolio_order() {
             "kts",
             "nkts",
             "ownsg",
+            "ritd",
             "affine_plane_prime_power",
             "p4_router",
             "published_schedule_bank",

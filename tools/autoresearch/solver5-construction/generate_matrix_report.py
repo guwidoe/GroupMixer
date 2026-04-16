@@ -27,6 +27,16 @@ METHOD_REFERENCE = [
         "solves": "literature/reference `p=3` composite-row targets that need nearly-Kirkman constructions",
     },
     {
+        "code": "ownSG",
+        "stands_for": "starter-block own-social-golfer construction",
+        "solves": "catalog-backed Appendix A starter-block development family; currently covers large `10-p` rows such as `10-6-7`, `10-7-7`, `10-8-5`, and `10-9-5`",
+    },
+    {
+        "code": "RITD",
+        "stands_for": "resolvable incomplete transversal design",
+        "solves": "catalog-backed incomplete-transversal route where deleting one source group yields complete parallel classes, optionally followed by an intra-group filler week such as the shipped `10-5-9` construction",
+    },
+    {
         "code": "PSB",
         "stands_for": "published schedule bank",
         "solves": "explicit source-backed lower-bound schedules that are honest patch-bank constructions rather than general theorem families",
@@ -368,6 +378,7 @@ def main():
         render_border_swatch("optimum unknown", "border:2px dashed #94a3b8;"),
         "</div>",
         "<div class='legend-row legend-corners'><span class='legend-key'>Corners</span> <span><code>O</code> top-left optimum</span> <span><code>T</code> top-right roadmap target</span> <span><code>L</code> bottom-left literature lower bound</span> <span>bottom-right method badges show current and reference separately when both matter</span></div>",
+        "<div class='legend-row legend-corners'><span class='legend-key'>Method badges</span> <span><code>RR</code> round robin</span> <span><code>NKTS</code> nearly Kirkman triple system</span> <span><code>ownSG</code> starter-block own-social-golfer construction</span> <span><code>RITD</code> resolvable incomplete transversal design</span> <span><code>PSB</code> published schedule bank</span></div>",
         "<div class='sample-grid'>",
         render_sample(
             "Solved and optimal",
