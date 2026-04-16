@@ -196,7 +196,7 @@ pub fn validate_final_solution(
         constraint_penalty: snapshot.constraint_penalty_raw,
         weighted_constraint_penalty: snapshot.constraint_penalty_weighted,
         clique_violations: snapshot.clique_violations.clone(),
-        forbidden_pair_violations: snapshot.forbidden_pair_violations.clone(),
+        forbidden_pair_violations: snapshot.soft_apart_violations.clone(),
         should_together_violations: snapshot.should_together_violations.clone(),
         immovable_violations: snapshot.immovable_violations,
         pair_meeting_counts: snapshot.pair_meeting_counts.clone(),

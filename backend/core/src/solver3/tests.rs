@@ -402,16 +402,16 @@ fn compiled_problem_constraint_adjacency_is_populated() {
     let cp = CompiledProblem::compile(&input).unwrap();
 
     assert_eq!(cp.cliques.len(), 1);
-    assert_eq!(cp.forbidden_pairs.len(), 1);
+    assert_eq!(cp.soft_apart_pairs.len(), 1);
     assert_eq!(cp.should_together_pairs.len(), 1);
     assert_eq!(cp.immovable_assignments.len(), 1);
     assert_eq!(cp.pair_meeting_constraints.len(), 1);
 
-    // Forbidden pair adjacency: p2 and p3 each get one entry.
+    // Soft-apart adjacency: p2 and p3 each get one entry.
     let p2 = cp.person_id_to_idx["p2"];
     let p3 = cp.person_id_to_idx["p3"];
-    assert_eq!(cp.forbidden_pairs_by_person[p2].len(), 1);
-    assert_eq!(cp.forbidden_pairs_by_person[p3].len(), 1);
+    assert_eq!(cp.soft_apart_pairs_by_person[p2].len(), 1);
+    assert_eq!(cp.soft_apart_pairs_by_person[p3].len(), 1);
 }
 
 #[test]
@@ -1023,8 +1023,8 @@ fn zero_unique_contacts_when_no_pairs_share_groups() {
 }
 
 #[test]
-fn forbidden_pair_penalty_is_scored() {
-    // 2 people, 1 group of 2, 1 session, one forbidden pair constraint.
+fn soft_apart_pair_penalty_is_scored() {
+    // 2 people, 1 group of 2, 1 session, one soft-apart constraint.
     let input = ApiInput {
         problem: ProblemDefinition {
             people: vec![
@@ -1061,7 +1061,7 @@ fn forbidden_pair_penalty_is_scored() {
     // Both people will be placed in the only group.
     assert!(state.constraint_penalty_weighted > 0.0);
     let snap = recompute_oracle_score(&state).unwrap();
-    assert_eq!(snap.forbidden_pair_violations[0], 1);
+    assert_eq!(snap.soft_apart_violations[0], 1);
     assert!((snap.constraint_penalty_weighted - 42.0).abs() < 1e-9);
 }
 

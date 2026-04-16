@@ -382,7 +382,7 @@ fn build_swap_runtime_patch(
     }
 
     patch.score_delta.constraint_penalty_weighted_delta +=
-        forbidden_pair_penalty_delta_for_swap(state, analysis);
+        soft_apart_pair_penalty_delta_for_swap(state, analysis);
     patch.score_delta.constraint_penalty_weighted_delta +=
         should_together_penalty_delta_for_swap(state, analysis);
     patch.score_delta.constraint_penalty_weighted_delta +=
@@ -398,17 +398,17 @@ fn build_swap_runtime_patch(
     Ok(patch)
 }
 
-fn forbidden_pair_penalty_delta_for_swap(state: &RuntimeState, analysis: &SwapAnalysis) -> f64 {
+fn soft_apart_pair_penalty_delta_for_swap(state: &RuntimeState, analysis: &SwapAnalysis) -> f64 {
     let cp = &state.compiled;
     let session_idx = analysis.swap.session_idx;
     let indices = merged_indices(
-        &cp.forbidden_pairs_by_person[analysis.swap.left_person_idx],
-        &cp.forbidden_pairs_by_person[analysis.swap.right_person_idx],
+        &cp.soft_apart_pairs_by_person[analysis.swap.left_person_idx],
+        &cp.soft_apart_pairs_by_person[analysis.swap.right_person_idx],
     );
 
     let mut delta = 0.0;
     for idx in indices {
-        let constraint = &cp.forbidden_pairs[idx];
+        let constraint = &cp.soft_apart_pairs[idx];
         if !is_active_in_session(constraint.sessions.as_deref(), session_idx) {
             continue;
         }

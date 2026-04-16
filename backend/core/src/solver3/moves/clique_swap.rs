@@ -452,7 +452,7 @@ fn build_clique_swap_runtime_patch(
     let moved_people = moved_people(analysis);
 
     patch.score_delta.constraint_penalty_weighted_delta +=
-        forbidden_pair_penalty_delta_for_clique_swap(state, analysis, &moved_people);
+        soft_apart_pair_penalty_delta_for_clique_swap(state, analysis, &moved_people);
     patch.score_delta.constraint_penalty_weighted_delta +=
         should_together_penalty_delta_for_clique_swap(state, analysis, &moved_people);
     patch.score_delta.constraint_penalty_weighted_delta +=
@@ -468,18 +468,18 @@ fn build_clique_swap_runtime_patch(
     Ok(patch)
 }
 
-fn forbidden_pair_penalty_delta_for_clique_swap(
+fn soft_apart_pair_penalty_delta_for_clique_swap(
     state: &RuntimeState,
     analysis: &CliqueSwapAnalysis,
     moved_people: &[usize],
 ) -> f64 {
     let cp = &state.compiled;
     let session_idx = analysis.clique_swap.session_idx;
-    let indices = merged_indices_for_people(moved_people, &cp.forbidden_pairs_by_person);
+    let indices = merged_indices_for_people(moved_people, &cp.soft_apart_pairs_by_person);
 
     let mut delta = 0.0;
     for idx in indices {
-        let constraint = &cp.forbidden_pairs[idx];
+        let constraint = &cp.soft_apart_pairs[idx];
         if !is_active_in_session(constraint.sessions.as_deref(), session_idx) {
             continue;
         }
