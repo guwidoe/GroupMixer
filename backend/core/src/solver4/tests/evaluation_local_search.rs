@@ -24,7 +24,8 @@ fn breakout_resets_the_stagnation_counter() {
 fn active_repeated_pair_guidance_only_kicks_in_after_stagnation() {
     assert!(!should_prefer_active_repeated_pairs(0));
     assert!(!should_prefer_active_repeated_pairs(1));
-    assert!(should_prefer_active_repeated_pairs(2));
+    assert!(!should_prefer_active_repeated_pairs(2));
+    assert!(should_prefer_active_repeated_pairs(3));
 }
 
 #[test]
