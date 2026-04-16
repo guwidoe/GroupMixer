@@ -1,11 +1,9 @@
+use super::composition;
 use super::field::FiniteField;
-use super::types::{
-    CompositionOperatorId, ConstructionFamilyId, ConstructionResult, Schedule,
-};
+use super::types::{ConstructionFamilyId, ConstructionResult, Schedule};
 
 mod affine_plane;
 mod kirkman;
-mod recursive_lifting;
 mod round_robin;
 mod transversal_design;
 
@@ -35,20 +33,16 @@ pub(super) fn construct_transversal_design_portfolio(
     group_size: usize,
     field: &FiniteField,
 ) -> ConstructionResult {
-    let mut result = ConstructionResult::new(
+    let result = ConstructionResult::new(
         transversal_design::construct(field, group_size),
         ConstructionFamilyId::TransversalDesignPrimePower,
     );
-    if let Some(extra_weeks) = recursive_lifting::lift_transversal_latent_groups(
+    composition::apply_recursive_transversal_lift(
         num_groups,
         group_size,
+        result,
         construct_max_schedule_recursive,
-    ) {
-        result.schedule.extend(extra_weeks);
-        result.max_supported_weeks = result.schedule.len();
-        result = result.add_operator(CompositionOperatorId::RecursiveTransversalLift);
-    }
-    result
+    )
 }
 
 fn construct_max_schedule_recursive(

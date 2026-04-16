@@ -1,8 +1,10 @@
 use crate::models::{ApiInput, SolverConfiguration, SolverResult};
 use crate::solver_support::SolverError;
 
+mod composition;
 mod families;
 mod field;
+mod heuristics;
 mod problem;
 mod result;
 mod router;
@@ -11,6 +13,7 @@ mod types;
 #[cfg(test)]
 mod tests;
 
+use heuristics::NoopHeuristicPipeline;
 use problem::PureSgpProblem;
 use result::build_solver_result;
 use router::attempt_construction;
@@ -46,11 +49,12 @@ impl SearchEngine {
         let routing = attempt_construction(&problem).map_err(|failure| {
             SolverError::ValidationError(failure.to_solver_error_message(&problem))
         })?;
+        let construction = NoopHeuristicPipeline.apply(&problem, routing.result);
 
         build_solver_result(
             input,
             &problem,
-            &routing.result.schedule,
+            &construction.schedule,
             self.configuration.seed.unwrap_or(DEFAULT_SOLVER5_SEED),
         )
     }
