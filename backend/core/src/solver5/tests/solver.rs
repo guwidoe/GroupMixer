@@ -151,15 +151,15 @@ fn solver5_solves_catalog_backed_kts_case() {
 }
 
 #[test]
-fn solver5_solves_pseudo_doubled_nkts_case() {
-    let input = pure_input(10, 3, 13);
+fn solver5_solves_catalog_backed_10_3_14_case() {
+    let input = pure_input(10, 3, 14);
     let solver = SearchEngine::new(&input.solver);
     let result = solver
         .solve(&input)
-        .expect("pseudo-doubled nkts construction should solve 10-3-13");
+        .expect("catalog-backed nkts construction should solve 10-3-14");
 
     assert_eq!(result.final_score, 0.0);
-    assert_eq!(result.schedule.len(), 13);
+    assert_eq!(result.schedule.len(), 14);
 }
 
 #[test]

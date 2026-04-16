@@ -37,10 +37,12 @@ fn kts_catalog_exposes_exact_small_cases() {
 }
 
 #[test]
-fn nkts_catalog_exposes_exact_18_case() {
+fn nkts_catalog_exposes_exact_small_cases() {
     let case = nkts::exact_case(6).expect("nkts catalog should expose the 18-player case");
-
     assert_eq!(case.encoded_weeks.len(), 8);
+
+    let case = nkts::exact_case(10).expect("nkts catalog should expose the 30-player case");
+    assert_eq!(case.encoded_weeks.len(), 14);
     assert_eq!(nkts::source().name, "nkts_catalog");
 }
 

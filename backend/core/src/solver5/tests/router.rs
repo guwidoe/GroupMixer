@@ -103,10 +103,10 @@ fn router_selects_catalog_kts_case_for_5_3_7() {
 }
 
 #[test]
-fn router_selects_pseudo_doubled_nkts_case_for_10_3_13() {
-    let input = pure_input(10, 3, 13);
+fn router_selects_exact_nkts_catalog_case_for_10_3_14() {
+    let input = pure_input(10, 3, 14);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
-    let decision = attempt_construction(&problem).expect("router should construct 10-3-13");
+    let decision = attempt_construction(&problem).expect("router should construct 10-3-14");
 
     assert_eq!(
         decision.result.family,
@@ -116,8 +116,8 @@ fn router_selects_pseudo_doubled_nkts_case_for_10_3_13() {
         attempt.family == ConstructionFamilyId::NearlyKirkmanTripleSystem
             && attempt.status
                 == FamilyAttemptStatus::Selected {
-                    max_supported_weeks: 13,
-                    quality: ConstructionQuality::NearFrontier { missing_weeks: 1 },
+                    max_supported_weeks: 14,
+                    quality: ConstructionQuality::ExactFrontier,
                 }
     }));
 }
