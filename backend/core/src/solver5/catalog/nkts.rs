@@ -24,6 +24,20 @@ const NKTS_18_WEEKS: &[&[&str]] = &[
     &["aDg", "bEh", "cFi", "AeI", "BfG", "CdH"],
 ];
 
+const NKTS_24_WEEKS: &[&[&str]] = &[
+    &["0DH", "15C", "23I", "479", "6EF", "8MN", "ABK", "GJL"],
+    &["035", "18J", "2LM", "4IN", "6BG", "7DK", "9AE", "CFH"],
+    &["0BL", "1EI", "26D", "34J", "58A", "7FG", "9CN", "HKM"],
+    &["0JK", "139", "2GN", "4BE", "5IM", "6AH", "78C", "DFL"],
+    &["01G", "257", "3AL", "4CD", "6KN", "8BI", "9FM", "EHJ"],
+    &["0AF", "146", "29K", "3CM", "5JN", "7BH", "8EL", "DGI"],
+    &["028", "1FN", "3BD", "4HL", "59G", "67M", "AIJ", "CEK"],
+    &["069", "1BM", "2FJ", "37E", "45K", "8GH", "ADN", "CIL"],
+    &["07I", "1KL", "24A", "3HN", "5BF", "6CJ", "89D", "EGM"],
+    &["04M", "12H", "368", "5DE", "7LN", "9BJ", "ACG", "FIK"],
+    &["0EN", "17A", "2BC", "3GK", "48F", "56L", "9HI", "DJM"],
+];
+
 const KP_30_WEEKS: &[&[&str]] = &[
     &["4CE", "6AI", "1DQ", "58R", "2KL", "0FO", "3JN", "7HM", "9GS", "BPT"],
     &["5DF", "0BJ", "27R", "69L", "3EM", "1GP", "4KO", "8IN", "AHS", "CQT"],
@@ -47,6 +61,12 @@ const NKTS_CASES: &[NktsCatalogEntry] = &[
         alphabet: "ABCDEFGHIabcdefghi",
         encoded_weeks: NKTS_18_WEEKS,
         citation: "NKTS(18) explicit schedule from Ed Pegg Jr., Math Games (2007), citing Kotzig–Rosa/Rees–Wallis",
+    },
+    NktsCatalogEntry {
+        num_groups: 8,
+        alphabet: "0123456789ABCDEFGHIJKLMN",
+        encoded_weeks: NKTS_24_WEEKS,
+        citation: "Exact NKTS(24) schedule synthesized in solver5 from a Z11+∞ cyclic orbit cover plus week-assignment search, matching the theorem-backed NKTS(24) existence line cited by Miller–Valkov–Abel 2026 and Pegg 2007 (Kotzig–Rosa / Rees–Stinson)",
     },
     NktsCatalogEntry {
         num_groups: 10,

@@ -86,6 +86,26 @@ fn router_selects_nkts_catalog_case_for_6_3_8() {
 }
 
 #[test]
+fn router_selects_exact_nkts_catalog_case_for_8_3_11() {
+    let input = pure_input(8, 3, 11);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 8-3-11");
+
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::NearlyKirkmanTripleSystem
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::NearlyKirkmanTripleSystem
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 11,
+                    quality: ConstructionQuality::ExactFrontier,
+                }
+    }));
+}
+
+#[test]
 fn router_selects_catalog_kts_case_for_5_3_7() {
     let input = pure_input(5, 3, 7);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
@@ -130,15 +150,17 @@ fn router_selects_published_schedule_bank_for_8_3_10() {
 
     assert_eq!(
         decision.result.family,
-        ConstructionFamilyId::PublishedScheduleBank
+        ConstructionFamilyId::NearlyKirkmanTripleSystem
     );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::PublishedScheduleBank
-            && attempt.status
-                == FamilyAttemptStatus::Selected {
-                    max_supported_weeks: 10,
-                    quality: ConstructionQuality::NearFrontier { missing_weeks: 1 },
+            && matches!(
+                attempt.status,
+                FamilyAttemptStatus::RejectedAsWeaker {
+                    selected_family: ConstructionFamilyId::NearlyKirkmanTripleSystem,
+                    ..
                 }
+            )
     }));
 }
 
