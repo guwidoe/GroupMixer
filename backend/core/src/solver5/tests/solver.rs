@@ -87,3 +87,15 @@ fn solver5_solves_kirkman_6t_plus_1_cases() {
     assert_eq!(result.final_score, 0.0);
     assert_eq!(result.schedule.len(), 10);
 }
+
+#[test]
+fn solver5_solves_catalog_backed_nkts_case() {
+    let input = pure_input(6, 3, 8);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("catalog-backed nkts construction should solve 6-3-8");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 8);
+}

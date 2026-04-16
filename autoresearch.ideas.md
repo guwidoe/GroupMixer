@@ -3,6 +3,7 @@
 - The constructor-portfolio scaffold is now in place. Use it rather than reintroducing ad hoc family routing or inline exception logic.
 - Keep `total_constructed_weeks` as the primary objective gate; use per-cell and per-`p` metrics to understand where coverage moved.
 - Implement **NKTS / composite `p=3` coverage** next as the highest-ROI family buildout on top of the portfolio platform.
+- Do **not** retry the naive cyclic `p=3` transversal-design fallback for non-prime-power group counts; it benchmarked flat and did not produce score-zero constructions on the even composite rows.
 - Build out the **general solver5 router** so every relevant `p` in the benchmark matrix trends toward a recognizable family-selection policy.
 - In practice, the next under-modeled routing/family-policy gap after NKTS is still **`p=4`**, via catalog-backed `v mod 12` branches and explicit exception handling, but that work should land as part of the general router rather than as a one-off special router.
 - Keep broader **RBIBD / RGDD / URD / RITD / ownSG** work behind the NKTS and general-router-enrichment milestones.

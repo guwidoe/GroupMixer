@@ -12,7 +12,7 @@ fn router_selects_round_robin_for_p2_cases() {
     let decision = attempt_construction(&problem).expect("router should find round robin");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::RoundRobin);
-    assert_eq!(decision.attempts.len(), 4);
+    assert_eq!(decision.attempts.len(), 5);
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::RoundRobin
             && attempt.status
@@ -44,6 +44,26 @@ fn router_reports_prefix_and_recursive_provenance() {
         decision.result.provenance.operators,
         vec![CompositionOperatorId::RecursiveTransversalLift]
     );
+}
+
+#[test]
+fn router_selects_nkts_catalog_case_for_6_3_8() {
+    let input = pure_input(6, 3, 8);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 6-3-8");
+
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::NearlyKirkmanTripleSystem
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::NearlyKirkmanTripleSystem
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 8,
+                    quality: ConstructionQuality::ExactFrontier,
+                }
+    }));
 }
 
 #[test]

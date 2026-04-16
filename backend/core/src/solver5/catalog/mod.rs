@@ -1,3 +1,4 @@
+pub(super) mod nkts;
 pub(super) mod ownsg;
 pub(super) mod p4;
 pub(super) mod prime_powers;

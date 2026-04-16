@@ -132,6 +132,7 @@ Interpretation note:
   - KTS / NKTS for stronger `p=3` coverage on composite and non-prime-power rows
   - router enrichment for under-modeled `p` families, with `p=4` as the next obvious high-ROI gap rather than a special architecture class
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
+- A naive cyclic `p=3` transversal-design fallback for non-prime-power group counts was tried and discarded: it left `total_constructed_weeks` flat at `284`, so the cheap cyclic schedule does **not** unlock the even composite triple rows (`6-3-*`, `10-3-*`). Do not retry that shortcut.
 
 ## Immediate Next Loop Behavior
 - Because `autoresearch.jsonl` was reset, the next session should:
