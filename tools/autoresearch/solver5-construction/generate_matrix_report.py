@@ -121,7 +121,7 @@ def render_combined_table(title, rows, cols, cell_map, max_gap):
                     )
                 )
             if not cell["scored"]:
-                badges.append(render_badge("visual_only", inline_style="background:#eef2f7;color:#475569;"))
+                badges.append(render_badge("visual_only", inline_style=semantic_badge_style(cell, max_gap)))
             if badges:
                 html_parts.append(f"<div class='badge-row'>{''.join(badges)}</div>")
 
@@ -189,7 +189,7 @@ def main():
         render_legend_item(render_badge("exact_frontier", inline_style=quality_badge_style({"quality_label": "exact_frontier"}, max_gap)), "target already reached / strongest current quality class"),
         render_legend_item(render_badge("near_frontier", inline_style=quality_badge_style({"quality_label": "near_frontier"}, max_gap)), "close to frontier"),
         render_legend_item(render_badge("lower_bound", inline_style=quality_badge_style({"quality_label": "lower_bound"}, max_gap)), "still below target / weaker constructive status"),
-        render_legend_item(render_badge("visual_only", inline_style="background:#eef2f7;color:#475569;"), "shown for matrix completeness; excluded from the scored objective"),
+        render_legend_item(render_badge("visual_only", inline_style="background:hsl(120 78% 78%);color:#1f2937;"), "shown for matrix completeness; excluded from the scored objective"),
         "</div></div>",
     ]
 
