@@ -144,9 +144,30 @@ pub struct TransferRuntimePreview {
     pub delta_score: f64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum TransferAnalysisMode {
+    Checked,
+    TrustedSelection,
+}
+
 pub fn analyze_transfer(
     state: &RuntimeState,
     transfer: &TransferMove,
+) -> Result<TransferAnalysis, SolverError> {
+    analyze_transfer_with_mode(state, transfer, TransferAnalysisMode::Checked)
+}
+
+fn analyze_transfer_trusted(
+    state: &RuntimeState,
+    transfer: &TransferMove,
+) -> Result<TransferAnalysis, SolverError> {
+    analyze_transfer_with_mode(state, transfer, TransferAnalysisMode::TrustedSelection)
+}
+
+fn analyze_transfer_with_mode(
+    state: &RuntimeState,
+    transfer: &TransferMove,
+    mode: TransferAnalysisMode,
 ) -> Result<TransferAnalysis, SolverError> {
     let cp = &state.compiled;
 
@@ -181,61 +202,57 @@ pub fn analyze_transfer(
         state.group_sizes[state.group_slot(transfer.session_idx, transfer.target_group_idx)];
     let target_capacity = cp.group_capacity(transfer.session_idx, transfer.target_group_idx);
 
-    let feasibility = if !cp.person_participation[transfer.person_idx][transfer.session_idx] {
-        TransferFeasibility::NonParticipatingPerson {
-            person_idx: transfer.person_idx,
-        }
-    } else if transfer.source_group_idx == transfer.target_group_idx {
-        TransferFeasibility::SameGroupNoop
-    } else if actual_group_idx.is_none() {
-        TransferFeasibility::MissingLocation {
-            person_idx: transfer.person_idx,
-        }
-    } else if actual_group_idx != Some(transfer.source_group_idx) {
-        TransferFeasibility::WrongSourceGroup {
-            person_idx: transfer.person_idx,
-            actual_group_idx: actual_group_idx.expect("checked above"),
-        }
-    } else if source_size <= 1 {
-        TransferFeasibility::SourceWouldBeEmpty {
-            source_group_idx: transfer.source_group_idx,
-        }
-    } else if target_size >= target_capacity {
-        TransferFeasibility::TargetGroupFull {
-            target_group_idx: transfer.target_group_idx,
-            capacity: target_capacity,
-        }
-    } else if let Some(required_group_idx) =
-        cp.immovable_group(transfer.session_idx, transfer.person_idx)
-    {
-        TransferFeasibility::ImmovablePerson {
-            person_idx: transfer.person_idx,
-            required_group_idx,
-        }
-    } else if let Some(clique_idx) =
-        cp.person_to_clique_id[transfer.session_idx][transfer.person_idx]
-    {
-        TransferFeasibility::ActiveCliqueMember {
-            person_idx: transfer.person_idx,
-            clique_idx,
-        }
-    } else if !cp.hard_apart_pairs_by_person[transfer.person_idx].is_empty() {
-        if let Some(other_person_idx) = find_hard_apart_conflict_in_group(
-            state,
-            transfer.session_idx,
-            transfer.person_idx,
-            transfer.target_group_idx,
-        ) {
-            TransferFeasibility::HardApartConflict {
-                person_idx: transfer.person_idx,
-                other_person_idx,
-                target_group_idx: transfer.target_group_idx,
+    let feasibility = match mode {
+        TransferAnalysisMode::Checked => {
+            if !cp.person_participation[transfer.person_idx][transfer.session_idx] {
+                TransferFeasibility::NonParticipatingPerson {
+                    person_idx: transfer.person_idx,
+                }
+            } else if transfer.source_group_idx == transfer.target_group_idx {
+                TransferFeasibility::SameGroupNoop
+            } else if actual_group_idx.is_none() {
+                TransferFeasibility::MissingLocation {
+                    person_idx: transfer.person_idx,
+                }
+            } else if actual_group_idx != Some(transfer.source_group_idx) {
+                TransferFeasibility::WrongSourceGroup {
+                    person_idx: transfer.person_idx,
+                    actual_group_idx: actual_group_idx.expect("checked above"),
+                }
+            } else if source_size <= 1 {
+                TransferFeasibility::SourceWouldBeEmpty {
+                    source_group_idx: transfer.source_group_idx,
+                }
+            } else if target_size >= target_capacity {
+                TransferFeasibility::TargetGroupFull {
+                    target_group_idx: transfer.target_group_idx,
+                    capacity: target_capacity,
+                }
+            } else if let Some(required_group_idx) =
+                cp.immovable_group(transfer.session_idx, transfer.person_idx)
+            {
+                TransferFeasibility::ImmovablePerson {
+                    person_idx: transfer.person_idx,
+                    required_group_idx,
+                }
+            } else if let Some(clique_idx) =
+                cp.person_to_clique_id[transfer.session_idx][transfer.person_idx]
+            {
+                TransferFeasibility::ActiveCliqueMember {
+                    person_idx: transfer.person_idx,
+                    clique_idx,
+                }
+            } else {
+                transfer_hard_apart_feasibility(state, transfer)
             }
-        } else {
-            TransferFeasibility::Feasible
         }
-    } else {
-        TransferFeasibility::Feasible
+        TransferAnalysisMode::TrustedSelection => {
+            if transfer.source_group_idx == transfer.target_group_idx {
+                TransferFeasibility::SameGroupNoop
+            } else {
+                transfer_hard_apart_feasibility(state, transfer)
+            }
+        }
     };
 
     Ok(TransferAnalysis {
@@ -243,6 +260,31 @@ pub fn analyze_transfer(
         feasibility,
         actual_group_idx,
     })
+}
+
+fn transfer_hard_apart_feasibility(
+    state: &RuntimeState,
+    transfer: &TransferMove,
+) -> TransferFeasibility {
+    let cp = &state.compiled;
+    if cp.hard_apart_pairs_by_person[transfer.person_idx].is_empty() {
+        return TransferFeasibility::Feasible;
+    }
+
+    if let Some(other_person_idx) = find_hard_apart_conflict_in_group(
+        state,
+        transfer.session_idx,
+        transfer.person_idx,
+        transfer.target_group_idx,
+    ) {
+        TransferFeasibility::HardApartConflict {
+            person_idx: transfer.person_idx,
+            other_person_idx,
+            target_group_idx: transfer.target_group_idx,
+        }
+    } else {
+        TransferFeasibility::Feasible
+    }
 }
 
 fn find_hard_apart_conflict_in_group(
@@ -266,7 +308,31 @@ pub fn preview_transfer_runtime_lightweight(
     state: &RuntimeState,
     transfer: &TransferMove,
 ) -> Result<TransferRuntimePreview, SolverError> {
+    preview_transfer_runtime_checked(state, transfer)
+}
+
+pub fn preview_transfer_runtime_checked(
+    state: &RuntimeState,
+    transfer: &TransferMove,
+) -> Result<TransferRuntimePreview, SolverError> {
     let analysis = analyze_transfer(state, transfer)?;
+    build_transfer_runtime_preview(state, transfer, analysis)
+}
+
+pub(crate) fn preview_transfer_runtime_trusted(
+    state: &RuntimeState,
+    transfer: &TransferMove,
+) -> Result<TransferRuntimePreview, SolverError> {
+    let analysis = analyze_transfer_trusted(state, transfer)?;
+    maybe_cross_check_trusted_transfer_analysis(state, transfer, &analysis)?;
+    build_transfer_runtime_preview(state, transfer, analysis)
+}
+
+fn build_transfer_runtime_preview(
+    state: &RuntimeState,
+    transfer: &TransferMove,
+    analysis: TransferAnalysis,
+) -> Result<TransferRuntimePreview, SolverError> {
     let patch = match analysis.feasibility {
         TransferFeasibility::Feasible => build_transfer_runtime_patch(state, &analysis)?,
         TransferFeasibility::SameGroupNoop => RuntimePatch::default(),
@@ -286,6 +352,30 @@ pub fn preview_transfer_runtime_lightweight(
     maybe_cross_check_transfer_preview_delta(state, transfer, &preview)?;
 
     Ok(preview)
+}
+
+fn maybe_cross_check_trusted_transfer_analysis(
+    state: &RuntimeState,
+    transfer: &TransferMove,
+    trusted_analysis: &TransferAnalysis,
+) -> Result<(), SolverError> {
+    #[cfg(feature = "solver3-oracle-checks")]
+    {
+        let checked_analysis = analyze_transfer(state, transfer)?;
+        if checked_analysis != *trusted_analysis {
+            return Err(SolverError::ValidationError(format!(
+                "solver3 trusted transfer preview assumptions violated: trusted analysis {:?} diverged from checked {:?}",
+                trusted_analysis, checked_analysis
+            )));
+        }
+    }
+
+    #[cfg(not(feature = "solver3-oracle-checks"))]
+    {
+        let _ = (state, transfer, trusted_analysis);
+    }
+
+    Ok(())
 }
 
 pub fn preview_transfer_oracle_recompute(

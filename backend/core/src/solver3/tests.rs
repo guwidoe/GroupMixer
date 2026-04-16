@@ -33,10 +33,13 @@ use super::compiled_problem::CompiledProblem;
 use super::moves::{
     analyze_clique_swap, analyze_swap, analyze_transfer, apply_clique_swap_runtime_preview,
     apply_swap_runtime_preview, apply_transfer_runtime_preview,
-    preview_clique_swap_oracle_recompute, preview_clique_swap_runtime_lightweight,
-    preview_swap_oracle_recompute, preview_swap_runtime_lightweight,
-    preview_transfer_oracle_recompute, preview_transfer_runtime_lightweight, CliqueSwapFeasibility,
-    CliqueSwapMove, SwapFeasibility, SwapMove, TransferFeasibility, TransferMove,
+    preview_clique_swap_oracle_recompute, preview_clique_swap_runtime_checked,
+    preview_clique_swap_runtime_lightweight, preview_clique_swap_runtime_trusted,
+    preview_swap_oracle_recompute, preview_swap_runtime_checked, preview_swap_runtime_lightweight,
+    preview_swap_runtime_trusted, preview_transfer_oracle_recompute,
+    preview_transfer_runtime_checked, preview_transfer_runtime_lightweight,
+    preview_transfer_runtime_trusted, CliqueSwapFeasibility, CliqueSwapMove, SwapFeasibility,
+    SwapMove, TransferFeasibility, TransferMove,
 };
 use super::oracle::check_drift;
 use super::runtime_state::RuntimeState;
@@ -1374,6 +1377,38 @@ fn swap_preview_lightweight_matches_oracle_delta() {
 }
 
 #[test]
+fn trusted_swap_preview_matches_checked_preview_for_sampler_compatible_move() {
+    let input = swap_kernel_input();
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = &state.compiled;
+    let swap = SwapMove::new(0, cp.person_id_to_idx["p1"], cp.person_id_to_idx["p2"]);
+
+    let checked = preview_swap_runtime_checked(&state, &swap).unwrap();
+    let trusted = preview_swap_runtime_trusted(&state, &swap).unwrap();
+
+    assert_eq!(trusted.analysis, checked.analysis);
+    assert_eq!(trusted.patch, checked.patch);
+    assert_close(
+        trusted.delta_score,
+        checked.delta_score,
+        "trusted swap preview should match checked preview",
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn trusted_swap_preview_rejects_selection_assumption_violation() {
+    let state = RuntimeState::from_input(&transfer_restricted_input()).unwrap();
+    let cp = state.compiled.clone();
+    let swap = SwapMove::new(0, cp.person_id_to_idx["p0"], cp.person_id_to_idx["p3"]);
+
+    let err = preview_swap_runtime_trusted(&state, &swap).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trusted swap preview assumptions violated"));
+}
+
+#[test]
 fn swap_apply_runtime_preview_preserves_invariants_and_oracle_alignment() {
     let input = swap_kernel_input();
     let mut state = RuntimeState::from_input(&input).unwrap();
@@ -1678,6 +1713,48 @@ fn transfer_preview_lightweight_matches_oracle_delta() {
         oracle_delta,
         "transfer preview delta should match oracle recompute delta",
     );
+}
+
+#[test]
+fn trusted_transfer_preview_matches_checked_preview_for_sampler_compatible_move() {
+    let input = transfer_kernel_input();
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = &state.compiled;
+    let transfer = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p1"],
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+    );
+
+    let checked = preview_transfer_runtime_checked(&state, &transfer).unwrap();
+    let trusted = preview_transfer_runtime_trusted(&state, &transfer).unwrap();
+
+    assert_eq!(trusted.analysis, checked.analysis);
+    assert_eq!(trusted.patch, checked.patch);
+    assert_close(
+        trusted.delta_score,
+        checked.delta_score,
+        "trusted transfer preview should match checked preview",
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn trusted_transfer_preview_rejects_selection_assumption_violation() {
+    let state = RuntimeState::from_input(&transfer_restricted_input()).unwrap();
+    let cp = state.compiled.clone();
+    let transfer = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p4"],
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+    );
+
+    let err = preview_transfer_runtime_trusted(&state, &transfer).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trusted transfer preview assumptions violated"));
 }
 
 #[test]
@@ -2156,6 +2233,55 @@ fn clique_swap_preview_lightweight_matches_oracle_delta() {
         oracle_delta,
         "clique-swap preview delta should match oracle recompute delta",
     );
+}
+
+#[test]
+fn trusted_clique_swap_preview_matches_checked_preview_for_sampler_compatible_move() {
+    let input = clique_swap_kernel_input();
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let clique_idx = cp.person_to_clique_id[0][cp.person_id_to_idx["p0"]]
+        .expect("p0 should belong to a clique in session 0");
+
+    let clique_swap = CliqueSwapMove::new(
+        0,
+        clique_idx,
+        cp.group_id_to_idx["g0"],
+        cp.group_id_to_idx["g1"],
+        vec![cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]],
+    );
+
+    let checked = preview_clique_swap_runtime_checked(&state, &clique_swap).unwrap();
+    let trusted = preview_clique_swap_runtime_trusted(&state, &clique_swap).unwrap();
+
+    assert_eq!(trusted.analysis, checked.analysis);
+    assert_eq!(trusted.patch, checked.patch);
+    assert_close(
+        trusted.delta_score,
+        checked.delta_score,
+        "trusted clique-swap preview should match checked preview",
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn trusted_clique_swap_preview_rejects_selection_assumption_violation() {
+    let state = RuntimeState::from_input(&clique_swap_restricted_input()).unwrap();
+    let cp = state.compiled.clone();
+    let clique_idx = cp.person_to_clique_id[0][cp.person_id_to_idx["p0"]]
+        .expect("p0 should belong to clique in session 0");
+    let clique_swap = CliqueSwapMove::new(
+        0,
+        clique_idx,
+        cp.group_id_to_idx["g0"],
+        cp.group_id_to_idx["g1"],
+        vec![cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]],
+    );
+
+    let err = preview_clique_swap_runtime_trusted(&state, &clique_swap).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trusted clique-swap preview assumptions violated"));
 }
 
 #[test]

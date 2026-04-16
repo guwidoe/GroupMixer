@@ -15,9 +15,9 @@ use rand_chacha::ChaCha12Rng;
 use crate::models::MoveFamily;
 
 use super::super::moves::{
-    preview_clique_swap_runtime_lightweight, preview_swap_runtime_lightweight,
-    preview_transfer_runtime_lightweight, CliqueSwapMove, CliqueSwapRuntimePreview,
-    PairContactUpdate, SwapMove, SwapRuntimePreview, TransferMove, TransferRuntimePreview,
+    preview_clique_swap_runtime_checked, preview_swap_runtime_trusted,
+    preview_transfer_runtime_checked, CliqueSwapMove, CliqueSwapRuntimePreview, PairContactUpdate,
+    SwapMove, SwapRuntimePreview, TransferMove, TransferRuntimePreview,
 };
 use super::super::runtime_state::RuntimeState;
 use super::family_selection::MoveFamilySelector;
@@ -416,7 +416,7 @@ impl CandidateSampler {
             let swap = SwapMove::new(session_idx, left_person_idx, right_person_idx);
 
             let preview_started_at = get_current_time();
-            let preview = preview_swap_runtime_lightweight(state, &swap);
+            let preview = preview_swap_runtime_trusted(state, &swap);
             timing.preview_kernel_seconds +=
                 get_elapsed_seconds_between(preview_started_at, get_current_time());
             if let Ok(preview) = preview {
@@ -463,7 +463,7 @@ impl CandidateSampler {
                 let transfer =
                     TransferMove::new(session_idx, person_idx, source_group_idx, target_group_idx);
                 let preview_started_at = get_current_time();
-                let preview = preview_transfer_runtime_lightweight(state, &transfer);
+                let preview = preview_transfer_runtime_checked(state, &transfer);
                 timing.preview_kernel_seconds +=
                     get_elapsed_seconds_between(preview_started_at, get_current_time());
                 if let Ok(preview) = preview {
@@ -510,7 +510,7 @@ impl CandidateSampler {
                         target_group_idx,
                     );
                     let preview_started_at = get_current_time();
-                    let preview = preview_transfer_runtime_lightweight(state, &transfer);
+                    let preview = preview_transfer_runtime_checked(state, &transfer);
                     timing.preview_kernel_seconds +=
                         get_elapsed_seconds_between(preview_started_at, get_current_time());
                     if let Ok(preview) = preview {
@@ -574,7 +574,7 @@ impl CandidateSampler {
                     target_people,
                 );
                 let preview_started_at = get_current_time();
-                let preview = preview_clique_swap_runtime_lightweight(state, &clique_swap);
+                let preview = preview_clique_swap_runtime_checked(state, &clique_swap);
                 timing.preview_kernel_seconds +=
                     get_elapsed_seconds_between(preview_started_at, get_current_time());
                 if let Ok(preview) = preview {
@@ -627,7 +627,7 @@ impl CandidateSampler {
                         target_people,
                     );
                     let preview_started_at = get_current_time();
-                    let preview = preview_clique_swap_runtime_lightweight(state, &clique_swap);
+                    let preview = preview_clique_swap_runtime_checked(state, &clique_swap);
                     timing.preview_kernel_seconds +=
                         get_elapsed_seconds_between(preview_started_at, get_current_time());
                     if let Ok(preview) = preview {
@@ -799,7 +799,7 @@ impl CandidateSampler {
         }
 
         let fallback =
-            fallback_tabu_swap.and_then(|swap| preview_swap_runtime_lightweight(state, &swap).ok());
+            fallback_tabu_swap.and_then(|swap| preview_swap_runtime_trusted(state, &swap).ok());
         if fallback.is_some() {
             tabu_telemetry.aspiration_preview_surfaces += 1;
         }
@@ -876,7 +876,7 @@ impl CandidateSampler {
                 }
 
                 let swap = SwapMove::new(session_idx, anchor_person_idx, target_person_idx);
-                if let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) {
+                if let Ok(preview) = preview_swap_runtime_trusted(state, &swap) {
                     return Some(preview);
                 }
             }
@@ -929,7 +929,7 @@ impl CandidateSampler {
         }
 
         let fallback =
-            fallback_tabu_swap.and_then(|swap| preview_swap_runtime_lightweight(state, &swap).ok());
+            fallback_tabu_swap.and_then(|swap| preview_swap_runtime_trusted(state, &swap).ok());
         if fallback.is_some() {
             tabu_telemetry.aspiration_preview_surfaces += 1;
         }
@@ -969,7 +969,7 @@ impl CandidateSampler {
         }
 
         let fallback =
-            fallback_tabu_swap.and_then(|swap| preview_swap_runtime_lightweight(state, &swap).ok());
+            fallback_tabu_swap.and_then(|swap| preview_swap_runtime_trusted(state, &swap).ok());
         if fallback.is_some() {
             tabu_telemetry.aspiration_preview_surfaces += 1;
         }
@@ -1024,7 +1024,7 @@ impl CandidateSampler {
                 }
                 continue;
             }
-            if let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) {
+            if let Ok(preview) = preview_swap_runtime_trusted(state, &swap) {
                 return Some(preview);
             }
         }
@@ -1060,7 +1060,7 @@ impl CandidateSampler {
                 continue;
             };
             let swap = SwapMove::new(session_idx, left_person_idx, right_person_idx);
-            if let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) {
+            if let Ok(preview) = preview_swap_runtime_trusted(state, &swap) {
                 return Some(preview);
             }
         }
@@ -1155,7 +1155,7 @@ impl CandidateSampler {
                 }
 
                 let swap = SwapMove::new(session_idx, anchor_person_idx, target_person_idx);
-                if let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) {
+                if let Ok(preview) = preview_swap_runtime_trusted(state, &swap) {
                     previewed_candidates += 1;
                     if best_preview
                         .as_ref()
@@ -1188,7 +1188,7 @@ impl CandidateSampler {
 
         if best_preview.is_none() && swap_sampling.tabu_allow_aspiration_preview {
             if let Some(swap) = fallback_tabu_swap {
-                if let Ok(preview) = preview_swap_runtime_lightweight(state, &swap) {
+                if let Ok(preview) = preview_swap_runtime_trusted(state, &swap) {
                     best_preview = Some(preview);
                     previewed_candidates += 1;
                     guided_tabu_telemetry.aspiration_preview_surfaces += 1;
@@ -1240,7 +1240,7 @@ impl CandidateSampler {
 
                 let transfer =
                     TransferMove::new(session_idx, person_idx, source_group_idx, target_group_idx);
-                if let Ok(preview) = preview_transfer_runtime_lightweight(state, &transfer) {
+                if let Ok(preview) = preview_transfer_runtime_checked(state, &transfer) {
                     return Some(preview);
                 }
             }
@@ -1283,7 +1283,7 @@ impl CandidateSampler {
                         source_group_idx,
                         target_group_idx,
                     );
-                    if let Ok(preview) = preview_transfer_runtime_lightweight(state, &transfer) {
+                    if let Ok(preview) = preview_transfer_runtime_checked(state, &transfer) {
                         return Some(preview);
                     }
                 }
@@ -1337,7 +1337,7 @@ impl CandidateSampler {
                     target_group_idx,
                     target_people,
                 );
-                if let Ok(preview) = preview_clique_swap_runtime_lightweight(state, &clique_swap) {
+                if let Ok(preview) = preview_clique_swap_runtime_checked(state, &clique_swap) {
                     return Some(preview);
                 }
             }
@@ -1386,9 +1386,7 @@ impl CandidateSampler {
                         target_group_idx,
                         target_people,
                     );
-                    if let Ok(preview) =
-                        preview_clique_swap_runtime_lightweight(state, &clique_swap)
-                    {
+                    if let Ok(preview) = preview_clique_swap_runtime_checked(state, &clique_swap) {
                         return Some(preview);
                     }
                 }

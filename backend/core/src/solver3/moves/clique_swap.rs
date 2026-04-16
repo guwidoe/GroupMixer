@@ -180,9 +180,30 @@ pub struct CliqueSwapRuntimePreview {
     pub delta_score: f64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CliqueSwapAnalysisMode {
+    Checked,
+    TrustedSelection,
+}
+
 pub fn analyze_clique_swap(
     state: &RuntimeState,
     clique_swap: &CliqueSwapMove,
+) -> Result<CliqueSwapAnalysis, SolverError> {
+    analyze_clique_swap_with_mode(state, clique_swap, CliqueSwapAnalysisMode::Checked)
+}
+
+fn analyze_clique_swap_trusted(
+    state: &RuntimeState,
+    clique_swap: &CliqueSwapMove,
+) -> Result<CliqueSwapAnalysis, SolverError> {
+    analyze_clique_swap_with_mode(state, clique_swap, CliqueSwapAnalysisMode::TrustedSelection)
+}
+
+fn analyze_clique_swap_with_mode(
+    state: &RuntimeState,
+    clique_swap: &CliqueSwapMove,
+    mode: CliqueSwapAnalysisMode,
 ) -> Result<CliqueSwapAnalysis, SolverError> {
     let cp = &state.compiled;
     if clique_swap.session_idx >= cp.num_sessions {
@@ -222,43 +243,59 @@ pub fn analyze_clique_swap(
     let active_members = active_clique_members_in_source_group(state, clique_swap);
     let participating_member_count = participating_clique_member_count(cp, clique_swap);
 
-    let feasibility = if clique_swap.source_group_idx == clique_swap.target_group_idx {
-        CliqueSwapFeasibility::SameGroupNoop
-    } else if !clique_is_active_in_session(cp, clique_swap.clique_idx, clique_swap.session_idx) {
-        CliqueSwapFeasibility::InactiveClique {
-            clique_idx: clique_swap.clique_idx,
-        }
-    } else if active_members.len() != participating_member_count || active_members.is_empty() {
-        CliqueSwapFeasibility::CliqueNotInSourceGroup {
-            clique_idx: clique_swap.clique_idx,
-            source_group_idx: clique_swap.source_group_idx,
-        }
-    } else if let Some((person_idx, required_group_idx)) =
-        active_members.iter().find_map(|&member| {
-            cp.immovable_group(clique_swap.session_idx, member)
-                .map(|group_idx| (member, group_idx))
-        })
-    {
-        if required_group_idx != clique_swap.target_group_idx {
-            CliqueSwapFeasibility::ActiveCliqueMemberImmovable {
-                person_idx,
-                required_group_idx,
+    let feasibility = match mode {
+        CliqueSwapAnalysisMode::Checked => {
+            if clique_swap.source_group_idx == clique_swap.target_group_idx {
+                CliqueSwapFeasibility::SameGroupNoop
+            } else if !clique_is_active_in_session(
+                cp,
+                clique_swap.clique_idx,
+                clique_swap.session_idx,
+            ) {
+                CliqueSwapFeasibility::InactiveClique {
+                    clique_idx: clique_swap.clique_idx,
+                }
+            } else if active_members.len() != participating_member_count
+                || active_members.is_empty()
+            {
+                CliqueSwapFeasibility::CliqueNotInSourceGroup {
+                    clique_idx: clique_swap.clique_idx,
+                    source_group_idx: clique_swap.source_group_idx,
+                }
+            } else if let Some((person_idx, required_group_idx)) =
+                active_members.iter().find_map(|&member| {
+                    cp.immovable_group(clique_swap.session_idx, member)
+                        .map(|group_idx| (member, group_idx))
+                })
+            {
+                if required_group_idx != clique_swap.target_group_idx {
+                    CliqueSwapFeasibility::ActiveCliqueMemberImmovable {
+                        person_idx,
+                        required_group_idx,
+                    }
+                } else {
+                    clique_swap_hard_apart_feasibility(state, clique_swap, &active_members)
+                }
+            } else if active_members.len() != clique_swap.target_person_indices.len() {
+                CliqueSwapFeasibility::TargetCountMismatch {
+                    expected: active_members.len(),
+                    actual: clique_swap.target_person_indices.len(),
+                }
+            } else {
+                match validate_target_people(state, clique_swap) {
+                    CliqueSwapFeasibility::Feasible => {
+                        clique_swap_hard_apart_feasibility(state, clique_swap, &active_members)
+                    }
+                    other => other,
+                }
             }
-        } else {
-            CliqueSwapFeasibility::Feasible
         }
-    } else if active_members.len() != clique_swap.target_person_indices.len() {
-        CliqueSwapFeasibility::TargetCountMismatch {
-            expected: active_members.len(),
-            actual: clique_swap.target_person_indices.len(),
-        }
-    } else {
-        match validate_target_people(state, clique_swap) {
-            CliqueSwapFeasibility::Feasible => {
-                find_clique_swap_hard_apart_conflict(state, clique_swap, &active_members)
-                    .unwrap_or(CliqueSwapFeasibility::Feasible)
+        CliqueSwapAnalysisMode::TrustedSelection => {
+            if clique_swap.source_group_idx == clique_swap.target_group_idx {
+                CliqueSwapFeasibility::SameGroupNoop
+            } else {
+                clique_swap_hard_apart_feasibility(state, clique_swap, &active_members)
             }
-            other => other,
         }
     };
 
@@ -270,11 +307,44 @@ pub fn analyze_clique_swap(
     })
 }
 
+fn clique_swap_hard_apart_feasibility(
+    state: &RuntimeState,
+    clique_swap: &CliqueSwapMove,
+    active_members: &[usize],
+) -> CliqueSwapFeasibility {
+    find_clique_swap_hard_apart_conflict(state, clique_swap, active_members)
+        .unwrap_or(CliqueSwapFeasibility::Feasible)
+}
+
 pub fn preview_clique_swap_runtime_lightweight(
     state: &RuntimeState,
     clique_swap: &CliqueSwapMove,
 ) -> Result<CliqueSwapRuntimePreview, SolverError> {
+    preview_clique_swap_runtime_checked(state, clique_swap)
+}
+
+pub fn preview_clique_swap_runtime_checked(
+    state: &RuntimeState,
+    clique_swap: &CliqueSwapMove,
+) -> Result<CliqueSwapRuntimePreview, SolverError> {
     let analysis = analyze_clique_swap(state, clique_swap)?;
+    build_clique_swap_runtime_preview(state, clique_swap, analysis)
+}
+
+pub(crate) fn preview_clique_swap_runtime_trusted(
+    state: &RuntimeState,
+    clique_swap: &CliqueSwapMove,
+) -> Result<CliqueSwapRuntimePreview, SolverError> {
+    let analysis = analyze_clique_swap_trusted(state, clique_swap)?;
+    maybe_cross_check_trusted_clique_swap_analysis(state, clique_swap, &analysis)?;
+    build_clique_swap_runtime_preview(state, clique_swap, analysis)
+}
+
+fn build_clique_swap_runtime_preview(
+    state: &RuntimeState,
+    clique_swap: &CliqueSwapMove,
+    analysis: CliqueSwapAnalysis,
+) -> Result<CliqueSwapRuntimePreview, SolverError> {
     let patch = match analysis.feasibility {
         CliqueSwapFeasibility::Feasible => build_clique_swap_runtime_patch(state, &analysis)?,
         CliqueSwapFeasibility::SameGroupNoop => RuntimePatch::default(),
@@ -294,6 +364,30 @@ pub fn preview_clique_swap_runtime_lightweight(
     maybe_cross_check_clique_swap_preview_delta(state, clique_swap, &preview)?;
 
     Ok(preview)
+}
+
+fn maybe_cross_check_trusted_clique_swap_analysis(
+    state: &RuntimeState,
+    clique_swap: &CliqueSwapMove,
+    trusted_analysis: &CliqueSwapAnalysis,
+) -> Result<(), SolverError> {
+    #[cfg(feature = "solver3-oracle-checks")]
+    {
+        let checked_analysis = analyze_clique_swap(state, clique_swap)?;
+        if checked_analysis != *trusted_analysis {
+            return Err(SolverError::ValidationError(format!(
+                "solver3 trusted clique-swap preview assumptions violated: trusted analysis {:?} diverged from checked {:?}",
+                trusted_analysis, checked_analysis
+            )));
+        }
+    }
+
+    #[cfg(not(feature = "solver3-oracle-checks"))]
+    {
+        let _ = (state, clique_swap, trusted_analysis);
+    }
+
+    Ok(())
 }
 
 pub fn preview_clique_swap_oracle_recompute(

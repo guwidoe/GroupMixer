@@ -23,7 +23,7 @@ use crate::models::{
 use crate::solver_support::SolverError;
 
 use super::super::moves::{
-    analyze_swap, apply_swap_runtime_preview, preview_swap_runtime_lightweight, SwapFeasibility,
+    analyze_swap, apply_swap_runtime_preview, preview_swap_runtime_checked, SwapFeasibility,
     SwapMove, SwapRuntimePreview,
 };
 use super::super::runtime_state::RuntimeState;
@@ -2094,7 +2094,7 @@ fn certify_swap_local_optimum(
                         if !matches!(analysis.feasibility, SwapFeasibility::Feasible) {
                             continue;
                         }
-                        let preview = preview_swap_runtime_lightweight(state, &swap)?;
+                        let preview = preview_swap_runtime_checked(state, &swap)?;
                         swap_previews_evaluated += 1;
                         let should_replace_best = best_improving_swap
                             .as_ref()

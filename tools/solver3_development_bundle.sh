@@ -26,15 +26,25 @@ BUNDLE_MANIFESTS=(
   "backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-iterations-1m-solver3.yaml"
 )
 
+TARGETED_MULTI_SEED_MANIFESTS=(
+  "backend/benchmarking/suites/stretch-sailing-trip-demo-time-10s-solver3-canonical-multiseed.yaml"
+  "backend/benchmarking/suites/stretch-sailing-trip-demo-iterations-1m-solver3-canonical-multiseed.yaml"
+  "backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-time-10s-solver3-multiseed.yaml"
+  "backend/benchmarking/suites/stretch-partial-attendance-capacity-pressure-iterations-1m-solver3-multiseed.yaml"
+)
+
 usage() {
   cat <<'EOF'
 Usage:
   ./tools/solver3_development_bundle.sh checks
   ./tools/solver3_development_bundle.sh record [recording-id]
   ./tools/solver3_development_bundle.sh full [recording-id]
+  ./tools/solver3_development_bundle.sh record-targeted-multiseed [recording-id]
+  ./tools/solver3_development_bundle.sh full-targeted-multiseed [recording-id]
   ./tools/solver3_development_bundle.sh compare-last-two
   ./tools/solver3_development_bundle.sh compare-recordings <previous-recording-id> <current-recording-id>
   ./tools/solver3_development_bundle.sh list-manifests
+  ./tools/solver3_development_bundle.sh list-targeted-multiseed-manifests
 
 What it covers:
   - shared solver semantics guardrails (data-driven, property, move/search regressions)
@@ -50,6 +60,8 @@ What it covers:
 
 Notes:
   - `record` persists one durable benchmark recording via `./tools/benchmark_workflow.sh record-bundle`
+  - `record-targeted-multiseed` runs the four targeted Sailing/partial-attendance lanes with 4 explicit seeds each
+    and sets `GROUPMIXER_BENCHMARK_JOBS=4` by default so the four seed cases run in parallel
   - `compare-last-two` compares the latest two recordings created by this wrapper lane-by-lane
   - serious timing interpretation should still use the designated remote same-machine lane
 EOF
@@ -84,11 +96,12 @@ run_checks() {
   cargo test -q -p gm-benchmarking 'hotpath_suite_runs_solver3_' -- --nocapture >/dev/null
 }
 
-record_bundle() {
-  local recording_id="${1:-${RECORDING_PREFIX}-$(date +%Y%m%dT%H%M%SZ)}"
+record_bundle_from_manifests() {
+  local recording_id="$1"
+  shift
   local args=()
   local manifest
-  for manifest in "${BUNDLE_MANIFESTS[@]}"; do
+  for manifest in "$@"; do
     args+=(--manifest "$manifest")
   done
 
@@ -99,6 +112,17 @@ record_bundle() {
     --feature-name "$FEATURE_NAME"
 
   printf '\nrecording_id=%s\n' "$recording_id"
+}
+
+record_bundle() {
+  local recording_id="${1:-${RECORDING_PREFIX}-$(date +%Y%m%dT%H%M%SZ)}"
+  record_bundle_from_manifests "$recording_id" "${BUNDLE_MANIFESTS[@]}"
+}
+
+record_targeted_multiseed_bundle() {
+  local recording_id="${1:-${RECORDING_PREFIX}-targeted-multiseed-$(date +%Y%m%dT%H%M%SZ)}"
+  GROUPMIXER_BENCHMARK_JOBS="${GROUPMIXER_BENCHMARK_JOBS:-4}" \
+    record_bundle_from_manifests "$recording_id" "${TARGETED_MULTI_SEED_MANIFESTS[@]}"
 }
 
 ensure_release_cli() {
@@ -181,6 +205,10 @@ list_manifests() {
   printf '%s\n' "${BUNDLE_MANIFESTS[@]}"
 }
 
+list_targeted_multiseed_manifests() {
+  printf '%s\n' "${TARGETED_MULTI_SEED_MANIFESTS[@]}"
+}
+
 command="${1:-help}"
 case "$command" in
   checks)
@@ -199,6 +227,17 @@ case "$command" in
     run_checks
     record_bundle "${1:-}"
     ;;
+  record-targeted-multiseed)
+    shift
+    [[ $# -le 1 ]] || { usage >&2; exit 1; }
+    record_targeted_multiseed_bundle "${1:-}"
+    ;;
+  full-targeted-multiseed)
+    shift
+    [[ $# -le 1 ]] || { usage >&2; exit 1; }
+    run_checks
+    record_targeted_multiseed_bundle "${1:-}"
+    ;;
   compare-last-two)
     shift
     [[ $# -eq 0 ]] || { usage >&2; exit 1; }
@@ -213,6 +252,11 @@ case "$command" in
     shift
     [[ $# -eq 0 ]] || { usage >&2; exit 1; }
     list_manifests
+    ;;
+  list-targeted-multiseed-manifests)
+    shift
+    [[ $# -eq 0 ]] || { usage >&2; exit 1; }
+    list_targeted_multiseed_manifests
     ;;
   help|-h|--help)
     usage
