@@ -395,7 +395,7 @@ mod tests {
     #[test]
     fn solver_catalog_projection_exposes_current_solver_family() {
         let catalog = build_solver_catalog();
-        assert_eq!(catalog.solvers.len(), 3);
+        assert_eq!(catalog.solvers.len(), 4);
         assert!(catalog
             .solvers
             .iter()
@@ -408,6 +408,10 @@ mod tests {
             .solvers
             .iter()
             .any(|solver| solver.canonical_id == "solver4"));
+        assert!(catalog
+            .solvers
+            .iter()
+            .any(|solver| solver.canonical_id == "solver5"));
     }
 
     #[test]

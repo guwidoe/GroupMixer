@@ -1,11 +1,7 @@
-# Autoresearch ideas: solver4 32x8x10
+# Autoresearch ideas: solver5 construction heuristics
 
-- Keep the current breakout shape simple: untabued, conflict-anchored, and concentrated on the hard week. Avoid revisiting already-regressive variants such as reactive second-swap recomputation, forced cross-week spreading, random donor-slot breakout endpoints, any global/week-local tabu reset on breakout, same-week group-spreading constraints for the second breakout swap, or broad tabu aspiration.
-- The current breakout win seems to come from eliminating direct self-overlap, not from enforcing broader coverage. Simple breakout-strength retunes now also look exhausted: one swap was too weak, three swaps was too strong, and the current two-swap perturbation remains the best simple setting.
-- Best-so-far stagnation counting plus breakout at 4 is the current baseline plateau regime. Threshold/timing retunes should only be considered under that regime, not as a return to the old current-step-reset behavior.
-- Constructor work should stay away from shallow screening/filtering. Best-of-two initializer selection by local paper metrics regressed badly; any future constructor work should preserve basin diversity rather than pre-optimizing the seed schedule.
-- The tabu-memory axis now looks mostly exhausted in its simple forms: shortening tenure regressed, fixed 12 helped, fixed 14 regressed, and max-conflict-week tenure boosting regressed. Avoid more unconditional or hotspot-specific tenure inflation unless there is a genuinely different conditional idea.
-- Active-repeated-pair guidance reintroduction also looks stale for now. The kept baseline behavior remains best; even a very narrow pre-breakout / incumbent-best-only reintroduction regressed on a confirmed rerun.
-- Late-stage move-ordering ideas that directly over-focus one week now look stale too: both hard-week source bias and current-week-conflict-after tie focus regressed, even when activated only on the final pre-breakout local-search step.
-- Hard-week neighborhood expansion also looks weak in its simple form: allowing otherwise clean-clean swaps from the hardest week at the final pre-breakout step regressed on both initial and confirmation runs.
-- A live mild direction is neighborhood shaping tied to repeated-pair structure rather than generic week pressure. If revisited, prefer limited late-stage expansion around groups or swaps that touch currently repeated pairs, instead of broader hardest-week-only expansion or additional tie-break pressure on the same candidate set.
+- Implement KTS / NKTS as the next major family after round robin. This should dominate the `p=3` column and is one of the biggest coverage-per-effort wins.
+- Add a dedicated `p=4` router instead of hiding `p=4` inside a generic fallback. Treat `v mod 12` branches explicitly and keep exception handling honest.
+- Add an RTD / MOLS engine for prime and then prime-power group counts. This should unlock broad lower-bound coverage across many `p >= 5` cells.
+- Once at least one nontrivial family exists beyond round robin, add recursive `+G(t)` lifting so clique/group decompositions can append smaller constructed instances automatically.
+- Keep benchmark honesty: only count score-zero constructions, and prefer explicit family routing over hardcoded matrix answers.

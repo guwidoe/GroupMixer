@@ -53,7 +53,7 @@ fn test_calculate_recommended_settings_initial_temp_above_one() {
                 sa.final_temperature
             );
         }
-        SolverParams::Solver3(_) | SolverParams::Solver4(_) => {
+        SolverParams::Solver3(_) | SolverParams::Solver4(_) | SolverParams::Solver5(_) => {
             panic!("default recommended settings should still route through solver1")
         }
     }

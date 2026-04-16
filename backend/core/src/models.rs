@@ -599,6 +599,9 @@ pub enum SolverKind {
     /// backtracking with patterns, plus Sections 6 and 7 randomized greedy initialization and
     /// conflict-position local search.
     Solver4,
+    /// Construction-first pure-SGP solver family that routes instances through explicit
+    /// design-theoretic construction families.
+    Solver5,
 }
 
 /// Default solver family used by current public callers.
@@ -610,6 +613,7 @@ impl SolverKind {
             Self::Solver1 => "solver1",
             Self::Solver3 => "solver3",
             Self::Solver4 => "solver4",
+            Self::Solver5 => "solver5",
         }
     }
 
@@ -618,6 +622,7 @@ impl SolverKind {
             Self::Solver1 => "Solver 1",
             Self::Solver3 => "Solver 3",
             Self::Solver4 => "Solver 4",
+            Self::Solver5 => "Solver 5",
         }
     }
 
@@ -631,6 +636,7 @@ impl SolverKind {
             ],
             Self::Solver3 => &["solver3"],
             Self::Solver4 => &["solver4"],
+            Self::Solver5 => &["solver5"],
         }
     }
 
@@ -642,9 +648,10 @@ impl SolverKind {
             | "SimulatedAnnealing" => Ok(Self::Solver1),
             "solver3" => Ok(Self::Solver3),
             "solver4" => Ok(Self::Solver4),
+            "solver5" => Ok(Self::Solver5),
             other => Err(format!(
                 "Unknown solver type '{other}'. Supported solver IDs: {}",
-                [Self::Solver1, Self::Solver3, Self::Solver4]
+                [Self::Solver1, Self::Solver3, Self::Solver4, Self::Solver5]
                     .iter()
                     .map(|kind| kind.canonical_id())
                     .collect::<Vec<_>>()
@@ -964,6 +971,9 @@ pub enum SolverParams {
     /// Parameters for the internal `solver4` family.
     #[serde(rename = "solver4")]
     Solver4(Solver4Params),
+    /// Parameters for the internal `solver5` family.
+    #[serde(rename = "solver5")]
+    Solver5(Solver5Params),
 }
 
 impl SolverParams {
@@ -972,23 +982,31 @@ impl SolverParams {
             Self::SimulatedAnnealing(_) => SolverKind::Solver1,
             Self::Solver3(_) => SolverKind::Solver3,
             Self::Solver4(_) => SolverKind::Solver4,
+            Self::Solver5(_) => SolverKind::Solver5,
         }
     }
 
     pub fn simulated_annealing_params(&self) -> Option<&SimulatedAnnealingParams> {
         match self {
             Self::SimulatedAnnealing(params) => Some(params),
-            Self::Solver3(_) | Self::Solver4(_) => None,
+            Self::Solver3(_) | Self::Solver4(_) | Self::Solver5(_) => None,
         }
     }
 
     pub fn solver3_params(&self) -> Option<&Solver3Params> {
         match self {
             Self::Solver3(params) => Some(params),
-            Self::SimulatedAnnealing(_) | Self::Solver4(_) => None,
+            Self::SimulatedAnnealing(_) | Self::Solver4(_) | Self::Solver5(_) => None,
         }
     }
 }
+
+/// Parameters for the internal `solver5` family.
+///
+/// `solver5` is a construction-first pure-SGP solver family. The initial baseline is deliberately
+/// small and grows by adding explicit construction families plus routing/orchestration logic.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
+pub struct Solver5Params {}
 
 /// Parameters for the internal `solver3` family.
 ///
