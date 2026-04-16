@@ -1,5 +1,5 @@
-use super::heuristics::NoopHeuristicPipeline;
 use super::handoff::{NoSearchHandoffPolicy, SearchHandoffDecision, SearchHandoffPolicy};
+use super::heuristics::NoopHeuristicPipeline;
 use super::problem::PureSgpProblem;
 use super::result::build_solver_result;
 use super::router::attempt_construction;
@@ -11,8 +11,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
-const DEFAULT_TARGET_MATRIX_JSON: &str =
-    include_str!("targets/solver5_target_matrix.v1.json");
+const DEFAULT_TARGET_MATRIX_JSON: &str = include_str!("targets/solver5_target_matrix.v1.json");
 const DEFAULT_OPTIMALITY_LOWER_BOUNDS_JSON: &str =
     include_str!("targets/solver5_optimality_lower_bounds.v1.json");
 
@@ -118,14 +117,21 @@ impl Solver5TargetMatrix {
 
     pub fn optimality_lower_bound_weeks_for(&self, g: usize, p: usize) -> Option<usize> {
         let (row_idx, col_idx) = self.cell_indices(g, p)?;
-        *self.optimality_lower_bound_weeks.get(row_idx)?.get(col_idx)?
+        *self
+            .optimality_lower_bound_weeks
+            .get(row_idx)?
+            .get(col_idx)?
     }
 
     pub fn abbreviation_for(&self, label: &str) -> Option<&str> {
         self.family_abbreviations.get(label).map(String::as_str)
     }
 
-    pub fn compose_method_abbreviation(&self, family_label: &str, operator_labels: &[String]) -> String {
+    pub fn compose_method_abbreviation(
+        &self,
+        family_label: &str,
+        operator_labels: &[String],
+    ) -> String {
         let mut abbreviation = self
             .abbreviation_for(family_label)
             .unwrap_or_else(|| self.abbreviation_for("unknown").unwrap_or("?"))
@@ -177,8 +183,9 @@ pub fn inspect_construction(
         }
     }
 
-    let routing = attempt_construction(&problem)
-        .map_err(|failure| SolverError::ValidationError(failure.to_solver_error_message(&problem)))?;
+    let routing = attempt_construction(&problem).map_err(|failure| {
+        SolverError::ValidationError(failure.to_solver_error_message(&problem))
+    })?;
     let construction = NoopHeuristicPipeline.apply(&problem, routing.result);
     let construction = match NoSearchHandoffPolicy.decide(&problem, construction) {
         SearchHandoffDecision::ConstructionOnly { result, .. } => result,
@@ -428,9 +435,7 @@ impl RawTargetCell {
 
 fn validate_bounds(name: &str, bounds: MatrixBounds) -> Result<(), MatrixDefinitionError> {
     if bounds.g_min == 0 || bounds.p_min == 0 {
-        return Err(MatrixDefinitionError(format!(
-            "{name} minima must be >= 1"
-        )));
+        return Err(MatrixDefinitionError(format!("{name} minima must be >= 1")));
     }
     if bounds.g_min > bounds.g_max || bounds.p_min > bounds.p_max {
         return Err(MatrixDefinitionError(format!(

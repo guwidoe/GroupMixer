@@ -17,8 +17,8 @@ mod types;
 #[cfg(test)]
 mod tests;
 
-use heuristics::NoopHeuristicPipeline;
 use handoff::{NoSearchHandoffPolicy, SearchHandoffDecision, SearchHandoffPolicy};
+use heuristics::NoopHeuristicPipeline;
 use problem::PureSgpProblem;
 use result::build_solver_result;
 use router::attempt_construction;

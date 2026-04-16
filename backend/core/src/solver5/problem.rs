@@ -1,6 +1,4 @@
-use crate::models::{
-    ApiInput, Constraint, Objective, RepeatEncounterParams, SolverKind,
-};
+use crate::models::{ApiInput, Constraint, Objective, RepeatEncounterParams, SolverKind};
 use crate::solver_support::SolverError;
 
 #[derive(Debug, Clone)]
@@ -26,8 +24,7 @@ impl PureSgpProblem {
         }
         if input.initial_schedule.is_some() {
             return Err(SolverError::ValidationError(
-                "solver5 does not accept initial_schedule; it constructs schedules directly"
-                    .into(),
+                "solver5 does not accept initial_schedule; it constructs schedules directly".into(),
             ));
         }
         if input.construction_seed_schedule.is_some() {

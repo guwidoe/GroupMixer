@@ -111,10 +111,12 @@ pub(super) fn attempt_construction(
 
     for (precedence, family) in registrations.iter().enumerate() {
         match family.evaluate(problem) {
-            FamilyEvaluation::NotApplicable { reason } => non_candidate_attempts.push(FamilyAttempt {
-                family: family.id(),
-                status: FamilyAttemptStatus::NotApplicable { reason },
-            }),
+            FamilyEvaluation::NotApplicable { reason } => {
+                non_candidate_attempts.push(FamilyAttempt {
+                    family: family.id(),
+                    status: FamilyAttemptStatus::NotApplicable { reason },
+                })
+            }
             FamilyEvaluation::Applicable { .. } => {
                 let Some(result) = family.construct(problem) else {
                     non_candidate_attempts.push(FamilyAttempt {
@@ -225,9 +227,9 @@ fn quality_rank(quality: &ConstructionQuality) -> usize {
     match quality {
         ConstructionQuality::ExactFrontier => 3_000_000,
         ConstructionQuality::NearFrontier { missing_weeks } => 2_000_000 - missing_weeks,
-        ConstructionQuality::LowerBound { gap_to_counting_bound } => {
-            1_000_000 - gap_to_counting_bound
-        }
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound,
+        } => 1_000_000 - gap_to_counting_bound,
     }
 }
 

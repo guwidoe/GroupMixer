@@ -181,9 +181,9 @@ pub struct CompiledProblem {
     // ------------------------------------------------------------------
     // Constraint adjacency metadata
     // ------------------------------------------------------------------
-    pub(crate) forbidden_pairs: Vec<CompiledPairConstraint>,
+    pub(crate) soft_apart_pairs: Vec<CompiledPairConstraint>,
     /// `[person_idx] -> Vec<constraint_idx>`.
-    pub forbidden_pairs_by_person: Vec<Vec<usize>>,
+    pub soft_apart_pairs_by_person: Vec<Vec<usize>>,
 
     pub(crate) should_together_pairs: Vec<CompiledPairConstraint>,
     pub should_together_pairs_by_person: Vec<Vec<usize>>,
@@ -311,20 +311,20 @@ impl CompiledProblem {
         )?;
         validate_cliques_against_immovable(&cliques, &person_participation, &immovable_lookup)?;
 
-        let forbidden_pairs = compile_forbidden_pairs(
+        let soft_apart_pairs = compile_soft_apart_pairs(
             input,
             &person_id_to_idx,
             &person_to_clique_id,
             &cliques,
             num_sessions,
         )?;
-        let forbidden_pairs_by_person =
-            build_pair_adjacency(num_people, &forbidden_pairs, |c| c.people);
+        let soft_apart_pairs_by_person =
+            build_pair_adjacency(num_people, &soft_apart_pairs, |c| c.people);
 
         let should_together_pairs = compile_should_together_pairs(
             input,
             &person_id_to_idx,
-            &forbidden_pairs,
+            &soft_apart_pairs,
             num_sessions,
         )?;
         let should_together_pairs_by_person =
@@ -396,8 +396,8 @@ impl CompiledProblem {
             compiled_construction_seed_schedule,
             cliques,
             person_to_clique_id,
-            forbidden_pairs,
-            forbidden_pairs_by_person,
+            soft_apart_pairs,
+            soft_apart_pairs_by_person,
             should_together_pairs,
             should_together_pairs_by_person,
             immovable_assignments,
@@ -931,7 +931,7 @@ fn validate_cliques_against_immovable(
 }
 
 #[allow(clippy::needless_range_loop)]
-fn compile_forbidden_pairs(
+fn compile_soft_apart_pairs(
     input: &ApiInput,
     person_id_to_idx: &HashMap<String, usize>,
     person_to_clique_id: &[Vec<Option<usize>>],
@@ -1004,7 +1004,7 @@ fn compile_forbidden_pairs(
 fn compile_should_together_pairs(
     input: &ApiInput,
     person_id_to_idx: &HashMap<String, usize>,
-    forbidden_pairs: &[CompiledPairConstraint],
+    soft_apart_pairs: &[CompiledPairConstraint],
     num_sessions: usize,
 ) -> Result<Vec<CompiledPairConstraint>, SolverError> {
     let mut pairs = Vec::new();
@@ -1034,7 +1034,7 @@ fn compile_should_together_pairs(
                     let compiled_sessions = normalize_session_list(sessions, num_sessions)?;
                     let (lo, hi) = if lp < rp { (lp, rp) } else { (rp, lp) };
 
-                    if forbidden_pairs.iter().any(|fp| {
+                    if soft_apart_pairs.iter().any(|fp| {
                         fp.people == (lo, hi)
                             && sessions_overlap(
                                 fp.sessions.as_deref(),

@@ -42,7 +42,7 @@ pub struct OracleSnapshot {
 
     // Detailed violation vectors (for diagnostics and drift tracing).
     pub clique_violations: Vec<i32>,
-    pub forbidden_pair_violations: Vec<i32>,
+    pub soft_apart_violations: Vec<i32>,
     pub should_together_violations: Vec<i32>,
     pub immovable_violations: i32,
     pub pair_meeting_counts: Vec<u32>,
@@ -65,7 +65,7 @@ pub fn recompute_oracle_score(state: &RuntimeState) -> Result<OracleSnapshot, So
     let mut snap = OracleSnapshot {
         baseline_score: cp.baseline_score,
         clique_violations: vec![0; cp.cliques.len()],
-        forbidden_pair_violations: vec![0; cp.forbidden_pairs.len()],
+        soft_apart_violations: vec![0; cp.soft_apart_pairs.len()],
         should_together_violations: vec![0; cp.should_together_pairs.len()],
         pair_meeting_counts: vec![0; cp.pair_meeting_constraints.len()],
         pair_contacts_fresh: vec![0u16; cp.num_pairs],
@@ -216,21 +216,21 @@ fn count_attribute_values(cp: &CompiledProblem, members: &[usize], attr_idx: usi
 // ---------------------------------------------------------------------------
 
 fn compute_constraints(cp: &CompiledProblem, state: &RuntimeState, snap: &mut OracleSnapshot) {
-    compute_forbidden_pairs(cp, state, snap);
+    compute_soft_apart_pairs(cp, state, snap);
     compute_should_together(cp, state, snap);
     compute_cliques(cp, state, snap);
     compute_immovable(cp, state, snap);
     compute_pair_meeting(cp, state, snap);
 
-    snap.constraint_penalty_raw = snap.forbidden_pair_violations.iter().sum::<i32>()
+    snap.constraint_penalty_raw = snap.soft_apart_violations.iter().sum::<i32>()
         + snap.should_together_violations.iter().sum::<i32>()
         + snap.clique_violations.iter().sum::<i32>()
         + snap.immovable_violations
         + pair_meeting_violation_count(cp, snap);
 }
 
-fn compute_forbidden_pairs(cp: &CompiledProblem, state: &RuntimeState, snap: &mut OracleSnapshot) {
-    for (cidx, c) in cp.forbidden_pairs.iter().enumerate() {
+fn compute_soft_apart_pairs(cp: &CompiledProblem, state: &RuntimeState, snap: &mut OracleSnapshot) {
+    for (cidx, c) in cp.soft_apart_pairs.iter().enumerate() {
         let (lp, rp) = c.people;
         for sidx in active_sessions(c.sessions.as_deref(), cp.num_sessions) {
             if !cp.person_participation[lp][sidx] || !cp.person_participation[rp][sidx] {
@@ -241,7 +241,7 @@ fn compute_forbidden_pairs(cp: &CompiledProblem, state: &RuntimeState, snap: &mu
             let lg = state.person_location[lps];
             let rg = state.person_location[rps];
             if lg.is_some() && lg == rg {
-                snap.forbidden_pair_violations[cidx] += 1;
+                snap.soft_apart_violations[cidx] += 1;
                 snap.constraint_penalty_weighted += c.penalty_weight;
             }
         }

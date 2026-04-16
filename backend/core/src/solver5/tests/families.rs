@@ -57,7 +57,9 @@ fn kirkman_family_constructs_6t_plus_1_case() {
 fn end_to_end_round_robin_schedule_still_scores_zero() {
     let input = pure_input(4, 2, 7);
     let solver = SearchEngine::new(&input.solver);
-    let result = solver.solve(&input).expect("round robin should solve 4-2-7");
+    let result = solver
+        .solve(&input)
+        .expect("round robin should solve 4-2-7");
 
     assert_eq!(result.final_score, 0.0);
 }

@@ -381,7 +381,7 @@ fn build_transfer_runtime_patch(
     }
 
     patch.score_delta.constraint_penalty_weighted_delta +=
-        forbidden_pair_penalty_delta_for_transfer(state, analysis);
+        soft_apart_pair_penalty_delta_for_transfer(state, analysis);
     patch.score_delta.constraint_penalty_weighted_delta +=
         should_together_penalty_delta_for_transfer(state, analysis);
     patch.score_delta.constraint_penalty_weighted_delta +=
@@ -397,7 +397,7 @@ fn build_transfer_runtime_patch(
     Ok(patch)
 }
 
-fn forbidden_pair_penalty_delta_for_transfer(
+fn soft_apart_pair_penalty_delta_for_transfer(
     state: &RuntimeState,
     analysis: &TransferAnalysis,
 ) -> f64 {
@@ -406,8 +406,8 @@ fn forbidden_pair_penalty_delta_for_transfer(
     let session_idx = transfer.session_idx;
 
     let mut delta = 0.0;
-    for &idx in &cp.forbidden_pairs_by_person[transfer.person_idx] {
-        let constraint = &cp.forbidden_pairs[idx];
+    for &idx in &cp.soft_apart_pairs_by_person[transfer.person_idx] {
+        let constraint = &cp.soft_apart_pairs[idx];
         if !is_active_in_session(constraint.sessions.as_deref(), session_idx) {
             continue;
         }
