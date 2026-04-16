@@ -169,3 +169,43 @@ Lane definition and references live in:
   - remaining watch item: large-gender-immovable is still weak at `1.0379x`; partial-attendance is basically flat (`1.0001x`)
   - runtime/hotpath diagnostics also improved materially versus Experiment 2, though they are still secondary to the primary broad-lane objective
   - takeaway: penalizing failed previews is useful, but penalizing no-candidate attempts separately was too aggressive because candidate-rate-based share correction was already enough
+- Experiment 4: reduced the rejected-candidate penalty from `0.10` to `0.08`.
+  - outcome: **discarded**
+  - primary metric snapped back to `102.1250`, giving up most of the gains from Experiment 3
+  - kirkman regressed badly (`0.8500x -> 1.2000x`) and social-golfer also flipped from a win to a regression (`0.9919x -> 1.0163x`)
+  - Sailing stayed good (`0.9784x`) and partial-attendance stayed slightly better, but not enough to offset the broader losses
+  - takeaway: the rejected-preview penalty needs to stay near the stronger `0.10` level; weakening it too much loses the useful discipline the chooser needs
+- Experiment 5: blended recent improving-accept rate into the chooser's target-share calculation, so fair-share pressure depends on both candidate availability and recent improving productivity.
+  - outcome: **discarded**
+  - primary metric regressed from `98.1441` to `101.5189`
+  - large-gender-immovable improved slightly (`1.0379x -> 1.0303x`) and kirkman stayed decent (`0.8500x -> 0.9500x`), but Sailing degraded badly (`0.9618x -> 1.1576x`)
+  - transfer-heavy adversarial also lost its gain (`0.9787x -> 1.0025x`), so the added productive-share logic overcorrected against the families that were helping Sailing
+  - takeaway: improving-accept rate may still be useful as instrumentation, but blending it directly into target-share pressure was too destabilizing for the broad lane
+- Experiment 6: switched sampled swap previewing back from trusted to checked throughout `candidate_sampling.rs`.
+  - outcome: **discarded**
+  - primary metric landed at `98.4304`, slightly worse than the current best `98.1441`
+  - broad quality stayed decent and large-gender-immovable improved a bit (`1.0379x -> 1.0291x`), but Sailing softened (`0.9618x -> 0.9982x`) and the overall gain was not enough
+  - takeaway: sampled checked swap preview is not obviously catastrophic on the broad lane, but it is not a clear win either; keep it as a secondary fallback idea rather than the main current direction
+- Experiment 7: reduced adaptive chooser exploration epsilon from `0.05` to `0.03` while keeping the rejected-preview penalty policy from the current best.
+  - outcome: **discarded**
+  - primary metric regressed to `102.2684`
+  - transfer-heavy adversarial and social-golfer improved, and runtime got faster, but Sailing blew up again (`0.9618x -> 1.2072x`) and dominated the loss
+  - takeaway: the current best chooser still needs more exploration than `0.03`; cutting exploration too aggressively recreates the same kind of path-dependence failure that hurts Sailing
+- Experiment 8: added a small improving-accept-rate bonus directly into chooser weight computation as a tie-break, while leaving target-share logic untouched.
+  - outcome: **discarded**
+  - primary metric regressed to `102.0270`
+  - social-golfer and transfer-heavy adversarial improved strongly, but Sailing regressed again (`0.9618x -> 1.1909x`) and large-gender-immovable also stayed weak (`1.0404x`)
+  - takeaway: even a mild productivity bonus inside the main chooser weights is too strong; if improving-accept rate is used at all, it likely needs to be gated to near-tie situations or kept as offline telemetry only
+- Experiment 9: gated the productivity bonus to near-tie utility situations only.
+  - outcome: **discarded**
+  - primary metric was still worse than the current best (`98.3132` vs `98.1441`)
+  - Sailing stayed strong (`0.9801x`) and large-gender-immovable improved slightly (`1.0337x`), but the overall score was not better and runtime got even slower
+  - takeaway: a near-tie productivity tie-break is less damaging than an always-on productivity bonus, but it still does not beat the simpler current-best chooser
+- Experiment 10: added a **near-tie share-deficit bonus** so families that are under their target share get a small extra nudge only when utility is already close.
+  - outcome: **keep**
+  - primary metric improved from `98.1441` to `98.0095`
+  - biggest broad wins: social-golfer improved further to `0.9431x`; Sailing stayed strong at `0.9815x`; kirkman stayed strong at `0.8500x`
+  - transfer-heavy adversarial remained good at `0.9850x`
+  - remaining weak spots: large-gender-immovable still around `1.0412x`; partial-attendance slightly regressed to `1.0021x`
+  - runtime got slower than the previous best (`50.61s -> 54.96s`), but the primary broad quality metric improved honestly
+  - takeaway: tiny fairness nudges based on **share deficit in near ties** are meaningfully safer than productivity-based bonuses and may be a viable refinement direction

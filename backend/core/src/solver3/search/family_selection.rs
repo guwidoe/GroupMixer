@@ -10,6 +10,8 @@ const ADAPTIVE_FAMILY_MIN_WEIGHT: f64 = 0.10;
 const ADAPTIVE_FAMILY_MIN_CANDIDATE_RATE: f64 = 0.05;
 const ADAPTIVE_FAMILY_MIN_SHARE_RATIO: f64 = 0.5;
 const ADAPTIVE_FAMILY_MAX_SHARE_RATIO: f64 = 1.5;
+const ADAPTIVE_FAMILY_NEAR_TIE_SHARE_DEFICIT_GAP: f64 = 0.20;
+const ADAPTIVE_FAMILY_NEAR_TIE_SHARE_DEFICIT_BONUS: f64 = 0.08;
 const ADAPTIVE_FAMILY_REJECTED_CANDIDATE_PENALTY: f64 = 0.10;
 const ADAPTIVE_FAMILY_NO_CANDIDATE_PENALTY: f64 = 0.0;
 const MIN_UTILITY_SECONDS: f64 = 1.0e-9;
@@ -299,11 +301,23 @@ fn choose_adaptive_family(
         } else {
             ((utilities[idx] - min_utility) / utility_span).clamp(0.0, 1.0)
         };
-        let share_multiplier = chooser_arm_share_multiplier(
-            chooser_arm(chooser_state, families[idx]).recent_share,
-            target_shares[idx] / target_share_mass.max(f64::EPSILON),
-        );
-        weights[idx] = share_multiplier * (ADAPTIVE_FAMILY_MIN_WEIGHT + normalized);
+        let arm = chooser_arm(chooser_state, families[idx]);
+        let target_share = target_shares[idx] / target_share_mass.max(f64::EPSILON);
+        let share_multiplier = chooser_arm_share_multiplier(arm.recent_share, target_share);
+        let near_tie_gap = (1.0 - normalized).clamp(0.0, 1.0);
+        let share_deficit_ratio = if target_share <= f64::EPSILON {
+            0.0
+        } else {
+            ((target_share - arm.recent_share).max(0.0) / target_share).clamp(0.0, 1.0)
+        };
+        let near_tie_share_bonus = if near_tie_gap <= ADAPTIVE_FAMILY_NEAR_TIE_SHARE_DEFICIT_GAP {
+            let closeness = 1.0 - near_tie_gap / ADAPTIVE_FAMILY_NEAR_TIE_SHARE_DEFICIT_GAP;
+            ADAPTIVE_FAMILY_NEAR_TIE_SHARE_DEFICIT_BONUS * closeness * share_deficit_ratio
+        } else {
+            0.0
+        };
+        weights[idx] =
+            share_multiplier * (ADAPTIVE_FAMILY_MIN_WEIGHT + normalized + near_tie_share_bonus);
     }
 
     choose_weighted_by_slice(families, &weights[..families.len()], rng)
