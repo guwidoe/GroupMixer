@@ -1,144 +1,143 @@
-# Autoresearch: solver5 construction-heuristics coverage
+# Autoresearch: solver3 broad multiseed quality
 
 ## Objective
-Build `solver5` as a **construction-first pure Social Golfer constructor portfolio** that routes equal-size pure-SGP `g-p-w` instances through explicit design-theoretic construction families before search is considered.
+Improve `solver3` against the new **broad multiseed fixed-time objective lane**.
 
-The focus in this session is **construction coverage**, not local search quality:
-- accept only pure zero-repeat SGP semantics
-- implement explicit constructor families, catalog-backed facts, composition operators, and portfolio routing in `solver5`
-- maximize how many fixed benchmark cells admit a valid zero-repeat construction, and for each `(g, p)` maximize the constructed week count `W_g,p`
+The benchmark question is:
+- run 10 canonical solver3 cases
+- run each case with 4 explicit seeds
+- average the final score across the 4 seeds for each canonical case
+- normalize each case against the checked-in baseline reference
+- average those normalized case scores with equal weight
+- scale by `100`
 
-The objective gate should remain **`total_constructed_weeks`**. It is not a perfect measure of the end-state library, but it is an honest and objective proof that a proposed family/routing change actually expands or strengthens constructive coverage on the fixed matrix.
+Lower is better.
 
-The initial benchmark matrix is fixed to all cells with:
-- `2 <= g <= 10`
-- `2 <= p <= 10`
-- pure SGP semantics only
-
-For each cell, the benchmark searches downward from the counting upper bound
-`floor((gp - 1) / (p - 1))` and records the largest `w` for which `solver5` returns a valid zero-repeat construction.
+This session is about **overall objective quality robustness**, not single-case hero numbers. The main goal is to improve search quality across the broad portfolio without cheating on the benchmark definition.
 
 ## Metrics
-- **Primary**: `total_constructed_weeks` (higher is better) — sum of constructed `W_g,p` across the fixed `2..10 x 2..10` matrix.
+- **Primary**: `solver3_broad_multiseed_weighted_normalized_score` (lower is better)
 - **Secondary**:
-  - `frontier_gap_sum` (lower is better)
-  - `solved_cells`
-  - `exact_frontier_cells`
-  - `unsolved_cells`
-  - per-`p` constructed-week totals
-  - per-cell `W_g_p` metrics such as `W_8_4`, `W_10_4`, `W_10_10`
+  - `objective_suite_total_final_score_raw`
+  - `objective_suite_average_final_score_raw`
+  - `objective_suite_total_runtime_seconds`
+  - `objective_suite_total_replicate_count`
+  - `objective_suite_external_validation_failures`
+  - `objective_suite_total_score_mismatches`
+  - `objective_suite_score_breakdown_mismatches`
+  - per-case mean/min/max/stddev score metrics
+  - per-case mean/min/max/stddev runtime metrics
+  - `solver3_raw_score_us`
+  - `hotpath_total_us`
+  - `swap_preview_us`
+  - `swap_apply_us`
+  - `transfer_preview_us`
+  - `transfer_apply_us`
+  - `clique_preview_us`
+  - `clique_apply_us`
+  - `rep_avg_iter_us`
+  - `path_avg_iter_us`
 
 Interpretation policy:
-- treat `total_constructed_weeks` as the hard objective gate for keeps/discards
-- use per-cell and per-`p` metrics to verify **where** coverage moved and to catch regressions hidden by the aggregate total
-- prefer changes that improve the objective by adding honest family coverage, not by distorting the benchmark question
-- use the matrix outputs (`W`, `TW`, `M`) as the human-facing progress dashboard, not as a replacement for the primary gate
+- primary metric decides keep/discard
+- raw hotpath metrics matter as diagnostics and tie-break context, but not as excuses to keep broad-quality regressions
+- broad multiseed quality beats single-seed wins
+- correctness must stay clean
 
 ## How to Run
 `./autoresearch.sh`
 
-The script:
-1. runs focused `solver5` tests as a fast precheck
-2. runs `backend/core/examples/solver5_construction_coverage.rs`
-3. emits structured `METRIC name=value` lines
-4. writes `autoresearch.last_run_metrics.json`
-5. renders `autoresearch.last_run_report.html`
+Root wrappers delegate to:
+- `tools/autoresearch/solver3-broad-quality/autoresearch.sh`
+- `tools/autoresearch/solver3-broad-quality/autoresearch.checks.sh`
+
+## Benchmark Contract
+Canonical portfolio, each with 4 explicit seeds:
+1. representative.small-workshop-balanced
+2. representative.small-workshop-constrained
+3. adversarial.clique-swap-functionality-35p
+4. adversarial.transfer-attribute-balance-111p
+5. stretch.social-golfer-32x8x10
+6. stretch.kirkman-schoolgirls-15x5x7
+7. stretch.large-gender-immovable-110p
+8. stretch.sailing-trip-demo-real
+9. stretch.synthetic-partial-attendance-capacity-pressure-152p
+10. stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p
+
+Lane definition and references live in:
+- `tools/autoresearch/solver3-broad-quality/fixed-time-metric-config.json`
+- `backend/benchmarking/suites/objective-canonical-representative-solver3-broad-multiseed-v1.yaml`
+- `backend/benchmarking/suites/objective-canonical-adversarial-solver3-broad-multiseed-v1.yaml`
+- `backend/benchmarking/suites/objective-canonical-stretch-solver3-broad-multiseed-v1.yaml`
 
 ## Files in Scope
-- `backend/core/src/solver5/**` — solver5 construction families, routing, validation, tests
-- `backend/core/examples/solver5_construction_coverage.rs` — fixed construction-coverage benchmark harness
-- `backend/core/src/models.rs` — solver5 params / registration
-- `backend/core/src/engines/mod.rs` — solver5 engine registration
-- `backend/core/src/lib.rs` — solver5 module export
-- `backend/core/tests/recommended_settings.rs` — enum exhaustiveness fallout only
-- `backend/wasm/src/contract_projection.rs` — solver catalog projection fallout only
-- `tools/autoresearch/solver5-construction/**`
+- `backend/core/src/solver3/search/**` — move-family choice, sampling, search-driver behavior
+- `backend/core/src/solver3/moves/**` — preview/apply hotpaths and feasibility handling
+- `backend/core/src/solver3/scoring/**` — scoring/oracle fallout if needed
+- `backend/core/src/solver3/runtime_state.rs` — state helpers if search needs them
+- `backend/core/src/solver3/compiled_problem.rs` — compiled lookup support if justified
+- `backend/core/src/solver3/tests.rs` — focused solver3 regression coverage
+- `backend/core/tests/search_driver_regression.rs`
+- `backend/core/tests/data_driven_tests.rs`
+- `backend/core/tests/property_tests.rs`
+- `backend/benchmarking/src/manifest.rs` — only if benchmark manifest/test fallout requires it
+- `backend/benchmarking/suites/*.yaml` — only if keeping the benchmark contract intact while fixing metadata/coverage issues
+- `tools/autoresearch/objective-quality/aggregate_objective_metrics.py` — metric aggregation logic only when needed for honest signal
+- `tools/autoresearch/solver3-broad-quality/**`
 - `autoresearch.md`
 - `autoresearch.sh`
 - `autoresearch.checks.sh`
+- `autoresearch.config.json`
 - `autoresearch.ideas.md`
-- `construction_heuristics_research.md`
 
 ## Off Limits
-- changing the benchmark matrix definition in a way that makes the question easier
-- counting non-zero-repeat schedules as success
-- broad solver3/solver4 heuristic work unrelated to solver5 construction coverage
-- webapp/product rewrites unrelated to registering solver5
-- benchmark gaming via special-case result files instead of explicit constructor logic
+- changing benchmark case identity, seed lists, weights, or budgets to make the metric easier
+- simplifying canonical problems or replacing them with helper cases
+- solver1/solver5 feature work unrelated to solver3 broad-lane quality
+- unrelated benchmark/reporting cleanup not needed for this lane
+- hidden fallbacks or benchmark gaming
 
 ## Constraints
-- `solver5` should stay **pure-SGP only** for this session.
-- A cell counts as solved only if the returned schedule is valid and canonical final score is zero.
-- Prefer explicit constructor families and clean orchestration over opaque search fallback.
-- Keep the benchmark fixed and honest.
-- When a family only supports a frontier or lower-bound construction, prefixes are allowed: if a family constructs `g-p-W`, taking the first `w <= W` weeks is valid.
-- Record promising but deferred families in `autoresearch.ideas.md`.
-- Use the constructor-portfolio platform that now exists; do not reintroduce ad hoc family selection, inline exception logic, or opaque fallback behavior.
-- Keep matrix reporting aligned to the canonical target definition and preserve the distinction between scored cells and visual-only cells.
+- solver3 only
+- correctness checks must stay green
+- preserve the broad-lane contract exactly
+- do not overfit to one case, especially Sailing Trip
+- prefer robust policy changes over one-off per-case hacks
+- when an idea looks promising, invest **3-4 refinement attempts** before discarding it unless it is clearly broken, crashes, or violates checks
+- when a path is promising but too large for now, record it in `autoresearch.ideas.md`
+- keep notes current so a fresh agent can resume from this file alone
 
-## Initial Portfolio Plan
-High-ROI constructor order from the research note:
-1. round robin / 1-factorization (`p=2`)
-2. triples via KTS / NKTS (`p=3`)
-3. general router enrichment so each `p` has a recognizable family-selection policy
-4. RTD / MOLS engine
-5. recursive clique/group fill (`+G(t)` style lifting)
-6. broader RBIBD / RGDD / RITD / URD / ownSG patches
-
-Interpretation note:
-- this is a **family roadmap**, not a cell-by-cell roadmap
-- solver5 should receive a pure-SGP `(g, p, w)` instance and automatically choose among applicable families
-- for every `p`, the router should converge toward a recognizable theory-backed family-selection policy
-- near-term work still happens where the ROI is best, but that does **not** mean building one-off per-cell logic
-
-## Current Architecture State
-- `solver5` is now a constructor portfolio platform, not just a constructor pack.
-- The architecture now includes:
-  - family registry / portfolio interfaces
-  - typed candidate quality / evidence / applicability / residual metadata
-  - catalog-backed theorem / exception / patch-bank seams
-  - registry-driven router candidate selection
-  - explicit composition layer for structural lifts
-  - explicit future handoff seam for search, still disabled by policy
-- Normative architecture docs:
-  - `backend/core/src/solver5/ARCHITECTURE.md`
-  - `backend/core/src/solver5/PORTFOLIO_ARCHITECTURE.md`
-  - `backend/core/src/solver5/MATRIX_REPORTING.md`
-
-## Current Historical Reference Baseline
-- The last validated solver5 coverage baseline before the `autoresearch.jsonl` reset was:
-  - commit: `0357a1f`
-  - `total_constructed_weeks = 284`
-  - `frontier_gap_sum = 302`
-  - `solved_cells = 33`
-  - `exact_frontier_cells = 17`
-- That value should be treated as a **historical reference**, not as the active ledger baseline, until the current `master` head is re-run and logged into the reset experiment file.
-
-## Current Constructive Coverage
-- Shipped constructive families currently include:
-  - round robin / 1-factorization for `p=2`
-  - Kirkman `6t+1` coverage for supported `p=3` cases
-  - prime-power RTD / MOLS-style transversal-design constructors for `3 <= p <= g`
-  - prime-power affine-plane constructors for `p = g`
-  - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
+## Current State Before Loop Start
+- The broad multiseed solver3 lane is checked in and runnable.
+- The metric aggregator now supports duplicate `case_id`s so multiseed averaging is first-class.
+- Root autoresearch wrappers now target the solver3 broad lane.
+- Existing solver3 context from recent work:
+  - `MustStayApart` shipped for solver3
+  - swap-side structural preselection shipped
+  - adaptive move-family chooser exists and improved over the broken first-valid-family policy, but remains open for tuning
+  - trusted-vs-checked preview split exists, but broad raw-speed evidence for wider trusted rollout is mixed
+- Known likely leverage areas:
+  - move-family choice robustness
+  - search policy balance across time-limited multiseed runs
+  - cheap structural gating that improves quality-per-second without biasing family usage badly
+  - targeted preview hotpath cleanup only when it helps the broad lane
 
 ## What's Been Tried
-- Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
-- Prime-order RTD / affine-plane constructors were added first, then generalized to supported prime-power orders `4`, `8`, and `9` via finite-field arithmetic.
-- Recursive lifting across RTD latent groups is now a live mechanism and should be judged structurally, not as a one-off `9-3-13` trick.
-- Kirkman `6t+1` is now part of the constructive baseline for supported `p=3` cases.
-- The constructor-portfolio architecture pass is complete: registry, metadata, catalog layer, registry-driven router, handoff seam, and portfolio docs are now in place.
-- Remaining live directions should stay structural constructor families, not search-based cheating:
-  - KTS / NKTS for stronger `p=3` coverage on composite and non-prime-power rows
-  - router enrichment for under-modeled `p` families, with `p=4` as the next obvious high-ROI gap rather than a special architecture class
-  - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
-
-## Immediate Next Loop Behavior
-- Because `autoresearch.jsonl` was reset, the next session should:
-  1. initialize a fresh experiment header
-  2. rerun the current `master` baseline honestly
-  3. compare future changes against that new logged baseline
-- The next feature buildout order remains:
-  1. NKTS / composite `p=3`
-  2. strengthen the general router so more `p` values have explicit theory-backed family-selection policy, with `p=4` next in practice
-  3. broader catalog-backed patch and design families later
+- The broad-lane benchmark and aggregation infrastructure were created and validated.
+- The checked-in reference baseline in `fixed-time-metric-config.json` uses these per-case 4-seed means:
+  - representative.small-workshop-balanced = `3.0`
+  - representative.small-workshop-constrained = `4.0`
+  - adversarial.clique-swap-functionality-35p = `4756.0`
+  - adversarial.transfer-attribute-balance-111p = `199.75`
+  - stretch.social-golfer-32x8x10 = `338.25`
+  - stretch.kirkman-schoolgirls-15x5x7 = `55.0`
+  - stretch.large-gender-immovable-110p = `2176.25`
+  - stretch.sailing-trip-demo-real = `2451.0`
+  - stretch.synthetic-partial-attendance-capacity-pressure-152p = `6552.25`
+  - stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p = `6632.0`
+- A first rerun on current `master` scored about `102.09`, meaning current head was slightly worse than the reference baseline on this broad lane.
+- Recent solver3 search history already suggests that raw micro-speed wins can still hurt portfolio quality if move-family balance shifts badly.
+- The loop should therefore prefer:
+  1. policy improvements that survive multiseed averaging
+  2. hotpath wins that do not distort family mix in harmful ways
+  3. multi-step refinement of promising ideas before giving up

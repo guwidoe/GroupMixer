@@ -1,10 +1,9 @@
-# Autoresearch ideas: solver5 construction heuristics
+# Autoresearch ideas: solver3 broad multiseed quality
 
-- The constructor-portfolio scaffold is now in place. Use it rather than reintroducing ad hoc family routing or inline exception logic.
-- Keep `total_constructed_weeks` as the primary objective gate; use per-cell and per-`p` metrics to understand where coverage moved.
-- Implement **NKTS / composite `p=3` coverage** next as the highest-ROI family buildout on top of the portfolio platform.
-- Build out the **general solver5 router** so every relevant `p` in the benchmark matrix trends toward a recognizable family-selection policy.
-- In practice, the next under-modeled routing/family-policy gap after NKTS is still **`p=4`**, via catalog-backed `v mod 12` branches and explicit exception handling, but that work should land as part of the general router rather than as a one-off special router.
-- Keep broader **RBIBD / RGDD / URD / RITD / ownSG** work behind the NKTS and general-router-enrichment milestones.
-- Extend recursive `+G(t)` lifting only as a reusable composition operator, not as cell-specific glue.
-- Keep benchmark honesty: only count score-zero constructions, keep the fixed `2..10 x 2..10` matrix unchanged, and do not hardcode matrix answers into families or patch banks.
+- Revisit adaptive move-family choice using broader multiseed evidence instead of single-seed Sailing Trip behavior alone.
+- If family selection remains unstable, try chooser signals built from short-window accepted-improvement rate, not just raw candidate/preview utility.
+- Re-measure whether sampled `swap` should keep `preview_swap_runtime_trusted(...)` or return to checked preview for better quality/throughput tradeoffs.
+- Investigate whether time-limited broad-lane quality improves with slightly different exploration pressure or diversification cadence instead of more aggressive local descent.
+- Consider lightweight per-family floor allocation / exploration guarantees if the chooser still starves structurally important families.
+- If one or two cases dominate broad regressions, inspect their family-usage telemetry and acceptance mix before changing policy.
+- If hotpath metrics improve but broad quality drops, prefer instrumentation and diagnosis over immediately shipping the faster path.
