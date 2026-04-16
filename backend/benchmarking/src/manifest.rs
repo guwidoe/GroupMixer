@@ -1424,6 +1424,53 @@ mod tests {
     }
 
     #[test]
+    fn solver3_broad_multiseed_autoresearch_suites_pin_solver3_and_cover_broad_portfolio() {
+        let representative = load_suite_manifest(Path::new(
+            "suites/objective-canonical-representative-solver3-broad-multiseed-v1.yaml",
+        ))
+        .expect("solver3 broad multiseed representative suite should load");
+        assert_eq!(
+            representative.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
+        assert_eq!(representative.cases.len(), 8);
+        assert!(representative.cases.iter().all(|case| {
+            case.overrides.seed.is_some()
+                && matches!(case.manifest.class, BenchmarkSuiteClass::Representative)
+        }));
+
+        let adversarial = load_suite_manifest(Path::new(
+            "suites/objective-canonical-adversarial-solver3-broad-multiseed-v1.yaml",
+        ))
+        .expect("solver3 broad multiseed adversarial suite should load");
+        assert_eq!(
+            adversarial.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
+        assert_eq!(adversarial.cases.len(), 8);
+        assert!(adversarial.cases.iter().all(|case| {
+            case.overrides.seed.is_some()
+                && matches!(case.manifest.class, BenchmarkSuiteClass::Adversarial)
+        }));
+
+        let stretch = load_suite_manifest(Path::new(
+            "suites/objective-canonical-stretch-solver3-broad-multiseed-v1.yaml",
+        ))
+        .expect("solver3 broad multiseed stretch suite should load");
+        assert_eq!(stretch.manifest.default_solver_family.as_deref(), Some("solver3"));
+        assert_eq!(stretch.cases.len(), 24);
+        assert!(stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7"
+        }));
+        assert!(stretch.cases.iter().any(|case| {
+            case.manifest.id == "stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p"
+        }));
+        assert!(stretch.cases.iter().all(|case| {
+            case.overrides.seed.is_some() && matches!(case.manifest.class, BenchmarkSuiteClass::Stretch)
+        }));
+    }
+
+    #[test]
     fn solver3_metaheuristic_autoresearch_suites_pin_solver3_and_cover_feature_surface() {
         let fixed_time_representative = load_suite_manifest(Path::new(
             "suites/objective-canonical-representative-solver3-metaheuristic-v1.yaml",
