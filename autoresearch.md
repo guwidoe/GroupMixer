@@ -32,6 +32,7 @@ Interpretation policy:
 - treat `total_constructed_weeks` as the hard objective gate for keeps/discards
 - use per-cell and per-`p` metrics to verify **where** coverage moved and to catch regressions hidden by the aggregate total
 - prefer changes that improve the objective by adding honest family coverage, not by distorting the benchmark question
+- use the matrix outputs (`W`, `TW`, `M`) as the human-facing progress dashboard, not as a replacement for the primary gate
 
 ## How to Run
 `./autoresearch.sh`
@@ -41,6 +42,7 @@ The script:
 2. runs `backend/core/examples/solver5_construction_coverage.rs`
 3. emits structured `METRIC name=value` lines
 4. writes `autoresearch.last_run_metrics.json`
+5. renders `autoresearch.last_run_report.html`
 
 ## Files in Scope
 - `backend/core/src/solver5/**` — solver5 construction families, routing, validation, tests
@@ -72,6 +74,7 @@ The script:
 - When a family only supports a frontier or lower-bound construction, prefixes are allowed: if a family constructs `g-p-W`, taking the first `w <= W` weeks is valid.
 - Record promising but deferred families in `autoresearch.ideas.md`.
 - Use the constructor-portfolio platform that now exists; do not reintroduce ad hoc family selection, inline exception logic, or opaque fallback behavior.
+- Keep matrix reporting aligned to the canonical target definition and preserve the distinction between scored cells and visual-only cells.
 
 ## Initial Portfolio Plan
 High-ROI constructor order from the research note:
@@ -94,6 +97,7 @@ High-ROI constructor order from the research note:
 - Normative architecture docs:
   - `backend/core/src/solver5/ARCHITECTURE.md`
   - `backend/core/src/solver5/PORTFOLIO_ARCHITECTURE.md`
+  - `backend/core/src/solver5/MATRIX_REPORTING.md`
 
 ## Current Historical Reference Baseline
 - The last validated solver5 coverage baseline before the `autoresearch.jsonl` reset was:

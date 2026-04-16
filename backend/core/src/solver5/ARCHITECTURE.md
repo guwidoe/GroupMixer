@@ -11,6 +11,9 @@ This document is normative for solver5 extension work.
 For the constructor-portfolio layer that sits on top of this baseline split, see
 `PORTFOLIO_ARCHITECTURE.md`.
 
+For matrix-based coverage reporting and target tracking, see
+`MATRIX_REPORTING.md`.
+
 ## Scope and honesty policy
 
 Solver5 accepts only pure SGP-style cases:
