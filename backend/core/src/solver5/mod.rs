@@ -9,6 +9,7 @@ mod handoff;
 mod heuristics;
 mod portfolio;
 mod problem;
+pub mod reporting;
 mod result;
 mod router;
 mod types;

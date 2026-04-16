@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "name": "solver5-10x10-conservative-target-matrix",
+  "visual_bounds": {
+    "g_min": 1,
+    "g_max": 10,
+    "p_min": 1,
+    "p_max": 10
+  },
+  "scored_bounds": {
+    "g_min": 2,
+    "g_max": 10,
+    "p_min": 2,
+    "p_max": 10
+  },
+  "target_rows": [
+    ["inf", 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    ["inf", 3, 2, 2, 1, 1, 1, 1, 1, 1],
+    ["inf", 5, 4, 3, 1, 1, 1, 1, 1, 1],
+    ["inf", 7, 4, 5, 4, 1, 1, 1, 1, 1],
+    ["inf", 9, 7, 5, 6, 5, 1, 1, 1, 1],
+    ["inf", 11, 8, 7, 1, 1, 1, 1, 1, 1],
+    ["inf", 13, 10, 9, 7, 7, 8, 7, 1, 1],
+    ["inf", 15, 11, 10, 8, 8, 8, 9, 8, 1],
+    ["inf", 17, 13, 11, 9, 9, 9, 9, 10, 9],
+    ["inf", 19, 14, 13, 1, 1, 1, 1, 1, 1]
+  ],
+  "family_abbreviations": {
+    "round_robin": "RR",
+    "kirkman_6t_plus_1": "K6",
+    "transversal_design_prime_power": "TD",
+    "affine_plane_prime_power": "AP",
+    "recursive_transversal_lift": "+G",
+    "unknown": "?"
+  }
+}
