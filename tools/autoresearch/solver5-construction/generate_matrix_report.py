@@ -5,14 +5,13 @@ import json
 from pathlib import Path
 
 
-def gap_color(gap: int, max_gap: int) -> str:
+def cell_gap_color(gap: int, target_weeks: int | None) -> str:
     if gap <= 0:
         hue = 120.0
-    elif max_gap <= 1:
-        hue = 60.0
     else:
-        normalized = min(1.0, max(0.0, (gap - 1) / (max_gap - 1)))
-        hue = 60.0 * (1.0 - normalized)
+        effective_target = max(target_weeks or 1, 1)
+        normalized = min(1.0, max(0.0, gap / effective_target))
+        hue = 120.0 * (1.0 - normalized)
     return f"hsl({hue:.1f} 78% 78%)"
 
 
@@ -46,9 +45,11 @@ def neutral_badge_style():
 
 def method_badge_style(cell, max_method_gap):
     if not cell.get("scored"):
-        return gap_color(0, max_method_gap)
+        return cell_gap_color(0, 1)
     current_method = cell.get("method_abbreviation")
     target_method = cell.get("target_method_abbreviation")
+    if cell.get("proven_optimal_gap") == 0 and cell.get("gap_to_target", 0) == 0:
+        return target_alignment_color(0, max_method_gap)
     method_mismatch = bool(current_method and target_method and current_method != target_method)
     gap = cell.get("heuristic_gap_to_target")
     if gap is None:
@@ -72,6 +73,8 @@ def optimality_badge_style(cell, max_opt_gap):
 def method_badge_text(cell):
     current_method = cell.get("method_abbreviation") or "—"
     target_method = cell.get("target_method_abbreviation")
+    if cell.get("proven_optimal_gap") == 0 and cell.get("gap_to_target", 0) == 0:
+        return current_method
     if target_method and target_method != current_method:
         return f"{current_method} ({target_method})"
     return current_method
@@ -79,13 +82,27 @@ def method_badge_text(cell):
 
 def optimality_badge_text(cell):
     gap = cell.get("proven_optimal_gap")
+    lower_bound = cell.get("heuristic_target_weeks")
     if gap is None:
-        return "opt unknown"
+        if lower_bound is not None:
+            return f"opt ≥ {lower_bound}"
+        return None
     if gap == 0:
         if cell.get("gap_to_target", 0) > 0:
+            if lower_bound is not None:
+                return f"opt ≥ {lower_bound}"
             return None
         return "proven optimal"
     return f"opt gap {gap}"
+
+
+def optimality_badge_inline_style(cell, max_opt_gap):
+    gap = cell.get("proven_optimal_gap")
+    if gap is None:
+        return "background:#e2e8f0;color:#1f2937;"
+    if gap == 0 and cell.get("gap_to_target", 0) > 0:
+        return "background:#e2e8f0;color:#1f2937;"
+    return f"background:{optimality_badge_style(cell, max_opt_gap)};color:#1f2937;"
 
 
 def render_simple_table(title, rows, cols, cell_map, value_fn, aside_fn=None):
@@ -123,7 +140,7 @@ def render_combined_table(title, rows, cols, cell_map, max_gap, max_method_gap, 
             classes = ["dashboard-cell"]
             if not cell["scored"]:
                 classes.append("visual-only")
-            style = f' style="background:{gap_color(cell["gap_to_target"], max_gap)}"'
+            style = f' style="background:{cell_gap_color(cell["gap_to_target"], cell.get("target_weeks"))}"'
             html_parts.append(f"<td class='{' '.join(classes)}'{style}>")
             html_parts.append(
                 f"<div class='cell-main'>{html.escape(str(cell['current_display']))}</div>"
@@ -138,9 +155,9 @@ def render_combined_table(title, rows, cols, cell_map, max_gap, max_method_gap, 
             badges = []
             if cell["scored"] and cell.get("method_abbreviation"):
                 badges.append(
-                    render_badge(
-                        method_badge_text(cell),
-                        inline_style=f"background:{method_badge_style(cell, max_method_gap)};color:#1f2937;",
+                        render_badge(
+                            method_badge_text(cell),
+                            inline_style=f"background:{method_badge_style(cell, max_method_gap)};color:#1f2937;",
                     )
                 )
                 opt_text = optimality_badge_text(cell)
@@ -148,11 +165,11 @@ def render_combined_table(title, rows, cols, cell_map, max_gap, max_method_gap, 
                     badges.append(
                         render_badge(
                             opt_text,
-                            inline_style=f"background:{optimality_badge_style(cell, max_opt_gap)};color:#1f2937;",
+                            inline_style=optimality_badge_inline_style(cell, max_opt_gap),
                         )
                     )
             if not cell["scored"]:
-                badges.append(render_badge("visual_only", inline_style=f"background:{gap_color(0, max_gap)};color:#1f2937;"))
+                badges.append(render_badge("visual_only", inline_style=f"background:{cell_gap_color(0, 1)};color:#1f2937;"))
             if badges:
                 html_parts.append(f"<div class='badge-row'>{''.join(badges)}</div>")
 
@@ -213,17 +230,17 @@ def main():
         f"<h1>{html.escape(artifact['matrix_name'])}</h1>",
         f"<p class='meta'>version {artifact['matrix_version']} · visual region g={artifact['visual_bounds']['g_min']}..{artifact['visual_bounds']['g_max']}, p={artifact['visual_bounds']['p_min']}..{artifact['visual_bounds']['p_max']} · scored region g={artifact['scored_bounds']['g_min']}..{artifact['scored_bounds']['g_max']}, p={artifact['scored_bounds']['p_min']}..{artifact['scored_bounds']['p_max']}</p>",
         "<div class='legend'>",
-        f"<span class='swatch' style='background:{gap_color(0, max_gap)}'>gap = 0</span>",
-        f"<span class='swatch' style='background:{gap_color(1, max_gap)}'>gap = 1</span>",
-        f"<span class='swatch' style='background:{gap_color(max_gap, max_gap)}'>gap = max ({max_gap})</span>",
+        f"<span class='swatch' style='background:{cell_gap_color(0, 10)}'>gap = 0</span>",
+        f"<span class='swatch' style='background:{cell_gap_color(5, 10)}'>gap = target/2</span>",
+        f"<span class='swatch' style='background:{cell_gap_color(10, 10)}'>gap = target</span>",
         "<span class='swatch' style='border-style:dashed;background:#f7f7f7'>visual-only cell</span>",
         "</div>",
         "<div class='legend-block'>",
         "<div class='legend-title'>How to read the dashboard</div>",
-        "<p class='legend-copy'><strong>Cell background</strong> shows current progress against the project target: green means the target is reached, yellow means a small remaining gap, and orange/red means the cell is further from target.</p>",
-        "<p class='legend-copy'><strong>Method badge text</strong> shows the current achieving method. If a target method is defined and differs, it appears in brackets: <code>CURRENT (TARGET)</code>.</p>",
-        "<p class='legend-copy'><strong>Method badge color</strong> is only green when the current achieving method already matches the target method and that target is aligned with the best-known heuristic target. If the badge text contains brackets or the target still trails the best-known heuristic benchmark, the badge shifts orange/red.</p>",
-        "<p class='legend-copy'><strong>Optimality badge</strong> shows proof status for the target: <code>proven optimal</code> when the reached target is known optimal, <code>opt gap N</code> when the target still sits below a known proven optimum, and <code>opt unknown</code> when no proof-status value is encoded for that cell.</p>",
+        "<p class='legend-copy'><strong>Cell background</strong> is scaled per cell, not globally: <code>gap = 0</code> is green, <code>gap = target</code> is fully red, and intermediate gaps interpolate between them relative to that cell's own target.</p>",
+        "<p class='legend-copy'><strong>Method badge text</strong> shows the current achieving method. If the best-known heuristic method differs and the cell is still unresolved, it appears in brackets: <code>CURRENT (HEURISTIC)</code>. Proven-optimal settled cells collapse to a single method label with no bracketed aspiration.</p>",
+        "<p class='legend-copy'><strong>Method badge color</strong> is only green when the current achieving method already matches the best-known heuristic method and that heuristic target is matched. If the badge text contains brackets or the target still trails the best-known heuristic benchmark, the badge shifts orange/red.</p>",
+        "<p class='legend-copy'><strong>Optimality badge</strong> shows proof status for the target: <code>proven optimal</code> when the reached target is known optimal, <code>opt gap N</code> when the target still sits below a known proven optimum, and <code>opt ≥ L</code> when only a literature-backed constructive lower bound is currently encoded.</p>",
         "<div class='legend-title'>Method badge strings</div>",
         "<div class='legend-grid'>",
         render_legend_item(render_badge("RR", inline_style=neutral_badge_style()), "round robin / 1-factorization"),
@@ -243,7 +260,7 @@ def main():
         render_legend_item(render_badge("red", inline_style=f"background:{target_alignment_color(max_method_gap if max_method_gap > 0 else 2, max_method_gap if max_method_gap > 0 else 2)};color:#1f2937;"), "larger remaining gap to the benchmark"),
         render_legend_item(render_badge("proven optimal", inline_style=f"background:{target_alignment_color(0, max_opt_gap)};color:#1f2937;"), "target already matches a known proven optimum"),
         render_legend_item(render_badge("opt gap 2", inline_style=f"background:{target_alignment_color(2 if max_opt_gap > 1 else 1, max_opt_gap if max_opt_gap > 0 else 2)};color:#1f2937;"), "target remains below a known proven optimum by the shown amount"),
-        render_legend_item(render_badge("opt unknown", inline_style="background:#e5e7eb;color:#1f2937;"), "no proven-optimal benchmark is encoded yet for that cell"),
+        render_legend_item(render_badge("opt ≥ 10", inline_style="background:#e2e8f0;color:#1f2937;"), "no proof of optimality is encoded, but literature gives a constructive lower bound of at least the shown value"),
         "</div></div>",
     ]
 

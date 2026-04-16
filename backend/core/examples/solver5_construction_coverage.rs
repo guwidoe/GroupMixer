@@ -208,7 +208,7 @@ fn summarize_scored_cell(
 ) -> CellSummary {
     let gap_to_target = target_weeks.saturating_sub(constructed_weeks);
     let target_method_abbreviation = target_matrix
-        .target_method_for(groups, group_size)
+        .heuristic_target_method_for(groups, group_size)
         .and_then(|label| target_matrix.abbreviation_for(label))
         .map(str::to_string);
     let heuristic_target_weeks = target_matrix.heuristic_target_weeks_for(groups, group_size);
