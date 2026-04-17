@@ -83,10 +83,11 @@ canonical file.
 
 The matrix report can be richer than the optimization objective.
 
-### Scored benchmark region
-The current objective-counting region is:
-- `2 <= g <= 10`
-- `2 <= p <= 10`
+### Scored benchmark regions
+The current objective-counting regions are:
+- canonical matrix: `2 <= g <= 10`, `2 <= p <= 10`
+- additional matrix: `11 <= g <= 20`, `2 <= p <= 10`
+- additional matrix: `11 <= g <= 20`, `11 <= p <= 20`
 
 Only those cells contribute to:
 - `total_constructed_weeks`
@@ -183,8 +184,8 @@ The solver5 coverage benchmark now emits:
 
 The JSON artifact contains the structured matrix data.
 The HTML report renders a single combined dashboard glyph per cell for the
-canonical target matrix, and may also include supplementary report-only matrices
-outside that canonical target region.
+canonical target matrix, and also includes the additional benchmark matrices for
+the `11..20` regions.
 
 Current HTML cell semantics for the canonical target matrix:
 - center = current implemented guarantee `W_g,p`
@@ -198,7 +199,7 @@ Current HTML cell semantics for the canonical target matrix:
 - bottom-right = current method badge; when the encoded reference method differs,
   the HTML shows separate current/reference badges with an arrow between them
 
-Current HTML cell semantics for supplementary report-only matrices:
+Current HTML cell semantics for the additional benchmark matrices:
 - center = current implemented guarantee `W_g,p`
 - top-right = conservative literature-backed target `T_g,p` when curated from
   the 2026 Miller–Valkov–Abel survey or a narrowly-scoped theorem fallback
@@ -206,7 +207,7 @@ Current HTML cell semantics for supplementary report-only matrices:
 - top-left = exact-frontier checkmark when `W_g,p = U_g,p`
 - bottom-right = current method badge
 - fill grades against `T_g,p` when present, otherwise against `U_g,p`
-- tiny superscript reference indices on supplementary `T` labels link into the
+- tiny superscript reference indices on additional-region `T` labels link into the
   report's literature-reference table
 - blank `T` means no clean paper-derived target has been curated yet for that
   cell, typically because the appendix tables stop at `v <= 150` and the case
