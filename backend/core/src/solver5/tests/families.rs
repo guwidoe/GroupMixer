@@ -87,6 +87,16 @@ fn p4_resolvable_bibd_family_constructs_28_player_case() {
 }
 
 #[test]
+fn p4_resolvable_bibd_family_constructs_76_player_case() {
+    let field = FiniteField::for_order(25).expect("order 25 field should exist");
+    let result = families::construct_p4_resolvable_bibd(&field);
+
+    assert_eq!(result.family.label(), "p4_router");
+    assert_eq!(result.schedule.len(), 25);
+    assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
+}
+
+#[test]
 fn kirkman_family_constructs_6t_plus_1_case() {
     let field = FiniteField::for_order(7).expect("order 7 field should exist");
     let result = families::construct_kirkman_6t_plus_1(&field);

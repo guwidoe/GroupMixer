@@ -107,6 +107,13 @@ fn solver5_solves_p4_resolvable_bibd_cases() {
         .expect("p4 resolvable bibd construction should solve 10-4-13");
     assert_eq!(result.final_score, 0.0);
     assert_eq!(result.schedule.len(), 13);
+
+    let input = pure_input(19, 4, 25);
+    let result = solver
+        .solve(&input)
+        .expect("p4 resolvable bibd construction should solve 19-4-25");
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 25);
 }
 
 #[test]
