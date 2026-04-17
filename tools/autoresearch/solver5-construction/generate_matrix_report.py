@@ -27,6 +27,11 @@ METHOD_REFERENCE = [
         "solves": "literature/reference `p=3` composite-row targets that need nearly-Kirkman constructions",
     },
     {
+        "code": "MOLS",
+        "stands_for": "explicit mutually orthogonal Latin squares with a distinguished resolution square",
+        "solves": "catalog-backed non-prime-power transversal constructions where one explicit Latin square indexes the parallel classes and the remaining squares provide symbol groups",
+    },
+    {
         "code": "ownSG",
         "stands_for": "starter-block own-social-golfer construction",
         "solves": "catalog-backed Appendix A starter-block development family; currently covers large `10-p` rows such as `10-6-7`, `10-7-7`, `10-8-5`, and `10-9-5`",

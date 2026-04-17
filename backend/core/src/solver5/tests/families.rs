@@ -231,6 +231,35 @@ fn ownsg_family_constructs_90_player_case() {
 }
 
 #[test]
+fn mols_catalog_family_constructs_and_lifts_60_player_case() {
+    let entry = crate::solver5::catalog::mols::exact_case(12)
+        .expect("mols catalog should expose the 12-group case");
+    let result = families::construct_catalog_mols_transversal(entry, 6);
+
+    assert_eq!(result.family.label(), "mols_catalog");
+    assert_eq!(result.schedule.len(), 13);
+    assert_eq!(
+        result.provenance.operators,
+        vec![crate::solver5::types::CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::NearFrontier { missing_weeks: 1 }
+    );
+}
+
+#[test]
+fn mols_catalog_family_constructs_and_lifts_45_player_case() {
+    let entry = crate::solver5::catalog::mols::exact_case(15)
+        .expect("mols catalog should expose the 15-group case");
+    let result = families::construct_catalog_mols_transversal(entry, 3);
+
+    assert_eq!(result.family.label(), "mols_catalog");
+    assert_eq!(result.schedule.len(), 22);
+    assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
+}
+
+#[test]
 fn ownsg_family_constructs_96_player_case() {
     let entry = crate::solver5::catalog::ownsg::exact_case(12, 8)
         .expect("ownsg catalog should expose the 12-8-6 case");
@@ -347,6 +376,7 @@ fn family_registry_exposes_current_portfolio_order() {
             "kirkman_6t_plus_1",
             "kts",
             "nkts",
+            "mols_catalog",
             "ownsg",
             "ritd",
             "molr_group_fill",

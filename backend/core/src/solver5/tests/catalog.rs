@@ -1,4 +1,4 @@
-use crate::solver5::catalog::{kts, molr, nkts, ownsg, p4, prime_powers, published, rbibd, ritd};
+use crate::solver5::catalog::{kts, molr, mols, nkts, ownsg, p4, prime_powers, published, rbibd, ritd};
 
 #[test]
 fn prime_power_catalog_exposes_supported_field_orders() {
@@ -152,6 +152,23 @@ fn ownsg_catalog_exposes_benchmark_relevant_cases() {
         5
     );
     assert_eq!(ownsg::source().name, "ownsg_catalog");
+}
+
+#[test]
+fn mols_catalog_exposes_explicit_non_prime_power_cases() {
+    let case = mols::exact_case(12).expect("mols catalog should expose the order-12 case");
+    assert_eq!(case.mols_count, 5);
+
+    let case = mols::exact_case(14).expect("mols catalog should expose the order-14 case");
+    assert_eq!(case.mols_count, 4);
+
+    let case = mols::exact_case(15).expect("mols catalog should expose the order-15 case");
+    assert_eq!(case.mols_count, 4);
+
+    let case = mols::exact_case(18).expect("mols catalog should expose the order-18 case");
+    assert_eq!(case.mols_count, 3);
+
+    assert_eq!(mols::source().name, "mols_catalog");
 }
 
 #[test]

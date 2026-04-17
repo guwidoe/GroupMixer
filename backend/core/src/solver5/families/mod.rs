@@ -11,6 +11,7 @@ use super::types::{
 mod affine_plane;
 mod kirkman;
 mod molr;
+mod mols;
 mod nkts;
 mod ownsg;
 mod p4_rbibd;
@@ -27,6 +28,7 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
         &KIRKMAN_6T_PLUS_1_FAMILY,
         &KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY,
+        &MOLS_CATALOG_FAMILY,
         &OWN_SOCIAL_GOLFER_FAMILY,
         &RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY,
         &MOLR_GROUP_FILL_FAMILY,
@@ -44,6 +46,7 @@ struct SingleRoundPartitionFamily;
 struct Kirkman6TPlus1Family;
 struct KirkmanTripleSystemFamily;
 struct NearlyKirkmanTripleSystemFamily;
+struct MolsCatalogFamily;
 struct OwnSocialGolferFamily;
 struct ResolvableIncompleteTransversalDesignFamily;
 struct MolrGroupFillFamily;
@@ -59,6 +62,7 @@ static KIRKMAN_6T_PLUS_1_FAMILY: Kirkman6TPlus1Family = Kirkman6TPlus1Family;
 static KIRKMAN_TRIPLE_SYSTEM_FAMILY: KirkmanTripleSystemFamily = KirkmanTripleSystemFamily;
 static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
     NearlyKirkmanTripleSystemFamily;
+static MOLS_CATALOG_FAMILY: MolsCatalogFamily = MolsCatalogFamily;
 static OWN_SOCIAL_GOLFER_FAMILY: OwnSocialGolferFamily = OwnSocialGolferFamily;
 static RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY:
     ResolvableIncompleteTransversalDesignFamily = ResolvableIncompleteTransversalDesignFamily;
@@ -253,6 +257,42 @@ impl ConstructionFamily for OwnSocialGolferFamily {
     fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
         catalog::ownsg::exact_case(problem.num_groups, problem.group_size)
             .map(construct_own_social_golfer)
+    }
+}
+
+impl ConstructionFamily for MolsCatalogFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::MolsCatalog
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        let Some(entry) = catalog::mols::exact_case(problem.num_groups) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires a catalog-backed explicit MOLS case",
+            };
+        };
+
+        if !(3..=(entry.mols_count + 1)).contains(&problem.group_size) {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires 3 <= group_size <= available_mols + 1 for a catalog-backed explicit MOLS case",
+            };
+        }
+
+        let Some(result) = self.construct(problem) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "construction failed despite matching explicit MOLS preconditions",
+            };
+        };
+
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: result.max_supported_weeks,
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        let entry = catalog::mols::exact_case(problem.num_groups)?;
+        ((3..=(entry.mols_count + 1)).contains(&problem.group_size))
+            .then(|| construct_catalog_mols_transversal(entry, problem.group_size))
     }
 }
 
@@ -640,6 +680,51 @@ pub(super) fn construct_own_social_golfer(
     }
 }
 
+pub(super) fn construct_catalog_mols_transversal(
+    entry: &'static catalog::mols::MolsCatalogEntry,
+    group_size: usize,
+) -> ConstructionResult {
+    let mut result = ConstructionResult::new(
+        mols::construct(entry, group_size),
+        ConstructionFamilyId::MolsCatalog,
+    )
+    .with_quality(classify_quality(entry.num_groups, group_size, entry.num_groups))
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires a catalog-backed explicit MOLS case",
+            "uses one explicit Latin square as the parallel-class index and the remaining selected squares as transversal symbol groups",
+            "can append latent-group weeks when group_size divides num_groups and the residual subgroup problem is constructible",
+        ],
+    })
+    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::mols::source().citation)
+    .with_evidence(EvidenceSourceKind::CatalogFact, entry.citation)
+    .with_evidence(
+        EvidenceSourceKind::StructuralComposition,
+        "resolvable_transversal_from_explicit_mols",
+    );
+
+    if entry.num_groups % group_size == 0 && (entry.num_groups / group_size) >= 2 {
+        result = result.with_residual(ResidualStructure::TransversalLatentGroups {
+            subgroup_count: group_size,
+            subgroup_size: entry.num_groups / group_size,
+        });
+    }
+
+    let result = composition::apply_recursive_transversal_lift(
+        entry.num_groups,
+        group_size,
+        result,
+        construct_max_schedule_recursive,
+    );
+    let improved_weeks = result.max_supported_weeks;
+    let result = result.with_quality(classify_quality(entry.num_groups, group_size, improved_weeks));
+    if result.provenance.operators.is_empty() {
+        result
+    } else {
+        result.clear_residual()
+    }
+}
+
 pub(super) fn construct_resolvable_incomplete_transversal_design(
     entry: &'static catalog::ritd::RitdCatalogEntry,
 ) -> ConstructionResult {
@@ -820,6 +905,12 @@ fn construct_max_schedule_recursive(
     if group_size == 4 {
         if let Some(field) = p4_rbibd::supported_field(num_groups) {
             return Some(construct_p4_resolvable_bibd(&field));
+        }
+    }
+
+    if let Some(entry) = catalog::mols::exact_case(num_groups) {
+        if (3..=(entry.mols_count + 1)).contains(&group_size) {
+            return Some(construct_catalog_mols_transversal(entry, group_size));
         }
     }
 
