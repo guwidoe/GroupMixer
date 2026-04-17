@@ -147,6 +147,11 @@ Interpretation note:
   - a universal single-round partition family for any divisible pure-SGP instance, used as an honest reusable `W=1` lower bound when no stronger family applies
   - a catalog-backed resolvable BIBD family derived from Sage's explicit `RBIBD(120,8,1)` construction, currently covering:
     - `15-8-17` exactly via a deterministic parallel-class reconstruction from the cyclic `(273,17,1)` seed + hyperoval dualization data shared by Julian R. Abel
+  - a catalog-backed explicit MOLS family derived from Sage's design database, using one distinguished Latin square as the parallel-class index and the remaining orthogonal squares as symbol groups, currently covering:
+    - `12-3-16`, `12-4-13`, `12-5-12`, `12-6-13`
+    - `14-3-14`, `14-4-14`, `14-5-14`
+    - `15-3-22`, `15-4-15`, `15-5-16`
+    - `18-3-26`, `18-4-18`
 - Active kept benchmark baseline under the *old* canonical-only benchmark was:
   - commit: `b250b32`
   - `total_constructed_weeks = 419`
@@ -166,26 +171,38 @@ Interpretation note:
 - After expanding the benchmark to all three matrices, that `419` value is only a
   historical canonical-only reference.
 - Active kept three-matrix benchmark baseline is now:
-  - commit: `096c38d`
-  - `total_constructed_weeks = 2013`
-  - `frontier_gap_sum = 1952`
+  - commit: `ddd9e46`
+  - `total_constructed_weeks = 2194`
+  - `frontier_gap_sum = 1771`
   - `solved_cells = 271`
-  - `exact_frontier_cells = 47`
+  - `exact_frontier_cells = 49`
   - `unsolved_cells = 0`
-  - `p6_constructed_weeks = 148`
+  - `p6_constructed_weeks = 160`
   - `p7_constructed_weeks = 149`
   - `p8_constructed_weeks = 139`
   - `p9_constructed_weeks = 115`
+  - `W_12_3 = 16`
+  - `W_12_4 = 13`
+  - `W_12_5 = 12`
+  - `W_12_6 = 13`
   - `W_12_7 = 7`
   - `W_12_8 = 6`
+  - `W_14_3 = 14`
+  - `W_14_4 = 14`
+  - `W_14_5 = 14`
   - `W_14_6 = 9`
   - `W_14_7 = 9`
   - `W_14_8 = 8`
   - `W_14_9 = 7`
+  - `W_15_3 = 22`
+  - `W_15_4 = 15`
+  - `W_15_5 = 16`
   - `W_15_6 = 10`
   - `W_15_7 = 9`
   - `W_15_8 = 17`
   - `W_15_9 = 7`
+  - `W_18_3 = 26`
+  - `W_18_4 = 18`
   - `W_18_7 = 10`
   - `W_20_6 = 13`
   - `W_16_8 = 17`
@@ -196,6 +213,7 @@ Interpretation note:
   - `2c2badc` — direct Appendix-backed `ownSG(96,8)` / `12-8-6` → `1995`
   - `585ed03` — generic one-week latent-group `+G` lifting and modulo-class ownSG lift → `1997`
   - `096c38d` — catalog-backed Sage `RBIBD(120,8,1)` family for `15-8-17` → `2013`
+  - `ddd9e46` — catalog-backed explicit Sage MOLS family for `12/14/15/18` composite rows → `2194`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
@@ -228,20 +246,26 @@ Interpretation note:
 - A catalog-backed MOLR / MOLS lower-bound route is now landed for the benchmark-relevant `10-10` case:
   - `10-10: 3 -> 4` via a compatible latent-group filler week on top of the validated published `10-10-3` base, matching the paper's `MOLRs(10,10)+G(1)` lower-bound line
   - the cyclic order-10 Latin-square route was explicitly ruled out earlier; the shipped constructor instead stores the recovered filler partition as a provenance-aware catalog case and constructs the 4-week schedule deterministically
+- A catalog-backed explicit MOLS route from Sage is now landed for several non-prime-power composite rows in the added benchmark regions:
+  - the shipped `mols_catalog` family parses explicit square banks for orders `12`, `14`, `15`, and `18`
+  - one Latin square is used as the deterministic parallel-class index and the remaining orthogonal squares provide the symbol groups for the pure-SGP blocks
+  - recursive `+G` lifting composes on top when the latent-group residual is itself constructible, which is what pushes cases like `12-3` to `16` and `15-3` to the exact frontier `22`
+  - this narrows the earlier MOLS/OA skepticism: arbitrary OA/MOLS objects still need an explicit resolution argument, but explicit full MOLS catalogs with a deterministic resolution square are now a validated reusable family lane
 - Remaining live directions should stay structural constructor families, not search-based cheating:
   - reusable RBIBD / RGDD family work that explains or subsumes current exact catalog cases beyond the fixed matrix
   - broader non-prime-power square-order MOLR / MOLS lower-bound work only when it remains provenance-aware and genuinely reusable beyond the fixed matrix
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
-- The old canonical-only `419` baseline is historical only; the live gate is the three-matrix baseline at `1995` on `2c2badc`.
+- The old canonical-only `419` baseline is historical only; the live gate is the three-matrix baseline at `2194` on `ddd9e46`.
 - The fixed scored matrix frontier remains closed; do not re-spend loop time on already-landed canonical frontier cells.
 - The universal single-round lower bound remains the honest floor for unsolved theory rows:
   - `unsolved_cells = 0`
   - many weak composite supplementary rows still sit at only `W=1`
-- The strongest recent reusable gain lanes have been **direct Appendix-backed ownSG catalog expansion**, the landed **generic one-week latent-group `+G` composition**, and now **source-backed catalog families from Sage's design database**.
+- The strongest recent reusable gain lanes have been **direct Appendix-backed ownSG catalog expansion**, the landed **generic one-week latent-group `+G` composition**, and now **source-backed catalog families from Sage's design database**, especially the explicit `mols_catalog` lane.
 - The direct Sage `RBIBD(120,8,1)` lane has now been harvested for `15-8-17`; keep it as a reusable catalog family rather than a one-off patch, and do not re-spend loop time on that exact case.
-- Remaining work should target broader family gaps, especially `p=3` / `p=4` and other non-prime-power cases on `g in {12,14,15,18,20}`.
-- The next concrete experiment should prefer a reusable structural step or a provenance-clean family catalog extension over another raw patch import. High-value remaining rows still line up with explicit literature family names such as `NKTS(36/42/54/60)`, `KTS(45)`, `RGDD(...,4,...)`, and non-prime-power `RTD(5,n)` / `RTD(6,n)+G(1)` cases; if continuing the Sage lane, prefer constructions that are already explicitly resolvable rather than assuming an arbitrary MOLS/OA object immediately yields SGP weeks.
+- The direct Sage `MOLS(12/14/15/18)` lane has now also been harvested; do not re-spend loop time on those exact catalog cases unless a parser/provenance regression appears.
+- Remaining work should target the rows still stranded at weak lower bounds after the new MOLS keep, especially `20-3`, `20-4`, `18-5..10`, and the high-`p` composite supplementary cells not covered by the current explicit MOLS bank.
+- The next concrete experiment should prefer a reusable structural step or a provenance-clean family catalog extension over another raw patch import. High-value remaining rows now line up with explicit literature family names such as `NKTS(36/42/54/60)`, `KTS(45)`, `RGDD(...,4,...)`, stronger `RTD(5,n)` / `RTD(6,n)+G(1)` / `RBIBD` cases that go beyond the newly landed MOLS coverage, or additional explicitly resolvable Sage objects; if continuing the Sage lane, prefer constructions that are already explicitly resolvable rather than assuming an arbitrary MOLS/OA object immediately yields SGP weeks.
 - A follow-up attempt to add `MOLRs(6,6)+G(1)` as a second `molr_group_fill` catalog case benchmarked flat at `419`: it cleanly reconstructs the already-shipped `6-6-3` schedule via a 2-week base plus one filler week, but it does **not** improve the objective beyond the existing published route. Treat that lane as provenance cleanup only, not as an active coverage-improvement direction.
 - Keep preferring reusable family logic or justified composition over per-cell glue.

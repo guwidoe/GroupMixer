@@ -262,7 +262,7 @@ fn solver5_solves_rbibd_15_8_17_case() {
 fn solver5_solves_mols_catalog_cases() {
     let solver = SearchEngine::new(&pure_input(12, 6, 13).solver);
 
-    for (g, p, w) in [(12, 6, 13), (15, 3, 22), (14, 5, 14), (18, 4, 18)] {
+    for (g, p, w) in [(12, 6, 13), (15, 3, 22), (14, 5, 14), (18, 4, 18), (18, 5, 18), (18, 6, 19)] {
         let input = pure_input(g, p, w);
         let result = solver
             .solve(&input)
