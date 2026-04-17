@@ -4,7 +4,7 @@ use crate::solver5::{
     field::FiniteField,
     portfolio::FamilyEvaluation,
     problem::PureSgpProblem,
-    types::{ConstructionQuality, EvidenceSourceKind, ResidualStructure},
+    types::{ConstructionQuality, EvidenceSourceKind},
     SearchEngine,
 };
 
@@ -258,6 +258,26 @@ fn ownsg_family_constructs_120_player_case() {
 }
 
 #[test]
+fn ownsg_family_applies_group_lift_when_residual_problem_has_one_week() {
+    let entry = crate::solver5::catalog::ownsg::exact_case(14, 7)
+        .expect("ownsg catalog should expose the 14-7 case");
+    let result = families::construct_own_social_golfer(entry);
+
+    assert_eq!(result.family.label(), "ownsg");
+    assert_eq!(result.schedule.len(), 9);
+    assert_eq!(
+        result.provenance.operators,
+        vec![crate::solver5::types::CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 7,
+        }
+    );
+}
+
+#[test]
 fn ritd_family_constructs_50_player_case() {
     let entry = crate::solver5::catalog::ritd::exact_case(10, 5)
         .expect("ritd catalog should expose the 10-5 case");
@@ -340,19 +360,17 @@ fn family_evaluation_is_separate_from_construction() {
     assert_eq!(
         family.evaluate(&problem),
         FamilyEvaluation::Applicable {
-            max_supported_weeks: 8,
+            max_supported_weeks: 9,
         }
     );
 
     let result = family
         .construct(&problem)
         .expect("evaluation-compatible family should construct");
-    assert_eq!(result.max_supported_weeks, 8);
+    assert_eq!(result.max_supported_weeks, 9);
     assert_eq!(
-        result.metadata.residual,
-        Some(ResidualStructure::TransversalLatentGroups {
-            subgroup_count: 4,
-            subgroup_size: 2,
-        })
+        result.provenance.operators,
+        vec![crate::solver5::types::CompositionOperatorId::RecursiveTransversalLift]
     );
+    assert_eq!(result.metadata.residual, None);
 }

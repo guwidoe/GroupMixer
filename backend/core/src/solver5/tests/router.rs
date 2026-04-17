@@ -313,6 +313,53 @@ fn router_selects_ownsg_for_20_6_13() {
 }
 
 #[test]
+fn router_reports_recursive_group_lift_for_14_7_9() {
+    let input = pure_input(14, 7, 9);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 14-7-9");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::OwnSocialGolfer);
+    assert_eq!(
+        decision.result.provenance.operators,
+        vec![CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::OwnSocialGolfer
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 9,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 7,
+                    },
+                }
+    }));
+}
+
+#[test]
+fn router_reports_single_round_recursive_lift_for_16_8_17() {
+    let input = pure_input(16, 8, 17);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 16-8-17");
+
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::TransversalDesignPrimePower
+    );
+    assert_eq!(
+        decision.result.provenance.operators,
+        vec![CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::TransversalDesignPrimePower
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 17,
+                    quality: ConstructionQuality::NearFrontier { missing_weeks: 1 },
+                }
+    }));
+}
+
+#[test]
 fn router_selects_ritd_for_10_5_9() {
     let input = pure_input(10, 5, 9);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");

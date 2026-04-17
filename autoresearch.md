@@ -127,7 +127,8 @@ Interpretation note:
   - a catalog-backed exact NKTS(24) case for 24 players (`8-3-11`)
   - pseudo-doubled NKTS constructions seeded from exact half-size KTS schedules (`10-3-13` still constructs honestly from `KTS(15)` as a weaker reusable route)
   - a catalog-backed ownSG starter-block family from Miller–Valkov–Abel Appendix A / Construction 5, currently covering:
-    - `10-6-7`, `10-7-7`, `10-8-5`, `10-9-5`
+    - fixed-matrix rows `10-6-7`, `10-7-7`, `10-8-5`, `10-9-5`
+    - supplementary rows `12-7-7`, `12-8-6`, `14-6-9`, `14-7-8`, `14-8-8`, `14-9-7`, `15-6-10`, `15-7-9`, `15-9-7`, `18-7-10`, `20-6-13`
   - a catalog-backed RITD family derived from the Miller–Valkov–Abel Figure 8 `ITD(10,2;6)` block set, currently covering:
     - `10-5-9` via the paper's `RITD(10,2;5)+G(1)` route
   - a catalog-backed MOLR / MOLS lower-bound group-fill family, currently covering:
@@ -163,15 +164,32 @@ Interpretation note:
 - After expanding the benchmark to all three matrices, that `419` value is only a
   historical canonical-only reference.
 - Active kept three-matrix benchmark baseline is now:
-  - commit: `b5843c6`
-  - `total_constructed_weeks = 1038`
-  - `frontier_gap_sum = 2927`
+  - commit: `2c2badc`
+  - `total_constructed_weeks = 1995`
+  - `frontier_gap_sum = 1970`
   - `solved_cells = 271`
-  - `exact_frontier_cells = 38`
+  - `exact_frontier_cells = 46`
   - `unsolved_cells = 0`
-- Current loop result to keep if checks stay green:
-  - extending finite-field support to the additional benchmark prime-power orders `11`, `16`, `17`, and `19` unlocks much stronger honest supplementary coverage via the existing RTD / affine-plane families
-  - rerun metric: `total_constructed_weeks = 1906`, `frontier_gap_sum = 2059`, `exact_frontier_cells = 45`, `unsolved_cells = 0`
+  - `p6_constructed_weeks = 148`
+  - `p7_constructed_weeks = 148`
+  - `p8_constructed_weeks = 122`
+  - `p9_constructed_weeks = 115`
+  - `W_12_7 = 7`
+  - `W_12_8 = 6`
+  - `W_14_6 = 9`
+  - `W_14_7 = 8`
+  - `W_14_8 = 8`
+  - `W_14_9 = 7`
+  - `W_15_6 = 10`
+  - `W_15_7 = 9`
+  - `W_15_9 = 7`
+  - `W_18_7 = 10`
+  - `W_20_6 = 13`
+- The recent three-matrix keeps that established this baseline were:
+  - `4077a77` — finite-field support for `11`, `16`, `17`, `19` → `1906`
+  - `bfdbfc7` — `GF(25)` / exact `19-4-25` → `1912`
+  - `17dc468` — larger Appendix-backed ownSG catalog expansion → `1990`
+  - `2c2badc` — direct Appendix-backed `ownSG(96,8)` / `12-8-6` → `1995`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
@@ -194,11 +212,10 @@ Interpretation note:
 - The Warwick archive appears exhausted for benchmark-relevant improvements inside the fixed `2..10 x 2..10` matrix after landing the `6-4`, `6-5`, `6-6`, `8-3`, `8-4`, `10-4`, and `10-p` (`p>=5`) cases above.
 - The triples frontier in the fixed matrix is now closed: `8-3-11` is covered by an exact catalog-backed `NKTS(24)` schedule synthesized in solver5 from a cyclic orbit cover plus week assignment. Do not re-spend cycles rediscovering generic 24-player triples unless a broader reusable family beyond the benchmark cell appears.
 - The `p=4` scored frontier in the fixed matrix is now also closed: `9-4-11` is covered by an explicit source-backed 36-player 11-round schedule. Do not treat `9-4-11` as a live gap anymore.
-- The ownSG starter-block family has now subsumed several weaker large-row published schedules inside the fixed matrix:
-  - `10-6: 6 -> 7`
-  - `10-7: 5 -> 7`
-  - `10-8: 4 -> 5`
-  - `10-9: 3 -> 5`
+- The ownSG starter-block family has now subsumed several weaker large-row published schedules inside the fixed matrix and has become a major supplementary-region lane:
+  - fixed-matrix improvements: `10-6: 6 -> 7`, `10-7: 5 -> 7`, `10-8: 4 -> 5`, `10-9: 3 -> 5`
+  - supplementary-region improvements: `12-7: 1 -> 7`, `12-8: 1 -> 6`, `14-6: 1 -> 9`, `14-7: 1 -> 8`, `14-8: 1 -> 8`, `14-9: 1 -> 7`, `15-6: 1 -> 10`, `15-7: 1 -> 9`, `15-9: 1 -> 7`, `18-7: 1 -> 10`, `20-6: 1 -> 13`
+  - direct Appendix-backed ownSG catalog expansion is now a proven strong lane; the stale part was the older modulo/quotient projection heuristic, not the literature-backed starter-block family itself
 - A catalog-backed RITD route from the paper's `ITD(10,2;6)` block set is now landed for the benchmark-relevant `10-5` case:
   - `10-5: 7 -> 9` via `RITD(10,2;5)+G(1)`
   - this should be treated as a reusable literature-structured family, not as another opaque published-schedule patch
@@ -211,16 +228,14 @@ Interpretation note:
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
-- The old canonical-only `419` baseline is no longer the active benchmark gate
-  once the three-matrix benchmark lands; treat it as historical context only.
-- The universal single-round lower bound has landed and removed all zero-coverage holes without changing the benchmark question:
-  - `unsolved_cells: 36 -> 0`
-  - many previously empty cells now honestly score `W=1`
-- The live scored target gaps in the fixed matrix remain closed, and the strongest fixed-matrix `p=10` row now stands at:
-  - `W_10_10 = 4`
-- The next feature buildout order is now:
-  1. preserve benchmark honesty and avoid re-spending loop time on already-closed fixed-matrix cells
-  2. prefer reusable structural upgrades that explain or subsume current exact catalog cases over more one-off patch hunting
-  3. if continuing, look for broader non-prime-power square-order MOLR / MOLS, RITD, or RGDD-style theory that generalizes beyond the single shipped `10-10-4` case rather than mining more benchmark patches
+- The old canonical-only `419` baseline is historical only; the live gate is the three-matrix baseline at `1995` on `2c2badc`.
+- The fixed scored matrix frontier remains closed; do not re-spend loop time on already-landed canonical frontier cells.
+- The universal single-round lower bound remains the honest floor for unsolved theory rows:
+  - `unsolved_cells = 0`
+  - many weak composite supplementary rows still sit at only `W=1`
+- The strongest recent reusable gain lane has been **direct Appendix-backed ownSG catalog expansion** for supplementary composite rows. That lane is now partially harvested through `12-8`, so remaining work should target either:
+  1. more reusable composition on top of shipped families (for example honest latent-group `+G` lifts where the literature explicitly permits them), or
+  2. broader family work for the still-weak composite rows, especially `p=3` / `p=4` and other non-prime-power cases on `g in {12,14,15,18,20}`.
+- The next concrete experiment should prefer a reusable structural step over another raw patch import. The most plausible immediate follow-up is to test whether the existing latent-group lift machinery should also use the already-shipped single-round partition fallback, which could honestly realize documented `+G(1)` improvements like `ownSG(98,7)+G(1)` and any analogous RTD/ownSG cases where `p | g` but the smaller `(g/p)-p-*` instance currently has only the universal one-week lower bound.
 - A follow-up attempt to add `MOLRs(6,6)+G(1)` as a second `molr_group_fill` catalog case benchmarked flat at `419`: it cleanly reconstructs the already-shipped `6-6-3` schedule via a 2-week base plus one filler week, but it does **not** improve the objective beyond the existing published route. Treat that lane as provenance cleanup only, not as an active coverage-improvement direction.
 - Keep preferring reusable family logic or justified composition over per-cell glue.

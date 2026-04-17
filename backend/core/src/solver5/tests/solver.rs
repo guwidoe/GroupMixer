@@ -129,6 +129,18 @@ fn solver5_recursively_lifts_transversal_design_latent_groups() {
 }
 
 #[test]
+fn solver5_recursively_lifts_transversal_design_with_single_round_fallback() {
+    let input = pure_input(16, 8, 17);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("recursive latent-group lifting with one-week fallback should solve 16-8-17");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 17);
+}
+
+#[test]
 fn solver5_solves_kirkman_6t_plus_1_cases() {
     let input = pure_input(7, 3, 10);
     let solver = SearchEngine::new(&input.solver);
@@ -262,7 +274,14 @@ fn solver5_solves_ownsg_10_9_5_case() {
 fn solver5_solves_ownsg_supplementary_cases() {
     let solver = SearchEngine::new(&pure_input(12, 7, 7).solver);
 
-    for (g, p, w) in [(12, 7, 7), (12, 8, 6), (14, 6, 9), (15, 6, 10), (20, 6, 13)] {
+    for (g, p, w) in [
+        (12, 7, 7),
+        (12, 8, 6),
+        (14, 6, 9),
+        (14, 7, 9),
+        (15, 6, 10),
+        (20, 6, 13),
+    ] {
         let input = pure_input(g, p, w);
         let result = solver
             .solve(&input)

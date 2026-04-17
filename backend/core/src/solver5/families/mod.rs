@@ -564,7 +564,7 @@ pub(super) fn construct_published_schedule_bank(
 pub(super) fn construct_own_social_golfer(
     entry: &'static catalog::ownsg::OwnSgCatalogEntry,
 ) -> ConstructionResult {
-    ConstructionResult::new(
+    let mut result = ConstructionResult::new(
         ownsg::construct(entry),
         ConstructionFamilyId::OwnSocialGolfer,
     )
@@ -576,14 +576,40 @@ pub(super) fn construct_own_social_golfer(
     .with_applicability(ConstructionApplicability::Conditional {
         notes: vec![
             "requires a catalog-backed ownSG starter-block case",
-            "develops published starter blocks by +group_size translations across 10 groups",
+            "develops published starter blocks by +group_size translations across the full group set",
+            "can append latent-group weeks when group_size divides num_groups and the residual subgroup problem is constructible",
         ],
     })
     .with_evidence(
         EvidenceSourceKind::CatalogFact,
         catalog::ownsg::source().citation,
     )
-    .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
+    .with_evidence(EvidenceSourceKind::PatchBank, entry.citation);
+
+    if entry.num_groups % entry.group_size == 0 && (entry.num_groups / entry.group_size) >= 2 {
+        result = result.with_residual(ResidualStructure::TransversalLatentGroups {
+            subgroup_count: entry.group_size,
+            subgroup_size: entry.num_groups / entry.group_size,
+        });
+    }
+
+    let result = composition::apply_modulo_latent_group_lift(
+        entry.num_groups,
+        entry.group_size,
+        result,
+        construct_max_schedule_recursive,
+    );
+    let improved_weeks = result.max_supported_weeks;
+    let result = result.with_quality(classify_quality(
+        entry.num_groups,
+        entry.group_size,
+        improved_weeks,
+    ));
+    if result.provenance.operators.is_empty() {
+        result
+    } else {
+        result.clear_residual()
+    }
 }
 
 pub(super) fn construct_resolvable_incomplete_transversal_design(
@@ -767,20 +793,21 @@ fn construct_max_schedule_recursive(
         return Some(construct_published_schedule_bank(entry));
     }
 
-    let field = FiniteField::for_order(num_groups)?;
-    if group_size == 3 && num_groups % 6 == 1 {
-        return Some(construct_kirkman_6t_plus_1(&field));
-    }
-    if group_size == num_groups {
-        return Some(construct_affine_plane(&field));
-    }
-    if group_size >= 3 && group_size <= num_groups {
-        return Some(construct_transversal_design_portfolio(
-            num_groups, group_size, &field,
-        ));
+    if let Some(field) = FiniteField::for_order(num_groups) {
+        if group_size == 3 && num_groups % 6 == 1 {
+            return Some(construct_kirkman_6t_plus_1(&field));
+        }
+        if group_size == num_groups {
+            return Some(construct_affine_plane(&field));
+        }
+        if group_size >= 3 && group_size <= num_groups {
+            return Some(construct_transversal_design_portfolio(
+                num_groups, group_size, &field,
+            ));
+        }
     }
 
-    None
+    Some(construct_single_round_partition(num_groups, group_size))
 }
 
 pub(super) fn counting_bound(num_groups: usize, group_size: usize) -> usize {
