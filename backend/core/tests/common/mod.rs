@@ -284,8 +284,8 @@ pub fn assert_state_matches_full_recalculation(state: &State) {
     assert_eq!(state.constraint_penalty, recalculated.constraint_penalty);
     assert_eq!(state.clique_violations, recalculated.clique_violations);
     assert_eq!(
-        state.forbidden_pair_violations,
-        recalculated.forbidden_pair_violations
+        state.soft_apart_pair_violations,
+        recalculated.soft_apart_pair_violations
     );
     assert_eq!(
         state.should_together_violations,

@@ -87,7 +87,7 @@ impl RepeatPenaltyFunction {
 /// - **Integer indices**: All people, groups, and attributes are mapped to integers
 /// - **Dual representations**: Both forward (ID→index) and reverse (index→ID) mappings
 /// - **Efficient scoring**: Contact matrix and incremental score updates
-/// - **Fast constraint checking**: Preprocessed constraint structures (cliques, forbidden pairs)
+/// - **Fast constraint checking**: Preprocessed constraint structures (cliques, soft-apart pairs)
 /// - **Delta cost evaluation**: Calculate only the cost changes from moves
 ///
 /// # Internal Structure
@@ -222,15 +222,15 @@ pub struct State {
     /// Dimension: [session][person]
     pub person_to_clique_id: Vec<Vec<Option<usize>>>,
     /// Pairs of people who cannot be together
-    pub forbidden_pairs: Vec<(usize, usize)>,
+    pub soft_apart_pairs: Vec<(usize, usize)>,
     /// Pairs of people who should be together (soft)
     pub should_together_pairs: Vec<(usize, usize)>,
     /// Immovable person assignments: `(person_index, session_index) -> group_index`
     pub immovable_people: HashMap<(usize, usize), usize>,
     /// Which sessions each clique constraint applies to (None = all sessions)
     pub clique_sessions: Vec<Option<Vec<usize>>>,
-    /// Which sessions each forbidden pair constraint applies to (None = all sessions)
-    pub forbidden_pair_sessions: Vec<Option<Vec<usize>>>,
+    /// Which sessions each soft-apart pair constraint applies to (None = all sessions)
+    pub soft_apart_pair_sessions: Vec<Option<Vec<usize>>>,
     /// Which sessions each should-together pair applies to (None = all sessions)
     pub should_together_sessions: Vec<Option<Vec<usize>>>,
     /// Person participation matrix: `person_participation[person][session] = is_participating`
@@ -261,8 +261,8 @@ pub struct State {
     // Detailed tracking of specific constraint violations
     /// Number of violations for each clique (people not staying together)
     pub clique_violations: Vec<i32>,
-    /// Number of violations for each forbidden pair (people forced together)
-    pub forbidden_pair_violations: Vec<i32>,
+    /// Number of violations for each soft-apart pair (`ShouldNotBeTogether`)
+    pub soft_apart_pair_violations: Vec<i32>,
     /// Number of violations for each should-together pair (people separated)
     pub should_together_violations: Vec<i32>,
     /// Total violations of immovable person constraints
@@ -279,8 +279,8 @@ pub struct State {
     /// Penalty function used once the repeat encounter limit is exceeded.
     pub repeat_penalty_function: RepeatPenaltyFunction,
     // MustStayTogether is a hard constraint; no weights are tracked
-    /// Penalty weight for each forbidden pair violation
-    pub forbidden_pair_weights: Vec<f64>,
+    /// Penalty weight for each soft-apart pair violation
+    pub soft_apart_pair_weights: Vec<f64>,
     /// Penalty weight for each should-together pair violation
     pub should_together_weights: Vec<f64>,
 
@@ -343,8 +343,8 @@ impl State {
             "cache drift in {context}: clique_violations mismatch"
         );
         assert_eq!(
-            self.forbidden_pair_violations, recalculated.forbidden_pair_violations,
-            "cache drift in {context}: forbidden_pair_violations mismatch"
+            self.soft_apart_pair_violations, recalculated.soft_apart_pair_violations,
+            "cache drift in {context}: soft_apart_pair_violations mismatch"
         );
         assert_eq!(
             self.should_together_violations, recalculated.should_together_violations,
@@ -490,8 +490,8 @@ impl State {
     pub(crate) fn refresh_cost_from_caches(&mut self) {
         let mut weighted_constraint_penalty = 0.0;
 
-        for (idx, violations) in self.forbidden_pair_violations.iter().enumerate() {
-            weighted_constraint_penalty += *violations as f64 * self.forbidden_pair_weights[idx];
+        for (idx, violations) in self.soft_apart_pair_violations.iter().enumerate() {
+            weighted_constraint_penalty += *violations as f64 * self.soft_apart_pair_weights[idx];
         }
 
         for (idx, violations) in self.should_together_violations.iter().enumerate() {
@@ -663,9 +663,9 @@ impl State {
         // === FORBIDDEN PAIR VIOLATIONS ===
         for (day_idx, day_schedule) in self.schedule.iter().enumerate() {
             for group in day_schedule {
-                for (pair_idx, &(p1, p2)) in self.forbidden_pairs.iter().enumerate() {
-                    // Check if this forbidden pair applies to this session
-                    if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+                for (pair_idx, &(p1, p2)) in self.soft_apart_pairs.iter().enumerate() {
+                    // Check if this soft-apart pair applies to this session
+                    if let Some(ref sessions) = self.soft_apart_pair_sessions[pair_idx] {
                         if !sessions.contains(&day_idx) {
                             continue; // Skip this constraint for this session
                         }
@@ -690,7 +690,7 @@ impl State {
                         }
                     }
                     if p1_in && p2_in {
-                        self.weighted_constraint_penalty += self.forbidden_pair_weights[pair_idx];
+                        self.weighted_constraint_penalty += self.soft_apart_pair_weights[pair_idx];
                         violation_count += 1;
                     }
                 }

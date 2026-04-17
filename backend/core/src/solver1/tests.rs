@@ -496,7 +496,7 @@ fn test_error_on_clique_too_large() {
 }
 
 #[test]
-fn test_error_on_forbidden_pair_in_clique() {
+fn test_error_on_soft_apart_pair_in_clique() {
     let mut input = create_test_input(5, vec![(1, 5)], 1);
     input.constraints = vec![
         Constraint::MustStayTogether {

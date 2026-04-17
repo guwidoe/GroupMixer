@@ -634,7 +634,7 @@ fn score_breakdown_reports_clean_and_violating_states() {
             sessions: None,
         });
     let mut violating_state = State::new(&violating_input).unwrap();
-    violating_state.forbidden_pair_violations[0] = 1;
+    violating_state.soft_apart_pair_violations[0] = 1;
     violating_state.current_cost = 42.0;
 
     let breakdown = violating_state.format_score_breakdown();
@@ -661,7 +661,7 @@ fn score_breakdown_omits_zero_violations_for_all_constraint_types() {
     });
 
     let mut state = State::new(&input).unwrap();
-    state.forbidden_pair_violations.fill(0);
+    state.soft_apart_pair_violations.fill(0);
     state.should_together_violations.fill(0);
     state.clique_violations.fill(0);
     state.immovable_violations = 0;
@@ -694,7 +694,7 @@ fn score_breakdown_includes_positive_violations_for_all_constraint_types() {
     });
 
     let mut state = State::new(&input).unwrap();
-    state.forbidden_pair_violations[0] = 1;
+    state.soft_apart_pair_violations[0] = 1;
     state.should_together_violations[0] = 1;
     state.clique_violations[0] = 1;
     state.immovable_violations = 1;

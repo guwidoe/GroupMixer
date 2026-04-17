@@ -373,11 +373,11 @@ impl State {
                 vec![None; people_count];
                 input.problem.num_sessions as usize
             ], // To be populated
-            forbidden_pairs: vec![], // To be populated
+            soft_apart_pairs: vec![], // To be populated
             should_together_pairs: vec![], // To be populated
             immovable_people: HashMap::new(), // To be populated
             clique_sessions: vec![], // To be populated by preprocessing
-            forbidden_pair_sessions: vec![], // To be populated by preprocessing
+            soft_apart_pair_sessions: vec![], // To be populated by preprocessing
             should_together_sessions: vec![], // To be populated by preprocessing
             person_participation,
             num_sessions: input.problem.num_sessions,
@@ -389,7 +389,7 @@ impl State {
             constraint_penalty: 0,
             weighted_constraint_penalty: 0.0,
             clique_violations: Vec::new(), // Will be resized after constraint preprocessing
-            forbidden_pair_violations: Vec::new(), // Will be resized after constraint preprocessing
+            soft_apart_pair_violations: Vec::new(), // Will be resized after constraint preprocessing
             should_together_violations: Vec::new(), // Will be resized after constraint preprocessing
             immovable_violations: 0,
             w_contacts,
@@ -397,7 +397,7 @@ impl State {
             repeat_encounter_limit,
             repeat_penalty_function,
 
-            forbidden_pair_weights: Vec::new(),
+            soft_apart_pair_weights: Vec::new(),
             should_together_weights: Vec::new(),
             pairmin_pairs: Vec::new(),
             pairmin_sessions: Vec::new(),
@@ -721,7 +721,7 @@ impl State {
             })
             .collect();
 
-        // --- Process `ShouldNotBeTogether` (Forbidden Pairs) ---
+        // --- Process `ShouldNotBeTogether` (Soft-Apart Pairs) ---
         for constraint in &input.constraints {
             if let Constraint::ShouldNotBeTogether {
                 people,
@@ -787,16 +787,16 @@ impl State {
                             }
                         }
 
-                        self.forbidden_pairs.push((p1_idx, p2_idx));
-                        self.forbidden_pair_weights.push(*penalty_weight);
+                        self.soft_apart_pairs.push((p1_idx, p2_idx));
+                        self.soft_apart_pair_weights.push(*penalty_weight);
 
                         // Convert sessions to indices if provided
                         if let Some(sessions) = constraint_sessions {
                             let session_indices: Vec<usize> =
                                 sessions.iter().map(|&s| s as usize).collect();
-                            self.forbidden_pair_sessions.push(Some(session_indices));
+                            self.soft_apart_pair_sessions.push(Some(session_indices));
                         } else {
-                            self.forbidden_pair_sessions.push(None); // Apply to all sessions
+                            self.soft_apart_pair_sessions.push(None); // Apply to all sessions
                         }
                     }
                 }
@@ -828,7 +828,7 @@ impl State {
 
                         // Conflict check with existing ShouldNotBeTogether pairs
                         if let Some((fp_idx, _)) =
-                            self.forbidden_pairs
+                            self.soft_apart_pairs
                                 .iter()
                                 .enumerate()
                                 .find(|(_, &(a, b))| {
@@ -836,7 +836,7 @@ impl State {
                                 })
                         {
                             // Sessions overlap?
-                            let f_sessions = &self.forbidden_pair_sessions[fp_idx];
+                            let f_sessions = &self.soft_apart_pair_sessions[fp_idx];
                             let s_sessions: Option<Vec<usize>> = constraint_sessions
                                 .as_ref()
                                 .map(|v| v.iter().map(|&s| s as usize).collect());
@@ -1032,7 +1032,7 @@ impl State {
 
         // Initialize constraint violation vectors with correct sizes
         self.clique_violations = vec![0; self.cliques.len()];
-        self.forbidden_pair_violations = vec![0; self.forbidden_pairs.len()];
+        self.soft_apart_pair_violations = vec![0; self.soft_apart_pairs.len()];
         self.should_together_violations = vec![0; self.should_together_pairs.len()];
 
         // === Propagate immovable constraints to clique members ===

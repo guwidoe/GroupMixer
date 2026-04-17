@@ -311,8 +311,8 @@ impl State {
             }
         };
 
-        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+        for (pair_idx, &(person_a, person_b)) in self.soft_apart_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.soft_apart_pair_sessions[pair_idx] {
                 if !sessions.contains(&day) {
                     continue;
                 }
@@ -337,9 +337,9 @@ impl State {
                 moved_person_group_after(person_a) == moved_person_group_after(person_b);
 
             if were_together && !are_together {
-                delta_cost -= self.forbidden_pair_weights[pair_idx];
+                delta_cost -= self.soft_apart_pair_weights[pair_idx];
             } else if !were_together && are_together {
-                delta_cost += self.forbidden_pair_weights[pair_idx];
+                delta_cost += self.soft_apart_pair_weights[pair_idx];
             }
         }
 
@@ -533,8 +533,8 @@ impl State {
             }
         }
 
-        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+        for (pair_idx, &(person_a, person_b)) in self.soft_apart_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.soft_apart_pair_sessions[pair_idx] {
                 if !sessions.contains(&day) {
                     continue;
                 }
@@ -559,9 +559,9 @@ impl State {
                 moved_person_group_after(person_a) == moved_person_group_after(person_b);
 
             if were_together && !are_together {
-                self.forbidden_pair_violations[pair_idx] -= 1;
+                self.soft_apart_pair_violations[pair_idx] -= 1;
             } else if !were_together && are_together {
-                self.forbidden_pair_violations[pair_idx] += 1;
+                self.soft_apart_pair_violations[pair_idx] += 1;
             }
         }
 

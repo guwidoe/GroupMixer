@@ -1569,16 +1569,22 @@ mod tests {
             "suites/objective-canonical-stretch-solver3-broad-multiseed-v1.yaml",
         ))
         .expect("solver3 broad multiseed stretch suite should load");
-        assert_eq!(stretch.manifest.default_solver_family.as_deref(), Some("solver3"));
+        assert_eq!(
+            stretch.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
         assert_eq!(stretch.cases.len(), 24);
+        assert!(stretch
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7" }));
         assert!(stretch.cases.iter().any(|case| {
-            case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7"
-        }));
-        assert!(stretch.cases.iter().any(|case| {
-            case.manifest.id == "stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p"
+            case.manifest.id
+                == "stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p"
         }));
         assert!(stretch.cases.iter().all(|case| {
-            case.overrides.seed.is_some() && matches!(case.manifest.class, BenchmarkSuiteClass::Stretch)
+            case.overrides.seed.is_some()
+                && matches!(case.manifest.class, BenchmarkSuiteClass::Stretch)
         }));
     }
 

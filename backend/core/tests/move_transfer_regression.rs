@@ -311,7 +311,7 @@ fn pair_constraint_transfer_delta_matches_apply_and_recalculation() {
 
     state.apply_transfer(0, p0, 0, 1);
 
-    assert_eq!(state.forbidden_pair_violations, vec![1]);
+    assert_eq!(state.soft_apart_pair_violations, vec![1]);
     assert_eq!(state.should_together_violations, vec![1]);
     assert_delta_matches_after(&before, &state, delta);
 }

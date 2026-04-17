@@ -36,7 +36,7 @@ impl State {
     ///
     /// CONSTRAINT VIOLATIONS:
     ///   Clique 0 (['Alice', 'Bob']): 1 violations (Weight: 1000.0)
-    ///   Forbidden Pair 0 ('Charlie' - 'Diana'): 0 violations (Weight: 500.0)
+    ///   Soft-Apart Pair 0 ('Charlie' - 'Diana'): 0 violations (Weight: 500.0)
     ///   Immovable Person Violations: 1
     ///
     /// REPETITION BREAKDOWN:
@@ -173,9 +173,9 @@ impl State {
         let mut has_constraints = false;
 
         // Forbidden pair violations
-        for (pair_idx, &violation_count) in self.forbidden_pair_violations.iter().enumerate() {
+        for (pair_idx, &violation_count) in self.soft_apart_pair_violations.iter().enumerate() {
             if violation_count > 0 {
-                let weight = self.forbidden_pair_weights[pair_idx];
+                let weight = self.soft_apart_pair_weights[pair_idx];
                 breakdown.push_str(&format!(
                     "\n  ShouldNotBeTogether[{}]: {} (weight: {:.1})",
                     pair_idx, violation_count, weight
