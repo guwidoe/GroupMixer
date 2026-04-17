@@ -1,6 +1,7 @@
 use crate::artifacts::BenchmarkComparisonCategory;
 use crate::benchmark_mode::{
     default_benchmark_mode, is_hotpath_benchmark_mode, is_supported_benchmark_mode,
+    SEARCH_ITERATION_BENCHMARK_MODE,
 };
 use anyhow::{bail, Context, Result};
 use gm_core::models::{ApiInput, MovePolicy, SolverConfiguration, SolverKind};
@@ -11,6 +12,7 @@ use std::path::{Component, Path, PathBuf};
 
 pub const SUITE_SCHEMA_VERSION: u32 = 1;
 pub const CASE_SCHEMA_VERSION: u32 = 1;
+const MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS: u64 = 10_000;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[serde(rename_all = "snake_case")]
@@ -510,6 +512,7 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
             default_search_policy,
         )?;
     }
+    validate_search_iteration_iteration_floor(path, manifest)?;
     for case in &manifest.cases {
         validate_case_identity_fields(
             &format!("benchmark suite manifest {} case override", path.display()),
@@ -719,6 +722,53 @@ fn validate_search_policy_override(
             "{} is empty; set no_improvement_iterations and/or simulated_annealing fields",
             context
         );
+    }
+
+    Ok(())
+}
+
+fn validate_search_iteration_iteration_floor(
+    path: &Path,
+    manifest: &BenchmarkSuiteManifest,
+) -> Result<()> {
+    if manifest.benchmark_mode != SEARCH_ITERATION_BENCHMARK_MODE {
+        return Ok(());
+    }
+
+    if let Some(default_iterations) = manifest.default_iterations {
+        if default_iterations < MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS {
+            bail!(
+                "benchmark suite manifest {} uses search_iteration but default_iterations={} is below the required minimum {}; search-iteration regression suites must measure at least {} iterations",
+                path.display(),
+                default_iterations,
+                MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS,
+                MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS,
+            );
+        }
+    }
+
+    for case in manifest.cases.iter().filter(|case| case.enabled) {
+        let effective_iterations = case.iterations.or(manifest.default_iterations);
+        match effective_iterations {
+            Some(iterations) if iterations >= MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS => {}
+            Some(iterations) => {
+                bail!(
+                    "benchmark suite manifest {} case override for {} uses search_iteration with only {} measured iterations; search-iteration regression suites must measure at least {} iterations",
+                    path.display(),
+                    case.manifest,
+                    iterations,
+                    MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS,
+                );
+            }
+            None => {
+                bail!(
+                    "benchmark suite manifest {} case override for {} uses search_iteration without explicit iterations or default_iterations; search-iteration regression suites must declare at least {} measured iterations",
+                    path.display(),
+                    case.manifest,
+                    MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS,
+                );
+            }
+        }
     }
 
     Ok(())
@@ -1333,6 +1383,68 @@ mod tests {
             fixed_iteration.cases[0].overrides.time_limit_seconds,
             Some(120)
         );
+    }
+
+    #[test]
+    fn search_iteration_suites_require_at_least_ten_thousand_measured_iterations() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_dir = temp.path().join("suites");
+        let case_dir = temp.path().join("cases/hotpath");
+        fs::create_dir_all(&suite_dir).expect("mk suite dir");
+        fs::create_dir_all(&case_dir).expect("mk case dir");
+
+        let case_path = case_dir.join("search_iteration_case.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&serde_json::json!({
+                "schema_version": 1,
+                "id": "hotpath.search-iteration.min-iterations-check",
+                "class": "representative",
+                "solver_family": "solver3",
+                "title": "Hotpath search iteration minimum iteration check",
+                "description": "Validation fixture for search_iteration minimum measured iterations.",
+                "tags": ["hotpath", "search", "solver3"],
+                "hotpath_preset": "search_sailing_trip_demo_real_solver3"
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let suite_path = suite_dir.join("hotpath-search-iteration-too-small.yaml");
+        fs::write(
+            &suite_path,
+            [
+                "schema_version: 1",
+                "suite_id: hotpath-search-iteration-too-small",
+                "benchmark_mode: search_iteration",
+                "class: representative",
+                "default_iterations: 9999",
+                "default_warmup_iterations: 1",
+                "cases:",
+                "  - manifest: ../cases/hotpath/search_iteration_case.json",
+            ]
+            .join("\n"),
+        )
+        .expect("write suite");
+
+        let error = load_suite_manifest(&suite_path).unwrap_err();
+        assert!(
+            error.to_string().contains("at least 10000 iterations"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn built_in_search_iteration_suites_declare_honest_iteration_counts() {
+        let representative = load_suite_manifest(Path::new("suites/hotpath-search-iteration.yaml"))
+            .expect("representative search-iteration suite should load");
+        assert_eq!(representative.manifest.default_iterations, Some(10_000));
+
+        let sailing_trip = load_suite_manifest(Path::new(
+            "suites/hotpath-search-iteration-sailing-trip-demo-solver3.yaml",
+        ))
+        .expect("sailing-trip solver3 search-iteration suite should load");
+        assert_eq!(sailing_trip.manifest.default_iterations, Some(10_000));
     }
 
     #[test]
