@@ -38,20 +38,25 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
   const hardPeopleFamily: Extract<Constraint, { type: 'MustStayTogether' | 'MustStayApart' }>['type'] = family === 'MustStayTogether'
     ? 'MustStayTogether'
     : 'MustStayApart';
-  const supportsBulkConvert = family === 'MustStayTogether';
+  const conversionTargetType = family === 'MustStayTogether'
+    ? 'ShouldStayTogether'
+    : family === 'MustStayApart'
+      ? 'ShouldNotBeTogether'
+      : null;
+  const supportsBulkConvert = conversionTargetType !== null;
   const [search, setSearch] = React.useState('');
   const [minMembers, setMinMembers] = React.useState<number | ''>('');
   const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('list');
   const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('edit');
-  const [selectedMustIndices, setSelectedMustIndices] = React.useState<number[]>([]);
-  const [isSelectingMust, setIsSelectingMust] = React.useState(false);
+  const [selectedHardIndices, setSelectedHardIndices] = React.useState<number[]>([]);
+  const [isSelectingHard, setIsSelectingHard] = React.useState(false);
   const [showBulkConvert, setShowBulkConvert] = React.useState(false);
   const [bulkWeight, setBulkWeight] = React.useState<number | ''>(10);
   const handleViewModeChange = React.useCallback((nextMode: SetupCollectionViewMode) => {
     setViewMode(nextMode);
     if (nextMode !== 'cards') {
-      setIsSelectingMust(false);
-      setSelectedMustIndices((current) => (current.length === 0 ? current : []));
+      setIsSelectingHard(false);
+      setSelectedHardIndices((current) => (current.length === 0 ? current : []));
     }
     if (nextMode !== 'list') {
       setGridWorkspaceMode('edit');
@@ -175,29 +180,29 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
             {supportsBulkConvert ? (
               <>
                 <Button
-                  variant={isSelectingMust ? 'primary' : 'secondary'}
+                  variant={isSelectingHard ? 'primary' : 'secondary'}
                   onClick={() => {
-                    setIsSelectingMust((current) => {
+                    setIsSelectingHard((current) => {
                       if (current) {
-                        setSelectedMustIndices([]);
+                        setSelectedHardIndices([]);
                       }
                       return !current;
                     });
                   }}
                 >
-                  {isSelectingMust ? 'Done selecting' : 'Select cards'}
+                  {isSelectingHard ? 'Done selecting' : 'Select cards'}
                 </Button>
                 <SetupActionsMenu
                   label="Actions"
-                  summary={selectedMustIndices.length > 0 ? `Advanced actions · ${selectedMustIndices.length} selected` : 'Advanced actions'}
+                  summary={selectedHardIndices.length > 0 ? `Advanced actions · ${selectedHardIndices.length} selected` : 'Advanced actions'}
                   items={[
                     {
-                      label: `Convert selected to ${getConstraintDisplayName('ShouldStayTogether')}`,
-                      disabled: selectedMustIndices.length === 0,
+                      label: `Convert selected to ${getConstraintDisplayName(conversionTargetType)}`,
+                      disabled: selectedHardIndices.length === 0,
                       description:
-                        selectedMustIndices.length === 0
-                          ? 'Turn on card selection and choose one or more cliques first.'
-                          : 'Turn the selected hard cliques into weighted preferences.',
+                        selectedHardIndices.length === 0
+                          ? 'Turn on card selection and choose one or more constraints first.'
+                          : 'Turn the selected hard constraints into weighted preferences.',
                       onSelect: () => setShowBulkConvert(true),
                     },
                   ]}
@@ -250,17 +255,17 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
               renderCard={({ constraint, index }) => (
                 <SetupItemCard
                   key={index}
-                  selected={selectedMustIndices.includes(index)}
+                  selected={selectedHardIndices.includes(index)}
                   badges={<SetupTypeBadge label={copy.title} />}
                   onOpen={() => onEdit(constraint, index)}
                   openLabel={`Edit ${copy.title.toLowerCase()} constraint`}
                   actions={
                     <>
-                      {supportsBulkConvert && isSelectingMust ? (
+                      {supportsBulkConvert && isSelectingHard ? (
                         <SetupSelectionToggle
-                          selected={selectedMustIndices.includes(index)}
-                          onToggle={() => setSelectedMustIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
-                          label={`${selectedMustIndices.includes(index) ? 'Deselect' : 'Select'} ${copy.title.toLowerCase()} item`}
+                          selected={selectedHardIndices.includes(index)}
+                          onToggle={() => setSelectedHardIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
+                          label={`${selectedHardIndices.includes(index) ? 'Deselect' : 'Select'} ${copy.title.toLowerCase()} item`}
                         />
                       ) : null}
                       <SetupItemActions onDelete={() => onDelete(index)} variant="card" />
@@ -377,10 +382,10 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
           <div className="w-full max-w-md rounded-2xl border px-6 py-6" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
             <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Convert to {getConstraintDisplayName('ShouldStayTogether')}
+              Convert to {getConstraintDisplayName(conversionTargetType)}
             </h3>
             <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {selectedMustIndices.length} selected clique{selectedMustIndices.length === 1 ? '' : 's'} will be converted to {getConstraintDisplayName('ShouldStayTogether')} with the chosen penalty weight.
+              {selectedHardIndices.length} selected {copy.title.toLowerCase()} constraint{selectedHardIndices.length === 1 ? '' : 's'} will be converted to {getConstraintDisplayName(conversionTargetType)} with the chosen penalty weight.
             </p>
             <label className="mt-4 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
               Penalty weight
@@ -392,18 +397,25 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                 variant="primary"
                 onClick={() => {
                   if (bulkWeight === '' || bulkWeight <= 0) return;
-                  setScenario(replaceConstraintsAtIndices(scenario, selectedMustIndices, (currentConstraint) => {
-                    if (currentConstraint.type !== 'MustStayTogether') {
+                  setScenario(replaceConstraintsAtIndices(scenario, selectedHardIndices, (currentConstraint) => {
+                    if (currentConstraint.type !== 'MustStayTogether' && currentConstraint.type !== 'MustStayApart') {
                       return [currentConstraint];
                     }
-                    return [{
-                      type: 'ShouldStayTogether',
-                      people: currentConstraint.people,
-                      sessions: currentConstraint.sessions,
-                      penalty_weight: bulkWeight,
-                    } satisfies Constraint];
+                    return [currentConstraint.type === 'MustStayTogether'
+                      ? {
+                          type: 'ShouldStayTogether',
+                          people: currentConstraint.people,
+                          sessions: currentConstraint.sessions,
+                          penalty_weight: bulkWeight,
+                        } satisfies Constraint
+                      : {
+                          type: 'ShouldNotBeTogether',
+                          people: currentConstraint.people,
+                          sessions: currentConstraint.sessions,
+                          penalty_weight: bulkWeight,
+                        } satisfies Constraint];
                   }));
-                  setSelectedMustIndices([]);
+                  setSelectedHardIndices([]);
                   setShowBulkConvert(false);
                 }}
               >

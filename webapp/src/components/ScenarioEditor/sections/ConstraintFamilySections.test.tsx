@@ -17,6 +17,7 @@ function createScenario(): Scenario {
     num_sessions: 3,
     constraints: [
       { type: 'ImmovablePeople', people: ['p1'], group_id: 'g1', sessions: [0] },
+      { type: 'MustStayApart', people: ['p1', 'p3'], sessions: [1] },
       { type: 'ShouldStayTogether', people: ['p2', 'p3'], penalty_weight: 20, sessions: [0, 1] },
       {
         type: 'AttributeBalance',
@@ -86,6 +87,23 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
   }, 10000);
+
+  it('offers symmetric hard-to-soft conversion for keep-apart constraints', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <HardConstraintFamilySection family="MustStayApart" onAdd={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    expect(screen.getByRole('heading', { name: /keep apart/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    await user.click(screen.getByRole('button', { name: /select cards/i }));
+    await user.click(screen.getByRole('button', { name: /select keep apart item/i }));
+    await user.click(screen.getByRole('button', { name: /^actions$/i }));
+
+    expect(screen.getByRole('button', { name: /convert selected to prefer apart/i })).toBeInTheDocument();
+  });
 
   it('uses the shared session scope editor for fixed placements in list edit mode', async () => {
     const user = userEvent.setup();
