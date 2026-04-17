@@ -231,6 +231,22 @@ fn ownsg_family_constructs_90_player_case() {
 }
 
 #[test]
+fn ownsg_family_constructs_96_player_case() {
+    let entry = crate::solver5::catalog::ownsg::exact_case(12, 8)
+        .expect("ownsg catalog should expose the 12-8-6 case");
+    let result = families::construct_own_social_golfer(entry);
+
+    assert_eq!(result.family.label(), "ownsg");
+    assert_eq!(result.schedule.len(), 6);
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 7,
+        }
+    );
+}
+
+#[test]
 fn ownsg_family_constructs_120_player_case() {
     let entry = crate::solver5::catalog::ownsg::exact_case(20, 6)
         .expect("ownsg catalog should expose the 20-6-13 case");

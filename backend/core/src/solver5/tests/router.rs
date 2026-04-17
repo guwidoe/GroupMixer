@@ -275,6 +275,25 @@ fn router_selects_ownsg_for_10_7_7() {
 }
 
 #[test]
+fn router_selects_ownsg_for_12_8_6() {
+    let input = pure_input(12, 8, 6);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 12-8-6");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::OwnSocialGolfer);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::OwnSocialGolfer
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 6,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 7,
+                    },
+                }
+    }));
+}
+
+#[test]
 fn router_selects_ownsg_for_20_6_13() {
     let input = pure_input(20, 6, 13);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");

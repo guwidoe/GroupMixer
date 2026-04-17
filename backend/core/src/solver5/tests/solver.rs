@@ -262,7 +262,7 @@ fn solver5_solves_ownsg_10_9_5_case() {
 fn solver5_solves_ownsg_supplementary_cases() {
     let solver = SearchEngine::new(&pure_input(12, 7, 7).solver);
 
-    for (g, p, w) in [(12, 7, 7), (14, 6, 9), (15, 6, 10), (20, 6, 13)] {
+    for (g, p, w) in [(12, 7, 7), (12, 8, 6), (14, 6, 9), (15, 6, 10), (20, 6, 13)] {
         let input = pure_input(g, p, w);
         let result = solver
             .solve(&input)
