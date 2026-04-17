@@ -289,6 +289,21 @@ fn solver5_solves_mols_product_cases() {
 }
 
 #[test]
+fn solver5_solves_molr_from_mols_cases() {
+    let solver = SearchEngine::new(&pure_input(18, 8, 6).solver);
+
+    for (g, p, w) in [(12, 12, 7), (14, 10, 5), (15, 10, 5), (18, 8, 6), (18, 9, 7), (18, 10, 6)] {
+        let input = pure_input(g, p, w);
+        let result = solver
+            .solve(&input)
+            .unwrap_or_else(|_| panic!("molr from mols should solve {g}-{p}-{w}"));
+
+        assert_eq!(result.final_score, 0.0, "{g}-{p}-{w} should stay pure-SGP");
+        assert_eq!(result.schedule.len(), w);
+    }
+}
+
+#[test]
 fn solver5_solves_molr_group_fill_10_10_4_case() {
     let input = pure_input(10, 10, 4);
     let solver = SearchEngine::new(&input.solver);

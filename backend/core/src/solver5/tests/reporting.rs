@@ -37,6 +37,7 @@ fn default_target_matrix_exposes_expected_cells_and_abbreviations() {
     );
     assert_eq!(matrix.abbreviation_for("mols_catalog"), Some("MOLS"));
     assert_eq!(matrix.abbreviation_for("mols_product"), Some("MOLSx"));
+    assert_eq!(matrix.abbreviation_for("molr_from_mols"), Some("MOLR"));
     assert_eq!(matrix.abbreviation_for("ownsg"), Some("ownSG"));
     assert_eq!(matrix.abbreviation_for("ritd"), Some("RITD"));
     assert_eq!(matrix.abbreviation_for("molr_group_fill"), Some("MOLR+G"));

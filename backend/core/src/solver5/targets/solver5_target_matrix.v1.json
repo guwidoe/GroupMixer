@@ -508,6 +508,7 @@
     "nkts": "NKTS",
     "mols_catalog": "MOLS",
     "mols_product": "MOLSx",
+    "molr_from_mols": "MOLR",
     "ownsg": "ownSG",
     "ritd": "RITD",
     "molr_group_fill": "MOLR+G",
