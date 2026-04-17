@@ -15,7 +15,13 @@ pub(crate) use correctness::maybe_run_sampled_correctness_check;
 use diversification::{
     extend_no_improvement_streak, should_attempt_diversification_burst, try_diversification_burst,
 };
-pub(crate) use driver::{polish_state, run, LocalImproverBudget, LocalImproverRunResult};
+#[cfg(any(
+    test,
+    feature = "solver3-experimental-memetic",
+    feature = "solver3-experimental-recombination"
+))]
+pub(crate) use driver::polish_state;
+pub(crate) use driver::{run, LocalImproverBudget, LocalImproverRunResult};
 use driver::{run_local_improver, LocalImproverHooks};
 pub(crate) use result::{apply_previewed_move, build_solver_result, should_emit_progress_callback};
 

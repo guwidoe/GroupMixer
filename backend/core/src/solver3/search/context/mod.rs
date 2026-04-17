@@ -11,10 +11,7 @@ pub(crate) use config::{
     AdaptiveRawChildRetentionConfig, DonorSessionTransplantConfig,
     MultiRootBalancedSessionInheritanceConfig, SessionAlignedPathRelinkingConfig,
 };
-pub(crate) use policy_memory::{
-    IteratedLocalSearchMemory, LateAcceptanceMemory, SearchPolicyMemory, TabuPolicyMemory,
-    ThresholdAcceptanceMemory,
-};
+pub(crate) use policy_memory::{IteratedLocalSearchMemory, SearchPolicyMemory};
 pub(crate) use progress::SearchProgressState;
 
 #[cfg(test)]
