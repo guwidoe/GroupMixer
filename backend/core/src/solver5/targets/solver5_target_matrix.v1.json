@@ -508,6 +508,7 @@
     "nkts": "NKTS",
     "mols_catalog": "MOLS",
     "mols_product": "MOLSx",
+    "rtd_qdm_catalog": "RTD-QDM",
     "molr_from_mols": "MOLR",
     "ownsg": "ownSG",
     "ritd": "RITD",

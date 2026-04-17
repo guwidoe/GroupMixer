@@ -18,6 +18,7 @@ mod nkts;
 mod ownsg;
 mod p4_rbibd;
 mod published;
+mod qdm_rtd;
 mod rbibd;
 mod ritd;
 mod round_robin;
@@ -32,6 +33,7 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
         &NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &MOLS_CATALOG_FAMILY,
         &MOLS_PRODUCT_FAMILY,
+        &RTD_QDM_CATALOG_FAMILY,
         &OWN_SOCIAL_GOLFER_FAMILY,
         &MOLR_FROM_MOLS_FAMILY,
         &RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY,
@@ -52,6 +54,7 @@ struct KirkmanTripleSystemFamily;
 struct NearlyKirkmanTripleSystemFamily;
 struct MolsCatalogFamily;
 struct MolsProductFamily;
+struct RtdQdmCatalogFamily;
 struct MolrFromMolsFamily;
 struct OwnSocialGolferFamily;
 struct ResolvableIncompleteTransversalDesignFamily;
@@ -70,6 +73,7 @@ static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
     NearlyKirkmanTripleSystemFamily;
 static MOLS_CATALOG_FAMILY: MolsCatalogFamily = MolsCatalogFamily;
 static MOLS_PRODUCT_FAMILY: MolsProductFamily = MolsProductFamily;
+static RTD_QDM_CATALOG_FAMILY: RtdQdmCatalogFamily = RtdQdmCatalogFamily;
 static MOLR_FROM_MOLS_FAMILY: MolrFromMolsFamily = MolrFromMolsFamily;
 static OWN_SOCIAL_GOLFER_FAMILY: OwnSocialGolferFamily = OwnSocialGolferFamily;
 static RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY:
@@ -370,6 +374,36 @@ impl ConstructionFamily for MolrFromMolsFamily {
 
         let spec = mols_product::best_molr_spec(problem.num_groups, problem.group_size)?;
         Some(construct_molr_from_product_mols(spec, problem.group_size))
+    }
+}
+
+impl ConstructionFamily for RtdQdmCatalogFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::RtdQdmCatalog
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        let Some(entry) = catalog::qdm::exact_case(problem.num_groups, problem.group_size) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires a catalog-backed quasi-difference matrix route",
+            };
+        };
+
+        let Some(result) = self.construct(problem) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "construction failed despite matching QDM RTD preconditions",
+            };
+        };
+
+        debug_assert_eq!(entry.num_groups, problem.num_groups);
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: result.max_supported_weeks,
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        let entry = catalog::qdm::exact_case(problem.num_groups, problem.group_size)?;
+        Some(construct_qdm_catalog_rtd(entry))
     }
 }
 
@@ -911,6 +945,54 @@ pub(super) fn construct_molr_from_explicit_mols(
     }
 }
 
+pub(super) fn construct_qdm_catalog_rtd(
+    entry: &'static catalog::qdm::QdmCatalogEntry,
+) -> ConstructionResult {
+    let mut result = ConstructionResult::new(
+        qdm_rtd::construct(entry),
+        ConstructionFamilyId::RtdQdmCatalog,
+    )
+    .with_quality(classify_quality(entry.num_groups, entry.group_size, entry.num_groups))
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires an explicit catalog-backed quasi-difference matrix that yields a resolvable OA(group_size+1, num_groups)",
+            "uses the Sage / Handbook quasi-difference-matrix construction to build OA(group_size+1, num_groups), then reads the resolvable RTD(group_size, num_groups) classes as weeks",
+            "can append latent-group weeks when group_size divides num_groups and the residual subgroup problem is constructible",
+        ],
+    })
+    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::qdm::source().citation)
+    .with_evidence(EvidenceSourceKind::CatalogFact, entry.citation)
+    .with_evidence(
+        EvidenceSourceKind::StructuralComposition,
+        "resolvable_transversal_from_quasi_difference_matrix",
+    );
+
+    if entry.num_groups % entry.group_size == 0 && (entry.num_groups / entry.group_size) >= 2 {
+        result = result.with_residual(ResidualStructure::TransversalLatentGroups {
+            subgroup_count: entry.group_size,
+            subgroup_size: entry.num_groups / entry.group_size,
+        });
+    }
+
+    let result = composition::apply_recursive_transversal_lift(
+        entry.num_groups,
+        entry.group_size,
+        result,
+        construct_max_schedule_recursive,
+    );
+    let improved_weeks = result.max_supported_weeks;
+    let result = result.with_quality(classify_quality(
+        entry.num_groups,
+        entry.group_size,
+        improved_weeks,
+    ));
+    if result.provenance.operators.is_empty() {
+        result
+    } else {
+        result.clear_residual()
+    }
+}
+
 pub(super) fn construct_molr_from_product_mols(
     spec: mols_product::MolsProductSpec,
     group_size: usize,
@@ -1166,6 +1248,10 @@ fn construct_max_schedule_recursive(
 
     if let Some(spec) = mols_product::best_spec(num_groups, group_size) {
         return Some(construct_product_mols_transversal(spec, group_size));
+    }
+
+    if let Some(entry) = catalog::qdm::exact_case(num_groups, group_size) {
+        return Some(construct_qdm_catalog_rtd(entry));
     }
 
     if let Some(entry) = catalog::rbibd::exact_case(num_groups, group_size) {

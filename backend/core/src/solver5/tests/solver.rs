@@ -289,6 +289,18 @@ fn solver5_solves_mols_product_cases() {
 }
 
 #[test]
+fn solver5_solves_qdm_rtd_catalog_case() {
+    let input = pure_input(20, 5, 21);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("qdm rtd catalog should solve 20-5-21");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 21);
+}
+
+#[test]
 fn solver5_solves_molr_from_mols_cases() {
     let solver = SearchEngine::new(&pure_input(18, 8, 6).solver);
 

@@ -37,6 +37,11 @@ METHOD_REFERENCE = [
         "solves": "composite transversal constructions built from direct products of smaller prime-power MOLS banks, again using one product square as the parallel-class index",
     },
     {
+        "code": "RTD-QDM",
+        "stands_for": "resolvable transversal design from a quasi-difference matrix",
+        "solves": "catalog-backed non-prime-power RTD constructions built by expanding an explicit quasi-difference matrix into a resolvable orthogonal array and then reading off the parallel classes",
+    },
+    {
         "code": "MOLR",
         "stands_for": "mutually orthogonal Latin rectangles from an explicit MOLS bank",
         "solves": "Sharma-Das lower-bound constructions that use the first k rows of an explicit MOLS bank to produce g+1 rounds, with optional extra clique rounds when the unused rows support them",

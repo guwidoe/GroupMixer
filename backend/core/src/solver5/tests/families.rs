@@ -330,6 +330,26 @@ fn mols_product_family_constructs_and_lifts_20_4_case() {
 }
 
 #[test]
+fn qdm_rtd_catalog_family_constructs_and_lifts_20_5_case() {
+    let entry = crate::solver5::catalog::qdm::exact_case(20, 5)
+        .expect("qdm catalog should expose the 20-5 case");
+    let result = families::construct_qdm_catalog_rtd(entry);
+
+    assert_eq!(result.family.label(), "rtd_qdm_catalog");
+    assert_eq!(result.schedule.len(), 21);
+    assert_eq!(
+        result.provenance.operators,
+        vec![crate::solver5::types::CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 3,
+        }
+    );
+}
+
+#[test]
 fn molr_from_mols_family_constructs_high_p_order_18_case() {
     let entry = crate::solver5::catalog::mols::exact_case(18)
         .expect("mols catalog should expose the 18-group case");
@@ -524,6 +544,7 @@ fn family_registry_exposes_current_portfolio_order() {
             "nkts",
             "mols_catalog",
             "mols_product",
+            "rtd_qdm_catalog",
             "ownsg",
             "molr_from_mols",
             "ritd",
