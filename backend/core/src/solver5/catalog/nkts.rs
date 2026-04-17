@@ -83,6 +83,26 @@ const KP_30_WEEKS: &[&[&str]] = &[
     ],
 ];
 
+const KP_36_WEEKS: &[&[&str]] = &[
+    &["2OP", "BVL", "D8K", "XIM", "CRU", "7NW", "AE4", "Y5Q", "3TH", "09S", "FG1", "6JZ"],
+    &["3PQ", "CWM", "E9L", "HJN", "DSV", "8OX", "BF5", "Y6R", "4UI", "1AT", "G02", "7KZ"],
+    &["4QR", "DXN", "FAM", "IKO", "ETW", "9PH", "CG6", "Y7S", "5VJ", "2BU", "013", "8LZ"],
+    &["5RS", "EHO", "GBN", "JLP", "FUX", "AQI", "D07", "Y8T", "6WK", "3CV", "124", "9MZ"],
+    &["6ST", "FIP", "0CO", "KMQ", "GVH", "BRJ", "E18", "Y9U", "7XL", "4DW", "235", "ANZ"],
+    &["7TU", "GJQ", "1DP", "LNR", "0WI", "CSK", "F29", "YAV", "8HM", "5EX", "346", "BOZ"],
+    &["8UV", "0KR", "2EQ", "MOS", "1XJ", "DTL", "G3A", "YBW", "9IN", "6FH", "457", "CPZ"],
+    &["9VW", "1LS", "3FR", "NPT", "2HK", "EUM", "04B", "YCX", "AJO", "7GI", "568", "DQZ"],
+    &["AWX", "2MT", "4GS", "OQU", "3IL", "FVN", "15C", "YDH", "BKP", "80J", "679", "ERZ"],
+    &["BXH", "3NU", "50T", "PRV", "4JM", "GWO", "26D", "YEI", "CLQ", "91K", "78A", "FSZ"],
+    &["CHI", "4OV", "61U", "QSW", "5KN", "0XP", "37E", "YFJ", "DMR", "A2L", "89B", "GTZ"],
+    &["DIJ", "5PW", "72V", "RTX", "6LO", "1HQ", "48F", "YGK", "ENS", "B3M", "9AC", "0UZ"],
+    &["EJK", "6QX", "83W", "SUH", "7MP", "2IR", "59G", "Y0L", "FOT", "C4N", "ABD", "1VZ"],
+    &["FKL", "7RH", "94X", "TVI", "8NQ", "3JS", "6A0", "Y1M", "GPU", "D5O", "BCE", "2WZ"],
+    &["GLM", "8SI", "A5H", "UWJ", "9OR", "4KT", "7B1", "Y2N", "0QV", "E6P", "CDF", "3XZ"],
+    &["0MN", "9TJ", "B6I", "VXK", "APS", "5LU", "8C2", "Y3O", "1RW", "F7Q", "DEG", "4HZ"],
+    &["1NO", "AUK", "C7J", "WHL", "BQT", "6MV", "9D3", "Y4P", "2SX", "G8R", "EF0", "5IZ"],
+];
+
 const NKTS_CASES: &[NktsCatalogEntry] = &[
     NktsCatalogEntry {
         num_groups: 6,
@@ -101,6 +121,12 @@ const NKTS_CASES: &[NktsCatalogEntry] = &[
         alphabet: "0123456789ABCDEFGHIJKLMNOPQRST",
         encoded_weeks: KP_30_WEEKS,
         citation: "Explicit KP(30,14) direct construction via two initial parallel classes developed mod 7, as reproduced in the 2017 Konstanz thesis 'Construction, Application and Extension of Resolvable Balanced Incomplete Block Designs in the Design of Experiments', citing Baker–Wilson 1977",
+    },
+    NktsCatalogEntry {
+        num_groups: 12,
+        alphabet: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        encoded_weeks: KP_36_WEEKS,
+        citation: "Explicit KP(36,17) direct construction via a single initial parallel class developed mod 17, as reproduced in the 2017 Konstanz thesis 'Construction, Application and Extension of Resolvable Balanced Incomplete Block Designs in the Design of Experiments', citing Wallis 2013 / Kotzig–Rosa",
     },
 ];
 
