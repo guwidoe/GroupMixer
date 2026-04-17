@@ -12,7 +12,7 @@ fn router_selects_round_robin_for_p2_cases() {
     let decision = attempt_construction(&problem).expect("router should find round robin");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::RoundRobin);
-    assert_eq!(decision.attempts.len(), 13);
+    assert_eq!(decision.attempts.len(), 14);
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::RoundRobin
             && attempt.status
@@ -270,6 +270,48 @@ fn router_selects_ownsg_for_10_7_7() {
                     quality: ConstructionQuality::LowerBound {
                         gap_to_counting_bound: 4,
                     },
+                }
+    }));
+}
+
+#[test]
+fn router_selects_mols_catalog_for_12_6_13() {
+    let input = pure_input(12, 6, 13);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 12-6-13");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::MolsCatalog);
+    assert_eq!(
+        decision.result.provenance.operators,
+        vec![CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::MolsCatalog
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 13,
+                    quality: ConstructionQuality::NearFrontier { missing_weeks: 1 },
+                }
+    }));
+}
+
+#[test]
+fn router_selects_mols_catalog_for_15_3_22() {
+    let input = pure_input(15, 3, 22);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 15-3-22");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::MolsCatalog);
+    assert_eq!(
+        decision.result.provenance.operators,
+        vec![CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::MolsCatalog
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 22,
+                    quality: ConstructionQuality::ExactFrontier,
                 }
     }));
 }

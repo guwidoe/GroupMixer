@@ -259,6 +259,21 @@ fn solver5_solves_rbibd_15_8_17_case() {
 }
 
 #[test]
+fn solver5_solves_mols_catalog_cases() {
+    let solver = SearchEngine::new(&pure_input(12, 6, 13).solver);
+
+    for (g, p, w) in [(12, 6, 13), (15, 3, 22), (14, 5, 14), (18, 4, 18)] {
+        let input = pure_input(g, p, w);
+        let result = solver
+            .solve(&input)
+            .unwrap_or_else(|_| panic!("mols catalog should solve {g}-{p}-{w}"));
+
+        assert_eq!(result.final_score, 0.0, "{g}-{p}-{w} should stay pure-SGP");
+        assert_eq!(result.schedule.len(), w);
+    }
+}
+
+#[test]
 fn solver5_solves_molr_group_fill_10_10_4_case() {
     let input = pure_input(10, 10, 4);
     let solver = SearchEngine::new(&input.solver);
