@@ -1,5 +1,6 @@
 {
   "workingDir": "/home/ralph/ralph-repos/GroupMixer-worktrees/solver5-router-policy",
-  "maxIterations": 200,
-  "autoCompactResume": true
+  "maxIterations": 130,
+  "autoCompactResume": true,
+  "maxAutoResumeTurns": 100
 }
