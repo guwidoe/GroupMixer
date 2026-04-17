@@ -6660,8 +6660,8 @@
     "solver": {
       "solver_type": "solver3",
       "stop_conditions": {
-        "max_iterations": 25000,
-        "time_limit_seconds": 3,
+        "max_iterations": 1000,
+        "time_limit_seconds": null,
         "no_improvement_iterations": null
       },
       "solver_params": {
