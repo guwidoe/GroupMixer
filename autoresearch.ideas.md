@@ -9,7 +9,7 @@
 - Do **not** retry the naive cyclic `p=3` transversal-design fallback for non-prime-power group counts; it benchmarked flat and did not produce score-zero constructions on the even composite rows.
 - Build out the **general solver5 router** so every relevant `p` in the benchmark matrix trends toward a recognizable family-selection policy.
 - The fixed scored matrix frontier is now closed. If continuing, prioritize reusable theorem-family work over more patch-bank hunting.
-- The finite-field resolvable `(v,4,1)`-BIBD route for `v = 3q + 1` is now landed; do not re-spend cycles on `7-4-9` / `10-4-13` unless a regression appears.
+- The finite-field resolvable `(v,4,1)`-BIBD route for `v = 3q + 1` is now landed; it now also covers `19-4-25` after adding `GF(25)` support, so do not re-spend cycles on `7-4-9` / `10-4-13` / `19-4-25` unless a regression appears.
 - The universal single-round partition lower bound is now landed; do not spend more loop time rediscovering generic `W=1` coverage.
 - The live scored target gaps in the fixed matrix are now closed; do not keep spending loop time on already-landed frontier cells.
 - The exact `9-4-11` lane has now been landed as a source-backed published schedule; treat more 36-player foursomes work as stale unless it yields reusable theory beyond that benchmark cell.

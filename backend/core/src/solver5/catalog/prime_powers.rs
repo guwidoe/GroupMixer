@@ -99,6 +99,13 @@ const SUPPORTED_FIELDS: &[PrimePowerFieldSpec] = &[
         modulus: &[1, 0],
         source: FINITE_FIELD_SOURCE,
     },
+    PrimePowerFieldSpec {
+        order: 25,
+        prime: 5,
+        degree: 2,
+        modulus: &[2, 0, 1],
+        source: FINITE_FIELD_SOURCE,
+    },
 ];
 
 pub(crate) fn supported_field(order: usize) -> Option<PrimePowerFieldSpec> {

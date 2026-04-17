@@ -175,7 +175,7 @@ Interpretation note:
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
-- Prime-order RTD / affine-plane constructors were added first, then generalized to supported prime-power orders `4`, `8`, and `9` via finite-field arithmetic.
+- Prime-order RTD / affine-plane constructors were added first, then generalized to supported prime-power orders `4`, `8`, and `9` via finite-field arithmetic. Under the three-matrix benchmark this was later extended to the additional benchmark-relevant orders `11`, `16`, `17`, `19`, and `25` (with `25` specifically unlocking the `19-4-25` p4 RBIBD line).
 - Recursive lifting across RTD latent groups is now a live mechanism and should be judged structurally, not as a one-off `9-3-13` trick.
 - Kirkman `6t+1` is now part of the constructive baseline for supported `p=3` cases.
 - The constructor-portfolio architecture pass is complete: registry, metadata, catalog layer, registry-driven router, handoff seam, and portfolio docs are now in place.
