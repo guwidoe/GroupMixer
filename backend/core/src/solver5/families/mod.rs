@@ -4,13 +4,14 @@ use super::field::FiniteField;
 use super::portfolio::{ConstructionFamily, FamilyEvaluation};
 use super::problem::PureSgpProblem;
 use super::types::{
-    ConstructionApplicability, ConstructionFamilyId, ConstructionQuality, ConstructionResult,
-    EvidenceSourceKind, ResidualStructure, Schedule,
+    CompositionOperatorId, ConstructionApplicability, ConstructionFamilyId, ConstructionQuality,
+    ConstructionResult, EvidenceSourceKind, ResidualStructure, Schedule,
 };
 
 mod affine_plane;
 mod kirkman;
 mod molr;
+mod molr_from_mols;
 mod mols;
 pub(super) mod mols_product;
 mod nkts;
@@ -32,6 +33,7 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
         &MOLS_CATALOG_FAMILY,
         &MOLS_PRODUCT_FAMILY,
         &OWN_SOCIAL_GOLFER_FAMILY,
+        &MOLR_FROM_MOLS_FAMILY,
         &RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY,
         &MOLR_GROUP_FILL_FAMILY,
         &AFFINE_PLANE_PRIME_POWER_FAMILY,
@@ -50,6 +52,7 @@ struct KirkmanTripleSystemFamily;
 struct NearlyKirkmanTripleSystemFamily;
 struct MolsCatalogFamily;
 struct MolsProductFamily;
+struct MolrFromMolsFamily;
 struct OwnSocialGolferFamily;
 struct ResolvableIncompleteTransversalDesignFamily;
 struct MolrGroupFillFamily;
@@ -67,6 +70,7 @@ static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
     NearlyKirkmanTripleSystemFamily;
 static MOLS_CATALOG_FAMILY: MolsCatalogFamily = MolsCatalogFamily;
 static MOLS_PRODUCT_FAMILY: MolsProductFamily = MolsProductFamily;
+static MOLR_FROM_MOLS_FAMILY: MolrFromMolsFamily = MolrFromMolsFamily;
 static OWN_SOCIAL_GOLFER_FAMILY: OwnSocialGolferFamily = OwnSocialGolferFamily;
 static RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY:
     ResolvableIncompleteTransversalDesignFamily = ResolvableIncompleteTransversalDesignFamily;
@@ -327,6 +331,43 @@ impl ConstructionFamily for MolsProductFamily {
     fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
         let spec = mols_product::best_spec(problem.num_groups, problem.group_size)?;
         Some(construct_product_mols_transversal(spec, problem.group_size))
+    }
+}
+
+impl ConstructionFamily for MolrFromMolsFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::MolrFromMols
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        let Some(entry) = catalog::mols::exact_case(problem.num_groups) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires an explicit MOLS catalog bank for the group count",
+            };
+        };
+
+        if !((entry.mols_count + 2)..=entry.num_groups).contains(&problem.group_size) {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires group_size above the exact MOLS transversal range and at most the group count",
+            };
+        }
+
+        let Some(result) = self.construct(problem) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "construction failed despite matching Sharma-Das MOLR preconditions",
+            };
+        };
+
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: result.max_supported_weeks,
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        let entry = catalog::mols::exact_case(problem.num_groups)?;
+        ((entry.mols_count + 2)..=entry.num_groups)
+            .contains(&problem.group_size)
+            .then(|| construct_molr_from_explicit_mols(entry, problem.group_size))
     }
 }
 
@@ -818,6 +859,56 @@ pub(super) fn construct_product_mols_transversal(
     }
 }
 
+pub(super) fn construct_molr_from_explicit_mols(
+    entry: &'static catalog::mols::MolsCatalogEntry,
+    group_size: usize,
+) -> ConstructionResult {
+    let base_weeks = entry.mols_count + 1;
+    let mut result = ConstructionResult::new(
+        molr_from_mols::construct(entry, group_size),
+        ConstructionFamilyId::MolrFromMols,
+    )
+    .with_quality(classify_quality(entry.num_groups, group_size, base_weeks))
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires an explicit MOLS catalog bank for the group count",
+            "uses the Sharma-Das MOLR construction from the first group_size rows of the explicit MOLS bank",
+            "can append clique-derived rounds when the unused row cliques themselves support further pure-SGP weeks",
+        ],
+    })
+    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::mols::source().citation)
+    .with_evidence(EvidenceSourceKind::CatalogFact, entry.citation)
+    .with_evidence(EvidenceSourceKind::TheoremFamily, "sharma_das_molr_from_explicit_mols");
+
+    if entry.num_groups == group_size {
+        result.schedule.extend(molr_from_mols::row_fill_week(
+            entry.num_groups,
+            group_size,
+        ));
+        result.max_supported_weeks = result.schedule.len();
+        result = result.add_operator(CompositionOperatorId::RecursiveTransversalLift);
+    } else if entry.num_groups % group_size == 0 && (entry.num_groups / group_size) >= 2 {
+        result = result.with_residual(ResidualStructure::TransversalLatentGroups {
+            subgroup_count: group_size,
+            subgroup_size: entry.num_groups / group_size,
+        });
+        result = composition::apply_recursive_transversal_lift(
+            entry.num_groups,
+            group_size,
+            result,
+            construct_max_schedule_recursive,
+        );
+    }
+
+    let improved_weeks = result.max_supported_weeks;
+    let result = result.with_quality(classify_quality(entry.num_groups, group_size, improved_weeks));
+    if result.provenance.operators.is_empty() {
+        result
+    } else {
+        result.clear_residual()
+    }
+}
+
 pub(super) fn construct_resolvable_incomplete_transversal_design(
     entry: &'static catalog::ritd::RitdCatalogEntry,
 ) -> ConstructionResult {
@@ -1017,6 +1108,12 @@ fn construct_max_schedule_recursive(
 
     if let Some(entry) = catalog::ownsg::exact_case(num_groups, group_size) {
         return Some(construct_own_social_golfer(entry));
+    }
+
+    if let Some(entry) = catalog::mols::exact_case(num_groups) {
+        if ((entry.mols_count + 2)..=entry.num_groups).contains(&group_size) {
+            return Some(construct_molr_from_explicit_mols(entry, group_size));
+        }
     }
 
     if let Some(entry) = catalog::ritd::exact_case(num_groups, group_size) {

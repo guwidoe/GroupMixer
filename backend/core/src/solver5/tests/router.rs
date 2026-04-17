@@ -12,7 +12,7 @@ fn router_selects_round_robin_for_p2_cases() {
     let decision = attempt_construction(&problem).expect("router should find round robin");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::RoundRobin);
-    assert_eq!(decision.attempts.len(), 15);
+    assert_eq!(decision.attempts.len(), 16);
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::RoundRobin
             && attempt.status
@@ -394,6 +394,48 @@ fn router_selects_mols_product_for_20_4_25() {
                 == FamilyAttemptStatus::Selected {
                     max_supported_weeks: 25,
                     quality: ConstructionQuality::NearFrontier { missing_weeks: 1 },
+                }
+    }));
+}
+
+#[test]
+fn router_selects_molr_from_mols_for_18_8_6() {
+    let input = pure_input(18, 8, 6);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 18-8-6");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::MolrFromMols);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::MolrFromMols
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 6,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 14,
+                    },
+                }
+    }));
+}
+
+#[test]
+fn router_selects_molr_from_mols_for_12_12_7() {
+    let input = pure_input(12, 12, 7);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 12-12-7");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::MolrFromMols);
+    assert_eq!(
+        decision.result.provenance.operators,
+        vec![CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::MolrFromMols
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 7,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 6,
+                    },
                 }
     }));
 }

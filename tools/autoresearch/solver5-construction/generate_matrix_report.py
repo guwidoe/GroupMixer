@@ -37,6 +37,11 @@ METHOD_REFERENCE = [
         "solves": "composite transversal constructions built from direct products of smaller prime-power MOLS banks, again using one product square as the parallel-class index",
     },
     {
+        "code": "MOLR",
+        "stands_for": "mutually orthogonal Latin rectangles from an explicit MOLS bank",
+        "solves": "Sharma-Das lower-bound constructions that use the first k rows of an explicit MOLS bank to produce g+1 rounds, with optional extra clique rounds when the unused rows support them",
+    },
+    {
         "code": "ownSG",
         "stands_for": "starter-block own-social-golfer construction",
         "solves": "catalog-backed Appendix A starter-block development family; currently covers large `10-p` rows such as `10-6-7`, `10-7-7`, `10-8-5`, and `10-9-5`",
@@ -574,7 +579,7 @@ def main():
         render_border_swatch("optimum unknown", "border:2px dashed #94a3b8;"),
         "</div>",
         "<div class='legend-row legend-corners'><span class='legend-key'>Corners</span> <span><code>O</code> top-left optimum</span> <span><code>T</code> top-right roadmap target</span> <span><code>L</code> bottom-left literature lower bound</span> <span>tiny blue superscripts on target labels link into the literature reference table below when a source is curated</span></div>",
-        "<div class='legend-row legend-corners'><span class='legend-key'>Method badges</span> <span><code>RR</code> round robin</span> <span><code>NKTS</code> nearly Kirkman triple system</span> <span><code>ownSG</code> starter-block own-social-golfer construction</span> <span><code>RITD</code> resolvable incomplete transversal design</span> <span><code>PSB</code> published schedule bank</span></div>",
+        "<div class='legend-row legend-corners'><span class='legend-key'>Method badges</span> <span><code>RR</code> round robin</span> <span><code>NKTS</code> nearly Kirkman triple system</span> <span><code>MOLR</code> Latin-rectangle lower bound from explicit MOLS</span> <span><code>ownSG</code> starter-block own-social-golfer construction</span> <span><code>RITD</code> resolvable incomplete transversal design</span> <span><code>PSB</code> published schedule bank</span></div>",
         "<div class='legend-row legend-corners'><span class='legend-key'>Additional benchmark matrices</span> <span><code>T</code> top-right conservative literature target when curated from the 2026 paper</span> <span><code>U</code> bottom-left counting upper bound when a curated target exists</span> <span>tiny blue superscripts next to additional-matrix <code>T</code> labels link into the literature reference table below</span></div>",
         "<div class='sample-grid'>",
         render_sample(
