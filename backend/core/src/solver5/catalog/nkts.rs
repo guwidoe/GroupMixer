@@ -103,6 +103,32 @@ const KP_36_WEEKS: &[&[&str]] = &[
     &["1NO", "AUK", "C7J", "WHL", "BQT", "6MV", "9D3", "Y4P", "2SX", "G8R", "EF0", "5IZ"],
 ];
 
+const KP_48_WEEKS: &[&[&str]] = &[
+    &["kEj", "124", "5AK", "37i", "6Fa", "8Jf", "9GZ", "BHN", "lbM", "OPR", "SXh", "QUL", "TcD", "VgI", "WdC", "Ye0"],
+    &["kFN", "235", "6BL", "48j", "7Gb", "9Kg", "AHa", "CIO", "lc0", "PQS", "TYi", "RVM", "UdE", "WhJ", "XeD", "Zf1"],
+    &["kGO", "346", "7CM", "59N", "8Hc", "ALh", "BIb", "DJP", "ld1", "QRT", "UZj", "SW0", "VeF", "XiK", "YfE", "ag2"],
+    &["kHP", "457", "8D0", "6AO", "9Id", "BMi", "CJc", "EKQ", "le2", "RSU", "VaN", "TX1", "WfG", "YjL", "ZgF", "bh3"],
+    &["kIQ", "568", "9E1", "7BP", "AJe", "C0j", "DKd", "FLR", "lf3", "STV", "WbO", "UY2", "XgH", "ZNM", "ahG", "ci4"],
+    &["kJR", "679", "AF2", "8CQ", "BKf", "D1N", "ELe", "GMS", "lg4", "TUW", "XcP", "VZ3", "YhI", "aO0", "biH", "dj5"],
+    &["kKS", "78A", "BG3", "9DR", "CLg", "E2O", "FMf", "H0T", "lh5", "UVX", "YdQ", "Wa4", "ZiJ", "bP1", "cjI", "eN6"],
+    &["kLT", "89B", "CH4", "AES", "DMh", "F3P", "G0g", "I1U", "li6", "VWY", "ZeR", "Xb5", "ajK", "cQ2", "dNJ", "fO7"],
+    &["kMU", "9AC", "DI5", "BFT", "E0i", "G4Q", "H1h", "J2V", "lj7", "WXZ", "afS", "Yc6", "bNL", "dR3", "eOK", "gP8"],
+    &["k0V", "ABD", "EJ6", "CGU", "F1j", "H5R", "I2i", "K3W", "lN8", "XYa", "bgT", "Zd7", "cOM", "eS4", "fPL", "hQ9"],
+    &["k1W", "BCE", "FK7", "DHV", "G2N", "I6S", "J3j", "L4X", "lO9", "YZb", "chU", "ae8", "dP0", "fT5", "gQM", "iRA"],
+    &["k2X", "CDF", "GL8", "EIW", "H3O", "J7T", "K4N", "M5Y", "lPA", "Zac", "diV", "bf9", "eQ1", "gU6", "hR0", "jSB"],
+    &["k3Y", "DEG", "HM9", "FJX", "I4P", "K8U", "L5O", "06Z", "lQB", "abd", "ejW", "cgA", "fR2", "hV7", "iS1", "NTC"],
+    &["k4Z", "EFH", "I0A", "GKY", "J5Q", "L9V", "M6P", "17a", "lRC", "bce", "fNX", "dhB", "gS3", "iW8", "jT2", "OUD"],
+    &["k5a", "FGI", "J1B", "HLZ", "K6R", "MAW", "07Q", "28b", "lSD", "cdf", "gOY", "eiC", "hT4", "jX9", "NU3", "PVE"],
+    &["k6b", "GHJ", "K2C", "IMa", "L7S", "0BX", "18R", "39c", "lTE", "deg", "hPZ", "fjD", "iU5", "NYA", "OV4", "QWF"],
+    &["k7c", "HIK", "L3D", "J0b", "M8T", "1CY", "29S", "4Ad", "lUF", "efh", "iQa", "gNE", "jV6", "OZB", "PW5", "RXG"],
+    &["k8d", "IJL", "M4E", "K1c", "09U", "2DZ", "3AT", "5Be", "lVG", "fgi", "jRb", "hOF", "NW7", "PaC", "QX6", "SYH"],
+    &["k9e", "JKM", "05F", "L2d", "1AV", "3Ea", "4BU", "6Cf", "lWH", "ghj", "NSc", "iPG", "OX8", "QbD", "RY7", "TZI"],
+    &["kAf", "KL0", "16G", "M3e", "2BW", "4Fb", "5CV", "7Dg", "lXI", "hiN", "OTd", "jQH", "PY9", "RcE", "SZ8", "UaJ"],
+    &["kBg", "LM1", "27H", "04f", "3CX", "5Gc", "6DW", "8Eh", "lYJ", "ijO", "PUe", "NRI", "QZA", "SdF", "Ta9", "VbK"],
+    &["kCh", "M02", "38I", "15g", "4DY", "6Hd", "7EX", "9Fi", "lZK", "jNP", "QVf", "OSJ", "RaB", "TeG", "UbA", "WcL"],
+    &["kDi", "013", "49J", "26h", "5EZ", "7Ie", "8FY", "AGj", "laL", "NOQ", "RWg", "PTK", "SbC", "UfH", "VcB", "XdM"],
+];
+
 const NKTS_CASES: &[NktsCatalogEntry] = &[
     NktsCatalogEntry {
         num_groups: 6,
@@ -127,6 +153,12 @@ const NKTS_CASES: &[NktsCatalogEntry] = &[
         alphabet: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ",
         encoded_weeks: KP_36_WEEKS,
         citation: "Explicit KP(36,17) direct construction via a single initial parallel class developed mod 17, as reproduced in the 2017 Konstanz thesis 'Construction, Application and Extension of Resolvable Balanced Incomplete Block Designs in the Design of Experiments', citing Wallis 2013 / Kotzig–Rosa",
+    },
+    NktsCatalogEntry {
+        num_groups: 16,
+        alphabet: "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijkl",
+        encoded_weeks: KP_48_WEEKS,
+        citation: "Explicit KP(48,23) direct construction via a single initial parallel class on (Z23 ∪ ∞) × Z2 developed mod 23, as reproduced in the 2017 Konstanz thesis 'Construction, Application and Extension of Resolvable Balanced Incomplete Block Designs in the Design of Experiments', citing Baker–Wilson 1977",
     },
 ];
 
