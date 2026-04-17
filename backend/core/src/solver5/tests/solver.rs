@@ -311,10 +311,9 @@ fn solver5_solves_molr_from_mols_cases() {
         (18, 8, 6),
         (18, 9, 7),
         (18, 10, 6),
-        (20, 5, 5),
-        (20, 7, 4),
-        (20, 10, 5),
-        (20, 20, 5),
+        (20, 7, 5),
+        (20, 10, 6),
+        (20, 20, 6),
     ] {
         let input = pure_input(g, p, w);
         let result = solver

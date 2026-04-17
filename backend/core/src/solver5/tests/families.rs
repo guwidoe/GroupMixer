@@ -386,6 +386,35 @@ fn molr_from_mols_family_constructs_and_lifts_product_order_20_case() {
 }
 
 #[test]
+fn molr_from_qdm_mols_family_constructs_order_20_high_p_cases() {
+    let entry = crate::solver5::catalog::qdm::mols_case(20)
+        .expect("qdm catalog should expose an order-20 MOLS bank");
+
+    let result = families::construct_molr_from_qdm_mols(entry, 7);
+    assert_eq!(result.family.label(), "molr_from_mols");
+    assert_eq!(result.schedule.len(), 5);
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 18,
+        }
+    );
+
+    let lifted = families::construct_molr_from_qdm_mols(entry, 20);
+    assert_eq!(lifted.schedule.len(), 6);
+    assert_eq!(
+        lifted.provenance.operators,
+        vec![crate::solver5::types::CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert_eq!(
+        lifted.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 15,
+        }
+    );
+}
+
+#[test]
 fn molr_from_mols_family_constructs_and_lifts_square_order_case() {
     let entry = crate::solver5::catalog::mols::exact_case(12)
         .expect("mols catalog should expose the 12-group case");

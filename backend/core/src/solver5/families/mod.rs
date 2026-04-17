@@ -346,11 +346,14 @@ impl ConstructionFamily for MolrFromMolsFamily {
     fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
         let explicit_supported = catalog::mols::exact_case(problem.num_groups)
             .is_some_and(|entry| ((entry.mols_count + 2)..=entry.num_groups).contains(&problem.group_size));
+        let qdm_supported = catalog::qdm::mols_case(problem.num_groups).is_some_and(|entry| {
+            ((qdm_rtd::mols_count(entry) + 2)..=entry.num_groups).contains(&problem.group_size)
+        });
         let product_supported = mols_product::best_molr_spec(problem.num_groups, problem.group_size)
             .is_some();
-        if !explicit_supported && !product_supported {
+        if !explicit_supported && !qdm_supported && !product_supported {
             return FamilyEvaluation::NotApplicable {
-                reason: "requires either an explicit MOLS catalog bank or a direct-product prime-power MOLS bank with enough squares for the MOLR range",
+                reason: "requires either an explicit MOLS bank (catalog- or QDM-derived) or a direct-product prime-power MOLS bank with enough squares for the MOLR range",
             };
         }
 
@@ -369,6 +372,12 @@ impl ConstructionFamily for MolrFromMolsFamily {
         if let Some(entry) = catalog::mols::exact_case(problem.num_groups) {
             if ((entry.mols_count + 2)..=entry.num_groups).contains(&problem.group_size) {
                 return Some(construct_molr_from_explicit_mols(entry, problem.group_size));
+            }
+        }
+
+        if let Some(entry) = catalog::qdm::mols_case(problem.num_groups) {
+            if ((qdm_rtd::mols_count(entry) + 2)..=entry.num_groups).contains(&problem.group_size) {
+                return Some(construct_molr_from_qdm_mols(entry, problem.group_size));
             }
         }
 
@@ -993,6 +1002,61 @@ pub(super) fn construct_qdm_catalog_rtd(
     }
 }
 
+pub(super) fn construct_molr_from_qdm_mols(
+    entry: &'static catalog::qdm::QdmCatalogEntry,
+    group_size: usize,
+) -> ConstructionResult {
+    let bank = qdm_rtd::explicit_mols_bank(entry);
+    let base_weeks = bank.len() + 1;
+    let mut result = ConstructionResult::new(
+        molr_from_mols::construct_from_mols(&bank, group_size),
+        ConstructionFamilyId::MolrFromMols,
+    )
+    .with_quality(classify_quality(entry.num_groups, group_size, base_weeks))
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires an explicit catalog-backed quasi-difference matrix whose OA rows can be decoded into an explicit MOLS bank for the group count",
+            "decodes the OA(group_size+1, num_groups) witness from the QDM into an explicit MOLS bank, then applies the Sharma-Das MOLR construction to the first group_size rows",
+            "can append clique-derived or recursively lifted rounds when the residual subgroup problem is constructible",
+        ],
+    })
+    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::qdm::source().citation)
+    .with_evidence(EvidenceSourceKind::CatalogFact, entry.citation)
+    .with_evidence(
+        EvidenceSourceKind::StructuralComposition,
+        "explicit_mols_bank_decoded_from_quasi_difference_matrix",
+    )
+    .with_evidence(EvidenceSourceKind::TheoremFamily, "sharma_das_molr_from_explicit_mols");
+
+    if entry.num_groups == group_size {
+        result.schedule.extend(molr_from_mols::row_fill_week(
+            entry.num_groups,
+            group_size,
+        ));
+        result.max_supported_weeks = result.schedule.len();
+        result = result.add_operator(CompositionOperatorId::RecursiveTransversalLift);
+    } else if entry.num_groups % group_size == 0 && (entry.num_groups / group_size) >= 2 {
+        result = result.with_residual(ResidualStructure::TransversalLatentGroups {
+            subgroup_count: group_size,
+            subgroup_size: entry.num_groups / group_size,
+        });
+        result = composition::apply_recursive_transversal_lift(
+            entry.num_groups,
+            group_size,
+            result,
+            construct_max_schedule_recursive,
+        );
+    }
+
+    let improved_weeks = result.max_supported_weeks;
+    let result = result.with_quality(classify_quality(entry.num_groups, group_size, improved_weeks));
+    if result.provenance.operators.is_empty() {
+        result
+    } else {
+        result.clear_residual()
+    }
+}
+
 pub(super) fn construct_molr_from_product_mols(
     spec: mols_product::MolsProductSpec,
     group_size: usize,
@@ -1265,6 +1329,12 @@ fn construct_max_schedule_recursive(
     if let Some(entry) = catalog::mols::exact_case(num_groups) {
         if ((entry.mols_count + 2)..=entry.num_groups).contains(&group_size) {
             return Some(construct_molr_from_explicit_mols(entry, group_size));
+        }
+    }
+
+    if let Some(entry) = catalog::qdm::mols_case(num_groups) {
+        if ((qdm_rtd::mols_count(entry) + 2)..=entry.num_groups).contains(&group_size) {
+            return Some(construct_molr_from_qdm_mols(entry, group_size));
         }
     }
 

@@ -487,10 +487,29 @@ fn router_selects_qdm_rtd_catalog_for_20_5_5() {
 }
 
 #[test]
-fn router_selects_molr_from_mols_for_20_20_5() {
-    let input = pure_input(20, 20, 5);
+fn router_selects_molr_from_mols_for_20_7_5() {
+    let input = pure_input(20, 7, 5);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
-    let decision = attempt_construction(&problem).expect("router should construct 20-20-5");
+    let decision = attempt_construction(&problem).expect("router should construct 20-7-5");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::MolrFromMols);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::MolrFromMols
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 5,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 18,
+                    },
+                }
+    }));
+}
+
+#[test]
+fn router_selects_molr_from_mols_for_20_20_6() {
+    let input = pure_input(20, 20, 6);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 20-20-6");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::MolrFromMols);
     assert_eq!(
@@ -501,9 +520,9 @@ fn router_selects_molr_from_mols_for_20_20_5() {
         attempt.family == ConstructionFamilyId::MolrFromMols
             && attempt.status
                 == FamilyAttemptStatus::Selected {
-                    max_supported_weeks: 5,
+                    max_supported_weeks: 6,
                     quality: ConstructionQuality::LowerBound {
-                        gap_to_counting_bound: 16,
+                        gap_to_counting_bound: 15,
                     },
                 }
     }));

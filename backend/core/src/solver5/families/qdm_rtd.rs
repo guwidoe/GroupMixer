@@ -23,14 +23,45 @@ pub(super) fn construct(entry: &QdmCatalogEntry) -> Schedule {
     schedule_from_raw(weeks)
 }
 
+pub(super) fn mols_count(entry: &QdmCatalogEntry) -> usize {
+    full_oa_from_qdm(entry)[0].len().saturating_sub(2)
+}
+
+pub(super) fn explicit_mols_bank(entry: &QdmCatalogEntry) -> Vec<Vec<Vec<usize>>> {
+    let oa = full_oa_from_qdm(entry);
+    let order = entry.num_groups;
+    let square_count = oa[0].len().saturating_sub(2);
+    let mut bank = vec![vec![vec![usize::MAX; order]; order]; square_count];
+
+    for row in oa {
+        let row_idx = row[0];
+        let col_idx = row[1];
+        for square_idx in 0..square_count {
+            bank[square_idx][row_idx][col_idx] = row[square_idx + 2];
+        }
+    }
+
+    debug_assert!(bank
+        .iter()
+        .flat_map(|square| square.iter())
+        .flat_map(|row| row.iter())
+        .all(|value| *value != usize::MAX));
+
+    bank
+}
+
 fn resolvable_oa_from_qdm(entry: &QdmCatalogEntry) -> Vec<Vec<usize>> {
-    let oa = oa_from_quasi_difference_matrix(entry.encoded_columns, entry.qdm_group_order);
+    let oa = full_oa_from_qdm(entry);
     let mut sorted = oa;
     sorted.sort();
     sorted
         .into_iter()
         .map(|row| row.into_iter().skip(1).collect::<Vec<_>>())
         .collect()
+}
+
+fn full_oa_from_qdm(entry: &QdmCatalogEntry) -> Vec<Vec<usize>> {
+    oa_from_quasi_difference_matrix(entry.encoded_columns, entry.qdm_group_order)
 }
 
 fn oa_from_quasi_difference_matrix(columns: &[[i8; 6]], group_order: usize) -> Vec<Vec<usize>> {
