@@ -15,6 +15,7 @@ mod nkts;
 mod ownsg;
 mod p4_rbibd;
 mod published;
+mod rbibd;
 mod ritd;
 mod round_robin;
 mod single_round_partition;
@@ -31,6 +32,7 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
         &MOLR_GROUP_FILL_FAMILY,
         &AFFINE_PLANE_PRIME_POWER_FAMILY,
         &P4_RESOLVABLE_BIBD_FAMILY,
+        &RESOLVABLE_BIBD_CATALOG_FAMILY,
         &PUBLISHED_SCHEDULE_BANK_FAMILY,
         &TRANSVERSAL_DESIGN_PRIME_POWER_FAMILY,
         &SINGLE_ROUND_PARTITION_FAMILY,
@@ -47,6 +49,7 @@ struct ResolvableIncompleteTransversalDesignFamily;
 struct MolrGroupFillFamily;
 struct AffinePlanePrimePowerFamily;
 struct P4ResolvableBIBDFamily;
+struct ResolvableBIBDCatalogFamily;
 struct PublishedScheduleBankFamily;
 struct TransversalDesignPrimePowerFamily;
 
@@ -62,6 +65,7 @@ static RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY:
 static MOLR_GROUP_FILL_FAMILY: MolrGroupFillFamily = MolrGroupFillFamily;
 static AFFINE_PLANE_PRIME_POWER_FAMILY: AffinePlanePrimePowerFamily = AffinePlanePrimePowerFamily;
 static P4_RESOLVABLE_BIBD_FAMILY: P4ResolvableBIBDFamily = P4ResolvableBIBDFamily;
+static RESOLVABLE_BIBD_CATALOG_FAMILY: ResolvableBIBDCatalogFamily = ResolvableBIBDCatalogFamily;
 static PUBLISHED_SCHEDULE_BANK_FAMILY: PublishedScheduleBankFamily = PublishedScheduleBankFamily;
 static TRANSVERSAL_DESIGN_PRIME_POWER_FAMILY: TransversalDesignPrimePowerFamily =
     TransversalDesignPrimePowerFamily;
@@ -377,6 +381,30 @@ impl ConstructionFamily for P4ResolvableBIBDFamily {
     fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
         let field = p4_rbibd::supported_field(problem.num_groups)?;
         (problem.group_size == 4).then(|| construct_p4_resolvable_bibd(&field))
+    }
+}
+
+impl ConstructionFamily for ResolvableBIBDCatalogFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::ResolvableBIBDCatalog
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        let Some(entry) = catalog::rbibd::exact_case(problem.num_groups, problem.group_size) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires a catalog-backed resolvable BIBD case",
+            };
+        };
+
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: (entry.num_groups * entry.group_size - 1)
+                / (entry.group_size - 1),
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        catalog::rbibd::exact_case(problem.num_groups, problem.group_size)
+            .map(construct_resolvable_bibd_catalog)
     }
 }
 
@@ -704,6 +732,24 @@ pub(super) fn construct_p4_resolvable_bibd(field: &FiniteField) -> ConstructionR
     .with_quality(classify_quality(num_groups, 4, field.order))
 }
 
+pub(super) fn construct_resolvable_bibd_catalog(
+    entry: &'static catalog::rbibd::RbibdCatalogEntry,
+) -> ConstructionResult {
+    ConstructionResult::new(
+        rbibd::construct(entry),
+        ConstructionFamilyId::ResolvableBIBDCatalog,
+    )
+    .with_quality(ConstructionQuality::ExactFrontier)
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires a catalog-backed resolvable BIBD case",
+            "constructs explicit parallel classes from a source-backed RBIBD incidence design rather than a general finite-field theorem family",
+        ],
+    })
+    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::rbibd::source().citation)
+    .with_evidence(EvidenceSourceKind::CatalogFact, entry.citation)
+}
+
 pub(super) fn construct_transversal_design_portfolio(
     num_groups: usize,
     group_size: usize,
@@ -775,6 +821,10 @@ fn construct_max_schedule_recursive(
         if let Some(field) = p4_rbibd::supported_field(num_groups) {
             return Some(construct_p4_resolvable_bibd(&field));
         }
+    }
+
+    if let Some(entry) = catalog::rbibd::exact_case(num_groups, group_size) {
+        return Some(construct_resolvable_bibd_catalog(entry));
     }
 
     if let Some(entry) = catalog::ownsg::exact_case(num_groups, group_size) {

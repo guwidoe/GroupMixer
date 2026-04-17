@@ -164,20 +164,20 @@ Interpretation note:
 - After expanding the benchmark to all three matrices, that `419` value is only a
   historical canonical-only reference.
 - Active kept three-matrix benchmark baseline is now:
-  - commit: `2c2badc`
-  - `total_constructed_weeks = 1995`
-  - `frontier_gap_sum = 1970`
+  - commit: `585ed03`
+  - `total_constructed_weeks = 1997`
+  - `frontier_gap_sum = 1968`
   - `solved_cells = 271`
   - `exact_frontier_cells = 46`
   - `unsolved_cells = 0`
   - `p6_constructed_weeks = 148`
-  - `p7_constructed_weeks = 148`
-  - `p8_constructed_weeks = 122`
+  - `p7_constructed_weeks = 149`
+  - `p8_constructed_weeks = 123`
   - `p9_constructed_weeks = 115`
   - `W_12_7 = 7`
   - `W_12_8 = 6`
   - `W_14_6 = 9`
-  - `W_14_7 = 8`
+  - `W_14_7 = 9`
   - `W_14_8 = 8`
   - `W_14_9 = 7`
   - `W_15_6 = 10`
@@ -185,16 +185,18 @@ Interpretation note:
   - `W_15_9 = 7`
   - `W_18_7 = 10`
   - `W_20_6 = 13`
+  - `W_16_8 = 17`
 - The recent three-matrix keeps that established this baseline were:
   - `4077a77` — finite-field support for `11`, `16`, `17`, `19` → `1906`
   - `bfdbfc7` — `GF(25)` / exact `19-4-25` → `1912`
   - `17dc468` — larger Appendix-backed ownSG catalog expansion → `1990`
   - `2c2badc` — direct Appendix-backed `ownSG(96,8)` / `12-8-6` → `1995`
+  - `585ed03` — generic one-week latent-group `+G` lifting and modulo-class ownSG lift → `1997`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
 - Prime-order RTD / affine-plane constructors were added first, then generalized to supported prime-power orders `4`, `8`, and `9` via finite-field arithmetic. Under the three-matrix benchmark this was later extended to the additional benchmark-relevant orders `11`, `16`, `17`, `19`, and `25` (with `25` specifically unlocking the `19-4-25` p4 RBIBD line).
-- Recursive lifting across RTD latent groups is now a live mechanism and should be judged structurally, not as a one-off `9-3-13` trick.
+- Recursive lifting across latent groups is now a live mechanism and should be judged structurally, not as a one-off `9-3-13` trick. It now also supports the generic one-week partition fallback and the modulo-class layout used by ownSG residue groups, which landed honest upgrades such as `14-7: 8 -> 9` and `16-8: 16 -> 17`.
 - Kirkman `6t+1` is now part of the constructive baseline for supported `p=3` cases.
 - The constructor-portfolio architecture pass is complete: registry, metadata, catalog layer, registry-driven router, handoff seam, and portfolio docs are now in place.
 - A naive cyclic `p=3` transversal-design fallback for non-prime-power group counts was tried and discarded: it left `total_constructed_weeks` flat at `284`, so the cheap cyclic schedule does **not** unlock the even composite triple rows (`6-3-*`, `10-3-*`). Do not retry that shortcut.
@@ -233,9 +235,8 @@ Interpretation note:
 - The universal single-round lower bound remains the honest floor for unsolved theory rows:
   - `unsolved_cells = 0`
   - many weak composite supplementary rows still sit at only `W=1`
-- The strongest recent reusable gain lane has been **direct Appendix-backed ownSG catalog expansion** for supplementary composite rows. That lane is now partially harvested through `12-8`, so remaining work should target either:
-  1. more reusable composition on top of shipped families (for example honest latent-group `+G` lifts where the literature explicitly permits them), or
-  2. broader family work for the still-weak composite rows, especially `p=3` / `p=4` and other non-prime-power cases on `g in {12,14,15,18,20}`.
-- The next concrete experiment should prefer a reusable structural step over another raw patch import. The most plausible immediate follow-up is to test whether the existing latent-group lift machinery should also use the already-shipped single-round partition fallback, which could honestly realize documented `+G(1)` improvements like `ownSG(98,7)+G(1)` and any analogous RTD/ownSG cases where `p | g` but the smaller `(g/p)-p-*` instance currently has only the universal one-week lower bound.
+- The strongest recent reusable gain lanes have been **direct Appendix-backed ownSG catalog expansion** for supplementary composite rows and the newly-landed **generic one-week latent-group `+G` composition**.
+- That immediate composition cleanup has now been harvested through `14-7: 8 -> 9` and `16-8: 16 -> 17`, so remaining work should target broader family gaps, especially `p=3` / `p=4` and other non-prime-power cases on `g in {12,14,15,18,20}`.
+- The next concrete experiment should prefer a reusable structural step or a provenance-clean family catalog extension over another raw patch import. High-value remaining rows still line up with explicit literature family names such as `NKTS(36/42/54/60)`, `KTS(45)`, `RGDD(...,4,...)`, and non-prime-power `RTD(5,n)` / `RTD(6,n)+G(1)` cases.
 - A follow-up attempt to add `MOLRs(6,6)+G(1)` as a second `molr_group_fill` catalog case benchmarked flat at `419`: it cleanly reconstructs the already-shipped `6-6-3` schedule via a 2-week base plus one filler week, but it does **not** improve the objective beyond the existing published route. Treat that lane as provenance cleanup only, not as an active coverage-improvement direction.
 - Keep preferring reusable family logic or justified composition over per-cell glue.

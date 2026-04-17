@@ -1,4 +1,4 @@
-use crate::solver5::catalog::{kts, molr, nkts, ownsg, p4, prime_powers, published, ritd};
+use crate::solver5::catalog::{kts, molr, nkts, ownsg, p4, prime_powers, published, rbibd, ritd};
 
 #[test]
 fn prime_power_catalog_exposes_supported_field_orders() {
@@ -152,6 +152,16 @@ fn ownsg_catalog_exposes_benchmark_relevant_cases() {
         5
     );
     assert_eq!(ownsg::source().name, "ownsg_catalog");
+}
+
+#[test]
+fn rbibd_catalog_exposes_15_8_case() {
+    let case = rbibd::exact_case(15, 8).expect("rbibd catalog should expose the 15-8 case");
+
+    assert_eq!(case.source_order, 273);
+    assert_eq!(case.base_block.len(), 17);
+    assert_eq!(case.hyperoval.len(), 18);
+    assert_eq!(rbibd::source().name, "rbibd_catalog");
 }
 
 #[test]
