@@ -201,6 +201,18 @@ fn solver5_solves_catalog_backed_10_3_14_case() {
 }
 
 #[test]
+fn solver5_solves_catalog_backed_12_3_17_case() {
+    let input = pure_input(12, 3, 17);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver
+        .solve(&input)
+        .expect("catalog-backed nkts construction should solve 12-3-17");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 17);
+}
+
+#[test]
 fn solver5_solves_seeded_14_3_20_case() {
     let input = pure_input(14, 3, 20);
     let solver = SearchEngine::new(&input.solver);

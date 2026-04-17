@@ -149,6 +149,26 @@ fn router_selects_exact_nkts_catalog_case_for_10_3_14() {
 }
 
 #[test]
+fn router_selects_exact_nkts_catalog_case_for_12_3_17() {
+    let input = pure_input(12, 3, 17);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 12-3-17");
+
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::NearlyKirkmanTripleSystem
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::NearlyKirkmanTripleSystem
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 17,
+                    quality: ConstructionQuality::ExactFrontier,
+                }
+    }));
+}
+
+#[test]
 fn router_selects_exact_nkts_seeded_case_for_14_3_20() {
     let input = pure_input(14, 3, 20);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");

@@ -123,9 +123,9 @@ Interpretation note:
   - round robin / 1-factorization for `p=2`
   - Kirkman `6t+1` coverage for supported `p=3` cases
   - catalog-backed exact KTS cases for 9 and 15 players (`5-3-7` is now exact via `kts`)
-  - catalog-backed exact NKTS / KP cases for 18 and 30 players (`6-3-8` and `10-3-14`)
+  - catalog-backed exact NKTS / KP cases for 18, 24, 30, and 36 players (`6-3-8`, `8-3-11`, `10-3-14`, and `12-3-17`)
   - a catalog-backed exact NKTS(24) case for 24 players (`8-3-11`)
-  - pseudo-doubled NKTS constructions seeded from exact half-size KTS schedules (`10-3-13` still constructs honestly from `KTS(15)` as a weaker reusable route)
+  - pseudo-doubled NKTS constructions seeded from exact half-size KTS schedules, including both catalog-backed and finite-field exact KTS seeds (`10-3-13` still constructs honestly from `KTS(15)` as a weaker reusable route, and `14-3-20` now lands honestly from the exact `KTS(21)` seed)
   - a catalog-backed ownSG starter-block family from Miller–Valkov–Abel Appendix A / Construction 5, currently covering:
     - fixed-matrix rows `10-6-7`, `10-7-7`, `10-8-5`, `10-9-5`
     - supplementary rows `12-7-7`, `12-8-6`, `14-6-9`, `14-7-8`, `14-8-8`, `14-9-7`, `15-6-10`, `15-7-9`, `15-9-7`, `18-7-10`, `20-6-13`
@@ -182,14 +182,14 @@ Interpretation note:
 - After expanding the benchmark to all three matrices, that `419` value is only a
   historical canonical-only reference.
 - Active kept three-matrix benchmark baseline is now:
-  - latest keep: decoded the landed order-20 QDM / `OA(6,20)` witness into an explicit 4-MOLS bank and reused it through `molr_from_mols` for stronger order-20 high-`p` coverage (see latest `autoresearch.jsonl` keep entry for the committed hash)
-  - `total_constructed_weeks = 2474`
-  - `frontier_gap_sum = 1491`
+  - latest keep: added a thesis-reproduced exact `KP(36,17)` direct construction to the NKTS/KP catalog, which upgrades `12-3` from the explicit-MOLS fallback `16` to the exact frontier `17` (see latest `autoresearch.jsonl` keep entry for the committed hash)
+  - `total_constructed_weeks = 2481`
+  - `frontier_gap_sum = 1484`
   - `solved_cells = 271`
-  - `exact_frontier_cells = 49`
+  - `exact_frontier_cells = 51`
   - `unsolved_cells = 0`
   - `p2_constructed_weeks = 399`
-  - `p3_constructed_weeks = 261`
+  - `p3_constructed_weeks = 268`
   - `p4_constructed_weeks = 238`
   - `p5_constructed_weeks = 205`
   - `p6_constructed_weeks = 178`
@@ -207,7 +207,7 @@ Interpretation note:
   - `p18_constructed_weeks = 38`
   - `p19_constructed_weeks = 33`
   - `p20_constructed_weeks = 15`
-  - `W_12_3 = 16`
+  - `W_12_3 = 17`
   - `W_12_4 = 13`
   - `W_12_5 = 12`
   - `W_12_6 = 13`
@@ -217,7 +217,7 @@ Interpretation note:
   - `W_12_10 = 6`
   - `W_12_11 = 6`
   - `W_12_12 = 7`
-  - `W_14_3 = 14`
+  - `W_14_3 = 20`
   - `W_14_4 = 14`
   - `W_14_5 = 14`
   - `W_14_6 = 9`
@@ -283,7 +283,9 @@ Interpretation note:
   - `f81ae17` — explicit MOLR-from-MOLS family for high-`p` rows on `12/14/15/18` → `2396`
   - `d215d4f` — direct-product extension of `molr_from_mols` for order-20 high-`p` rows → `2444`
   - `7dfecc6` — catalog-backed QDM RTD route for `20-5-21` via `RTD(5,20)+G(1)` → `2460`
-  - latest keep — decoded the landed order-20 QDM / `OA(6,20)` witness into an explicit 4-MOLS bank for stronger `molr_from_mols` order-20 high-`p` coverage → `2474`
+  - `a889f98` — explicit 4-MOLS bank decoded from the landed order-20 QDM / `OA(6,20)` witness for stronger `molr_from_mols` order-20 high-`p` coverage → `2474`
+  - `88dd619` — generalized exact-KTS-seeded NKTS pseudo-doubling, upgrading `14-3` to the exact `NKTS(42)` route → `2480`
+  - latest keep — thesis-reproduced exact `KP(36,17)` catalog entry, upgrading `12-3` to the exact frontier `17` → `2481`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
@@ -297,7 +299,9 @@ Interpretation note:
   - exact `NKTS(24)` now closes `8-3` at `11`
   - exact `KTS(15)` now solves `5-3-7`
   - a pseudo-doubling construction from `KTS(15)` solves `10-3-13`
+  - generalized exact-KTS-seeded pseudo-doubling now realizes `14-3-20` honestly from the exact `KTS(21)` seed
   - an explicit thesis-reproduced `KP(30,14)` direct construction now closes `10-3` exactly at `14`
+  - an explicit thesis-reproduced `KP(36,17)` direct construction now closes `12-3` exactly at `17`
 - Published explicit schedules are now a major honest coverage source:
   - Warwick Harvey archive cases now cover `8-3-10`, `10-4-9`, `6-5-6`, `6-6-3`, and the `10-p-*` rows for `p=5..10`
   - the archived `6-4-7` page entry had one obvious duplicated-player typo; a single-entry correction (`[1, 5, 16, 19] -> [1, 7, 16, 19]`) restores a valid pure-SGP schedule and is now documented inline in the catalog
@@ -345,7 +349,7 @@ Interpretation note:
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
-- The old canonical-only `419` baseline is historical only; the live gate is the three-matrix baseline at `2474` from the latest order-20 QDM-derived explicit-MOLS keep.
+- The old canonical-only `419` baseline is historical only; the live gate is the three-matrix baseline at `2481` from the latest exact `KP(36,17)` keep.
 - The fixed scored matrix frontier remains closed; do not re-spend loop time on already-landed canonical frontier cells.
 - The universal single-round lower bound remains the honest floor for unsolved theory rows:
   - `unsolved_cells = 0`
@@ -354,6 +358,6 @@ Interpretation note:
 - The direct Sage `RBIBD(120,8,1)` lane has now been harvested for `15-8-17`; keep it as a reusable catalog family rather than a one-off patch, and do not re-spend loop time on that exact case.
 - The direct Sage `MOLS(12/14/15)` lane plus the OA_7_18-derived order-18 expansion have now been harvested, the high-`p` `molr_from_mols` truncation lane on those explicit banks is now harvested, and the direct-product `4 x 5` MOLS lane has now been harvested for `20-3` / `20-4`; do not re-spend loop time on those exact cases unless a parser/provenance regression appears.
 - The order-20 high-`p` rows now meet or exceed the current conservative supplementary literature targets after the landed QDM-derived explicit-MOLS upgrade, so that exact sublane is no longer the clearest ROI target.
-- The next concrete experiment should prefer a reusable structural step or a provenance-clean family catalog extension over another raw patch import. The largest remaining measurable benchmark gaps now sit in exact/near-exact triples and a few near-frontier foursome rows: `NKTS(60)` for `20-3`, `NKTS(42)` for `14-3`, `NKTS(36)` for `12-3`, and `RGDD(20,4,2)` for `20-4` are the clearest literature-backed examples. If continuing the Sage / catalog lane, prefer constructions that are already explicitly resolvable rather than assuming an arbitrary MOLS/OA object immediately yields SGP weeks.
+- The next concrete experiment should prefer a reusable structural step or a provenance-clean family catalog extension over another raw patch import. The largest remaining measurable benchmark gaps now sit in exact/near-exact triples and a few near-frontier foursome rows: `NKTS(60)` for `20-3`, broader exact/near-exact triples such as `KTS(45)` / `NKTS(48)` / `NKTS(54)`, and `RGDD(20,4,2)` for `20-4` are the clearest literature-backed examples. If continuing the Sage / catalog lane, prefer constructions that are already explicitly resolvable rather than assuming an arbitrary MOLS/OA object immediately yields SGP weeks.
 - A follow-up attempt to add `MOLRs(6,6)+G(1)` as a second `molr_group_fill` catalog case benchmarked flat at `419`: it cleanly reconstructs the already-shipped `6-6-3` schedule via a 2-week base plus one filler week, but it does **not** improve the objective beyond the existing published route. Treat that lane as provenance cleanup only, not as an active coverage-improvement direction.
 - Keep preferring reusable family logic or justified composition over per-cell glue.
