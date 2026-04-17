@@ -57,3 +57,7 @@ pub(crate) fn exact_case(num_groups: usize, group_size: usize) -> Option<&'stati
         .iter()
         .find(|entry| entry.num_groups == num_groups && entry.group_size == group_size)
 }
+
+pub(crate) fn mols_case(num_groups: usize) -> Option<&'static QdmCatalogEntry> {
+    CASES.iter().find(|entry| entry.num_groups == num_groups)
+}
