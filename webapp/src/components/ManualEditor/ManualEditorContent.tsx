@@ -121,7 +121,7 @@ export function ManualEditorContent() {
   const hardViolationsCount = useMemo(() => {
     let count = 0;
     compliance.forEach((c) => {
-      if (c.type === 'MustStayTogether' || c.type === 'ImmovablePerson' || c.type === 'ImmovablePeople') {
+      if (c.type === 'MustStayTogether' || c.type === 'MustStayApart' || c.type === 'ImmovablePerson' || c.type === 'ImmovablePeople') {
         count += c.violationsCount;
       }
     });
