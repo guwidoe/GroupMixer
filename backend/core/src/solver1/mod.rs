@@ -223,6 +223,8 @@ pub struct State {
     pub person_to_clique_id: Vec<Vec<Option<usize>>>,
     /// Pairs of people who cannot be together
     pub soft_apart_pairs: Vec<(usize, usize)>,
+    /// Pairs of people who must never be together (hard)
+    pub hard_apart_pairs: Vec<(usize, usize)>,
     /// Pairs of people who should be together (soft)
     pub should_together_pairs: Vec<(usize, usize)>,
     /// Immovable person assignments: `(person_index, session_index) -> group_index`
@@ -231,8 +233,12 @@ pub struct State {
     pub clique_sessions: Vec<Option<Vec<usize>>>,
     /// Which sessions each soft-apart pair constraint applies to (None = all sessions)
     pub soft_apart_pair_sessions: Vec<Option<Vec<usize>>>,
+    /// Which sessions each hard-apart pair constraint applies to (None = all sessions)
+    pub hard_apart_pair_sessions: Vec<Option<Vec<usize>>>,
     /// Which sessions each should-together pair applies to (None = all sessions)
     pub should_together_sessions: Vec<Option<Vec<usize>>>,
+    /// Dense `[session * people + person] -> sorted hard-apart partners` adjacency.
+    pub hard_apart_partners_by_person_session: Vec<Vec<usize>>,
     /// Person participation matrix: `person_participation[person][session] = is_participating`
     pub person_participation: Vec<Vec<bool>>,
     /// Total number of sessions in the problem
@@ -263,6 +269,8 @@ pub struct State {
     pub clique_violations: Vec<i32>,
     /// Number of violations for each soft-apart pair (`ShouldNotBeTogether`)
     pub soft_apart_pair_violations: Vec<i32>,
+    /// Number of violations for each hard-apart pair (`MustStayApart`)
+    pub hard_apart_pair_violations: Vec<i32>,
     /// Number of violations for each should-together pair (people separated)
     pub should_together_violations: Vec<i32>,
     /// Total violations of immovable person constraints

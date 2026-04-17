@@ -16,7 +16,7 @@ use crate::solver_support::validation::{
     validate_schedule_as_incumbent, validate_schedule_input_mode,
 };
 use rand::{rng, RngExt};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 type EffectiveGroupCapacitySummary = (Vec<usize>, Vec<usize>, Vec<usize>, Vec<usize>);
 
@@ -374,11 +374,14 @@ impl State {
                 input.problem.num_sessions as usize
             ], // To be populated
             soft_apart_pairs: vec![], // To be populated
+            hard_apart_pairs: vec![], // To be populated
             should_together_pairs: vec![], // To be populated
             immovable_people: HashMap::new(), // To be populated
             clique_sessions: vec![], // To be populated by preprocessing
             soft_apart_pair_sessions: vec![], // To be populated by preprocessing
+            hard_apart_pair_sessions: vec![], // To be populated by preprocessing
             should_together_sessions: vec![], // To be populated by preprocessing
+            hard_apart_partners_by_person_session: vec![], // To be populated by preprocessing
             person_participation,
             num_sessions: input.problem.num_sessions,
             allowed_sessions,
@@ -390,6 +393,7 @@ impl State {
             weighted_constraint_penalty: 0.0,
             clique_violations: Vec::new(), // Will be resized after constraint preprocessing
             soft_apart_pair_violations: Vec::new(), // Will be resized after constraint preprocessing
+            hard_apart_pair_violations: Vec::new(), // Will be resized after constraint preprocessing
             should_together_violations: Vec::new(), // Will be resized after constraint preprocessing
             immovable_violations: 0,
             w_contacts,
@@ -415,8 +419,6 @@ impl State {
         if let Some(initial_schedule) = &input.initial_schedule {
             state.schedule = validate_schedule_as_incumbent(input, initial_schedule)?.schedule;
         } else {
-            let hard_apart_partners_by_person_session =
-                vec![Vec::new(); state.num_sessions as usize * state.person_idx_to_id.len()];
             let mut construction_context = BaselineConstructionContext {
                 effective_seed: state.effective_seed,
                 group_idx_to_id: &state.group_idx_to_id,
@@ -426,7 +428,7 @@ impl State {
                 immovable_people: &state.immovable_people,
                 cliques: &state.cliques,
                 clique_sessions: &state.clique_sessions,
-                hard_apart_partners_by_person_session: &hard_apart_partners_by_person_session,
+                hard_apart_partners_by_person_session: &state.hard_apart_partners_by_person_session,
                 schedule: &mut state.schedule,
             };
             apply_construction_seed_schedule(&mut construction_context, input)?;
@@ -605,6 +607,49 @@ impl State {
         Ok(())
     }
 
+    #[inline]
+    fn canonical_pair(left: usize, right: usize) -> (usize, usize) {
+        if left < right {
+            (left, right)
+        } else {
+            (right, left)
+        }
+    }
+
+    fn normalize_constraint_sessions(
+        sessions: &Option<Vec<u32>>,
+        num_sessions: usize,
+        label: &str,
+    ) -> Result<Option<Vec<usize>>, SolverError> {
+        let Some(sessions) = sessions else {
+            return Ok(None);
+        };
+
+        let mut normalized = sessions.iter().map(|&session| session as usize).collect::<Vec<_>>();
+        normalized.sort_unstable();
+        normalized.dedup();
+
+        for &session_idx in &normalized {
+            if session_idx >= num_sessions {
+                return Err(SolverError::ValidationError(format!(
+                    "{label} references invalid session {} (max: {})",
+                    session_idx,
+                    num_sessions.saturating_sub(1)
+                )));
+            }
+        }
+
+        Ok(Some(normalized))
+    }
+
+    #[inline]
+    fn sessions_overlap(left: Option<&[usize]>, right: Option<&[usize]>) -> bool {
+        match (left, right) {
+            (None, _) | (_, None) => true,
+            (Some(left), Some(right)) => left.iter().any(|session| right.contains(session)),
+        }
+    }
+
     fn _preprocess_and_validate_constraints(
         &mut self,
         input: &ApiInput,
@@ -722,6 +767,92 @@ impl State {
             .collect();
 
         // --- Process `ShouldNotBeTogether` (Soft-Apart Pairs) ---
+        self.hard_apart_pairs.clear();
+        self.hard_apart_pair_sessions.clear();
+        self.hard_apart_partners_by_person_session =
+            vec![Vec::new(); num_sessions * people_count];
+
+        let mut seen_hard_apart = HashSet::new();
+        for constraint in &input.constraints {
+            if let Constraint::MustStayApart { people, sessions } = constraint {
+                let compiled_sessions =
+                    Self::normalize_constraint_sessions(sessions, num_sessions, "MustStayApart")?;
+                for i in 0..people.len() {
+                    for j in (i + 1)..people.len() {
+                        let left_idx = *self.person_id_to_idx.get(&people[i]).ok_or_else(|| {
+                            SolverError::ValidationError(format!(
+                                "MustStayApart references unknown person '{}'",
+                                people[i]
+                            ))
+                        })?;
+                        let right_idx = *self.person_id_to_idx.get(&people[j]).ok_or_else(|| {
+                            SolverError::ValidationError(format!(
+                                "MustStayApart references unknown person '{}'",
+                                people[j]
+                            ))
+                        })?;
+
+                        for session_idx in 0..num_sessions {
+                            if let Some(active_sessions) = compiled_sessions.as_ref() {
+                                if !active_sessions.contains(&session_idx) {
+                                    continue;
+                                }
+                            }
+
+                            if let (Some(left_clique), Some(right_clique)) = (
+                                self.person_to_clique_id[session_idx][left_idx],
+                                self.person_to_clique_id[session_idx][right_idx],
+                            ) {
+                                if left_clique == right_clique {
+                                    let clique_member_ids: Vec<String> = self.cliques[left_clique]
+                                        .iter()
+                                        .map(|&idx| self.display_person_by_idx(idx))
+                                        .collect();
+                                    return Err(SolverError::ValidationError(format!(
+                                        "MustStayApart conflicts with MustStayTogether in session {}: people {:?} share clique {:?}",
+                                        session_idx, people, clique_member_ids
+                                    )));
+                                }
+                            }
+                        }
+
+                        let pair = Self::canonical_pair(left_idx, right_idx);
+                        let dedupe_key = (pair, compiled_sessions.clone());
+                        if seen_hard_apart.insert(dedupe_key) {
+                            self.hard_apart_pairs.push(pair);
+                            self.hard_apart_pair_sessions.push(compiled_sessions.clone());
+                        }
+                    }
+                }
+            }
+        }
+
+        for (pair_idx, &(left_idx, right_idx)) in self.hard_apart_pairs.iter().enumerate() {
+            match self.hard_apart_pair_sessions[pair_idx].as_ref() {
+                Some(active_sessions) => {
+                    for &session_idx in active_sessions {
+                        let left_slot = session_idx * people_count + left_idx;
+                        let right_slot = session_idx * people_count + right_idx;
+                        self.hard_apart_partners_by_person_session[left_slot].push(right_idx);
+                        self.hard_apart_partners_by_person_session[right_slot].push(left_idx);
+                    }
+                }
+                None => {
+                    for session_idx in 0..num_sessions {
+                        let left_slot = session_idx * people_count + left_idx;
+                        let right_slot = session_idx * people_count + right_idx;
+                        self.hard_apart_partners_by_person_session[left_slot].push(right_idx);
+                        self.hard_apart_partners_by_person_session[right_slot].push(left_idx);
+                    }
+                }
+            }
+        }
+
+        for partners in &mut self.hard_apart_partners_by_person_session {
+            partners.sort_unstable();
+            partners.dedup();
+        }
+
         for constraint in &input.constraints {
             if let Constraint::ShouldNotBeTogether {
                 people,
@@ -731,6 +862,11 @@ impl State {
             {
                 for i in 0..people.len() {
                     for j in (i + 1)..people.len() {
+                        let compiled_sessions = Self::normalize_constraint_sessions(
+                            constraint_sessions,
+                            num_sessions,
+                            "ShouldNotBeTogether",
+                        )?;
                         let p1_idx = *self.person_id_to_idx.get(&people[i]).ok_or_else(|| {
                             SolverError::ValidationError(format!(
                                 "ShouldNotBeTogether references unknown person {}",
@@ -789,15 +925,7 @@ impl State {
 
                         self.soft_apart_pairs.push((p1_idx, p2_idx));
                         self.soft_apart_pair_weights.push(*penalty_weight);
-
-                        // Convert sessions to indices if provided
-                        if let Some(sessions) = constraint_sessions {
-                            let session_indices: Vec<usize> =
-                                sessions.iter().map(|&s| s as usize).collect();
-                            self.soft_apart_pair_sessions.push(Some(session_indices));
-                        } else {
-                            self.soft_apart_pair_sessions.push(None); // Apply to all sessions
-                        }
+                        self.soft_apart_pair_sessions.push(compiled_sessions);
                     }
                 }
             }
@@ -813,6 +941,11 @@ impl State {
             {
                 for i in 0..people.len() {
                     for j in (i + 1)..people.len() {
+                        let compiled_sessions = Self::normalize_constraint_sessions(
+                            constraint_sessions,
+                            num_sessions,
+                            "ShouldStayTogether",
+                        )?;
                         let p1_idx = *self.person_id_to_idx.get(&people[i]).ok_or_else(|| {
                             SolverError::ValidationError(format!(
                                 "ShouldStayTogether references unknown person {}",
@@ -826,25 +959,33 @@ impl State {
                             ))
                         })?;
 
+                        let pair = Self::canonical_pair(p1_idx, p2_idx);
+
+                        if self.hard_apart_pairs.iter().enumerate().any(|(pair_idx, &hard_pair)| {
+                            hard_pair == pair
+                                && Self::sessions_overlap(
+                                    self.hard_apart_pair_sessions[pair_idx].as_deref(),
+                                    compiled_sessions.as_deref(),
+                                )
+                        }) {
+                            return Err(SolverError::ValidationError(
+                                "ShouldStayTogether conflicts with MustStayApart for the same pair in overlapping sessions".to_string(),
+                            ));
+                        }
+
                         // Conflict check with existing ShouldNotBeTogether pairs
                         if let Some((fp_idx, _)) =
                             self.soft_apart_pairs
                                 .iter()
                                 .enumerate()
                                 .find(|(_, &(a, b))| {
-                                    (a == p1_idx && b == p2_idx) || (a == p2_idx && b == p1_idx)
+                                    Self::canonical_pair(a, b) == pair
                                 })
                         {
-                            // Sessions overlap?
-                            let f_sessions = &self.soft_apart_pair_sessions[fp_idx];
-                            let s_sessions: Option<Vec<usize>> = constraint_sessions
-                                .as_ref()
-                                .map(|v| v.iter().map(|&s| s as usize).collect());
-                            let overlap = match (f_sessions, &s_sessions) {
-                                (None, _) | (_, None) => true,
-                                (Some(f), Some(s)) => f.iter().any(|x| s.contains(x)),
-                            };
-                            if overlap {
+                            if Self::sessions_overlap(
+                                self.soft_apart_pair_sessions[fp_idx].as_deref(),
+                                compiled_sessions.as_deref(),
+                            ) {
                                 return Err(SolverError::ValidationError(
                                     "ShouldStayTogether constraint conflicts with existing ShouldNotBeTogether for the same pair in overlapping sessions".to_string(),
                                 ));
@@ -856,15 +997,7 @@ impl State {
 
                         self.should_together_pairs.push((p1_idx, p2_idx));
                         self.should_together_weights.push(*penalty_weight);
-
-                        // Convert sessions to indices if provided
-                        if let Some(sessions) = constraint_sessions {
-                            let session_indices: Vec<usize> =
-                                sessions.iter().map(|&s| s as usize).collect();
-                            self.should_together_sessions.push(Some(session_indices));
-                        } else {
-                            self.should_together_sessions.push(None); // Apply to all sessions
-                        }
+                        self.should_together_sessions.push(compiled_sessions);
                     }
                 }
             }
@@ -1033,6 +1166,7 @@ impl State {
         // Initialize constraint violation vectors with correct sizes
         self.clique_violations = vec![0; self.cliques.len()];
         self.soft_apart_pair_violations = vec![0; self.soft_apart_pairs.len()];
+        self.hard_apart_pair_violations = vec![0; self.hard_apart_pairs.len()];
         self.should_together_violations = vec![0; self.should_together_pairs.len()];
 
         // === Propagate immovable constraints to clique members ===
