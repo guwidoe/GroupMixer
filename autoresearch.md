@@ -8,18 +8,22 @@ The focus in this session is **construction coverage**, not local search quality
 - implement explicit constructor families, catalog-backed facts, composition operators, and portfolio routing in `solver5`
 - maximize how many fixed benchmark cells admit a valid zero-repeat construction, and for each `(g, p)` maximize the constructed week count `W_g,p`
 
-The objective gate should remain **`total_constructed_weeks`**. It is not a perfect measure of the end-state library, but it is an honest and objective proof that a proposed family/routing change actually expands or strengthens constructive coverage on the fixed matrix.
+The objective gate should remain **`total_constructed_weeks`**. It is not a perfect measure of the end-state library, but it is an honest and objective proof that a proposed family/routing change actually expands or strengthens constructive coverage on the fixed benchmark regions.
 
-The initial benchmark matrix is fixed to all cells with:
-- `2 <= g <= 10`
-- `2 <= p <= 10`
+The benchmark now scores three fixed matrices / regions:
+- canonical matrix: `2 <= g <= 10`, `2 <= p <= 10`
+- additional matrix: `11 <= g <= 20`, `2 <= p <= 10`
+- additional matrix: `11 <= g <= 20`, `11 <= p <= 20`
 - pure SGP semantics only
+
+The trivial `p = 1` visual column in the first additional matrix remains
+visual-only and excluded from the objective.
 
 For each cell, the benchmark searches downward from the counting upper bound
 `floor((gp - 1) / (p - 1))` and records the largest `w` for which `solver5` returns a valid zero-repeat construction.
 
 ## Metrics
-- **Primary**: `total_constructed_weeks` (higher is better) — sum of constructed `W_g,p` across the fixed `2..10 x 2..10` matrix.
+- **Primary**: `total_constructed_weeks` (higher is better) — sum of constructed `W_g,p` across the three fixed benchmark regions above.
 - **Secondary**:
   - `frontier_gap_sum` (lower is better)
   - `solved_cells`
@@ -74,7 +78,7 @@ The script:
 - When a family only supports a frontier or lower-bound construction, prefixes are allowed: if a family constructs `g-p-W`, taking the first `w <= W` weeks is valid.
 - Record promising but deferred families in `autoresearch.ideas.md`.
 - Use the constructor-portfolio platform that now exists; do not reintroduce ad hoc family selection, inline exception logic, or opaque fallback behavior.
-- Keep matrix reporting aligned to the canonical target definition and preserve the distinction between scored cells and visual-only cells.
+- Keep matrix reporting aligned to the canonical target definition plus the curated supplementary literature target file, and preserve the distinction between scored cells and visual-only cells.
 
 ## Initial Portfolio Plan
 High-ROI constructor order from the research note:
@@ -140,7 +144,7 @@ Interpretation note:
   - prime-power affine-plane constructors for `p = g`
   - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
   - a universal single-round partition family for any divisible pure-SGP instance, used as an honest reusable `W=1` lower bound when no stronger family applies
-- Active kept benchmark baseline is now:
+- Active kept benchmark baseline under the *old* canonical-only benchmark was:
   - commit: `b250b32`
   - `total_constructed_weeks = 419`
   - `frontier_gap_sum = 167`
@@ -156,6 +160,9 @@ Interpretation note:
   - `p8_constructed_weeks = 29`
   - `p9_constructed_weeks = 22`
   - `p10_constructed_weeks = 12`
+- After expanding the benchmark to all three matrices, this baseline is only a
+  historical reference; the new benchmark needs a fresh rerun and experiment
+  header before any keep/discard comparison is meaningful.
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
@@ -195,7 +202,8 @@ Interpretation note:
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
-- Active kept benchmark baseline is now the pending kept `419` baseline.
+- The old canonical-only `419` baseline is no longer the active benchmark gate
+  once the three-matrix benchmark lands; treat it as historical context only.
 - The universal single-round lower bound has landed and removed all zero-coverage holes without changing the benchmark question:
   - `unsolved_cells: 36 -> 0`
   - many previously empty cells now honestly score `W=1`

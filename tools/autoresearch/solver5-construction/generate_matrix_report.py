@@ -476,6 +476,17 @@ def render_literature_reference_table(references):
     return "".join(rows)
 
 
+def render_benchmark_regions(regions):
+    if not regions:
+        return ""
+    parts = []
+    for region in regions:
+        parts.append(
+            f"{html.escape(region['title'])} g={region['bounds']['g_min']}..{region['bounds']['g_max']}, p={region['bounds']['p_min']}..{region['bounds']['p_max']}"
+        )
+    return " · ".join(parts)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("artifact")
@@ -487,6 +498,7 @@ def main():
     supplementary_matrices = artifact.get("supplementary_matrices", [])
     literature_references = artifact.get("literature_references", [])
     literature_reference_index = build_literature_reference_index(artifact)
+    benchmark_regions = artifact.get("benchmark_regions", [])
     rows = range(artifact["visual_bounds"]["g_min"], artifact["visual_bounds"]["g_max"] + 1)
     cols = range(artifact["visual_bounds"]["p_min"], artifact["visual_bounds"]["p_max"] + 1)
     cell_map = build_matrix(cells)
@@ -533,7 +545,7 @@ def main():
         "code{background:#f1f5f9;border-radius:6px;padding:1px 5px;font-size:11px;}"
         "</style></head><body>",
         f"<h1>{html.escape(artifact['matrix_name'])}</h1>",
-        f"<p class='meta'>version {artifact['matrix_version']} · visual region g={artifact['visual_bounds']['g_min']}..{artifact['visual_bounds']['g_max']}, p={artifact['visual_bounds']['p_min']}..{artifact['visual_bounds']['p_max']} · scored region g={artifact['scored_bounds']['g_min']}..{artifact['scored_bounds']['g_max']}, p={artifact['scored_bounds']['p_min']}..{artifact['scored_bounds']['p_max']}</p>",
+        f"<p class='meta'>version {artifact['matrix_version']} · visual region g={artifact['visual_bounds']['g_min']}..{artifact['visual_bounds']['g_max']}, p={artifact['visual_bounds']['p_min']}..{artifact['visual_bounds']['p_max']} · benchmark regions {html.escape(render_benchmark_regions(benchmark_regions))}</p>",
         "<div class='legend-block'>",
         "<div class='legend-row'><span class='legend-key'>Fill</span>",
         render_scale_swatch("far from target", progress_fill_color(0, 10, True)),
@@ -548,7 +560,7 @@ def main():
         "</div>",
         "<div class='legend-row legend-corners'><span class='legend-key'>Corners</span> <span><code>O</code> top-left optimum</span> <span><code>T</code> top-right roadmap target</span> <span><code>L</code> bottom-left literature lower bound</span> <span>tiny blue superscripts on target labels link into the literature reference table below when a source is curated</span></div>",
         "<div class='legend-row legend-corners'><span class='legend-key'>Method badges</span> <span><code>RR</code> round robin</span> <span><code>NKTS</code> nearly Kirkman triple system</span> <span><code>ownSG</code> starter-block own-social-golfer construction</span> <span><code>RITD</code> resolvable incomplete transversal design</span> <span><code>PSB</code> published schedule bank</span></div>",
-        "<div class='legend-row legend-corners'><span class='legend-key'>Supplementary matrices</span> <span><code>T</code> top-right conservative literature target when curated from the 2026 paper</span> <span><code>U</code> bottom-left counting upper bound when a curated target exists</span> <span>tiny blue superscripts next to supplementary <code>T</code> labels link into the literature reference table below</span></div>",
+        "<div class='legend-row legend-corners'><span class='legend-key'>Additional benchmark matrices</span> <span><code>T</code> top-right conservative literature target when curated from the 2026 paper</span> <span><code>U</code> bottom-left counting upper bound when a curated target exists</span> <span>tiny blue superscripts next to additional-matrix <code>T</code> labels link into the literature reference table below</span></div>",
         "<div class='sample-grid'>",
         render_sample(
             "Solved and optimal",

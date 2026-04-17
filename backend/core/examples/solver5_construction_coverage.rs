@@ -47,6 +47,7 @@ struct MatrixArtifact<'a> {
     matrix_version: u32,
     visual_bounds: BoundsArtifact,
     scored_bounds: BoundsArtifact,
+    benchmark_regions: Vec<BenchmarkRegionArtifact>,
     cells: Vec<CellSummary>,
     supplementary_matrices: Vec<SupplementaryMatrixArtifact>,
     literature_references: Vec<LiteratureReferenceArtifact>,
@@ -58,6 +59,12 @@ struct BoundsArtifact {
     g_max: usize,
     p_min: usize,
     p_max: usize,
+}
+
+#[derive(Debug, Serialize)]
+struct BenchmarkRegionArtifact {
+    title: String,
+    bounds: BoundsArtifact,
 }
 
 #[derive(Debug, Serialize)]
@@ -150,11 +157,41 @@ fn main() {
     let supplementary_targets = load_supplementary_literature_targets()
         .expect("supplementary literature targets should load");
     let literature_references = supplementary_literature_references();
+    let benchmark_regions = vec![
+        BenchmarkRegionArtifact {
+            title: "Canonical benchmark region".into(),
+            bounds: BoundsArtifact {
+                g_min: target_matrix.scored_bounds.g_min,
+                g_max: target_matrix.scored_bounds.g_max,
+                p_min: target_matrix.scored_bounds.p_min,
+                p_max: target_matrix.scored_bounds.p_max,
+            },
+        },
+        BenchmarkRegionArtifact {
+            title: "Additional benchmark region".into(),
+            bounds: BoundsArtifact {
+                g_min: 11,
+                g_max: 20,
+                p_min: 2,
+                p_max: 10,
+            },
+        },
+        BenchmarkRegionArtifact {
+            title: "Additional benchmark region".into(),
+            bounds: BoundsArtifact {
+                g_min: 11,
+                g_max: 20,
+                p_min: 11,
+                p_max: 20,
+            },
+        },
+    ];
     let mut cells = Vec::new();
     let mut total_constructed_weeks = 0usize;
     let mut frontier_gap_sum = 0usize;
     let mut solved_cells = 0usize;
     let mut exact_frontier_cells = 0usize;
+    let mut benchmark_cell_count = 0usize;
     let mut per_p_totals: BTreeMap<usize, usize> = BTreeMap::new();
 
     for groups in target_matrix.visual_bounds.g_min..=target_matrix.visual_bounds.g_max {
@@ -176,15 +213,17 @@ fn main() {
                     &target_matrix,
                 );
                 let constructed_weeks = scored_cell.constructed_weeks.unwrap_or(0);
-                total_constructed_weeks += constructed_weeks;
-                frontier_gap_sum += upper_bound.saturating_sub(constructed_weeks);
-                if constructed_weeks > 0 {
-                    solved_cells += 1;
-                }
-                if constructed_weeks == upper_bound {
-                    exact_frontier_cells += 1;
-                }
-                *per_p_totals.entry(group_size).or_default() += constructed_weeks;
+                accumulate_benchmark_metrics(
+                    group_size,
+                    upper_bound,
+                    constructed_weeks,
+                    &mut total_constructed_weeks,
+                    &mut frontier_gap_sum,
+                    &mut solved_cells,
+                    &mut exact_frontier_cells,
+                    &mut benchmark_cell_count,
+                    &mut per_p_totals,
+                );
                 scored_cell
             } else {
                 visual_only_cell(groups, group_size, target, &target_matrix)
@@ -196,7 +235,7 @@ fn main() {
     let supplementary_matrices = vec![
         build_supplementary_matrix(
             "Supplementary coverage: g=11..20, p=1..10",
-            "Report-only region. Center = current constructed weeks, top-right = conservative literature target T when curated from the 2026 paper, bottom-left = counting upper bound U when a curated target exists, and bottom-right = achieving family. Fill grades against T when present, otherwise against U. These cells are excluded from the objective and do not use canonical roadmap-target semantics.",
+            "Additional benchmark region. Center = current constructed weeks, top-right = conservative literature target T when curated from the 2026 paper, bottom-left = counting upper bound U when a curated target exists, and bottom-right = achieving family. Fill grades against T when present, otherwise against U. Only the trivial p=1 column stays excluded from the objective.",
             11,
             20,
             1,
@@ -206,7 +245,7 @@ fn main() {
         ),
         build_supplementary_matrix(
             "Supplementary coverage: g=11..20, p=11..20",
-            "Report-only diagonal/high-p region. Center = current constructed weeks, top-right = conservative literature target T when curated from the 2026 paper, bottom-left = counting upper bound U when a curated target exists, and bottom-right = achieving family. Fill grades against T when present, otherwise against U. Blank T means no clean paper-derived target is curated yet for that cell. These cells are excluded from the objective and do not use canonical roadmap-target semantics.",
+            "Additional benchmark diagonal/high-p region. Center = current constructed weeks, top-right = conservative literature target T when curated from the 2026 paper, bottom-left = counting upper bound U when a curated target exists, and bottom-right = achieving family. Fill grades against T when present, otherwise against U. Blank T means no clean paper-derived target is curated yet for that cell, but the cell still counts in the benchmark via its current constructed weeks and counting upper bound.",
             11,
             20,
             11,
@@ -216,22 +255,44 @@ fn main() {
         ),
     ];
 
+    for matrix in &supplementary_matrices {
+        for cell in &matrix.cells {
+            if let (Some(upper_bound), Some(constructed_weeks)) =
+                (cell.upper_bound, cell.constructed_weeks)
+            {
+                accumulate_benchmark_metrics(
+                    cell.p,
+                    upper_bound,
+                    constructed_weeks,
+                    &mut total_constructed_weeks,
+                    &mut frontier_gap_sum,
+                    &mut solved_cells,
+                    &mut exact_frontier_cells,
+                    &mut benchmark_cell_count,
+                    &mut per_p_totals,
+                );
+            }
+        }
+    }
+
     println!("METRIC total_constructed_weeks={total_constructed_weeks}");
     println!("METRIC frontier_gap_sum={frontier_gap_sum}");
     println!("METRIC solved_cells={solved_cells}");
     println!("METRIC exact_frontier_cells={exact_frontier_cells}");
-    println!(
-        "METRIC unsolved_cells={}",
-        ((target_matrix.scored_bounds.g_max - target_matrix.scored_bounds.g_min + 1)
-            * (target_matrix.scored_bounds.p_max - target_matrix.scored_bounds.p_min + 1))
-            - solved_cells
-    );
+    println!("METRIC unsolved_cells={}", benchmark_cell_count - solved_cells);
     for (group_size, total) in per_p_totals {
         println!("METRIC p{}_constructed_weeks={}", group_size, total);
     }
     for cell in &cells {
         if let Some(constructed_weeks) = cell.constructed_weeks {
             println!("METRIC W_{}_{}={}", cell.g, cell.p, constructed_weeks);
+        }
+    }
+    for matrix in &supplementary_matrices {
+        for cell in &matrix.cells {
+            if let Some(constructed_weeks) = cell.constructed_weeks {
+                println!("METRIC W_{}_{}={}", cell.g, cell.p, constructed_weeks);
+            }
         }
     }
 
@@ -251,6 +312,7 @@ fn main() {
                 p_min: target_matrix.scored_bounds.p_min,
                 p_max: target_matrix.scored_bounds.p_max,
             },
+            benchmark_regions,
             cells,
             supplementary_matrices,
             literature_references,
@@ -259,6 +321,30 @@ fn main() {
             .expect("matrix artifact should serialize cleanly");
         fs::write(path, json).expect("should write coverage matrix json");
     }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn accumulate_benchmark_metrics(
+    group_size: usize,
+    upper_bound: usize,
+    constructed_weeks: usize,
+    total_constructed_weeks: &mut usize,
+    frontier_gap_sum: &mut usize,
+    solved_cells: &mut usize,
+    exact_frontier_cells: &mut usize,
+    benchmark_cell_count: &mut usize,
+    per_p_totals: &mut BTreeMap<usize, usize>,
+) {
+    *benchmark_cell_count += 1;
+    *total_constructed_weeks += constructed_weeks;
+    *frontier_gap_sum += upper_bound.saturating_sub(constructed_weeks);
+    if constructed_weeks > 0 {
+        *solved_cells += 1;
+    }
+    if constructed_weeks == upper_bound {
+        *exact_frontier_cells += 1;
+    }
+    *per_p_totals.entry(group_size).or_default() += constructed_weeks;
 }
 
 fn counting_bound(groups: usize, group_size: usize) -> usize {
