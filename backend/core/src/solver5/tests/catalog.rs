@@ -103,11 +103,39 @@ fn published_schedule_catalog_exposes_8_3_10_case() {
 #[test]
 fn ownsg_catalog_exposes_benchmark_relevant_cases() {
     assert_eq!(
+        ownsg::exact_case(12, 7)
+            .expect("ownsg catalog should expose the 12-7-7 case")
+            .starter_blocks
+            .len(),
+        7
+    );
+    assert_eq!(
+        ownsg::exact_case(14, 6)
+            .expect("ownsg catalog should expose the 14-6-9 case")
+            .starter_blocks
+            .len(),
+        9
+    );
+    assert_eq!(
+        ownsg::exact_case(15, 6)
+            .expect("ownsg catalog should expose the 15-6-10 case")
+            .starter_blocks
+            .len(),
+        10
+    );
+    assert_eq!(
         ownsg::exact_case(10, 6)
             .expect("ownsg catalog should expose the 10-6-7 case")
             .starter_blocks
             .len(),
         7
+    );
+    assert_eq!(
+        ownsg::exact_case(20, 6)
+            .expect("ownsg catalog should expose the 20-6-13 case")
+            .starter_blocks
+            .len(),
+        13
     );
     assert_eq!(
         ownsg::exact_case(10, 9)

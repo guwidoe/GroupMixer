@@ -259,6 +259,21 @@ fn solver5_solves_ownsg_10_9_5_case() {
 }
 
 #[test]
+fn solver5_solves_ownsg_supplementary_cases() {
+    let solver = SearchEngine::new(&pure_input(12, 7, 7).solver);
+
+    for (g, p, w) in [(12, 7, 7), (14, 6, 9), (15, 6, 10), (20, 6, 13)] {
+        let input = pure_input(g, p, w);
+        let result = solver
+            .solve(&input)
+            .unwrap_or_else(|_| panic!("ownsg should solve {g}-{p}-{w}"));
+
+        assert_eq!(result.final_score, 0.0, "{g}-{p}-{w} should stay pure-SGP");
+        assert_eq!(result.schedule.len(), w);
+    }
+}
+
+#[test]
 fn solver5_solves_ritd_10_5_9_case() {
     let input = pure_input(10, 5, 9);
     let solver = SearchEngine::new(&input.solver);
