@@ -43,6 +43,7 @@
 //!             max_iterations: Some(1000),
 //!             time_limit_seconds: None,
 //!             no_improvement_iterations: None,
+//!             stop_on_optimal_score: true,
 //!         },
 //!         solver_params: SolverParams::SimulatedAnnealing(
 //!                SimulatedAnnealingParams {
@@ -183,6 +184,7 @@ pub mod solver_support;
 ///             max_iterations: Some(10_000),
 ///             time_limit_seconds: Some(30),
 ///             no_improvement_iterations: Some(1_000),
+///             stop_on_optimal_score: true,
 ///         },
 ///         solver_params: SolverParams::SimulatedAnnealing(
 ///             SimulatedAnnealingParams {
@@ -265,7 +267,7 @@ pub fn run_solver(input: &ApiInput) -> Result<SolverResult, SolverError> {
 /// #     objectives: vec![], constraints: vec![],
 /// #     solver: SolverConfiguration {
 /// #         solver_type: "SimulatedAnnealing".to_string(),
-/// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
+/// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None, stop_on_optimal_score: true },
 /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
 /// #         logging: LoggingOptions::default(),
 /// #         telemetry: Default::default(),

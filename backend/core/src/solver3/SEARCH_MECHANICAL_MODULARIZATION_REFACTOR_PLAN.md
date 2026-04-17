@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed, not yet started.
+Completed on 2026-04-17.
 
 This plan covers a **mechanical, search-layer-only** modularization of `solver3` so the current oversized files become manageable without changing solver behavior, policy semantics, runtime-state layout, or move-kernel contracts.
 
@@ -11,6 +11,59 @@ The intent is to preserve the current architecture:
 > dense runtime kernels + search-side policy/orchestration
 
 while making the search layer easier to inspect, extend, and benchmark safely.
+
+### Completion notes
+
+The full mechanical split landed in six staged epics plus a final cleanup pass.
+
+Landed structure:
+
+- `backend/core/src/solver3/search/context/`
+- `backend/core/src/solver3/search/candidate_sampling/`
+- `backend/core/src/solver3/search/recombination/`
+- `backend/core/src/solver3/search/path_relinking/`
+- `backend/core/src/solver3/search/single_state/`
+
+Final cleanup/verification follow-up:
+
+- simplified the final `search/mod.rs` and narrowed staged re-export clutter in nested `mod.rs` files
+- refreshed stale Rust doc examples that were blocking `cargo test --workspace` after `StopConditions` gained `stop_on_optimal_score`
+- reran the final solver3 sanity bundle (`cargo test --workspace`, solver3 benchmark triad)
+
+Final verification status:
+
+- `cargo test --workspace` — passing
+- `bash ./gate.sh` — still blocked by a pre-existing formatter-only diff in `backend/benchmarking/src/manifest.rs`; left out of this program's commits to avoid bundling unrelated formatting churn
+- final benchmark sanity reruns completed with unchanged scores/checksums and no credible behavioral drift
+
+Final benchmark sanity artifacts:
+
+- pre-cleanup
+  - `backend/benchmarking/artifacts/runs/social-golfer-plateau-time-solver3-20260417T084257Z-450f4fc4/run-report.json`
+  - `backend/benchmarking/artifacts/runs/social-golfer-plateau-fixed-iteration-solver3-20260417T084322Z-2896c8cb/run-report.json`
+  - `backend/benchmarking/artifacts/runs/hotpath-search-iteration-sailing-trip-demo-solver3-20260417T084512Z-908dcb88/run-report.json`
+- post-cleanup
+  - `backend/benchmarking/artifacts/runs/social-golfer-plateau-time-solver3-20260417T085401Z-3e3cb85d/run-report.json`
+  - `backend/benchmarking/artifacts/runs/social-golfer-plateau-fixed-iteration-solver3-20260417T085426Z-937f1b22/run-report.json`
+  - `backend/benchmarking/artifacts/runs/hotpath-search-iteration-sailing-trip-demo-solver3-20260417T085609Z-a67947ac/run-report.json`
+- time-lane rerun to check noise
+  - `backend/benchmarking/artifacts/runs/social-golfer-plateau-time-solver3-20260417T085649Z-9a633b99/run-report.json`
+
+Program commits:
+
+- `b3f57fd` — split context config/validation
+- `2a1c7fb` — split context policy/progress
+- `5c46ffa` — require honest 10k search-iteration benchmark counts
+- `5eeb7f1` — add this modularization plan
+- `2610a6d` — split candidate-sampling types/dispatch
+- `4fdba05` — split candidate-sampling families
+- `868eb3b` — split recombination helpers
+- `7390c6e` — split recombination driver/telemetry
+- `b5e13bf` — split path-relinking alignment
+- `0c0fc04` — split path-relinking drivers
+- `fc9068f` — split single-state helpers
+- `b5755f2` — split single-state loops
+- `331973e` — simplify final modularized search surfaces
 
 ---
 
@@ -898,25 +951,24 @@ This modularization program is done only when all of the following are true:
 
 ### Sub-epics
 
-- `TODO-4b188a45` — split `search/context.rs` into context package modules
-- `TODO-c61bf77f` — split `search/candidate_sampling.rs` into dispatch/family/eligibility modules
-- `TODO-ac54dcf0` — split `search/recombination.rs` into donor-selection/retention/trigger/telemetry/driver modules
-- `TODO-ac67f564` — split `search/path_relinking.rs` into alignment/relinking/multi-root/telemetry modules
-- `TODO-7bc3d373` — split `search/single_state.rs` into driver/loop/diversification/result/correctness modules
-- `TODO-7d8abaa3` — final verification, cleanup, and documentation pass
+- `TODO-4b188a45` — split `search/context.rs` into context package modules _(done)_
+- `TODO-c61bf77f` — split `search/candidate_sampling.rs` into dispatch/family/eligibility modules _(done)_
+- `TODO-ac54dcf0` — split `search/recombination.rs` into donor-selection/retention/trigger/telemetry/driver modules _(done)_
+- `TODO-ac67f564` — split `search/path_relinking.rs` into alignment/relinking/multi-root/telemetry modules _(done)_
+- `TODO-7bc3d373` — split `search/single_state.rs` into driver/loop/diversification/result/correctness modules _(done)_
+- `TODO-7d8abaa3` — final verification, cleanup, and documentation pass _(done with gate caveat noted above)_
 
 ### Initial subtasks
 
-- `TODO-6c217619` — extract context config/validation modules
-- `TODO-ba613a63` — extract context policy-memory and progress/telemetry modules
-- `TODO-b8d44348` — extract candidate-sampling shared types and dispatch modules
-- `TODO-b30c87e3` — split candidate-sampling family modules and runtime eligibility helpers
-- `TODO-4aa3a34a` — extract recombination selection/retention/trigger/certification helpers
-- `TODO-3e4a9ed6` — extract recombination telemetry helpers and slim driver
-- `TODO-55605ee7` — extract path-relinking alignment substrate
-- `TODO-37aba2ce` — split path-relinking and multi-root drivers
-- `TODO-2f90aba7` — extract single-state diversification/result/correctness helpers
-- `TODO-320d83c3` — split single-state default/general loops
-- `TODO-b55c9c2d` — simplify final `search/mod.rs` and re-export surfaces
-- `TODO-3f10e8e2` — run final full verification and benchmark sanity bundle
-
+- `TODO-6c217619` — extract context config/validation modules _(done)_
+- `TODO-ba613a63` — extract context policy-memory and progress/telemetry modules _(done)_
+- `TODO-b8d44348` — extract candidate-sampling shared types and dispatch modules _(done)_
+- `TODO-b30c87e3` — split candidate-sampling family modules and runtime eligibility helpers _(done)_
+- `TODO-4aa3a34a` — extract recombination selection/retention/trigger/certification helpers _(done)_
+- `TODO-3e4a9ed6` — extract recombination telemetry helpers and slim driver _(done)_
+- `TODO-55605ee7` — extract path-relinking alignment substrate _(done)_
+- `TODO-37aba2ce` — split path-relinking and multi-root drivers _(done)_
+- `TODO-2f90aba7` — extract single-state diversification/result/correctness helpers _(done)_
+- `TODO-320d83c3` — split single-state default/general loops _(done)_
+- `TODO-b55c9c2d` — simplify final `search/mod.rs` and re-export surfaces _(done)_
+- `TODO-3f10e8e2` — run final full verification and benchmark sanity bundle _(done with gate caveat noted above)_
