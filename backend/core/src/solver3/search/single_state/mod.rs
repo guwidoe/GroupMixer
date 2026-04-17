@@ -8,20 +8,12 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::{
-    BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, MoveFamily, MovePolicy,
-    ProgressCallback, Solver3LocalImproverMode, SolverBenchmarkTelemetry, SolverResult, StopReason,
+    BenchmarkEvent, BenchmarkObserver, BenchmarkRunStarted, ProgressCallback,
+    Solver3LocalImproverMode, SolverResult, StopReason,
 };
 use crate::solver_support::SolverError;
 
-use super::super::moves::{
-    apply_clique_swap_runtime_preview, apply_swap_runtime_preview, apply_transfer_runtime_preview,
-};
-#[cfg(feature = "solver3-oracle-checks")]
-use super::super::oracle::maybe_cross_check_runtime_state;
-use super::super::oracle::oracle_score;
 use super::super::runtime_state::RuntimeState;
-#[cfg(feature = "solver3-oracle-checks")]
-use super::super::validation::invariants::validate_invariants;
 use super::acceptance::{
     cooling_progress, record_to_record_threshold_for_progress, RecordToRecordAcceptance,
     RecordToRecordInputs,
@@ -35,13 +27,16 @@ use super::repeat_guidance::RepeatGuidanceState;
 use super::sgp_conflicts::SgpConflictState;
 use super::tabu::SgpWeekPairTabuState;
 
-const DIVERSIFICATION_BURST_STAGNATION_THRESHOLD: u64 = 25_000;
-const DIVERSIFICATION_TOTAL_DONOR_POLISH_SECONDS: f64 = 2.0;
-const DIVERSIFICATION_DONOR_COUNT: usize = 2;
-const DIVERSIFICATION_MIN_REMAINING_TIME_SECONDS: f64 = 4.0;
-const DIVERSIFICATION_PER_DONOR_ITERATION_DIVISOR: u64 = 10;
-const DIVERSIFICATION_MIN_REMAINING_ITERATIONS: u64 = 50_000;
-const PROGRESS_CALLBACK_INTERVAL_SECONDS: f64 = 0.1;
+mod correctness;
+mod diversification;
+mod result;
+
+pub(crate) use correctness::maybe_run_sampled_correctness_check;
+use diversification::{
+    extend_no_improvement_streak, should_attempt_diversification_burst, try_diversification_burst,
+};
+pub(crate) use result::{apply_previewed_move, build_solver_result, should_emit_progress_callback};
+
 const TIME_REFRESH_INTERVAL: u64 = 64;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -91,9 +86,9 @@ pub(crate) struct LocalImproverRunResult {
 }
 
 #[derive(Clone, Copy)]
-struct LocalImproverHooks<'a> {
-    progress_callback: Option<&'a ProgressCallback>,
-    benchmark_observer: Option<&'a BenchmarkObserver>,
+pub(super) struct LocalImproverHooks<'a> {
+    pub(super) progress_callback: Option<&'a ProgressCallback>,
+    pub(super) benchmark_observer: Option<&'a BenchmarkObserver>,
 }
 
 pub(crate) fn run(
@@ -157,7 +152,7 @@ pub(crate) fn polish_state(
     )
 }
 
-fn run_local_improver(
+pub(super) fn run_local_improver(
     initial_state: RuntimeState,
     run_context: &SearchRunContext,
     budget: LocalImproverBudget,
@@ -904,6 +899,25 @@ fn run_local_improver_default(
     })
 }
 
+#[inline]
+fn time_limit_exceeded(elapsed_seconds: f64, time_limit_seconds: Option<f64>) -> bool {
+    time_limit_seconds.is_some_and(|limit| elapsed_seconds >= limit)
+}
+
+#[inline]
+fn should_use_default_sampler_path(run_context: &SearchRunContext) -> bool {
+    if run_context.local_improver_mode != Solver3LocalImproverMode::RecordToRecord {
+        return false;
+    }
+
+    #[cfg(feature = "solver3-experimental-repeat-guidance")]
+    if run_context.repeat_guided_swaps_enabled {
+        return false;
+    }
+
+    true
+}
+
 fn is_tabu_swap_preview(
     tabu_state: Option<&SgpWeekPairTabuState>,
     state: &RuntimeState,
@@ -924,323 +938,4 @@ fn is_tabu_swap_preview(
         swap.right_person_idx,
         iteration,
     )
-}
-
-pub(crate) fn build_solver_result(
-    state: &RuntimeState,
-    no_improvement_count: u64,
-    effective_seed: u64,
-    move_policy: MovePolicy,
-    stop_reason: StopReason,
-    benchmark_telemetry: SolverBenchmarkTelemetry,
-) -> Result<SolverResult, SolverError> {
-    let oracle = oracle_score(state)?;
-    Ok(SolverResult {
-        final_score: state.total_score,
-        schedule: state.to_api_schedule(),
-        unique_contacts: state.unique_contacts as i32,
-        repetition_penalty: state.repetition_penalty_raw,
-        attribute_balance_penalty: state.attribute_balance_penalty as i32,
-        constraint_penalty: oracle.constraint_penalty_raw,
-        no_improvement_count,
-        weighted_repetition_penalty: state.weighted_repetition_penalty,
-        weighted_constraint_penalty: state.constraint_penalty_weighted,
-        effective_seed: Some(effective_seed),
-        move_policy: Some(move_policy),
-        stop_reason: Some(stop_reason),
-        benchmark_telemetry: Some(benchmark_telemetry),
-    })
-}
-
-pub(crate) fn apply_previewed_move(
-    state: &mut RuntimeState,
-    preview: &SearchMovePreview,
-) -> Result<(), SolverError> {
-    match preview {
-        SearchMovePreview::Swap(preview) => apply_swap_runtime_preview(state, preview),
-        SearchMovePreview::Transfer(preview) => apply_transfer_runtime_preview(state, preview),
-        SearchMovePreview::CliqueSwap(preview) => apply_clique_swap_runtime_preview(state, preview),
-    }
-}
-
-struct DiversificationBurstOutcome {
-    best_offspring: Option<RuntimeState>,
-    iterations_consumed: u64,
-}
-
-fn try_diversification_burst(
-    recipient_state: &RuntimeState,
-    run_context: &SearchRunContext,
-    budget: LocalImproverBudget,
-    iteration: u64,
-) -> Result<DiversificationBurstOutcome, SolverError> {
-    let mut best_offspring = None;
-    let mut best_score = f64::INFINITY;
-    let mut donor_best_states = Vec::with_capacity(DIVERSIFICATION_DONOR_COUNT);
-    let mut iterations_consumed: u64 = 0;
-    let remaining_iterations = budget.max_iterations.saturating_sub(iteration);
-
-    for donor_ordinal in 0..DIVERSIFICATION_DONOR_COUNT {
-        let donor_seed = diversify_seed(
-            budget.effective_seed,
-            iteration
-                .saturating_add(1)
-                .saturating_add(donor_ordinal as u64),
-        );
-        let Ok(donor_state) =
-            RuntimeState::from_compiled_with_seed(recipient_state.compiled.clone(), donor_seed)
-        else {
-            continue;
-        };
-        let Ok(donor_outcome) = run_local_improver(
-            donor_state,
-            run_context,
-            LocalImproverBudget {
-                effective_seed: donor_seed,
-                max_iterations: diversification_per_donor_iteration_budget(remaining_iterations),
-                no_improvement_limit: None,
-                time_limit_seconds: Some(diversification_per_donor_polish_seconds()),
-                stop_on_optimal_score: budget.stop_on_optimal_score,
-            },
-            LocalImproverHooks {
-                progress_callback: None,
-                benchmark_observer: None,
-            },
-            false,
-        ) else {
-            continue;
-        };
-        iterations_consumed =
-            iterations_consumed.saturating_add(donor_outcome.search.iterations_completed);
-        donor_best_states.push(donor_outcome.search.best_state.clone());
-
-        if let Some(offspring) = select_best_offspring_session(
-            recipient_state,
-            donor_best_states.last().expect("pushed donor state"),
-            &run_context.allowed_sessions,
-        )? {
-            if offspring.total_score < best_score {
-                best_score = offspring.total_score;
-                best_offspring = Some(offspring);
-            }
-        }
-    }
-
-    if let Some(offspring) = select_best_cross_donor_bundle(
-        recipient_state,
-        &donor_best_states,
-        &run_context.allowed_sessions,
-    )? {
-        if offspring.total_score < best_score {
-            best_offspring = Some(offspring);
-        }
-    }
-
-    Ok(DiversificationBurstOutcome {
-        best_offspring,
-        iterations_consumed,
-    })
-}
-
-#[inline]
-fn time_limit_exceeded(elapsed_seconds: f64, time_limit_seconds: Option<f64>) -> bool {
-    time_limit_seconds.is_some_and(|limit| elapsed_seconds >= limit)
-}
-
-#[inline]
-fn should_use_default_sampler_path(run_context: &SearchRunContext) -> bool {
-    if run_context.local_improver_mode != Solver3LocalImproverMode::RecordToRecord {
-        return false;
-    }
-
-    #[cfg(feature = "solver3-experimental-repeat-guidance")]
-    if run_context.repeat_guided_swaps_enabled {
-        return false;
-    }
-
-    true
-}
-
-#[inline]
-fn should_attempt_diversification_burst(
-    no_improvement_count: u64,
-    time_limit_seconds: Option<f64>,
-    elapsed_seconds: f64,
-    remaining_iterations: u64,
-) -> bool {
-    if no_improvement_count < DIVERSIFICATION_BURST_STAGNATION_THRESHOLD {
-        return false;
-    }
-
-    if remaining_iterations < DIVERSIFICATION_MIN_REMAINING_ITERATIONS {
-        return false;
-    }
-
-    time_limit_seconds.is_some_and(|limit| {
-        elapsed_seconds + DIVERSIFICATION_TOTAL_DONOR_POLISH_SECONDS + 0.5
-            < limit - DIVERSIFICATION_MIN_REMAINING_TIME_SECONDS
-    })
-}
-
-#[inline]
-fn diversification_per_donor_polish_seconds() -> f64 {
-    (DIVERSIFICATION_TOTAL_DONOR_POLISH_SECONDS / DIVERSIFICATION_DONOR_COUNT as f64).max(0.1)
-}
-
-#[inline]
-fn diversification_per_donor_iteration_budget(remaining_iterations: u64) -> u64 {
-    (remaining_iterations / DIVERSIFICATION_PER_DONOR_ITERATION_DIVISOR).max(1)
-}
-
-#[inline]
-pub(crate) fn should_emit_progress_callback(
-    iteration: u64,
-    elapsed_since_last_callback: f64,
-) -> bool {
-    iteration == 0 || elapsed_since_last_callback >= PROGRESS_CALLBACK_INTERVAL_SECONDS
-}
-
-fn select_best_offspring_session(
-    recipient_state: &RuntimeState,
-    donor_state: &RuntimeState,
-    allowed_sessions: &[usize],
-) -> Result<Option<RuntimeState>, SolverError> {
-    let mut best_offspring = None;
-    let mut best_score = f64::INFINITY;
-
-    for &session_idx in allowed_sessions {
-        let mut offspring = recipient_state.clone();
-        offspring.overwrite_session_from(donor_state, session_idx)?;
-        offspring.rebuild_pair_contacts();
-        offspring.sync_score_from_oracle()?;
-        if offspring.total_score < best_score {
-            best_score = offspring.total_score;
-            best_offspring = Some(offspring);
-        }
-    }
-
-    Ok(best_offspring)
-}
-
-fn select_best_cross_donor_bundle(
-    recipient_state: &RuntimeState,
-    donors: &[RuntimeState],
-    allowed_sessions: &[usize],
-) -> Result<Option<RuntimeState>, SolverError> {
-    if donors.len() < 2 {
-        return Ok(None);
-    }
-
-    let mut best_offspring = None;
-    let mut best_score = f64::INFINITY;
-
-    for left_donor_idx in 0..donors.len() {
-        for right_donor_idx in (left_donor_idx + 1)..donors.len() {
-            for (left_session_pos, &left_session_idx) in allowed_sessions.iter().enumerate() {
-                for &right_session_idx in allowed_sessions.iter().skip(left_session_pos + 1) {
-                    let offspring = transplant_mixed_donor_sessions(
-                        recipient_state,
-                        &donors[left_donor_idx],
-                        left_session_idx,
-                        &donors[right_donor_idx],
-                        right_session_idx,
-                    )?;
-                    if offspring.total_score < best_score {
-                        best_score = offspring.total_score;
-                        best_offspring = Some(offspring);
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(best_offspring)
-}
-
-fn transplant_mixed_donor_sessions(
-    recipient_state: &RuntimeState,
-    left_donor: &RuntimeState,
-    left_session_idx: usize,
-    right_donor: &RuntimeState,
-    right_session_idx: usize,
-) -> Result<RuntimeState, SolverError> {
-    let mut offspring = recipient_state.clone();
-    offspring.overwrite_session_from(left_donor, left_session_idx)?;
-    offspring.overwrite_session_from(right_donor, right_session_idx)?;
-    offspring.rebuild_pair_contacts();
-    offspring.sync_score_from_oracle()?;
-    Ok(offspring)
-}
-
-#[inline]
-fn diversify_seed(base_seed: u64, salt: u64) -> u64 {
-    base_seed ^ 0x9e37_79b9_7f4a_7c15u64.wrapping_mul(salt.saturating_add(1))
-}
-
-#[inline]
-fn extend_no_improvement_streak(search: &mut SearchProgressState, steps: u64) {
-    if steps == 0 {
-        return;
-    }
-    search.no_improvement_count = search.no_improvement_count.saturating_add(steps);
-    search.max_no_improvement_streak = search
-        .max_no_improvement_streak
-        .max(search.no_improvement_count);
-}
-
-pub(crate) fn maybe_run_sampled_correctness_check(
-    run_context: &SearchRunContext,
-    state: &RuntimeState,
-    accepted_move_count: u64,
-    family: MoveFamily,
-    preview: &SearchMovePreview,
-) -> Result<(), SolverError> {
-    if !run_context.correctness_lane_enabled {
-        return Ok(());
-    }
-
-    #[cfg(feature = "solver3-oracle-checks")]
-    {
-        if should_sample_correctness_check(
-            accepted_move_count,
-            run_context.correctness_sample_every_accepted_moves,
-        ) {
-            let preview_description = preview.describe();
-            maybe_cross_check_runtime_state(
-                state,
-                &format!(
-                    "search sampled {:?} accepted move {}",
-                    family, preview_description
-                ),
-            )?;
-            validate_invariants(state).map_err(|error| {
-                SolverError::ValidationError(format!(
-                    "solver3 sampled invariant check failed after accepted {:?} move {}: {}",
-                    family, preview_description, error
-                ))
-            })?;
-        }
-    }
-
-    #[cfg(not(feature = "solver3-oracle-checks"))]
-    {
-        let _ = (
-            run_context.correctness_sample_every_accepted_moves,
-            run_context.correctness_lane_enabled,
-            state,
-            accepted_move_count,
-            family,
-            preview,
-        );
-    }
-
-    Ok(())
-}
-
-#[cfg(feature = "solver3-oracle-checks")]
-fn should_sample_correctness_check(
-    accepted_move_count: u64,
-    sample_every_accepted_moves: u64,
-) -> bool {
-    accepted_move_count > 0 && accepted_move_count % sample_every_accepted_moves == 0
 }
