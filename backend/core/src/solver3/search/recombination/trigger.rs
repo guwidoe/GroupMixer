@@ -1,4 +1,6 @@
-use super::super::context::DonorSessionTransplantConfig;
+use std::collections::VecDeque;
+
+use super::super::context::{AdaptiveRawChildRetentionConfig, DonorSessionTransplantConfig};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DonorSessionTriggerEligibility {

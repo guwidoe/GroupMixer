@@ -7,18 +7,20 @@ use crate::models::{
 };
 use crate::solver_support::SolverError;
 
-use super::super::moves::apply_swap_runtime_preview;
-use super::super::runtime_state::RuntimeState;
-use super::archive::EliteArchive;
+use super::super::super::moves::apply_swap_runtime_preview;
+use super::super::super::runtime_state::RuntimeState;
+use super::super::archive::{
+    build_session_conflict_burden, build_session_fingerprints, EliteArchive,
+};
+use super::super::context::{SearchProgressState, SearchRunContext};
+use super::super::single_state::{
+    build_solver_result, polish_state, should_emit_progress_callback, LocalImproverBudget,
+};
 use super::certification::certify_swap_local_optimum;
-use super::context::{SearchProgressState, SearchRunContext};
 use super::donor_selection::{
     archive_config_for_donor_session_mode, select_donor_session_from_summary,
 };
 use super::retention::{child_polish_budget_for_stagnation, AdaptiveRawChildRetentionState};
-use super::single_state::{
-    build_solver_result, polish_state, should_emit_progress_callback, LocalImproverBudget,
-};
 use super::telemetry::{
     absorb_local_search_chunk, record_archive_update, record_child_polish,
     record_child_polish_budget, record_raw_child_retention,
@@ -28,6 +30,7 @@ use super::types::{
     get_current_time, get_elapsed_seconds, get_elapsed_seconds_between, time_limit_exceeded,
     DonorSessionSelectionOutcome, TimePoint,
 };
+use crate::solver3::search::archive;
 
 pub(crate) fn run(
     state: &mut RuntimeState,
@@ -485,7 +488,7 @@ pub(crate) fn run(
 
 pub(super) fn transplant_donor_session(
     base_state: &RuntimeState,
-    donor: &super::archive::ArchivedElite,
+    donor: &archive::ArchivedElite,
     session_idx: usize,
 ) -> Result<RuntimeState, SolverError> {
     let mut child = base_state.clone();

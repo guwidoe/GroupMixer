@@ -625,19 +625,20 @@ fn score_breakdown_reports_clean_and_violating_states() {
     let clean_breakdown = clean_state.format_score_breakdown();
     assert!(clean_breakdown.contains("Constraints: All satisfied"));
 
-    let mut violating_input = basic_input();
-    violating_input.constraints.push(Constraint::ShouldNotBeTogether {
-        people: vec!["p0".to_string(), "p1".to_string()],
-        penalty_weight: 25.0,
-        sessions: None,
-    });
-    violating_input.constraints.push(Constraint::MustStayApart {
-        people: vec!["p2".to_string(), "p3".to_string()],
-        sessions: None,
-    });
-    let mut violating_state = State::new(&violating_input).unwrap();
-    violating_state.soft_apart_pair_violations[0] = 1;
-    violating_state.hard_apart_pair_violations[0] = 1;
+    let mut violating_state = State::new(&basic_input()).unwrap();
+    let p0 = violating_state.person_id_to_idx["p0"];
+    let p1 = violating_state.person_id_to_idx["p1"];
+    let p2 = violating_state.person_id_to_idx["p2"];
+    let p3 = violating_state.person_id_to_idx["p3"];
+
+    violating_state.soft_apart_pairs.push((p0, p1));
+    violating_state.soft_apart_pair_sessions.push(None);
+    violating_state.soft_apart_pair_weights.push(25.0);
+    violating_state.soft_apart_pair_violations.push(1);
+
+    violating_state.hard_apart_pairs.push((p2, p3));
+    violating_state.hard_apart_pair_sessions.push(None);
+    violating_state.hard_apart_pair_violations.push(1);
     violating_state.current_cost = 42.0;
 
     let breakdown = violating_state.format_score_breakdown();
@@ -734,10 +735,7 @@ fn validate_hard_constraints_reports_must_stay_apart_violation() {
     });
 
     let mut state = State::new(&input).unwrap();
-    state.schedule = vec![
-        vec![vec![0, 1], vec![2, 3]],
-        vec![vec![0, 2], vec![1, 3]],
-    ];
+    state.schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
     state._recalculate_locations_from_schedule();
 
     let error = state

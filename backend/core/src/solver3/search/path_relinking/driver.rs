@@ -7,10 +7,14 @@ use rand_chacha::ChaCha12Rng;
 use crate::models::{
     BenchmarkEvent, BenchmarkObserver, ProgressCallback,
     SessionAlignedPathRelinkingBenchmarkTelemetry, SessionAlignedPathRelinkingEventTelemetry,
-    SessionAlignedPathRelinkingStepTelemetry, SolverResult, StopReason,
+    SessionAlignedPathRelinkingStepTelemetry, Solver3PathRelinkingOperatorVariant, SolverResult,
+    StopReason,
 };
+use crate::solver3::search::archive;
 use crate::solver_support::SolverError;
 
+use super::super::super::moves::apply_swap_runtime_preview;
+use super::super::super::runtime_state::RuntimeState;
 use super::super::archive::{EliteArchive, EliteArchiveConfig};
 use super::super::candidate_sampling::{
     CandidateSampler, SwapSamplingOptions, TabuSwapSamplingDelta,
@@ -18,8 +22,6 @@ use super::super::candidate_sampling::{
 use super::super::context::{
     SearchProgressState, SearchRunContext, SessionAlignedPathRelinkingConfig,
 };
-use super::super::moves::apply_swap_runtime_preview;
-use super::super::runtime_state::RuntimeState;
 use super::super::single_state::{
     build_solver_result, polish_state, LocalImproverBudget, LocalImproverRunResult,
 };
@@ -29,7 +31,9 @@ use super::alignment::{
 };
 use super::certification::certify_swap_local_optimum;
 use super::retention::AdaptiveRawChildRetentionState;
-use super::telemetry::{absorb_local_search_chunk, maybe_emit_progress};
+use super::telemetry::{
+    absorb_local_search_chunk, absorb_search_metrics_only, maybe_emit_progress,
+};
 use super::trigger::PathRelinkingTriggerState;
 use super::{get_current_time, get_elapsed_seconds, time_limit_exceeded};
 
@@ -838,7 +842,7 @@ fn compare_path_step_candidate(left: &PathStepEvaluation, right: &PathStepEvalua
 
 pub(super) fn transplant_aligned_session(
     base_state: &RuntimeState,
-    donor: &super::archive::ArchivedElite,
+    donor: &archive::ArchivedElite,
     aligned_pair: &AlignedSessionPair,
 ) -> Result<RuntimeState, SolverError> {
     let mut child = base_state.clone();
@@ -854,7 +858,7 @@ pub(super) fn transplant_aligned_session(
 
 pub(super) fn build_random_donor_session_candidates(
     current_path_state: &RuntimeState,
-    donor: &super::archive::ArchivedElite,
+    donor: &archive::ArchivedElite,
     remaining_base_sessions: &[usize],
     remaining_donor_sessions: &[usize],
     min_distance: u32,

@@ -49,7 +49,7 @@ describe('PeopleDirectory', () => {
       expect(screen.getByText('180')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /add person/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /import & bulk/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent(/preparing editable table/i);
 
       fireEvent.click(screen.getByRole('button', { name: /^cards$/i }));
       expect(screen.getByText('Person 0001')).toBeInTheDocument();

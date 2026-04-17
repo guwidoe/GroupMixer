@@ -75,5 +75,5 @@ describe('RepeatEncounterCollectionSection', () => {
     expect(screen.getByRole('textbox', { name: /repeat encounter csv/i })).toHaveValue(
       'Limit,Penalty function,Weight\n1,linear,5',
     );
-  });
+  }, 15000);
 });

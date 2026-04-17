@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::solver_support::SolverError;
 
-use super::super::runtime_state::RuntimeState;
+use super::super::super::runtime_state::RuntimeState;
 
 pub(crate) const MAX_EXACT_ALIGNMENT_SESSIONS: usize = 20;
 

@@ -1,11 +1,11 @@
 use std::cmp::Ordering;
 
+use super::super::super::runtime_state::RuntimeState;
 use super::super::archive::{
     build_session_conflict_burden, build_session_fingerprints, ArchivedElite, EliteArchive,
     EliteArchiveConfig,
 };
 use super::super::context::DonorSessionTransplantConfig;
-use super::super::runtime_state::RuntimeState;
 use super::types::{
     DonorCandidatePool, DonorSessionChoice, DonorSessionSelectionOutcome, DonorSessionViabilityTier,
 };

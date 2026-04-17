@@ -103,7 +103,7 @@ fn main() {
         Ok(state) => {
             println!("✅ All features integrated successfully!");
             println!("   • {} cliques", state.cliques.len());
-            println!("   • {} forbidden pairs", state.forbidden_pairs.len());
+            println!("   • {} soft-apart pairs", state.soft_apart_pairs.len());
             println!(
                 "   • {} immovable constraints",
                 state.immovable_people.len()

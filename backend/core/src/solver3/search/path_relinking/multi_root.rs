@@ -7,19 +7,20 @@ use crate::models::{
 };
 use crate::solver_support::SolverError;
 
+use super::super::super::runtime_state::RuntimeState;
 use super::super::archive::{
     CrossRootParentChoice, CrossRootParentSelectionPolicy, EliteArchiveConfig, MultiRootElitePool,
     MultiRootElitePoolConfig, SearchRootId,
 };
 use super::super::context::{SearchProgressState, SearchRunContext};
-use super::super::runtime_state::RuntimeState;
 use super::super::single_state::{build_solver_result, polish_state, LocalImproverBudget};
-use super::alignment::align_sessions_by_pairing_distance;
+use super::alignment::{align_sessions_by_pairing_distance, SessionAlignment};
 use super::certification::certify_swap_local_optimum;
 use super::driver::build_random_macro_mutation_candidates;
 use super::retention::AdaptiveRawChildRetentionState;
 use super::telemetry::merge_local_improver_run;
 use super::{get_current_time, get_elapsed_seconds, time_limit_exceeded};
+use crate::solver3::search::archive;
 
 const MULTI_ROOT_SEED_STRIDE: u64 = 0x9E37_79B9_7F4A_7C15;
 
@@ -50,9 +51,9 @@ pub(super) struct BalancedInheritancePlan {
 #[derive(Debug, Clone)]
 struct CanonicalCrossRootParentPair {
     parent_a_root_id: SearchRootId,
-    parent_a: super::archive::ArchivedElite,
+    parent_a: archive::ArchivedElite,
     parent_b_root_id: SearchRootId,
-    parent_b: super::archive::ArchivedElite,
+    parent_b: archive::ArchivedElite,
 }
 
 pub(crate) fn run_multi_root_balanced_session_inheritance(

@@ -87,6 +87,10 @@ mod tests {
         Solver3PathRelinkingOperatorVariant, SolverKind,
     };
     use crate::solver3::runtime_state::RuntimeState;
+    use crate::solver3::search::archive::EliteArchive;
+    use crate::solver3::search::context::{
+        AdaptiveRawChildRetentionConfig, SearchRunContext, SessionAlignedPathRelinkingConfig,
+    };
     use rand::SeedableRng;
     use rand_chacha::ChaCha12Rng;
 
@@ -96,9 +100,8 @@ mod tests {
         build_random_macro_mutation_candidates, build_session_pairing_signature,
         compare_path_guides, remove_aligned_pair, remove_session_idx, select_path_guide,
         session_pairing_distance, sorted_symmetric_difference_count, transplant_aligned_session,
-        AdaptiveRawChildRetentionConfig, AdaptiveRawChildRetentionState, AlignedSessionPair,
-        BalancedInheritanceParentRole, EliteArchive, PathGuideCandidate, SearchRunContext,
-        SessionAlignedPathRelinkingConfig, MAX_EXACT_ALIGNMENT_SESSIONS,
+        AdaptiveRawChildRetentionState, AlignedSessionPair, BalancedInheritanceParentRole,
+        PathGuideCandidate, MAX_EXACT_ALIGNMENT_SESSIONS,
     };
 
     fn person(id: &str) -> Person {

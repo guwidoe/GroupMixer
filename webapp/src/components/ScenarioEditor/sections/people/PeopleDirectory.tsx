@@ -58,7 +58,7 @@ export function PeopleDirectory({
   createGridPersonRow,
 }: PeopleDirectoryProps) {
   const [peopleSearch, setPeopleSearch] = useState('');
-  const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('cards');
+  const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('list');
   const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('edit');
 
   const searchValue = peopleSearch.trim().toLowerCase();

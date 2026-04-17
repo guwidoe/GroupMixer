@@ -36,7 +36,7 @@ test('demo data loads from workspace actions', async ({ page }) => {
   await page.getByRole('menuitem').filter({ hasText: /company team demo/i }).first().click();
 
   await expect(page.getByText(/demo case loaded/i)).toBeVisible();
-  await expect(page.getByText(/alice johnson/i)).toBeVisible();
+  await expect(page.getByRole('cell', { name: /alice johnson/i }).first()).toBeVisible();
 });
 
 test.describe('Scenario Editor', () => {
@@ -72,6 +72,7 @@ test.describe('Scenario Editor', () => {
     await page.locator('.modal-content button').filter({ hasText: /^Add Attribute$/i }).click();
 
     // Verify attribute appears in the expanded list (use heading to avoid notification)
+    await page.getByRole('button', { name: /^cards$/i }).click();
     await expect(page.getByText('test-attr', { exact: true }).first()).toBeVisible();
   });
 
@@ -86,6 +87,7 @@ test.describe('Scenario Editor', () => {
     await page.locator('.modal-content button').filter({ hasText: /^Add Person$/i }).click();
 
     // Verify person appears in the list (use heading to avoid notification text)
+    await page.getByRole('button', { name: /^cards$/i }).click();
     await expect(page.getByText('alice', { exact: true }).first()).toBeVisible();
   });
 
@@ -94,6 +96,7 @@ test.describe('Scenario Editor', () => {
     await waitForModal(page);
     await page.getByPlaceholder(/Enter person's name/i).fill('bob');
     await page.locator('.modal-content button').filter({ hasText: /^Add Person$/i }).click();
+    await page.getByRole('button', { name: /^cards$/i }).click();
     await expect(page.getByText('bob', { exact: true }).first()).toBeVisible();
 
     await page.getByRole('button', { name: /delete bob/i }).first().click();
@@ -129,6 +132,7 @@ test.describe('Scenario Editor', () => {
     await page.locator('.modal-content button').filter({ hasText: /^Add Group$/i }).click();
 
     // Verify group appears (use heading to avoid notification text)
+    await page.getByRole('button', { name: /^cards$/i }).click();
     await expect(page.getByText('Team Alpha', { exact: true }).first()).toBeVisible();
   });
 

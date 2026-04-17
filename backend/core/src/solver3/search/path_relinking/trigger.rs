@@ -2,9 +2,9 @@ use super::super::context::SessionAlignedPathRelinkingConfig;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct PathRelinkingTriggerState {
-    path_events_fired: u64,
-    iterations_since_last_path_event: u64,
-    swap_local_optimum_certified: bool,
+    pub(super) path_events_fired: u64,
+    pub(super) iterations_since_last_path_event: u64,
+    pub(super) swap_local_optimum_certified: bool,
 }
 
 impl Default for PathRelinkingTriggerState {

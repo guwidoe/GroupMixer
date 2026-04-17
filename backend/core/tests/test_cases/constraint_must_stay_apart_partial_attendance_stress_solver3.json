@@ -6675,7 +6675,8 @@
         "log_initial_score_breakdown": false,
         "log_final_score_breakdown": false,
         "log_stop_condition": false
-      }
+      },
+      "seed": 1
     }
   },
   "expected": {

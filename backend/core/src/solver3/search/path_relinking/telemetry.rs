@@ -7,6 +7,7 @@ use crate::models::{
 use super::super::context::SearchProgressState;
 use super::super::context::SearchRunContext;
 use super::super::single_state::should_emit_progress_callback;
+use super::super::single_state::LocalImproverRunResult;
 use super::{get_current_time, get_elapsed_seconds, get_elapsed_seconds_between, TimePoint};
 
 pub(super) fn merge_local_improver_run(
@@ -182,7 +183,10 @@ pub(super) fn absorb_local_search_chunk(
     }
 }
 
-fn absorb_search_metrics_only(aggregate: &mut SearchProgressState, local: &SearchProgressState) {
+pub(super) fn absorb_search_metrics_only(
+    aggregate: &mut SearchProgressState,
+    local: &SearchProgressState,
+) {
     aggregate.accepted_uphill_moves += local.accepted_uphill_moves;
     aggregate.accepted_downhill_moves += local.accepted_downhill_moves;
     aggregate.accepted_neutral_moves += local.accepted_neutral_moves;
