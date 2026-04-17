@@ -117,6 +117,17 @@ fn catalog_kts_family_constructs_15_player_case() {
 }
 
 #[test]
+fn catalog_kts_family_constructs_51_player_case() {
+    let entry = crate::solver5::catalog::kts::exact_case(17)
+        .expect("kts catalog should expose the 51-player case");
+    let result = families::construct_kirkman_triple_system(entry);
+
+    assert_eq!(result.family.label(), "kts");
+    assert_eq!(result.schedule.len(), 25);
+    assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
+}
+
+#[test]
 fn nkts_family_constructs_catalog_backed_18_case() {
     let entry = crate::solver5::catalog::nkts::exact_case(6)
         .expect("nkts catalog should expose the 18-player case");

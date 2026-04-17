@@ -33,6 +33,13 @@ fn kts_catalog_exposes_exact_small_cases() {
             .len(),
         7
     );
+    assert_eq!(
+        kts::exact_case(17)
+            .expect("kts catalog should expose the 51-player case")
+            .encoded_weeks
+            .len(),
+        25
+    );
     assert_eq!(kts::source().name, "kts_catalog");
 }
 
