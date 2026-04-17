@@ -9,7 +9,26 @@ pub(crate) struct MolsProductSpec {
 }
 
 pub(crate) fn best_spec(num_groups: usize, group_size: usize) -> Option<MolsProductSpec> {
-    if group_size < 3 || FiniteField::for_order(num_groups).is_some() {
+    if group_size < 3 || group_size > num_groups || FiniteField::for_order(num_groups).is_some() {
+        return None;
+    }
+
+    best_spec_with_predicate(num_groups, |mols_count| group_size <= mols_count + 1)
+}
+
+pub(crate) fn best_molr_spec(num_groups: usize, group_size: usize) -> Option<MolsProductSpec> {
+    if group_size < 4 || group_size > num_groups || FiniteField::for_order(num_groups).is_some() {
+        return None;
+    }
+
+    best_spec_with_predicate(num_groups, |mols_count| group_size >= mols_count + 2)
+}
+
+fn best_spec_with_predicate(
+    num_groups: usize,
+    supports_group_size: impl Fn(usize) -> bool,
+) -> Option<MolsProductSpec> {
+    if FiniteField::for_order(num_groups).is_some() {
         return None;
     }
 
@@ -34,7 +53,7 @@ pub(crate) fn best_spec(num_groups: usize, group_size: usize) -> Option<MolsProd
             .order
             .saturating_sub(1)
             .min(right_field.order.saturating_sub(1));
-        if group_size > mols_count + 1 {
+        if !supports_group_size(mols_count) {
             continue;
         }
 
