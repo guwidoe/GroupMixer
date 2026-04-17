@@ -167,7 +167,10 @@ const CASES: &[RitdCatalogEntry] = &[
     },
 ];
 
-pub(crate) fn exact_case(num_groups: usize, group_size: usize) -> Option<&'static RitdCatalogEntry> {
+pub(crate) fn exact_case(
+    num_groups: usize,
+    group_size: usize,
+) -> Option<&'static RitdCatalogEntry> {
     CASES
         .iter()
         .find(|entry| entry.num_groups == num_groups && entry.group_size == group_size)

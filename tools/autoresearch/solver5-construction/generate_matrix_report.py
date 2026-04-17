@@ -89,7 +89,10 @@ def progress_fill_color(current: int, target: int | None, scored: bool) -> str:
     if not target or target <= 0:
         return "#f8fafc"
     progress = min(1.0, max(0.0, current / target))
-    hue = 120.0 * progress
+    if progress >= 1.0:
+        hue = 120.0
+    else:
+        hue = 70.0 * progress
     lightness = 96.0 - (progress * 10.0)
     return f"hsl({hue:.1f} 65% {lightness:.1f}%)"
 
@@ -213,6 +216,38 @@ def render_corner(position, text, extra_class=""):
     return f"<div class='{class_attr}'>{html.escape(str(text))}</div>"
 
 
+def render_corner_html(position, inner_html, extra_class=""):
+    if not inner_html:
+        return ""
+    class_attr = f"cell-corner {position} {extra_class}".strip()
+    return f"<div class='{class_attr}'>{inner_html}</div>"
+
+
+def build_literature_reference_index(artifact):
+    references = artifact.get("literature_references", [])
+    index = {}
+    for idx, ref in enumerate(references, start=1):
+        index[ref["key"]] = {**ref, "index": idx}
+    return index
+
+
+def render_reference_sup(reference_keys, reference_index):
+    parts = []
+    for key in reference_keys or []:
+        ref = reference_index.get(key)
+        if not ref:
+            continue
+        parts.append(
+            f"<sup class='lit-ref'><a href='#litref-{ref['index']}' title='{html.escape(ref['citation'])}'>{ref['index']}</a></sup>"
+        )
+    return "".join(parts)
+
+
+def build_cell_title(parts):
+    filtered = [part for part in parts if part]
+    return " • ".join(filtered) if filtered else None
+
+
 def render_static_cell(
     *,
     center,
@@ -225,16 +260,20 @@ def render_static_cell(
     reference_method=None,
     faded=False,
     visual_only=False,
+    title=None,
+    top_right_html=None,
+    bottom_left_html=None,
 ):
     cell_classes = ["matrix-cell"]
     if visual_only:
         cell_classes.append("visual-only-cell")
     center_class = "center-value faded" if faded else "center-value"
+    title_attr = f" title='{html.escape(title)}'" if title else ""
     html_parts = [
-        f"<div class='{' '.join(cell_classes)}' style='background:{background};{border}'>",
+        f"<div class='{' '.join(cell_classes)}' style='background:{background};{border}'{title_attr}>",
         render_corner("top-left", top_left, "success-marker" if top_left == "✓" else "muted-marker" if top_left == "v" else ""),
-        render_corner("top-right", top_right),
-        render_corner("bottom-left", bottom_left),
+        render_corner_html("top-right", top_right_html) if top_right_html else render_corner("top-right", top_right),
+        render_corner_html("bottom-left", bottom_left_html) if bottom_left_html else render_corner("bottom-left", bottom_left),
         f"<div class='{center_class}'>{html.escape(str(center))}</div>",
     ]
     if method:
@@ -248,25 +287,35 @@ def render_static_cell(
     return "".join(html_parts)
 
 
-def render_cell_glyph(cell):
+def render_cell_glyph(cell, reference_index):
     current = cell.get("constructed_weeks") or 0
     target = cell.get("target_weeks")
     method, reference_method = method_chip_text(cell)
+    target_html = None
+    if cell.get("target_weeks") is not None and not trivial_unsolved_cell(cell):
+        if cell.get("target_reference_keys"):
+            target_html = (
+                f"T{html.escape(str(cell['target_weeks']))}"
+                f"{render_reference_sup(cell.get('target_reference_keys'), reference_index)}"
+            )
+        elif top_right_label(cell):
+            target_html = html.escape(top_right_label(cell))
     return render_static_cell(
         center=center_text(cell),
         background=progress_fill_color(current, target, cell.get("scored", False)),
         border=border_style(cell),
         top_left=top_left_label(cell),
-        top_right=top_right_label(cell),
+        top_right_html=target_html,
         bottom_left=bottom_left_label(cell),
         method=method,
         reference_method=reference_method,
         faded=(not cell.get("scored")) or current == 0,
         visual_only=not cell.get("scored"),
+        title=build_cell_title([cell.get("target_basis")]),
     )
 
 
-def render_combined_table(title, rows, cols, cell_map):
+def render_combined_table(title, rows, cols, cell_map, reference_index):
     html_parts = [f"<section><h2>{html.escape(title)}</h2><table><thead><tr><th>g\\p</th>"]
     for p in cols:
         html_parts.append(f"<th>{p}</th>")
@@ -278,7 +327,98 @@ def render_combined_table(title, rows, cols, cell_map):
             classes = ["dashboard-grid-cell"]
             if not cell["scored"]:
                 classes.append("visual-only")
-            html_parts.append(f"<td class='{' '.join(classes)}'>{render_cell_glyph(cell)}</td>")
+            html_parts.append(
+                f"<td class='{' '.join(classes)}'>{render_cell_glyph(cell, reference_index)}</td>"
+            )
+        html_parts.append("</tr>")
+    html_parts.append("</tbody></table></section>")
+    return "".join(html_parts)
+
+
+def supplementary_fill_color(current: int, upper: int | None, target: int | None) -> str:
+    denominator = target if target is not None and target > 0 else upper
+    if denominator is None or denominator <= 0:
+        return "repeating-linear-gradient(135deg,#f8fafc 0,#f8fafc 8px,#e5e7eb 8px,#e5e7eb 16px)"
+    progress = min(1.0, max(0.0, current / denominator))
+    if progress >= 1.0:
+        hue = 120.0
+    else:
+        hue = 70.0 * progress
+    lightness = 97.0 - (progress * 11.0)
+    return f"hsl({hue:.1f} 60% {lightness:.1f}%)"
+
+
+def supplementary_border_style(cell) -> str:
+    upper = cell.get("upper_bound")
+    current = cell.get("constructed_weeks")
+    if upper is None or current is None:
+        return "border:2px dashed #94a3b8;"
+    if current >= upper:
+        return "border:2px solid #16a34a;"
+    return "border:2px dashed #94a3b8;"
+
+
+def render_supplementary_target_html(cell, reference_index):
+    target = cell.get("literature_target_weeks")
+    if target is None:
+        return None
+    return f"T{html.escape(str(cell['literature_target_display']))}{render_reference_sup(cell.get('literature_reference_keys'), reference_index)}"
+
+
+def render_supplementary_cell(cell, reference_index):
+    upper = cell.get("upper_bound")
+    current = cell.get("constructed_weeks")
+    target = cell.get("literature_target_weeks")
+    method = cell.get("method_abbreviation")
+    is_visual = upper is None
+    title = build_cell_title(
+        [
+            cell.get("visual_note"),
+            (
+                f"Literature target basis: {cell['literature_target_basis']}"
+                if cell.get("literature_target_basis")
+                else None
+            ),
+        ]
+    )
+    return render_static_cell(
+        center=cell.get("current_display", "·"),
+        background=supplementary_fill_color(current or 0, upper, target),
+        border=supplementary_border_style(cell),
+        top_left="✓" if (upper is not None and current == upper) else None,
+        top_right_html=(render_supplementary_target_html(cell, reference_index) if target is not None else (html.escape(f"U{cell['upper_display']}") if upper is not None else None)),
+        bottom_left=(f"U{cell['upper_display']}" if upper is not None and target is not None else None),
+        method=method,
+        faded=current in (None, 0),
+        visual_only=is_visual,
+        title=title,
+    )
+
+
+def render_supplementary_table(matrix, reference_index):
+    bounds = matrix["bounds"]
+    rows = range(bounds["g_min"], bounds["g_max"] + 1)
+    cols = range(bounds["p_min"], bounds["p_max"] + 1)
+    cell_map = build_matrix(matrix["cells"])
+    html_parts = [
+        "<section>",
+        f"<h2>{html.escape(matrix['title'])}</h2>",
+        f"<p class='meta'>{html.escape(matrix['subtitle'])}</p>",
+        "<table><thead><tr><th>g\\p</th>",
+    ]
+    for p in cols:
+        html_parts.append(f"<th>{p}</th>")
+    html_parts.append("</tr></thead><tbody>")
+    for g in rows:
+        html_parts.append(f"<tr><th>{g}</th>")
+        for p in cols:
+            cell = cell_map[(g, p)]
+            classes = ["dashboard-grid-cell"]
+            if cell.get("upper_bound") is None:
+                classes.append("visual-only")
+            html_parts.append(
+                f"<td class='{' '.join(classes)}'>{render_supplementary_cell(cell, reference_index)}</td>"
+            )
         html_parts.append("</tr>")
     html_parts.append("</tbody></table></section>")
     return "".join(html_parts)
@@ -318,6 +458,24 @@ def render_method_reference_table():
     return "".join(rows)
 
 
+def render_literature_reference_table(references):
+    if not references:
+        return ""
+    rows = [
+        "<section><h2>Literature references</h2><table><thead><tr><th>#</th><th>Citation</th><th>Notes</th></tr></thead><tbody>"
+    ]
+    for idx, ref in enumerate(references, start=1):
+        rows.append(
+            "<tr>"
+            f"<td id='litref-{idx}'><code>[{idx}]</code></td>"
+            f"<td><a href='{html.escape(ref['url'])}' target='_blank' rel='noopener noreferrer'>{html.escape(ref['citation'])}</a></td>"
+            f"<td>{html.escape(ref['notes'])}</td>"
+            "</tr>"
+        )
+    rows.append("</tbody></table></section>")
+    return "".join(rows)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("artifact")
@@ -326,6 +484,9 @@ def main():
 
     artifact = json.loads(Path(args.artifact).read_text())
     cells = artifact["cells"]
+    supplementary_matrices = artifact.get("supplementary_matrices", [])
+    literature_references = artifact.get("literature_references", [])
+    literature_reference_index = build_literature_reference_index(artifact)
     rows = range(artifact["visual_bounds"]["g_min"], artifact["visual_bounds"]["g_max"] + 1)
     cols = range(artifact["visual_bounds"]["p_min"], artifact["visual_bounds"]["p_max"] + 1)
     cell_map = build_matrix(cells)
@@ -366,6 +527,9 @@ def main():
         ".method-arrow{font-size:10px;font-weight:700;color:#475569;flex:0 0 auto;}"
         ".success-marker{color:#15803d;}"
         ".muted-marker{color:#64748b;}"
+        ".lit-ref{font-size:9px;line-height:1;vertical-align:super;margin-left:1px;}"
+        ".lit-ref a{color:#1d4ed8;text-decoration:none;}"
+        ".lit-ref a:hover{text-decoration:underline;}"
         "code{background:#f1f5f9;border-radius:6px;padding:1px 5px;font-size:11px;}"
         "</style></head><body>",
         f"<h1>{html.escape(artifact['matrix_name'])}</h1>",
@@ -382,8 +546,9 @@ def main():
         render_border_swatch("optimum known, not reached", "border:2px solid #d97706;"),
         render_border_swatch("optimum unknown", "border:2px dashed #94a3b8;"),
         "</div>",
-        "<div class='legend-row legend-corners'><span class='legend-key'>Corners</span> <span><code>O</code> top-left optimum</span> <span><code>T</code> top-right roadmap target</span> <span><code>L</code> bottom-left literature lower bound</span> <span>bottom-right method badges show current and reference separately when both matter</span></div>",
+        "<div class='legend-row legend-corners'><span class='legend-key'>Corners</span> <span><code>O</code> top-left optimum</span> <span><code>T</code> top-right roadmap target</span> <span><code>L</code> bottom-left literature lower bound</span> <span>tiny blue superscripts on target labels link into the literature reference table below when a source is curated</span></div>",
         "<div class='legend-row legend-corners'><span class='legend-key'>Method badges</span> <span><code>RR</code> round robin</span> <span><code>NKTS</code> nearly Kirkman triple system</span> <span><code>ownSG</code> starter-block own-social-golfer construction</span> <span><code>RITD</code> resolvable incomplete transversal design</span> <span><code>PSB</code> published schedule bank</span></div>",
+        "<div class='legend-row legend-corners'><span class='legend-key'>Supplementary matrices</span> <span><code>T</code> top-right conservative literature target when curated from the 2026 paper</span> <span><code>U</code> bottom-left counting upper bound when a curated target exists</span> <span>tiny blue superscripts next to supplementary <code>T</code> labels link into the literature reference table below</span></div>",
         "<div class='sample-grid'>",
         render_sample(
             "Solved and optimal",
@@ -434,8 +599,11 @@ def main():
         "</div></div>",
     ]
 
-    page.append(render_combined_table("Coverage dashboard", rows, cols, cell_map))
+    page.append(render_combined_table("Coverage dashboard", rows, cols, cell_map, literature_reference_index))
+    for matrix in supplementary_matrices:
+        page.append(render_supplementary_table(matrix, literature_reference_index))
     page.append(render_method_reference_table())
+    page.append(render_literature_reference_table(literature_references))
     page.append("</body></html>")
 
     Path(args.output).write_text("".join(page))

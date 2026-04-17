@@ -182,17 +182,35 @@ The solver5 coverage benchmark now emits:
   - `autoresearch.last_run_report.html`
 
 The JSON artifact contains the structured matrix data.
-The HTML report renders a single combined dashboard glyph per cell.
+The HTML report renders a single combined dashboard glyph per cell for the
+canonical target matrix, and may also include supplementary report-only matrices
+outside that canonical target region.
 
-Current HTML cell semantics:
+Current HTML cell semantics for the canonical target matrix:
 - center = current implemented guarantee `W_g,p`
-- top-right = roadmap target `TW_g,p` when still unmet
+- top-right = roadmap target `TW_g,p`; when a curated literature source is
+  attached, the HTML keeps the `T` visible and adds a tiny superscript link into
+  the report's literature-reference table even if the target is already reached
 - bottom-left = literature-backed constructive lower bound when it adds
   information beyond the roadmap target
 - top-left = known optimum when useful, or a checkmark when the cell is already
   solved at a known exact optimum
 - bottom-right = current method badge; when the encoded reference method differs,
   the HTML shows separate current/reference badges with an arrow between them
+
+Current HTML cell semantics for supplementary report-only matrices:
+- center = current implemented guarantee `W_g,p`
+- top-right = conservative literature-backed target `T_g,p` when curated from
+  the 2026 Miller–Valkov–Abel survey or a narrowly-scoped theorem fallback
+- bottom-left = counting upper bound `U_g,p` when a curated target is present
+- top-left = exact-frontier checkmark when `W_g,p = U_g,p`
+- bottom-right = current method badge
+- fill grades against `T_g,p` when present, otherwise against `U_g,p`
+- tiny superscript reference indices on supplementary `T` labels link into the
+  report's literature-reference table
+- blank `T` means no clean paper-derived target has been curated yet for that
+  cell, typically because the appendix tables stop at `v <= 150` and the case
+  lies in the `p > g` high-player regime
 
 Visual channels are intentionally separated:
 - cell fill = progress against the roadmap target only

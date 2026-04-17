@@ -12,11 +12,10 @@ pub(super) fn construct(entry: &MolrCatalogEntry) -> Schedule {
             .collect::<Vec<_>>(),
     );
     assert_eq!(schedule.len(), entry.base_weeks);
-    schedule.extend(Schedule::from_raw(vec![
-        entry.group_fill_week
-            .iter()
-            .map(|block| block.to_vec())
-            .collect::<Vec<_>>(),
-    ]));
+    schedule.extend(Schedule::from_raw(vec![entry
+        .group_fill_week
+        .iter()
+        .map(|block| block.to_vec())
+        .collect::<Vec<_>>()]));
     schedule
 }

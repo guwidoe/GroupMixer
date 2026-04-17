@@ -46,7 +46,9 @@ const KTS_CASES: &[KtsCatalogEntry] = &[
 ];
 
 pub(crate) fn exact_case(num_groups: usize) -> Option<&'static KtsCatalogEntry> {
-    KTS_CASES.iter().find(|entry| entry.num_groups == num_groups)
+    KTS_CASES
+        .iter()
+        .find(|entry| entry.num_groups == num_groups)
 }
 
 pub(crate) fn source() -> CatalogSource {

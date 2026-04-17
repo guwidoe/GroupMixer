@@ -37,7 +37,10 @@ const CASES: &[MolrCatalogEntry] = &[
     },
 ];
 
-pub(crate) fn exact_case(num_groups: usize, group_size: usize) -> Option<&'static MolrCatalogEntry> {
+pub(crate) fn exact_case(
+    num_groups: usize,
+    group_size: usize,
+) -> Option<&'static MolrCatalogEntry> {
     CASES
         .iter()
         .find(|entry| entry.num_groups == num_groups && entry.group_size == group_size)

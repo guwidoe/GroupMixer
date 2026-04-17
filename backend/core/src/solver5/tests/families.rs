@@ -71,11 +71,10 @@ fn p4_resolvable_bibd_family_constructs_28_player_case() {
     assert_eq!(result.family.label(), "p4_router");
     assert_eq!(result.schedule.len(), 9);
     assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
-    assert!(result
-        .metadata
-        .evidence
-        .iter()
-        .any(|evidence| matches!(evidence.source_kind, EvidenceSourceKind::FiniteFieldConstruction)));
+    assert!(result.metadata.evidence.iter().any(|evidence| matches!(
+        evidence.source_kind,
+        EvidenceSourceKind::FiniteFieldConstruction
+    )));
 }
 
 #[test]
