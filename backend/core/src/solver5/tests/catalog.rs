@@ -110,6 +110,13 @@ fn ownsg_catalog_exposes_benchmark_relevant_cases() {
         7
     );
     assert_eq!(
+        ownsg::exact_case(12, 8)
+            .expect("ownsg catalog should expose the 12-8-6 case")
+            .starter_blocks
+            .len(),
+        6
+    );
+    assert_eq!(
         ownsg::exact_case(14, 6)
             .expect("ownsg catalog should expose the 14-6-9 case")
             .starter_blocks

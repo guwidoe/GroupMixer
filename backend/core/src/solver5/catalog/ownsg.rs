@@ -84,6 +84,15 @@ const OWNSG_90_9_STARTERS: &[&[usize]] = &[
     &[0, 17, 22, 34, 38, 51, 59, 66, 73],
 ];
 
+const OWNSG_96_8_STARTERS: &[&[usize]] = &[
+    &[0, 1, 2, 3, 4, 5, 6, 7],
+    &[0, 9, 18, 27, 36, 45, 54, 63],
+    &[0, 10, 17, 29, 39, 43, 60, 86],
+    &[0, 11, 21, 25, 42, 55, 62, 84],
+    &[0, 12, 31, 46, 50, 61, 67, 89],
+    &[0, 19, 38, 44, 49, 69, 74, 95],
+];
+
 const OWNSG_98_7_STARTERS: &[&[usize]] = &[
     &[0, 1, 2, 3, 4, 5, 6],
     &[0, 8, 16, 24, 32, 40, 48],
@@ -209,6 +218,12 @@ const CASES: &[OwnSgCatalogEntry] = &[
         group_size: 9,
         starter_blocks: OWNSG_90_9_STARTERS,
         citation: "Starter blocks for ownSG(90,9) with 5 rounds from Miller–Valkov–Abel 2026, Appendix A Table A1",
+    },
+    OwnSgCatalogEntry {
+        num_groups: 12,
+        group_size: 8,
+        starter_blocks: OWNSG_96_8_STARTERS,
+        citation: "Starter blocks for ownSG(96,8) with 6 rounds from Miller–Valkov–Abel 2026 Appendix ownSG table",
     },
     OwnSgCatalogEntry {
         num_groups: 14,
