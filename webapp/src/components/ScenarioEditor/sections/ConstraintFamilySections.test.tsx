@@ -96,6 +96,7 @@ describe('ConstraintFamilySections', () => {
     );
 
     expect(screen.getByRole('heading', { name: /keep apart/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /people/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^cards$/i }));
     await user.click(screen.getByRole('button', { name: /select cards/i }));
