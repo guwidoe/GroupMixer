@@ -260,6 +260,42 @@ fn mols_catalog_family_constructs_and_lifts_45_player_case() {
 }
 
 #[test]
+fn mols_catalog_family_constructs_18_5_case_from_oa_derived_bank() {
+    let entry = crate::solver5::catalog::mols::exact_case(18)
+        .expect("mols catalog should expose the 18-group case");
+    let result = families::construct_catalog_mols_transversal(entry, 5);
+
+    assert_eq!(result.family.label(), "mols_catalog");
+    assert_eq!(result.schedule.len(), 18);
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 4,
+        }
+    );
+}
+
+#[test]
+fn mols_catalog_family_constructs_and_lifts_18_6_case_from_oa_derived_bank() {
+    let entry = crate::solver5::catalog::mols::exact_case(18)
+        .expect("mols catalog should expose the 18-group case");
+    let result = families::construct_catalog_mols_transversal(entry, 6);
+
+    assert_eq!(result.family.label(), "mols_catalog");
+    assert_eq!(result.schedule.len(), 19);
+    assert_eq!(
+        result.provenance.operators,
+        vec![crate::solver5::types::CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 2,
+        }
+    );
+}
+
+#[test]
 fn ownsg_family_constructs_96_player_case() {
     let entry = crate::solver5::catalog::ownsg::exact_case(12, 8)
         .expect("ownsg catalog should expose the 12-8-6 case");

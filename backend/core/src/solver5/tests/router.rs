@@ -317,6 +317,48 @@ fn router_selects_mols_catalog_for_15_3_22() {
 }
 
 #[test]
+fn router_selects_mols_catalog_for_18_5_18() {
+    let input = pure_input(18, 5, 18);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 18-5-18");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::MolsCatalog);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::MolsCatalog
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 18,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 4,
+                    },
+                }
+    }));
+}
+
+#[test]
+fn router_selects_mols_catalog_for_18_6_19() {
+    let input = pure_input(18, 6, 19);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 18-6-19");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::MolsCatalog);
+    assert_eq!(
+        decision.result.provenance.operators,
+        vec![CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::MolsCatalog
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 19,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 2,
+                    },
+                }
+    }));
+}
+
+#[test]
 fn router_selects_ownsg_for_12_8_6() {
     let input = pure_input(12, 8, 6);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");

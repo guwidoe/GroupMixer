@@ -63,25 +63,25 @@ defghijklmnoabc  egildankcfhjmob  cnjgmdkbhealiof  fakbglchmdnieoj
 cdefghijklmnoab  cfhjmeboldgikna  gdokhnelcifbmja  kgblchmdineojfa
 "#;
 
-const MOLS_18_3: &str = r#"
-bgejhkmodcnarilpfq  beqpodgcflkrjahnim  bcdefghijklmnopqra
-echfbilnprdokajmqg  gcfrqpehdnmlabkioj  rbkamfgdehqjinopcl
-qfdigcjmohaeplkbnr  ehdgarqfibonmkcljp  mlbqhifgajdcrenopk
-prgejhdbnaikfqmlco  jfiehkargqcponldmb  hijbcdefgqraklmnop
-oqahfbiecpkjlgrnmd  hbgjfilkacrdqpomen  gderbkamfpclhqjino
-dprkigcjfeqlbmhaon  kichbgjmlodaerqpnf  fgamlbqhiopkjdcren
-geqaljhdbofrmcnikp  mljdichbngpekfarqo  efghijbcdnopqraklm
-chfrkmbieqpgandojl  onmbejdicphqflgkar  amfgderbkinopclhqj
-fdigalncjmrqhkoepb  dponcfbejaqirgmhlk  qhifgamlbrenopkjdc
-lnbqcogpakmhdrifej  crhapeoqmkbgidnjfl  leqjponacbkidfgmhr
-kmocrdphqblnieajgf  ndaikqfprmlchjeobg  kjmcrponhlbqeafgid
-rlnpdaeqigcmojfkbh  aoekjlrgqhnmdibfpc  dqriklponajbcmhfge
-jamoqekfrihdnpbglc  rkpflbmahdionejcgq  nacleqjpomhrbkidfg
-abknprflgdjieoqchm  ialqgmcnkrejpofbdh  onhkjmcrpgidlbqeaf
-hkcloqagmnebjfprdi  ljkmrhndoiafbqpgce  pondqriklfgeajbcmh
-nildmprkhjofcbgqae  pmblnaioefjkgcrqhd  jponacleqdfgmhrbki
-iojmenqalfbpgdchrk  fqncmokjpegblhdari  crponhkjmeafgidlbq
-mjpbnforklgcqhedia  qgrodnplbjfhcmieka  iklpondqrcmhfgeajb
+const MOLS_18_5: &str = r#"
+adgqknbehlorpjmcfi ahfmkrqojcgenlpbid aieokplqmjrnhdcfbg afhegcqjodibrkmnpl acbjlkdfeihgrqponm
+hbeorlicfpjmnqkgad dbipnlkrmfahqojecg fbgqmlnjrokpaiehdc ibdafhmrkcegnpljoq cbalkjfedhgiqprnmo
+ficjmpdganqklorehb gecjqonlpidbkrmhfa hdcjrnpokqmlfbgaie egcibdlnphafjoqrkm backjledfgihprqmon
+ehbdgaknqficorljmp krmdbipnlecgfahqoj okpdchrnjieamlqbgf kmrdibhafqjogcelnp gihdfemonrqpcbalkj
+cfibehrloadgjmpqkn nlpgecjqohfaidbkrm qmlieakpobgfrnjdch plncegdibmrkfhaqjo ihgfedonmqprbackjl
+gadicfmpjhbeqknorl qojahfmkrbidcgenlp jrnbgfmlqdchkpoiea oqjhafceglnpbdimrk hgiedfnmoprqacbjlk
+nqkhbegadmpjicfrlo jqonlpgeckrmhfaidb lqmrnjgfbeaichdpok bdinplgceoqjkmrafh prqacbgihonmlkjfed
+lorficehbknqdgampj mkrqojahfnlpbidcge njrkpochdgfbeailqm gcejoqfhakmrplnibd rqpcbaihgnmokjledf
+pjmadgcfirlobehknq pnlkrmdbiqojecgfah pokmlqeaichdgfbnjr fharkmbdiplnoqjegc qprbachgimonjlkdfe
+orlgadjmpicfknqbeh lpnhfacgejqodbirmk gfblqmhdcaiejrnokp joqplnafhegcmrkdib edfonmjlkcbagihqpr
+jmpehbqkndgarloicf ojqbidfahmkrgeclpn chdnjraiefbgokpqml rkmoqjibdafhlnpceg dfenmolkjbacihgprq
+qkncfiorlbehmpjdga rmkecgidbpnlahfojq eaipokfbghdcqmljrn nplkmregcibdqjohaf fedmonkjlacbhgirqp
+mpjrloadgehbcfinqk fahojqbidlpnmkrgec bgfaieokprnjdchmlq dibmrkjoqgcehafpln monhgirqpkjlfedacb
+knqmpjhbecfigadlor idbrmkecgojqpnlahf dchfbgqmlkpoiearnj ceglnprkmfhadiboqj onmgihqprjlkedfcba
+rloknqficgadehbpjm cgelpnhfarmkjqodbi ieahdcjrnmlqbgfkpo hafqjonplbdicegkmr nmoihgprqlkjdfebac
+dgapjmlorqknhbefic ecgidbrmkahfojqpnl rnjeaidchpoklqmgfb mrkgceplnjoqafhbdi lkjprqbacdfenmoihg
+behnqkpjmorlficadg hfacgelpndbirmkjqo kpogfbiealqmnjrchd lnpfhaoqjrkmibdgce kjlrqpacbfedmonhgi
+icflornqkjmpadghbe bidfahojqgeclpnmkr mlqchdbgfnjrpokeai qjobdikmrnplegcfha jlkqprcbaedfonmgih
 "#;
 
 const CASES: &[MolsCatalogEntry] = &[
@@ -105,9 +105,9 @@ const CASES: &[MolsCatalogEntry] = &[
     },
     MolsCatalogEntry {
         num_groups: 18,
-        mols_count: 3,
-        encoded_mols: MOLS_18_3,
-        citation: "Explicit 3 MOLS of order 18 from the Sage combinatorial-designs database, attributed there to Ian Wanless",
+        mols_count: 5,
+        encoded_mols: MOLS_18_5,
+        citation: "Explicit 5 MOLS of order 18 deterministically derived from Sage's OA_7_18 construction (Julian Abel 2013) via the standard OA-to-MOLS equivalence with a distinguished resolution square",
     },
 ];
 

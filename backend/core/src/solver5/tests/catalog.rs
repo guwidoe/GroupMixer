@@ -166,7 +166,7 @@ fn mols_catalog_exposes_explicit_non_prime_power_cases() {
     assert_eq!(case.mols_count, 4);
 
     let case = mols::exact_case(18).expect("mols catalog should expose the order-18 case");
-    assert_eq!(case.mols_count, 3);
+    assert_eq!(case.mols_count, 5);
 
     assert_eq!(mols::source().name, "mols_catalog");
 }
