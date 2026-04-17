@@ -12,6 +12,7 @@ mod affine_plane;
 mod kirkman;
 mod molr;
 mod mols;
+pub(super) mod mols_product;
 mod nkts;
 mod ownsg;
 mod p4_rbibd;
@@ -29,6 +30,7 @@ pub(super) fn registered_families() -> Vec<&'static dyn ConstructionFamily> {
         &KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY,
         &MOLS_CATALOG_FAMILY,
+        &MOLS_PRODUCT_FAMILY,
         &OWN_SOCIAL_GOLFER_FAMILY,
         &RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY,
         &MOLR_GROUP_FILL_FAMILY,
@@ -47,6 +49,7 @@ struct Kirkman6TPlus1Family;
 struct KirkmanTripleSystemFamily;
 struct NearlyKirkmanTripleSystemFamily;
 struct MolsCatalogFamily;
+struct MolsProductFamily;
 struct OwnSocialGolferFamily;
 struct ResolvableIncompleteTransversalDesignFamily;
 struct MolrGroupFillFamily;
@@ -63,6 +66,7 @@ static KIRKMAN_TRIPLE_SYSTEM_FAMILY: KirkmanTripleSystemFamily = KirkmanTripleSy
 static NEARLY_KIRKMAN_TRIPLE_SYSTEM_FAMILY: NearlyKirkmanTripleSystemFamily =
     NearlyKirkmanTripleSystemFamily;
 static MOLS_CATALOG_FAMILY: MolsCatalogFamily = MolsCatalogFamily;
+static MOLS_PRODUCT_FAMILY: MolsProductFamily = MolsProductFamily;
 static OWN_SOCIAL_GOLFER_FAMILY: OwnSocialGolferFamily = OwnSocialGolferFamily;
 static RESOLVABLE_INCOMPLETE_TRANSVERSAL_DESIGN_FAMILY:
     ResolvableIncompleteTransversalDesignFamily = ResolvableIncompleteTransversalDesignFamily;
@@ -293,6 +297,36 @@ impl ConstructionFamily for MolsCatalogFamily {
         let entry = catalog::mols::exact_case(problem.num_groups)?;
         ((3..=(entry.mols_count + 1)).contains(&problem.group_size))
             .then(|| construct_catalog_mols_transversal(entry, problem.group_size))
+    }
+}
+
+impl ConstructionFamily for MolsProductFamily {
+    fn id(&self) -> ConstructionFamilyId {
+        ConstructionFamilyId::MolsProduct
+    }
+
+    fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
+        let Some(spec) = mols_product::best_spec(problem.num_groups, problem.group_size) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "requires a supported prime-power factorization with enough MOLS for a direct product",
+            };
+        };
+
+        let Some(result) = self.construct(problem) else {
+            return FamilyEvaluation::NotApplicable {
+                reason: "construction failed despite matching direct-product MOLS preconditions",
+            };
+        };
+
+        debug_assert_eq!(spec.num_groups, problem.num_groups);
+        FamilyEvaluation::Applicable {
+            max_supported_weeks: result.max_supported_weeks,
+        }
+    }
+
+    fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
+        let spec = mols_product::best_spec(problem.num_groups, problem.group_size)?;
+        Some(construct_product_mols_transversal(spec, problem.group_size))
     }
 }
 
@@ -725,6 +759,65 @@ pub(super) fn construct_catalog_mols_transversal(
     }
 }
 
+pub(super) fn construct_product_mols_transversal(
+    spec: mols_product::MolsProductSpec,
+    group_size: usize,
+) -> ConstructionResult {
+    let left_field =
+        FiniteField::for_order(spec.left_order).expect("left product factor should be supported");
+    let right_field = FiniteField::for_order(spec.right_order)
+        .expect("right product factor should be supported");
+    let left_bank = mols::prime_power_bank(left_field, spec.mols_count);
+    let right_bank = mols::prime_power_bank(right_field, spec.mols_count);
+    let product_bank = mols::direct_product(&left_bank, &right_bank);
+
+    let mut result = ConstructionResult::new(
+        mols::construct_from_mols(&product_bank, group_size),
+        ConstructionFamilyId::MolsProduct,
+    )
+    .with_quality(classify_quality(spec.num_groups, group_size, spec.num_groups))
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires num_groups to factor into supported prime-power orders",
+            "uses the direct-product theorem for prime-power MOLS banks and one distinguished product square as the parallel-class index",
+            "can append latent-group weeks when group_size divides num_groups and the residual subgroup problem is constructible",
+        ],
+    })
+    .with_evidence(
+        EvidenceSourceKind::TheoremFamily,
+        "direct_product_of_prime_power_mols_banks",
+    )
+    .with_evidence(
+        EvidenceSourceKind::FiniteFieldConstruction,
+        "prime_power_mols_factor_banks",
+    )
+    .with_evidence(
+        EvidenceSourceKind::StructuralComposition,
+        "resolvable_transversal_from_direct_product_mols",
+    );
+
+    if spec.num_groups % group_size == 0 && (spec.num_groups / group_size) >= 2 {
+        result = result.with_residual(ResidualStructure::TransversalLatentGroups {
+            subgroup_count: group_size,
+            subgroup_size: spec.num_groups / group_size,
+        });
+    }
+
+    let result = composition::apply_recursive_transversal_lift(
+        spec.num_groups,
+        group_size,
+        result,
+        construct_max_schedule_recursive,
+    );
+    let improved_weeks = result.max_supported_weeks;
+    let result = result.with_quality(classify_quality(spec.num_groups, group_size, improved_weeks));
+    if result.provenance.operators.is_empty() {
+        result
+    } else {
+        result.clear_residual()
+    }
+}
+
 pub(super) fn construct_resolvable_incomplete_transversal_design(
     entry: &'static catalog::ritd::RitdCatalogEntry,
 ) -> ConstructionResult {
@@ -912,6 +1005,10 @@ fn construct_max_schedule_recursive(
         if (3..=(entry.mols_count + 1)).contains(&group_size) {
             return Some(construct_catalog_mols_transversal(entry, group_size));
         }
+    }
+
+    if let Some(spec) = mols_product::best_spec(num_groups, group_size) {
+        return Some(construct_product_mols_transversal(spec, group_size));
     }
 
     if let Some(entry) = catalog::rbibd::exact_case(num_groups, group_size) {

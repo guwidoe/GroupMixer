@@ -32,6 +32,11 @@ METHOD_REFERENCE = [
         "solves": "catalog-backed non-prime-power transversal constructions where one explicit Latin square indexes the parallel classes and the remaining squares provide symbol groups",
     },
     {
+        "code": "MOLSx",
+        "stands_for": "direct-product mutually orthogonal Latin squares",
+        "solves": "composite transversal constructions built from direct products of smaller prime-power MOLS banks, again using one product square as the parallel-class index",
+    },
+    {
         "code": "ownSG",
         "stands_for": "starter-block own-social-golfer construction",
         "solves": "catalog-backed Appendix A starter-block development family; currently covers large `10-p` rows such as `10-6-7`, `10-7-7`, `10-8-5`, and `10-9-5`",

@@ -1,14 +1,19 @@
 use crate::solver5::catalog::mols::MolsCatalogEntry;
+use crate::solver5::field::FiniteField;
 use crate::solver5::types::Schedule;
 
 pub(super) fn construct(entry: &MolsCatalogEntry, group_size: usize) -> Schedule {
     let mols = decode_mols(entry);
+    construct_from_mols(&mols, group_size)
+}
+
+pub(super) fn construct_from_mols(mols: &[Vec<Vec<usize>>], group_size: usize) -> Schedule {
+    let order = mols[0].len();
     assert!(group_size >= 3);
-    assert!(group_size <= entry.mols_count + 1);
+    assert!(group_size <= mols.len() + 1);
 
     let resolution_square = &mols[0];
     let extra_squares = &mols[1..(group_size - 1)];
-    let order = entry.num_groups;
 
     let mut weeks = Vec::with_capacity(order);
     for week_symbol in 0..order {
@@ -35,7 +40,7 @@ pub(super) fn construct(entry: &MolsCatalogEntry, group_size: usize) -> Schedule
     Schedule::from_raw(weeks)
 }
 
-fn decode_mols(entry: &MolsCatalogEntry) -> Vec<Vec<Vec<usize>>> {
+pub(super) fn decode_mols(entry: &MolsCatalogEntry) -> Vec<Vec<Vec<usize>>> {
     let tokens = entry
         .encoded_mols
         .split_whitespace()
@@ -52,6 +57,54 @@ fn decode_mols(entry: &MolsCatalogEntry) -> Vec<Vec<Vec<usize>>> {
         mols[square_idx].push(row);
     }
     mols
+}
+
+pub(super) fn prime_power_bank(field: FiniteField, mols_count: usize) -> Vec<Vec<Vec<usize>>> {
+    assert!(mols_count <= field.order.saturating_sub(1));
+
+    (1..=mols_count)
+        .map(|multiplier| {
+            (0..field.order)
+                .map(|row| {
+                    (0..field.order)
+                        .map(|col| field.add(field.mul(multiplier, row), col))
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
+pub(super) fn direct_product(
+    left: &[Vec<Vec<usize>>],
+    right: &[Vec<Vec<usize>>],
+) -> Vec<Vec<Vec<usize>>> {
+    let count = left.len().min(right.len());
+    let left_order = left[0].len();
+    let right_order = right[0].len();
+
+    (0..count)
+        .map(|square_idx| {
+            let left_square = &left[square_idx];
+            let right_square = &right[square_idx];
+            let mut square = Vec::with_capacity(left_order * right_order);
+            for left_row in 0..left_order {
+                for right_row in 0..right_order {
+                    let mut row = Vec::with_capacity(left_order * right_order);
+                    for left_col in 0..left_order {
+                        for right_col in 0..right_order {
+                            row.push(
+                                (left_square[left_row][left_col] * right_order)
+                                    + right_square[right_row][right_col],
+                            );
+                        }
+                    }
+                    square.push(row);
+                }
+            }
+            square
+        })
+        .collect()
 }
 
 fn decode_symbol(symbol: char) -> usize {
