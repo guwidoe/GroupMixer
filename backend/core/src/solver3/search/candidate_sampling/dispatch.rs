@@ -1,8 +1,8 @@
-use rand::RngExt;
 use rand_chacha::ChaCha12Rng;
 
 use crate::models::MoveFamily;
 
+#[cfg(test)]
 use super::super::super::moves::{
     preview_clique_swap_runtime_checked, preview_swap_runtime_trusted,
     preview_transfer_runtime_checked, CliqueSwapMove, CliqueSwapRuntimePreview, SwapMove,
@@ -11,14 +11,19 @@ use super::super::super::moves::{
 use super::super::super::runtime_state::RuntimeState;
 use super::super::family_selection::MoveFamilySelector;
 use super::{
-    get_current_time, get_elapsed_seconds_between, runtime_active_clique_in_single_group,
-    runtime_pick_clique_targets, runtime_pick_swappable_person_from_group,
-    runtime_session_can_clique_swap, runtime_session_can_swap, runtime_session_can_transfer,
-    runtime_transfer_source_group, runtime_transfer_target_has_capacity, CandidateSampler,
-    CandidateSelectionResult, CandidateSelectionTimingBreakdown, FamilyPreviewTimingBreakdown,
+    get_current_time, get_elapsed_seconds_between, CandidateSampler, CandidateSelectionResult,
     RepeatGuidedSwapSamplingDelta, SearchMovePreview, SwapSamplingOptions, TabuSwapSamplingDelta,
-    MAX_RANDOM_CANDIDATE_ATTEMPTS, MAX_RANDOM_TARGET_ATTEMPTS,
 };
+#[cfg(test)]
+use super::{
+    runtime_active_clique_in_single_group, runtime_pick_clique_targets,
+    runtime_pick_swappable_person_from_group, runtime_session_can_clique_swap,
+    runtime_session_can_swap, runtime_session_can_transfer, runtime_transfer_source_group,
+    runtime_transfer_target_has_capacity, CandidateSelectionTimingBreakdown,
+    FamilyPreviewTimingBreakdown, MAX_RANDOM_CANDIDATE_ATTEMPTS, MAX_RANDOM_TARGET_ATTEMPTS,
+};
+#[cfg(test)]
+use rand::RngExt;
 
 impl CandidateSampler {
     #[inline]

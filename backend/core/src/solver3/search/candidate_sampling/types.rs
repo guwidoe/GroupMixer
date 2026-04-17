@@ -87,6 +87,7 @@ impl SearchMovePreview {
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct CandidateSampler;
 
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct CandidateSelectionTimingBreakdown {
     pub(crate) selection: Option<(MoveFamily, SearchMovePreview, f64)>,
@@ -94,6 +95,7 @@ pub(crate) struct CandidateSelectionTimingBreakdown {
     pub(crate) preview_kernel_seconds: f64,
 }
 
+#[cfg(test)]
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub(super) struct FamilyPreviewTimingBreakdown {
     pub(super) preview_kernel_seconds: f64,
