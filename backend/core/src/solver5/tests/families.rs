@@ -346,6 +346,26 @@ fn molr_from_mols_family_constructs_high_p_order_18_case() {
 }
 
 #[test]
+fn molr_from_mols_family_constructs_and_lifts_product_order_20_case() {
+    let spec = crate::solver5::families::mols_product::best_molr_spec(20, 5)
+        .expect("product mols should support 20-5 in the MOLR range");
+    let result = families::construct_molr_from_product_mols(spec, 5);
+
+    assert_eq!(result.family.label(), "molr_from_mols");
+    assert_eq!(result.schedule.len(), 5);
+    assert_eq!(
+        result.provenance.operators,
+        vec![crate::solver5::types::CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 19,
+        }
+    );
+}
+
+#[test]
 fn molr_from_mols_family_constructs_and_lifts_square_order_case() {
     let entry = crate::solver5::catalog::mols::exact_case(12)
         .expect("mols catalog should expose the 12-group case");
@@ -361,6 +381,26 @@ fn molr_from_mols_family_constructs_and_lifts_square_order_case() {
         result.metadata.quality,
         ConstructionQuality::LowerBound {
             gap_to_counting_bound: 6,
+        }
+    );
+}
+
+#[test]
+fn molr_from_mols_family_constructs_product_square_order_case() {
+    let spec = crate::solver5::families::mols_product::best_molr_spec(20, 20)
+        .expect("product mols should support 20-20 in the MOLR range");
+    let result = families::construct_molr_from_product_mols(spec, 20);
+
+    assert_eq!(result.family.label(), "molr_from_mols");
+    assert_eq!(result.schedule.len(), 5);
+    assert_eq!(
+        result.provenance.operators,
+        vec![crate::solver5::types::CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 16,
         }
     );
 }

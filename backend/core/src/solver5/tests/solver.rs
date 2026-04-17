@@ -292,7 +292,18 @@ fn solver5_solves_mols_product_cases() {
 fn solver5_solves_molr_from_mols_cases() {
     let solver = SearchEngine::new(&pure_input(18, 8, 6).solver);
 
-    for (g, p, w) in [(12, 12, 7), (14, 10, 5), (15, 10, 5), (18, 8, 6), (18, 9, 7), (18, 10, 6)] {
+    for (g, p, w) in [
+        (12, 12, 7),
+        (14, 10, 5),
+        (15, 10, 5),
+        (18, 8, 6),
+        (18, 9, 7),
+        (18, 10, 6),
+        (20, 5, 5),
+        (20, 7, 4),
+        (20, 10, 5),
+        (20, 20, 5),
+    ] {
         let input = pure_input(g, p, w);
         let result = solver
             .solve(&input)

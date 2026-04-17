@@ -340,15 +340,13 @@ impl ConstructionFamily for MolrFromMolsFamily {
     }
 
     fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
-        let Some(entry) = catalog::mols::exact_case(problem.num_groups) else {
+        let explicit_supported = catalog::mols::exact_case(problem.num_groups)
+            .is_some_and(|entry| ((entry.mols_count + 2)..=entry.num_groups).contains(&problem.group_size));
+        let product_supported = mols_product::best_molr_spec(problem.num_groups, problem.group_size)
+            .is_some();
+        if !explicit_supported && !product_supported {
             return FamilyEvaluation::NotApplicable {
-                reason: "requires an explicit MOLS catalog bank for the group count",
-            };
-        };
-
-        if !((entry.mols_count + 2)..=entry.num_groups).contains(&problem.group_size) {
-            return FamilyEvaluation::NotApplicable {
-                reason: "requires group_size above the exact MOLS transversal range and at most the group count",
+                reason: "requires either an explicit MOLS catalog bank or a direct-product prime-power MOLS bank with enough squares for the MOLR range",
             };
         }
 
@@ -364,10 +362,14 @@ impl ConstructionFamily for MolrFromMolsFamily {
     }
 
     fn construct(&self, problem: &PureSgpProblem) -> Option<ConstructionResult> {
-        let entry = catalog::mols::exact_case(problem.num_groups)?;
-        ((entry.mols_count + 2)..=entry.num_groups)
-            .contains(&problem.group_size)
-            .then(|| construct_molr_from_explicit_mols(entry, problem.group_size))
+        if let Some(entry) = catalog::mols::exact_case(problem.num_groups) {
+            if ((entry.mols_count + 2)..=entry.num_groups).contains(&problem.group_size) {
+                return Some(construct_molr_from_explicit_mols(entry, problem.group_size));
+            }
+        }
+
+        let spec = mols_product::best_molr_spec(problem.num_groups, problem.group_size)?;
+        Some(construct_molr_from_product_mols(spec, problem.group_size))
     }
 }
 
@@ -909,6 +911,70 @@ pub(super) fn construct_molr_from_explicit_mols(
     }
 }
 
+pub(super) fn construct_molr_from_product_mols(
+    spec: mols_product::MolsProductSpec,
+    group_size: usize,
+) -> ConstructionResult {
+    let left_field =
+        FiniteField::for_order(spec.left_order).expect("left product factor should be supported");
+    let right_field = FiniteField::for_order(spec.right_order)
+        .expect("right product factor should be supported");
+    let left_bank = mols::prime_power_bank(left_field, spec.mols_count);
+    let right_bank = mols::prime_power_bank(right_field, spec.mols_count);
+    let product_bank = mols::direct_product(&left_bank, &right_bank);
+
+    let base_weeks = spec.mols_count + 1;
+    let mut result = ConstructionResult::new(
+        molr_from_mols::construct_from_mols(&product_bank, group_size),
+        ConstructionFamilyId::MolrFromMols,
+    )
+    .with_quality(classify_quality(spec.num_groups, group_size, base_weeks))
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires num_groups to factor into supported prime-power orders with enough shared squares for the Sharma-Das MOLR range",
+            "uses the direct-product theorem for prime-power MOLS banks, then applies the Sharma-Das MOLR construction to the first group_size rows",
+            "can append clique-derived or recursively lifted rounds when the residual subgroup problem is constructible",
+        ],
+    })
+    .with_evidence(
+        EvidenceSourceKind::TheoremFamily,
+        "direct_product_of_prime_power_mols_banks",
+    )
+    .with_evidence(
+        EvidenceSourceKind::FiniteFieldConstruction,
+        "prime_power_mols_factor_banks",
+    )
+    .with_evidence(EvidenceSourceKind::TheoremFamily, "sharma_das_molr_from_mols");
+
+    if spec.num_groups == group_size {
+        result.schedule.extend(molr_from_mols::row_fill_week(
+            spec.num_groups,
+            group_size,
+        ));
+        result.max_supported_weeks = result.schedule.len();
+        result = result.add_operator(CompositionOperatorId::RecursiveTransversalLift);
+    } else if spec.num_groups % group_size == 0 && (spec.num_groups / group_size) >= 2 {
+        result = result.with_residual(ResidualStructure::TransversalLatentGroups {
+            subgroup_count: group_size,
+            subgroup_size: spec.num_groups / group_size,
+        });
+        result = composition::apply_recursive_transversal_lift(
+            spec.num_groups,
+            group_size,
+            result,
+            construct_max_schedule_recursive,
+        );
+    }
+
+    let improved_weeks = result.max_supported_weeks;
+    let result = result.with_quality(classify_quality(spec.num_groups, group_size, improved_weeks));
+    if result.provenance.operators.is_empty() {
+        result
+    } else {
+        result.clear_residual()
+    }
+}
+
 pub(super) fn construct_resolvable_incomplete_transversal_design(
     entry: &'static catalog::ritd::RitdCatalogEntry,
 ) -> ConstructionResult {
@@ -1114,6 +1180,10 @@ fn construct_max_schedule_recursive(
         if ((entry.mols_count + 2)..=entry.num_groups).contains(&group_size) {
             return Some(construct_molr_from_explicit_mols(entry, group_size));
         }
+    }
+
+    if let Some(spec) = mols_product::best_molr_spec(num_groups, group_size) {
+        return Some(construct_molr_from_product_mols(spec, group_size));
     }
 
     if let Some(entry) = catalog::ritd::exact_case(num_groups, group_size) {

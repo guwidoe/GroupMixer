@@ -160,6 +160,7 @@ Interpretation note:
     - `14-10-5`, `14-11-5`, `14-12-5`, `14-13-5`, `14-14-6`
     - `15-10-5`, `15-11-5`, `15-12-5`, `15-13-5`, `15-14-5`, `15-15-6`
     - `18-8-6`, `18-9-7`, `18-10-6`, `18-11-6`, `18-12-6`, `18-13-6`, `18-14-6`, `18-15-6`, `18-16-6`, `18-17-6`, `18-18-7`
+    - `20-5-5`, `20-7-4`, `20-8-4`, `20-9-4`, `20-10-5`, `20-11-4`, `20-12-4`, `20-13-4`, `20-14-4`, `20-15-4`, `20-16-4`, `20-17-4`, `20-18-4`, `20-19-4`, `20-20-5` via a direct-product `4 x 5` MOLS bank
 - Active kept benchmark baseline under the *old* canonical-only benchmark was:
   - commit: `b250b32`
   - `total_constructed_weeks = 419`
@@ -179,30 +180,30 @@ Interpretation note:
 - After expanding the benchmark to all three matrices, that `419` value is only a
   historical canonical-only reference.
 - Active kept three-matrix benchmark baseline is now:
-  - latest keep: explicit `molr_from_mols` family from cataloged MOLS banks for high-`p` rows on orders `12`, `14`, `15`, and `18` (see latest `autoresearch.jsonl` keep entry for the committed hash)
-  - `total_constructed_weeks = 2396`
-  - `frontier_gap_sum = 1569`
+  - latest keep: theorem-backed product-bank extension of `molr_from_mols` for order-20 high-`p` rows (see latest `autoresearch.jsonl` keep entry for the committed hash)
+  - `total_constructed_weeks = 2444`
+  - `frontier_gap_sum = 1521`
   - `solved_cells = 271`
   - `exact_frontier_cells = 49`
   - `unsolved_cells = 0`
   - `p3_constructed_weeks = 261`
   - `p4_constructed_weeks = 238`
-  - `p5_constructed_weeks = 185`
+  - `p5_constructed_weeks = 189`
   - `p6_constructed_weeks = 178`
-  - `p7_constructed_weeks = 149`
-  - `p8_constructed_weeks = 144`
-  - `p9_constructed_weeks = 126`
-  - `p10_constructed_weeks = 111`
-  - `p11_constructed_weeks = 100`
-  - `p12_constructed_weeks = 90`
-  - `p13_constructed_weeks = 85`
-  - `p14_constructed_weeks = 73`
-  - `p15_constructed_weeks = 69`
-  - `p16_constructed_weeks = 65`
-  - `p17_constructed_weeks = 50`
-  - `p18_constructed_weeks = 34`
-  - `p19_constructed_weeks = 29`
-  - `p20_constructed_weeks = 10`
+  - `p7_constructed_weeks = 152`
+  - `p8_constructed_weeks = 147`
+  - `p9_constructed_weeks = 129`
+  - `p10_constructed_weeks = 115`
+  - `p11_constructed_weeks = 103`
+  - `p12_constructed_weeks = 93`
+  - `p13_constructed_weeks = 88`
+  - `p14_constructed_weeks = 76`
+  - `p15_constructed_weeks = 72`
+  - `p16_constructed_weeks = 68`
+  - `p17_constructed_weeks = 53`
+  - `p18_constructed_weeks = 37`
+  - `p19_constructed_weeks = 32`
+  - `p20_constructed_weeks = 14`
   - `W_12_3 = 16`
   - `W_12_4 = 13`
   - `W_12_5 = 12`
@@ -250,7 +251,22 @@ Interpretation note:
   - `W_18_18 = 7`
   - `W_20_3 = 20`
   - `W_20_4 = 25`
+  - `W_20_5 = 5`
   - `W_20_6 = 13`
+  - `W_20_7 = 4`
+  - `W_20_8 = 4`
+  - `W_20_9 = 4`
+  - `W_20_10 = 5`
+  - `W_20_11 = 4`
+  - `W_20_12 = 4`
+  - `W_20_13 = 4`
+  - `W_20_14 = 4`
+  - `W_20_15 = 4`
+  - `W_20_16 = 4`
+  - `W_20_17 = 4`
+  - `W_20_18 = 4`
+  - `W_20_19 = 4`
+  - `W_20_20 = 5`
 - The recent three-matrix keeps that established this baseline were:
   - `4077a77` — finite-field support for `11`, `16`, `17`, `19` → `1906`
   - `bfdbfc7` — `GF(25)` / exact `19-4-25` → `1912`
@@ -261,7 +277,8 @@ Interpretation note:
   - `ddd9e46` — catalog-backed explicit Sage MOLS family for `12/14/15/18` composite rows → `2194`
   - `1b82067` — OA_7_18-derived 5-MOLS order-18 expansion for `18-5` / `18-6` → `2229`
   - `65c5ba2` — theorem-backed direct-product MOLS family for `20-3-20` and `20-4-25` via a `4 x 5` product bank → `2272`
-  - latest keep — explicit MOLR-from-MOLS family for high-`p` rows on `12/14/15/18` → `2396`
+  - `f81ae17` — explicit MOLR-from-MOLS family for high-`p` rows on `12/14/15/18` → `2396`
+  - latest keep — direct-product extension of `molr_from_mols` for order-20 high-`p` rows → `2444`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
@@ -307,13 +324,16 @@ Interpretation note:
   - the shipped `molr_from_mols` family uses the first `p` rows of an explicit cataloged MOLS bank, takes column classes as one week and each square's symbol classes as additional weeks, and appends a row-clique week on square-order cases
   - this upgrades many previously weak high-`p` supplementary rows without any imported answer tables, including `12-9..12`, `14-10..14`, `15-10..15`, and `18-8..18`
   - keep the routing order honest: stronger exact/transversal families and source-backed families should still win when they provide more weeks than this broader MOLR lower-bound route
+- The same `molr_from_mols` route now also works over theorem-backed direct-product MOLS banks when no stronger explicit catalog bank exists:
+  - the shipped product-bank extension uses the `4 x 5` prime-power factorization for order `20`, then applies the same Sharma-Das row truncation and recursive / row-clique follow-ups
+  - this lifts `20-5` to `5`, `20-7..9` to `4`, `20-10` to `5`, `20-11..19` to `4`, and `20-20` to `5` without any order-20 answer tables
 - Remaining live directions should stay structural constructor families, not search-based cheating:
   - reusable RBIBD / RGDD family work that explains or subsumes current exact catalog cases beyond the fixed matrix
   - broader non-prime-power square-order MOLR / MOLS lower-bound work only when it remains provenance-aware and genuinely reusable beyond the fixed matrix
   - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
 
 ## Immediate Next Loop Behavior
-- The old canonical-only `419` baseline is historical only; the live gate is the three-matrix baseline at `2396` from the latest `molr_from_mols` keep.
+- The old canonical-only `419` baseline is historical only; the live gate is the three-matrix baseline at `2444` from the latest order-20 `molr_from_mols` product-bank keep.
 - The fixed scored matrix frontier remains closed; do not re-spend loop time on already-landed canonical frontier cells.
 - The universal single-round lower bound remains the honest floor for unsolved theory rows:
   - `unsolved_cells = 0`
@@ -321,7 +341,7 @@ Interpretation note:
 - The strongest recent reusable gain lanes have been **direct Appendix-backed ownSG catalog expansion**, the landed **generic one-week latent-group `+G` composition**, and now **source-backed / theorem-backed MOLS families**, especially the explicit `mols_catalog` and direct-product `mols_product` lanes.
 - The direct Sage `RBIBD(120,8,1)` lane has now been harvested for `15-8-17`; keep it as a reusable catalog family rather than a one-off patch, and do not re-spend loop time on that exact case.
 - The direct Sage `MOLS(12/14/15)` lane plus the OA_7_18-derived order-18 expansion have now been harvested, the high-`p` `molr_from_mols` truncation lane on those explicit banks is now harvested, and the direct-product `4 x 5` MOLS lane has now been harvested for `20-3` / `20-4`; do not re-spend loop time on those exact cases unless a parser/provenance regression appears.
-- Remaining work should target the rows still stranded at weak lower bounds after the strengthened MOLS keeps, now dominated by order-20 high-`p` rows such as `20-5` and `20-7..20`; `18-8..18` no longer sit at the universal `W=1` floor and are lower priority unless a broader theory cleanly beats the new MOLR baseline.
+- Remaining work should target rows that still sit well below their conservative literature-backed targets even after the new order-20 MOLR floor, especially order-20 high-`p` rows beyond the new `4/5`-week baseline; `18-8..18` no longer sit at the universal `W=1` floor and are lower priority unless a broader theory cleanly beats the new MOLR baseline.
 - The next concrete experiment should prefer a reusable structural step or a provenance-clean family catalog extension over another raw patch import. High-value remaining rows now line up with explicit literature family names such as `NKTS(36/42/54/60)`, `KTS(45)`, `RGDD(...,4,...)`, stronger `RTD(5,n)` / `RTD(6,n)+G(1)` / `RBIBD` cases that go beyond the newly landed MOLS coverage, or additional explicitly resolvable Sage objects; if continuing the Sage lane, prefer constructions that are already explicitly resolvable rather than assuming an arbitrary MOLS/OA object immediately yields SGP weeks.
 - A follow-up attempt to add `MOLRs(6,6)+G(1)` as a second `molr_group_fill` catalog case benchmarked flat at `419`: it cleanly reconstructs the already-shipped `6-6-3` schedule via a 2-week base plus one filler week, but it does **not** improve the objective beyond the existing published route. Treat that lane as provenance cleanup only, not as an active coverage-improvement direction.
 - Keep preferring reusable family logic or justified composition over per-cell glue.

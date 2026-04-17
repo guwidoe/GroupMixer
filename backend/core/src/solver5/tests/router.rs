@@ -441,6 +441,52 @@ fn router_selects_molr_from_mols_for_12_12_7() {
 }
 
 #[test]
+fn router_selects_molr_from_mols_for_20_5_5() {
+    let input = pure_input(20, 5, 5);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 20-5-5");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::MolrFromMols);
+    assert_eq!(
+        decision.result.provenance.operators,
+        vec![CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::MolrFromMols
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 5,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 19,
+                    },
+                }
+    }));
+}
+
+#[test]
+fn router_selects_molr_from_mols_for_20_20_5() {
+    let input = pure_input(20, 20, 5);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 20-20-5");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::MolrFromMols);
+    assert_eq!(
+        decision.result.provenance.operators,
+        vec![CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::MolrFromMols
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 5,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 16,
+                    },
+                }
+    }));
+}
+
+#[test]
 fn router_selects_ownsg_for_12_8_6() {
     let input = pure_input(12, 8, 6);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
