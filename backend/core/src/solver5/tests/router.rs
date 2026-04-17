@@ -12,7 +12,7 @@ fn router_selects_round_robin_for_p2_cases() {
     let decision = attempt_construction(&problem).expect("router should find round robin");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::RoundRobin);
-    assert_eq!(decision.attempts.len(), 16);
+    assert_eq!(decision.attempts.len(), 17);
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::RoundRobin
             && attempt.status
@@ -399,6 +399,29 @@ fn router_selects_mols_product_for_20_4_25() {
 }
 
 #[test]
+fn router_selects_qdm_rtd_catalog_for_20_5_21() {
+    let input = pure_input(20, 5, 21);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 20-5-21");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::RtdQdmCatalog);
+    assert_eq!(
+        decision.result.provenance.operators,
+        vec![CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::RtdQdmCatalog
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 21,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 3,
+                    },
+                }
+    }));
+}
+
+#[test]
 fn router_selects_molr_from_mols_for_18_8_6() {
     let input = pure_input(18, 8, 6);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
@@ -441,23 +464,23 @@ fn router_selects_molr_from_mols_for_12_12_7() {
 }
 
 #[test]
-fn router_selects_molr_from_mols_for_20_5_5() {
+fn router_selects_qdm_rtd_catalog_for_20_5_5() {
     let input = pure_input(20, 5, 5);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 20-5-5");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::MolrFromMols);
+    assert_eq!(decision.result.family, ConstructionFamilyId::RtdQdmCatalog);
     assert_eq!(
         decision.result.provenance.operators,
         vec![CompositionOperatorId::RecursiveTransversalLift]
     );
     assert!(decision.attempts.iter().any(|attempt| {
-        attempt.family == ConstructionFamilyId::MolrFromMols
+        attempt.family == ConstructionFamilyId::RtdQdmCatalog
             && attempt.status
                 == FamilyAttemptStatus::Selected {
-                    max_supported_weeks: 5,
+                    max_supported_weeks: 21,
                     quality: ConstructionQuality::LowerBound {
-                        gap_to_counting_bound: 19,
+                        gap_to_counting_bound: 3,
                     },
                 }
     }));

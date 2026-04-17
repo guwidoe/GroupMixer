@@ -1,4 +1,4 @@
-use crate::solver5::catalog::{kts, molr, mols, nkts, ownsg, p4, prime_powers, published, rbibd, ritd};
+use crate::solver5::catalog::{kts, molr, mols, nkts, ownsg, p4, prime_powers, published, qdm, rbibd, ritd};
 
 #[test]
 fn prime_power_catalog_exposes_supported_field_orders() {
@@ -197,4 +197,13 @@ fn molr_catalog_exposes_10_10_case() {
     assert_eq!(case.base_weeks, 3);
     assert_eq!(case.group_fill_week.len(), 10);
     assert_eq!(molr::source().name, "molr_catalog");
+}
+
+#[test]
+fn qdm_catalog_exposes_20_5_case() {
+    let case = qdm::exact_case(20, 5).expect("qdm catalog should expose the 20-5 case");
+
+    assert_eq!(case.qdm_group_order, 19);
+    assert_eq!(case.encoded_columns.len(), 21);
+    assert_eq!(qdm::source().name, "qdm_catalog");
 }
