@@ -15,7 +15,9 @@ pub(super) fn construct(entry: &NktsCatalogEntry) -> Schedule {
                             alphabet
                                 .iter()
                                 .position(|candidate| *candidate == symbol)
-                                .expect("nkts catalog symbol should appear in the declared alphabet")
+                                .expect(
+                                    "nkts catalog symbol should appear in the declared alphabet",
+                                )
                         })
                         .collect::<Vec<_>>()
                 })
@@ -33,8 +35,9 @@ pub(super) fn construct_pseudo_doubling(base: &Schedule, base_player_count: usiz
     for pair in base.weeks().chunks(2) {
         match pair {
             [left, right] => {
-                let (left_blocks, right_blocks) = align_round_pair(left, right)
-                    .expect("pseudo-doubling requires a 3-color alignment between paired Kirkman rounds");
+                let (left_blocks, right_blocks) = align_round_pair(left, right).expect(
+                    "pseudo-doubling requires a 3-color alignment between paired Kirkman rounds",
+                );
                 let mut week0 = Vec::new();
                 let mut week1 = Vec::new();
                 let mut week2 = Vec::new();
@@ -48,7 +51,11 @@ pub(super) fn construct_pseudo_doubling(base: &Schedule, base_player_count: usiz
                 }
 
                 for members in right_blocks {
-                    week0.push(vec![doubled(members[0]), doubled(members[1]), doubled(members[2])]);
+                    week0.push(vec![
+                        doubled(members[0]),
+                        doubled(members[1]),
+                        doubled(members[2]),
+                    ]);
                     week1.push(vec![doubled(members[0]), members[1], members[2]]);
                     week2.push(vec![members[0], members[1], doubled(members[2])]);
                     week3.push(vec![members[0], doubled(members[1]), members[2]]);
@@ -59,7 +66,11 @@ pub(super) fn construct_pseudo_doubling(base: &Schedule, base_player_count: usiz
             [last] => {
                 let mut final_week = Vec::new();
                 for block in last.blocks() {
-                    let members = block.members().iter().map(|person| person.raw()).collect::<Vec<_>>();
+                    let members = block
+                        .members()
+                        .iter()
+                        .map(|person| person.raw())
+                        .collect::<Vec<_>>();
                     final_week.push(vec![members[0], members[1], members[2]]);
                     final_week.push(vec![
                         doubled(members[0]),
@@ -85,14 +96,19 @@ fn align_round_pair(
         .iter()
         .chain(right.blocks().iter())
         .flat_map(|block| block.members().iter().map(|person| person.raw()))
-        .max()? + 1;
+        .max()?
+        + 1;
 
     let constraints = left
         .blocks()
         .iter()
         .chain(right.blocks().iter())
         .map(|block| {
-            let members = block.members().iter().map(|person| person.raw()).collect::<Vec<_>>();
+            let members = block
+                .members()
+                .iter()
+                .map(|person| person.raw())
+                .collect::<Vec<_>>();
             [members[0], members[1], members[2]]
         })
         .collect::<Vec<_>>();
@@ -169,7 +185,8 @@ fn solve_block_coloring(constraints: &[[usize; 3]], domains: Vec<u8>) -> Option<
                     .filter_map(|person| bit_to_color(domains[*person]))
                     .collect::<Vec<_>>();
                 if assigned.len() == 2 {
-                    let missing_mask = 0b111 & !assigned.iter().fold(0u8, |acc, color| acc | (1 << color));
+                    let missing_mask =
+                        0b111 & !assigned.iter().fold(0u8, |acc, color| acc | (1 << color));
                     for person in block {
                         if bit_to_color(domains[*person]).is_none() {
                             if domains[*person] & missing_mask == 0 {
@@ -193,7 +210,12 @@ fn solve_block_coloring(constraints: &[[usize; 3]], domains: Vec<u8>) -> Option<
         }
 
         if domains.iter().all(|domain| domain.count_ones() == 1) {
-            return Some(domains.into_iter().map(|domain| bit_to_color(domain).unwrap()).collect());
+            return Some(
+                domains
+                    .into_iter()
+                    .map(|domain| bit_to_color(domain).unwrap())
+                    .collect(),
+            );
         }
 
         let next_person = domains

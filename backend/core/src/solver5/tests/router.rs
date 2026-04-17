@@ -29,7 +29,10 @@ fn router_uses_single_round_partition_for_one_week_fallback_case() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 3-4-1");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::SingleRoundPartition);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::SingleRoundPartition
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::SingleRoundPartition
             && attempt.status
@@ -111,7 +114,10 @@ fn router_selects_catalog_kts_case_for_5_3_7() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 5-3-7");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::KirkmanTripleSystem);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::KirkmanTripleSystem
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::KirkmanTripleSystem
             && attempt.status
@@ -170,7 +176,10 @@ fn router_selects_p4_resolvable_bibd_for_10_4_9() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 10-4-9");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::P4ResolvableBIBD);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::P4ResolvableBIBD
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::PublishedScheduleBank
             && matches!(
@@ -189,7 +198,10 @@ fn router_selects_published_schedule_bank_for_9_4_11() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 9-4-11");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::PublishedScheduleBank);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::PublishedScheduleBank
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::PublishedScheduleBank
             && attempt.status
@@ -206,7 +218,10 @@ fn router_selects_ownsg_for_10_7_7() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 10-7-7");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::OwnSocialGolfer);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::OwnSocialGolfer
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::OwnSocialGolfer
             && attempt.status
@@ -266,7 +281,10 @@ fn router_selects_p4_resolvable_bibd_for_7_4_9() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 7-4-9");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::P4ResolvableBIBD);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::P4ResolvableBIBD
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::P4ResolvableBIBD
             && attempt.status
@@ -283,7 +301,10 @@ fn router_selects_p4_resolvable_bibd_over_published_patch_for_10_4_13() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 10-4-13");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::P4ResolvableBIBD);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::P4ResolvableBIBD
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::PublishedScheduleBank
             && matches!(

@@ -15,8 +15,8 @@ mod nkts;
 mod ownsg;
 mod p4_rbibd;
 mod published;
-mod round_robin;
 mod ritd;
+mod round_robin;
 mod single_round_partition;
 mod transversal_design;
 
@@ -265,7 +265,8 @@ impl ConstructionFamily for ResolvableIncompleteTransversalDesignFamily {
         };
 
         FamilyEvaluation::Applicable {
-            max_supported_weeks: entry.complete_parallel_classes + usize::from(entry.add_group_fill_week),
+            max_supported_weeks: entry.complete_parallel_classes
+                + usize::from(entry.add_group_fill_week),
         }
     }
 
@@ -473,7 +474,10 @@ pub(super) fn construct_kirkman_triple_system(
             "requires a catalog-backed Kirkman triple system case",
         ],
     })
-    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::kts::source().citation)
+    .with_evidence(
+        EvidenceSourceKind::CatalogFact,
+        catalog::kts::source().citation,
+    )
     .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
 }
 
@@ -491,7 +495,10 @@ pub(super) fn construct_nearly_kirkman_triple_system(
             "requires a catalog-backed nearly Kirkman triple system case",
         ],
     })
-    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::nkts::source().citation)
+    .with_evidence(
+        EvidenceSourceKind::CatalogFact,
+        catalog::nkts::source().citation,
+    )
     .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
 }
 
@@ -519,8 +526,14 @@ pub(super) fn construct_nearly_kirkman_triple_system_via_pseudo_doubling(
             "uses pseudo-doubling when the seed has an odd number of rounds",
         ],
     })
-    .with_evidence(EvidenceSourceKind::CatalogFact, catalog::kts::source().citation)
-    .with_evidence(EvidenceSourceKind::StructuralComposition, "pseudo_doubling_from_kts")
+    .with_evidence(
+        EvidenceSourceKind::CatalogFact,
+        catalog::kts::source().citation,
+    )
+    .with_evidence(
+        EvidenceSourceKind::StructuralComposition,
+        "pseudo_doubling_from_kts",
+    )
 }
 
 pub(super) fn construct_published_schedule_bank(
@@ -551,20 +564,26 @@ pub(super) fn construct_published_schedule_bank(
 pub(super) fn construct_own_social_golfer(
     entry: &'static catalog::ownsg::OwnSgCatalogEntry,
 ) -> ConstructionResult {
-    ConstructionResult::new(ownsg::construct(entry), ConstructionFamilyId::OwnSocialGolfer)
-        .with_quality(classify_quality(
-            entry.num_groups,
-            entry.group_size,
-            entry.starter_blocks.len(),
-        ))
-        .with_applicability(ConstructionApplicability::Conditional {
-            notes: vec![
-                "requires a catalog-backed ownSG starter-block case",
-                "develops published starter blocks by +group_size translations across 10 groups",
-            ],
-        })
-        .with_evidence(EvidenceSourceKind::CatalogFact, catalog::ownsg::source().citation)
-        .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
+    ConstructionResult::new(
+        ownsg::construct(entry),
+        ConstructionFamilyId::OwnSocialGolfer,
+    )
+    .with_quality(classify_quality(
+        entry.num_groups,
+        entry.group_size,
+        entry.starter_blocks.len(),
+    ))
+    .with_applicability(ConstructionApplicability::Conditional {
+        notes: vec![
+            "requires a catalog-backed ownSG starter-block case",
+            "develops published starter blocks by +group_size translations across 10 groups",
+        ],
+    })
+    .with_evidence(
+        EvidenceSourceKind::CatalogFact,
+        catalog::ownsg::source().citation,
+    )
+    .with_evidence(EvidenceSourceKind::PatchBank, entry.citation)
 }
 
 pub(super) fn construct_resolvable_incomplete_transversal_design(
@@ -719,7 +738,9 @@ fn construct_max_schedule_recursive(
         }
         if num_groups % 2 == 0 {
             if let Some(entry) = catalog::kts::exact_case(num_groups / 2) {
-                return Some(construct_nearly_kirkman_triple_system_via_pseudo_doubling(entry));
+                return Some(construct_nearly_kirkman_triple_system_via_pseudo_doubling(
+                    entry,
+                ));
             }
         }
     }

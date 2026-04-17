@@ -706,11 +706,7 @@ const CASE_6_6_3_WEEK_2: &[&[usize]] = &[
     &[5, 10, 15, 20, 25, 30],
 ];
 
-const CASE_6_6_3_WEEKS: &[&[&[usize]]] = &[
-    CASE_6_6_3_WEEK_0,
-    CASE_6_6_3_WEEK_1,
-    CASE_6_6_3_WEEK_2,
-];
+const CASE_6_6_3_WEEKS: &[&[&[usize]]] = &[CASE_6_6_3_WEEK_0, CASE_6_6_3_WEEK_1, CASE_6_6_3_WEEK_2];
 
 // 10-5-7
 const CASE_10_5_7_WEEK_0: &[&[usize]] = &[
@@ -1076,11 +1072,8 @@ const CASE_10_9_3_WEEK_2: &[&[usize]] = &[
     &[16, 23, 24, 29, 40, 43, 58, 70, 78],
 ];
 
-const CASE_10_9_3_WEEKS: &[&[&[usize]]] = &[
-    CASE_10_9_3_WEEK_0,
-    CASE_10_9_3_WEEK_1,
-    CASE_10_9_3_WEEK_2,
-];
+const CASE_10_9_3_WEEKS: &[&[&[usize]]] =
+    &[CASE_10_9_3_WEEK_0, CASE_10_9_3_WEEK_1, CASE_10_9_3_WEEK_2];
 
 // 10-10-3
 const CASE_10_10_3_WEEK_0: &[&[usize]] = &[

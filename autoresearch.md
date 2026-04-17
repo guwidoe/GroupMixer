@@ -141,7 +141,7 @@ Interpretation note:
   - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
   - a universal single-round partition family for any divisible pure-SGP instance, used as an honest reusable `W=1` lower bound when no stronger family applies
 - Active kept benchmark baseline is now:
-  - commit: `(pending keep commit for the 419 baseline)`
+  - commit: `b250b32`
   - `total_constructed_weeks = 419`
   - `frontier_gap_sum = 167`
   - `solved_cells = 81`
@@ -205,4 +205,5 @@ Interpretation note:
   1. preserve benchmark honesty and avoid re-spending loop time on already-closed fixed-matrix cells
   2. prefer reusable structural upgrades that explain or subsume current exact catalog cases over more one-off patch hunting
   3. if continuing, look for broader non-prime-power square-order MOLR / MOLS, RITD, or RGDD-style theory that generalizes beyond the single shipped `10-10-4` case rather than mining more benchmark patches
+- A follow-up attempt to add `MOLRs(6,6)+G(1)` as a second `molr_group_fill` catalog case benchmarked flat at `419`: it cleanly reconstructs the already-shipped `6-6-3` schedule via a 2-week base plus one filler week, but it does **not** improve the objective beyond the existing published route. Treat that lane as provenance cleanup only, not as an active coverage-improvement direction.
 - Keep preferring reusable family logic or justified composition over per-cell glue.
