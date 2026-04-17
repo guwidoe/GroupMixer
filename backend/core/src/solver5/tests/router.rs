@@ -213,6 +213,26 @@ fn router_selects_published_schedule_bank_for_9_4_11() {
 }
 
 #[test]
+fn router_selects_prime_power_affine_plane_for_16_16_17() {
+    let input = pure_input(16, 16, 17);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 16-16-17");
+
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::AffinePlanePrimePower
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::AffinePlanePrimePower
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 17,
+                    quality: ConstructionQuality::ExactFrontier,
+                }
+    }));
+}
+
+#[test]
 fn router_selects_ownsg_for_10_7_7() {
     let input = pure_input(10, 7, 7);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
