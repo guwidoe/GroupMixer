@@ -3,15 +3,15 @@ import { HardPeopleConstraintModal } from './HardPeopleConstraintModal';
 
 interface Props {
   sessionsCount: number;
-  initial?: Extract<Constraint, { type: 'MustStayTogether' }> | null;
+  initial?: Extract<Constraint, { type: 'MustStayApart' }> | null;
   onCancel: () => void;
-  onSave: (constraint: Extract<Constraint, { type: 'MustStayTogether' }>) => void;
+  onSave: (constraint: Extract<Constraint, { type: 'MustStayApart' }>) => void;
 }
 
-export function MustStayTogetherModal({ sessionsCount, initial, onCancel, onSave }: Props) {
+export function MustStayApartModal({ sessionsCount, initial, onCancel, onSave }: Props) {
   return (
     <HardPeopleConstraintModal
-      type="MustStayTogether"
+      type="MustStayApart"
       sessionsCount={sessionsCount}
       initial={initial}
       onCancel={onCancel}
