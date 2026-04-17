@@ -34,6 +34,11 @@ import type {
 
 export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }: HardConstraintFamilySectionProps) {
   const { scenario, setScenario, addNotification, isLoading } = useConstraintScenario();
+  const isImmovableFamily = family === 'ImmovablePeople';
+  const hardPeopleFamily: Extract<Constraint, { type: 'MustStayTogether' | 'MustStayApart' }>['type'] = family === 'MustStayTogether'
+    ? 'MustStayTogether'
+    : 'MustStayApart';
+  const supportsBulkConvert = family === 'MustStayTogether';
   const [search, setSearch] = React.useState('');
   const [minMembers, setMinMembers] = React.useState<number | ''>('');
   const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('list');
@@ -63,7 +68,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
 
   const filteredItems = viewMode === 'cards'
     ? items.filter(({ constraint }) => {
-        if (family === 'MustStayTogether' && minMembers !== '' && constraint.people.length < minMembers) {
+        if (supportsBulkConvert && minMembers !== '' && constraint.people.length < minMembers) {
           return false;
         }
 
@@ -88,7 +93,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
     : items;
 
   const createGridRow = (): IndexedConstraint<Extract<Constraint, { type: HardConstraintFamily }>> => {
-    if (family === 'ImmovablePeople') {
+    if (isImmovableFamily) {
       return {
         constraint: {
           type: 'ImmovablePeople',
@@ -102,7 +107,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
 
     return {
       constraint: {
-        type: 'MustStayTogether',
+        type: hardPeopleFamily,
         people: [],
         sessions: undefined,
       },
@@ -118,7 +123,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
       const people = Array.from(new Set(constraint.people.filter(Boolean)));
       const normalizedSessions = normalizeSessionSelection(constraint.sessions ?? [], scenario.num_sessions);
 
-      if (family === 'ImmovablePeople') {
+      if (isImmovableFamily) {
         if (people.length < 1 || !constraint.group_id) {
           skippedRows += 1;
           return [];
@@ -138,7 +143,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
       }
 
       return [{
-        type: 'MustStayTogether',
+        type: hardPeopleFamily,
         people,
         sessions: normalizedSessions.length === 0 ? undefined : normalizedSessions,
       } satisfies Constraint];
@@ -153,21 +158,21 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
       type: skippedRows > 0 ? 'info' : 'success',
       title: skippedRows > 0 ? 'Some Rows Skipped' : 'Constraints Updated',
       message: skippedRows > 0
-        ? `Applied ${nextConstraints.length} ${family === 'ImmovablePeople' ? 'immovable' : 'must-stay-together'} row${nextConstraints.length === 1 ? '' : 's'} and skipped ${skippedRows} incomplete row${skippedRows === 1 ? '' : 's'}.`
-        : `Applied ${nextConstraints.length} ${family === 'ImmovablePeople' ? 'immovable' : 'must-stay-together'} row${nextConstraints.length === 1 ? '' : 's'}.`,
+        ? `Applied ${nextConstraints.length} ${isImmovableFamily ? 'immovable' : copy.title.toLowerCase()} row${nextConstraints.length === 1 ? '' : 's'} and skipped ${skippedRows} incomplete row${skippedRows === 1 ? '' : 's'}.`
+        : `Applied ${nextConstraints.length} ${isImmovableFamily ? 'immovable' : copy.title.toLowerCase()} row${nextConstraints.length === 1 ? '' : 's'}.`,
     });
   };
 
   return (
     <>
       <SetupCollectionPage
-        sectionKey={family === 'ImmovablePeople' ? 'immovable-people' : 'must-stay-together'}
+        sectionKey={family === 'ImmovablePeople' ? 'immovable-people' : family === 'MustStayTogether' ? 'must-stay-together' : 'must-stay-apart'}
         title={copy.title}
         count={items.length}
         description={copy.description}
         actions={
           <>
-            {family === 'MustStayTogether' ? (
+            {supportsBulkConvert ? (
               <>
                 <Button
                   variant={isSelectingMust ? 'primary' : 'secondary'}
@@ -213,7 +218,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
               onClear={() => setSearch('')}
               placeholder={family === 'ImmovablePeople' ? 'Filter by person, group, or session' : 'Filter by person or session'}
               status={searchValue || minMembers !== '' ? `Showing ${filteredItems.length} of ${items.length}` : undefined}
-              extra={family === 'MustStayTogether' ? (
+              extra={supportsBulkConvert ? (
                 <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                   <span>Min members</span>
                   <input
@@ -251,7 +256,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   openLabel={`Edit ${copy.title.toLowerCase()} constraint`}
                   actions={
                     <>
-                      {family === 'MustStayTogether' && isSelectingMust ? (
+                      {supportsBulkConvert && isSelectingMust ? (
                         <SetupSelectionToggle
                           selected={selectedMustIndices.includes(index)}
                           onToggle={() => setSelectedMustIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
@@ -308,7 +313,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   searchText: (_value, item) => formatPersonSearchList(scenario.people, item.constraint.people),
                   width: 280,
                 },
-                ...(family === 'ImmovablePeople'
+                ...(isImmovableFamily
                   ? [{
                       kind: 'primitive' as const,
                       id: 'group',
@@ -326,7 +331,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                       width: 180,
                     }]
                   : []),
-                ...(family === 'ImmovablePeople'
+                ...(isImmovableFamily
                   ? [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>>({
                       totalSessions: scenario.num_sessions,
                       getSessions: (item) => item.constraint.sessions,
@@ -338,7 +343,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                         },
                       }),
                     })]
-                  : [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'MustStayTogether' }>>>({
+                  : [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'MustStayTogether' | 'MustStayApart' }>>>({
                       totalSessions: scenario.num_sessions,
                       getSessions: (item) => item.constraint.sessions,
                       setSessions: (item, sessions) => ({

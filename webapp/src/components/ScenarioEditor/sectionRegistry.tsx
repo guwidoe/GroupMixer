@@ -72,6 +72,14 @@ export const scenarioSetupSectionRegistry: Record<ScenarioSetupSectionId, Scenar
       onDelete={controller.constraints.handleDeleteConstraint}
     />
   ),
+  'must-stay-apart': (controller) => (
+    <HardConstraintFamilySection
+      family="MustStayApart"
+      onAdd={controller.editorActions.handleHardConstraintAdd}
+      onEdit={controller.editorActions.handleHardConstraintEdit}
+      onDelete={controller.constraints.handleDeleteConstraint}
+    />
+  ),
   'repeat-encounter': (controller) => (
     <RepeatEncounterCollectionSection
       scenario={controller.scenario ?? null}

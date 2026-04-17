@@ -195,6 +195,8 @@ function ScenarioEditorLoaded() {
           setShowShouldStayTogetherModal={controller.constraints.setShowShouldStayTogetherModal}
           showMustStayTogetherModal={controller.constraints.showMustStayTogetherModal}
           setShowMustStayTogetherModal={controller.constraints.setShowMustStayTogetherModal}
+          showMustStayApartModal={controller.constraints.showMustStayApartModal}
+          setShowMustStayApartModal={controller.constraints.setShowMustStayApartModal}
           showPairMeetingCountModal={controller.constraints.showPairMeetingCountModal}
           setShowPairMeetingCountModal={controller.constraints.setShowPairMeetingCountModal}
           editingConstraintIndex={controller.constraints.editingConstraintIndex}

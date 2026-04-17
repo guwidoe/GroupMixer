@@ -83,6 +83,7 @@ export function ConstraintFormModal({
               <option value="RepeatEncounter">{getConstraintDisplayName('RepeatEncounter')}</option>
               <option value="AttributeBalance">{getConstraintDisplayName('AttributeBalance')}</option>
               <option value="MustStayTogether">{getConstraintDisplayName('MustStayTogether')}</option>
+              <option value="MustStayApart">{getConstraintDisplayName('MustStayApart')}</option>
               <option value="ShouldNotBeTogether">{getConstraintDisplayName('ShouldNotBeTogether')}</option>
               <option value="ImmovablePeople">{getConstraintDisplayName('ImmovablePeople')}</option>
             </select>
@@ -300,7 +301,11 @@ export function ConstraintFormModal({
             </>
           )}
 
-          {(constraintForm.type === 'MustStayTogether' || constraintForm.type === 'ShouldNotBeTogether') && (
+          {(
+            constraintForm.type === 'MustStayTogether'
+            || constraintForm.type === 'MustStayApart'
+            || constraintForm.type === 'ShouldNotBeTogether'
+          ) && (
             <>
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
@@ -371,7 +376,9 @@ export function ConstraintFormModal({
             </>
           )}
 
-          {constraintForm.type !== 'ImmovablePeople' && (
+          {constraintForm.type !== 'ImmovablePeople'
+            && constraintForm.type !== 'MustStayTogether'
+            && constraintForm.type !== 'MustStayApart' && (
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
                 Penalty Weight

@@ -145,6 +145,8 @@ function createController(overrides: Partial<ScenarioEditorController> = {}): Sc
       setShowShouldStayTogetherModal: vi.fn(),
       showMustStayTogetherModal: false,
       setShowMustStayTogetherModal: vi.fn(),
+      showMustStayApartModal: false,
+      setShowMustStayApartModal: vi.fn(),
       showPairMeetingCountModal: false,
       setShowPairMeetingCountModal: vi.fn(),
       editingConstraintIndex: null,
