@@ -355,6 +355,10 @@ impl State {
             "cache drift in {context}: soft_apart_pair_violations mismatch"
         );
         assert_eq!(
+            self.hard_apart_pair_violations, recalculated.hard_apart_pair_violations,
+            "cache drift in {context}: hard_apart_pair_violations mismatch"
+        );
+        assert_eq!(
             self.should_together_violations, recalculated.should_together_violations,
             "cache drift in {context}: should_together_violations mismatch"
         );
@@ -780,6 +784,26 @@ impl State {
                 let (g2, _) = self.locations[day_idx][p2];
                 if g1 != g2 {
                     self.weighted_constraint_penalty += self.should_together_weights[pair_idx];
+                    violation_count += 1;
+                }
+            }
+        }
+
+        // === MUST-STAY-APART RAW VIOLATIONS ===
+        for (day_idx, _day_schedule) in self.schedule.iter().enumerate() {
+            for (pair_idx, &(p1, p2)) in self.hard_apart_pairs.iter().enumerate() {
+                if let Some(ref sessions) = self.hard_apart_pair_sessions[pair_idx] {
+                    if !sessions.contains(&day_idx) {
+                        continue;
+                    }
+                }
+
+                if !self.person_participation[p1][day_idx] || !self.person_participation[p2][day_idx]
+                {
+                    continue;
+                }
+
+                if self.locations[day_idx][p1].0 == self.locations[day_idx][p2].0 {
                     violation_count += 1;
                 }
             }

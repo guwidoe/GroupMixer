@@ -437,6 +437,8 @@ impl State {
 
         state._recalculate_locations_from_schedule();
         state._recalculate_scores();
+        #[cfg(feature = "debug-invariant-checks")]
+        state.debug_validate_hard_constraints_if_enabled("State::new");
         #[cfg(feature = "cache-drift-assertions")]
         state.debug_assert_no_cache_drift_if_enabled("State::new");
 

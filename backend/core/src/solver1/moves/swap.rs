@@ -1003,6 +1003,8 @@ impl State {
         // Update the legacy constraint_penalty field for backward compatibility
         self._update_constraint_penalty_total();
         self.refresh_cost_from_caches();
+        #[cfg(feature = "debug-invariant-checks")]
+        self.debug_validate_hard_constraints_if_enabled("apply_swap");
         #[cfg(feature = "cache-drift-assertions")]
         self.debug_assert_no_cache_drift_if_enabled("apply_swap");
     }

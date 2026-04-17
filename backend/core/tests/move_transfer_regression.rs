@@ -173,6 +173,30 @@ fn immovable_transfer_is_rejected() {
 }
 
 #[test]
+fn hard_apart_transfer_is_rejected() {
+    let mut state = transfer_state(
+        vec![person("p0"), person("p1"), person("p2"), person("p3")],
+        groups_3x2(),
+        vec![Constraint::MustStayApart {
+            people: vec!["p0".to_string(), "p2".to_string()],
+            sessions: None,
+        }],
+        vec![vec![vec!["p0", "p1"], vec!["p2"], vec!["p3"]]],
+    );
+    let before = state.clone();
+
+    let p0 = state.person_id_to_idx["p0"];
+    assert!(!state.is_transfer_feasible(0, p0, 0, 1));
+    let delta = state.calculate_transfer_cost_delta(0, p0, 0, 1);
+    assert!(delta.is_infinite());
+
+    state.apply_transfer(0, p0, 0, 1);
+
+    assert_eq!(state.schedule, before.schedule);
+    assert_eq!(state.current_cost, before.current_cost);
+}
+
+#[test]
 fn attribute_balance_transfer_delta_matches_apply_and_recalculation() {
     let mut desired_values = HashMap::new();
     desired_values.insert("red".to_string(), 1);

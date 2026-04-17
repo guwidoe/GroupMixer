@@ -159,6 +159,26 @@ fn soft_apart_pair_delta_matches_apply_and_recalculation() {
 }
 
 #[test]
+fn hard_apart_pair_swap_is_rejected() {
+    let mut state = single_session_swap_state(vec![Constraint::MustStayApart {
+        people: vec!["p0".to_string(), "p2".to_string()],
+        sessions: None,
+    }]);
+    let before = state.clone();
+
+    let p1 = state.person_id_to_idx["p1"];
+    let p2 = state.person_id_to_idx["p2"];
+    let delta = state.calculate_swap_cost_delta(0, p1, p2);
+    assert!(delta.is_infinite());
+
+    state.apply_swap(0, p1, p2);
+
+    assert_eq!(state.schedule, before.schedule);
+    assert_eq!(state.locations, before.locations);
+    assert_eq!(state.current_cost, before.current_cost);
+}
+
+#[test]
 fn should_together_delta_matches_apply_and_recalculation() {
     let mut state = single_session_swap_state(vec![Constraint::ShouldStayTogether {
         people: vec!["p0".to_string(), "p1".to_string()],

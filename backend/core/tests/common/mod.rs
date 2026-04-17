@@ -288,6 +288,10 @@ pub fn assert_state_matches_full_recalculation(state: &State) {
         recalculated.soft_apart_pair_violations
     );
     assert_eq!(
+        state.hard_apart_pair_violations,
+        recalculated.hard_apart_pair_violations
+    );
+    assert_eq!(
         state.should_together_violations,
         recalculated.should_together_violations
     );

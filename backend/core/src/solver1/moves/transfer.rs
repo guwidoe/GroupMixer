@@ -613,6 +613,8 @@ impl State {
             }
         }
 
+        #[cfg(feature = "debug-invariant-checks")]
+        self.debug_validate_hard_constraints_if_enabled("apply_transfer");
         #[cfg(feature = "cache-drift-assertions")]
         self.debug_assert_no_cache_drift_if_enabled("apply_transfer");
     }

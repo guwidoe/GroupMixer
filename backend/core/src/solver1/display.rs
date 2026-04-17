@@ -184,6 +184,16 @@ impl State {
             }
         }
 
+        for (pair_idx, &violation_count) in self.hard_apart_pair_violations.iter().enumerate() {
+            if violation_count > 0 {
+                breakdown.push_str(&format!(
+                    "\n  MustStayApart[{}]: {} (hard, raw)",
+                    pair_idx, violation_count
+                ));
+                has_constraints = true;
+            }
+        }
+
         // Should stay together violations
         for (pair_idx, &violation_count) in self.should_together_violations.iter().enumerate() {
             if violation_count > 0 {
