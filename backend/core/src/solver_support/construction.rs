@@ -160,6 +160,99 @@ pub(crate) fn apply_construction_seed_schedule(
     };
     let validated = validate_schedule_as_construction_seed(input, construction_seed_schedule)?;
     *context.schedule = validated.schedule;
+    validate_seeded_hard_constraints(context)?;
+
+    Ok(())
+}
+
+fn validate_seeded_hard_constraints(
+    context: &BaselineConstructionContext<'_>,
+) -> Result<(), SolverError> {
+    let people_count = context.people_count();
+    let num_sessions = context.schedule.len();
+
+    let mut assigned_group_by_person = vec![vec![None; people_count]; num_sessions];
+    for (day, groups) in context.schedule.iter().enumerate() {
+        for (group_idx, members) in groups.iter().enumerate() {
+            for &person_idx in members {
+                assigned_group_by_person[day][person_idx] = Some(group_idx);
+            }
+        }
+    }
+
+    for ((person_idx, session_idx), &required_group_idx) in context.immovable_people.iter() {
+        if let Some(actual_group_idx) = assigned_group_by_person[*session_idx][*person_idx] {
+            if actual_group_idx != required_group_idx {
+                return Err(SolverError::ValidationError(format!(
+                    "construction seed places immovable person '{}' in group '{}' instead of '{}' for session {}",
+                    context.person_idx_to_id[*person_idx],
+                    context.group_idx_to_id[actual_group_idx],
+                    context.group_idx_to_id[required_group_idx],
+                    session_idx
+                )));
+            }
+        }
+    }
+
+    for (clique_idx, clique) in context.cliques.iter().enumerate() {
+        for day in 0..num_sessions {
+            if let Some(sessions) = &context.clique_sessions[clique_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
+            let assigned_members = clique
+                .iter()
+                .copied()
+                .filter(|&person_idx| context.person_participation[person_idx][day])
+                .filter_map(|person_idx| {
+                    assigned_group_by_person[day][person_idx].map(|group_idx| (person_idx, group_idx))
+                })
+                .collect::<Vec<_>>();
+
+            if assigned_members.len() < 2 {
+                continue;
+            }
+
+            let first_group = assigned_members[0].1;
+            if assigned_members
+                .iter()
+                .any(|&(_, group_idx)| group_idx != first_group)
+            {
+                let members = assigned_members
+                    .iter()
+                    .map(|&(person_idx, _)| context.person_idx_to_id[person_idx].clone())
+                    .collect::<Vec<_>>();
+                return Err(SolverError::ValidationError(format!(
+                    "construction seed splits must-stay-together clique {:?} across multiple groups in session {}",
+                    members, day
+                )));
+            }
+        }
+    }
+
+    for (day, groups) in context.schedule.iter().enumerate() {
+        for (group_idx, members) in groups.iter().enumerate() {
+            for (pos, &person_idx) in members.iter().enumerate() {
+                let others = [&members[..pos], &members[(pos + 1)..]].concat();
+                if let Some(&other_idx) = others.iter().find(|&&other_idx| {
+                    context
+                        .hard_apart_partners(day, person_idx)
+                        .binary_search(&other_idx)
+                        .is_ok()
+                }) {
+                    return Err(SolverError::ValidationError(format!(
+                        "construction seed places must-stay-apart pair ['{}', '{}'] together in group '{}' for session {}",
+                        context.person_idx_to_id[person_idx],
+                        context.person_idx_to_id[other_idx],
+                        context.group_idx_to_id[group_idx],
+                        day
+                    )));
+                }
+            }
+        }
+    }
 
     Ok(())
 }
@@ -211,6 +304,20 @@ pub(crate) fn apply_baseline_construction_heuristic(
                 return Err(SolverError::ValidationError(format!(
                     "Cannot place immovable person: group {} is full",
                     context.group_idx_to_id[group_idx]
+                )));
+            }
+
+            if group_has_hard_apart_conflict(
+                hard_apart_partners_by_person_session,
+                people_count,
+                day,
+                person_idx,
+                &day_schedule[group_idx],
+            ) {
+                return Err(SolverError::ValidationError(format!(
+                    "Cannot place immovable person: group {} would violate MustStayApart for {}",
+                    context.group_idx_to_id[group_idx],
+                    context.person_idx_to_id[person_idx]
                 )));
             }
 
@@ -475,6 +582,14 @@ fn place_immovables_for_day(
             return Err(SolverError::ValidationError(format!(
                 "Cannot place immovable person: group {} is full",
                 context.group_idx_to_id[group_idx]
+            )));
+        }
+
+        if context.group_has_hard_apart_conflict(day, person_idx, &context.schedule[day][group_idx]) {
+            return Err(SolverError::ValidationError(format!(
+                "Cannot place immovable person: group {} would violate MustStayApart for {}",
+                context.group_idx_to_id[group_idx],
+                context.person_idx_to_id[person_idx]
             )));
         }
 
