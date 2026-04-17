@@ -81,6 +81,13 @@ fn solver5_solves_prime_power_affine_plane_cases() {
         .expect("prime-power affine plane should solve 4-4-5");
     assert_eq!(result.final_score, 0.0);
     assert_eq!(result.schedule.len(), 5);
+
+    let input = pure_input(16, 16, 17);
+    let result = solver
+        .solve(&input)
+        .expect("order-16 affine plane should solve 16-16-17");
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 17);
 }
 
 #[test]

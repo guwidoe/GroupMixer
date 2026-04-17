@@ -140,8 +140,8 @@ Interpretation note:
     - `10-4-9`
     - `6-5-6`, `6-6-3`
     - `10-5-7`, `10-6-6`, `10-7-5`, `10-8-4`, `10-9-3`, `10-10-3`
-  - prime-power RTD / MOLS-style transversal-design constructors for `3 <= p <= g`
-  - prime-power affine-plane constructors for `p = g`
+  - prime-power RTD / MOLS-style transversal-design constructors for `3 <= p <= g`, now including supported field orders `11`, `16`, `17`, and `19` in addition to the earlier small orders
+  - prime-power affine-plane constructors for `p = g`, now including the supplementary benchmark diagonal cases at orders `11`, `16`, `17`, and `19`
   - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
   - a universal single-round partition family for any divisible pure-SGP instance, used as an honest reusable `W=1` lower bound when no stronger family applies
 - Active kept benchmark baseline under the *old* canonical-only benchmark was:
@@ -160,9 +160,18 @@ Interpretation note:
   - `p8_constructed_weeks = 29`
   - `p9_constructed_weeks = 22`
   - `p10_constructed_weeks = 12`
-- After expanding the benchmark to all three matrices, this baseline is only a
-  historical reference; the new benchmark needs a fresh rerun and experiment
-  header before any keep/discard comparison is meaningful.
+- After expanding the benchmark to all three matrices, that `419` value is only a
+  historical canonical-only reference.
+- Active kept three-matrix benchmark baseline is now:
+  - commit: `b5843c6`
+  - `total_constructed_weeks = 1038`
+  - `frontier_gap_sum = 2927`
+  - `solved_cells = 271`
+  - `exact_frontier_cells = 38`
+  - `unsolved_cells = 0`
+- Current loop result to keep if checks stay green:
+  - extending finite-field support to the additional benchmark prime-power orders `11`, `16`, `17`, and `19` unlocks much stronger honest supplementary coverage via the existing RTD / affine-plane families
+  - rerun metric: `total_constructed_weeks = 1906`, `frontier_gap_sum = 2059`, `exact_frontier_cells = 45`, `unsolved_cells = 0`
 
 ## What's Been Tried
 - Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.

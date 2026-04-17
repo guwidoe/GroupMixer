@@ -64,6 +64,15 @@ fn affine_plane_family_constructs_prime_power_case() {
 }
 
 #[test]
+fn affine_plane_family_constructs_order_16_case() {
+    let field = FiniteField::for_order(16).expect("order 16 field should exist");
+    let result = families::construct_affine_plane(&field);
+
+    assert_eq!(result.family.label(), "affine_plane_prime_power");
+    assert_eq!(result.schedule.len(), 17);
+}
+
+#[test]
 fn p4_resolvable_bibd_family_constructs_28_player_case() {
     let field = FiniteField::for_order(9).expect("order 9 field should exist");
     let result = families::construct_p4_resolvable_bibd(&field);

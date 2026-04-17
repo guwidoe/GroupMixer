@@ -7,7 +7,7 @@ fn prime_power_catalog_exposes_supported_field_orders() {
         .map(|spec| spec.order)
         .collect::<Vec<_>>();
 
-    assert_eq!(orders, vec![2, 3, 4, 5, 7, 8, 9, 13]);
+    assert_eq!(orders, vec![2, 3, 4, 5, 7, 8, 9, 11, 13, 16, 17, 19]);
 }
 
 #[test]
