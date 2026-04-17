@@ -166,6 +166,17 @@ fn nkts_family_constructs_catalog_backed_36_case() {
 }
 
 #[test]
+fn nkts_family_constructs_catalog_backed_48_case() {
+    let entry = crate::solver5::catalog::nkts::exact_case(16)
+        .expect("nkts catalog should expose the 48-player case");
+    let result = families::construct_nearly_kirkman_triple_system(entry);
+
+    assert_eq!(result.family.label(), "nkts");
+    assert_eq!(result.schedule.len(), 23);
+    assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
+}
+
+#[test]
 fn nkts_pseudo_doubling_constructs_30_player_case() {
     let entry = crate::solver5::catalog::kts::exact_case(5)
         .expect("kts catalog should expose the 15-player case");
