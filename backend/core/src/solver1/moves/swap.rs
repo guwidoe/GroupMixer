@@ -165,6 +165,26 @@ impl State {
             return 0.0;
         }
 
+        if self
+            .first_hard_apart_conflict_in_group_excluding(
+                day,
+                p1_idx,
+                &self.schedule[day][g2_idx],
+                p2_idx,
+            )
+            .is_some()
+            || self
+                .first_hard_apart_conflict_in_group_excluding(
+                    day,
+                    p2_idx,
+                    &self.schedule[day][g1_idx],
+                    p1_idx,
+                )
+                .is_some()
+        {
+            return f64::INFINITY;
+        }
+
         let mut delta_cost = 0.0;
 
         // --- Contact/Repetition Delta ---
@@ -515,6 +535,26 @@ impl State {
 
         if g1_idx == g2_idx {
             return; // Same group, no swap needed
+        }
+
+        if self
+            .first_hard_apart_conflict_in_group_excluding(
+                day,
+                p1_idx,
+                &self.schedule[day][g2_idx],
+                p2_idx,
+            )
+            .is_some()
+            || self
+                .first_hard_apart_conflict_in_group_excluding(
+                    day,
+                    p2_idx,
+                    &self.schedule[day][g1_idx],
+                    p1_idx,
+                )
+                .is_some()
+        {
+            return;
         }
 
         // === TAKE OWNERSHIP OF AFFECTED GROUPS ===

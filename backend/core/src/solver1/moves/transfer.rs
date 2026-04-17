@@ -97,6 +97,13 @@ impl State {
             return false;
         }
 
+        if self
+            .first_hard_apart_conflict_in_group(day, person_idx, &self.schedule[day][to_group])
+            .is_some()
+        {
+            return false;
+        }
+
         true
     }
 

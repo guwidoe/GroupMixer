@@ -394,6 +394,61 @@ impl State {
     }
 
     #[inline]
+    pub(crate) fn hard_apart_partners(&self, day: usize, person_idx: usize) -> &[usize] {
+        &self.hard_apart_partners_by_person_session[day * self.person_idx_to_id.len() + person_idx]
+    }
+
+    #[inline]
+    pub(crate) fn first_hard_apart_conflict_in_group(
+        &self,
+        day: usize,
+        person_idx: usize,
+        group_members: &[usize],
+    ) -> Option<usize> {
+        let partners = self.hard_apart_partners(day, person_idx);
+        if partners.is_empty() {
+            return None;
+        }
+
+        group_members.iter().copied().find(|member| {
+            *member != person_idx && partners.binary_search(member).is_ok()
+        })
+    }
+
+    #[inline]
+    pub(crate) fn first_hard_apart_conflict_in_group_excluding(
+        &self,
+        day: usize,
+        person_idx: usize,
+        group_members: &[usize],
+        excluded_person_idx: usize,
+    ) -> Option<usize> {
+        let partners = self.hard_apart_partners(day, person_idx);
+        if partners.is_empty() {
+            return None;
+        }
+
+        group_members.iter().copied().find(|member| {
+            *member != person_idx
+                && *member != excluded_person_idx
+                && partners.binary_search(member).is_ok()
+        })
+    }
+
+    #[inline]
+    pub(crate) fn block_has_hard_apart_conflict(
+        &self,
+        day: usize,
+        moved_block: &[usize],
+        group_members: &[usize],
+    ) -> bool {
+        moved_block.iter().copied().any(|person_idx| {
+            self.first_hard_apart_conflict_in_group(day, person_idx, group_members)
+                .is_some()
+        })
+    }
+
+    #[inline]
     pub(crate) fn repetition_penalty_for_contact_count(&self, count: u32) -> i32 {
         self.repeat_penalty_function
             .penalty_for_excess(count.saturating_sub(self.repeat_encounter_limit))

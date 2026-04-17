@@ -169,6 +169,18 @@ impl State {
         (source_remaining, target_remaining, new_from, new_to)
     }
 
+    fn clique_swap_has_hard_apart_conflict(
+        &self,
+        day: usize,
+        active_members: &[usize],
+        target_people: &[usize],
+        source_remaining: &[usize],
+        target_remaining: &[usize],
+    ) -> bool {
+        self.block_has_hard_apart_conflict(day, active_members, target_remaining)
+            || self.block_has_hard_apart_conflict(day, target_people, source_remaining)
+    }
+
     fn contact_delta_for_clique_swap_pair(
         &self,
         person_a: usize,
@@ -272,6 +284,16 @@ impl State {
         let old_to = &self.schedule[day][to_group];
         let (source_remaining, target_remaining, new_from, new_to) =
             Self::clique_swap_group_members_after(old_from, old_to, &active_members, target_people);
+
+        if self.clique_swap_has_hard_apart_conflict(
+            day,
+            &active_members,
+            target_people,
+            &source_remaining,
+            &target_remaining,
+        ) {
+            return f64::INFINITY;
+        }
 
         let mut delta_cost = 0.0;
 
@@ -492,6 +514,16 @@ impl State {
                 &active_members,
                 target_people,
             );
+
+        if self.clique_swap_has_hard_apart_conflict(
+            day,
+            &active_members,
+            target_people,
+            &source_remaining,
+            &target_remaining,
+        ) {
+            return;
+        }
 
         let current_groups: Vec<usize> = self.locations[day]
             .iter()
