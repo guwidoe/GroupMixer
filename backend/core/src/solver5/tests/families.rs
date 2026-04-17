@@ -169,6 +169,23 @@ fn nkts_pseudo_doubling_constructs_30_player_case() {
 }
 
 #[test]
+fn nkts_pseudo_doubling_constructs_exact_42_player_case_from_kirkman_seed() {
+    let field = FiniteField::for_order(7).expect("order 7 field should exist");
+    let seed = families::construct_kirkman_6t_plus_1(&field);
+    let result = families::construct_nearly_kirkman_triple_system_via_exact_kirkman_seed(seed, 7);
+
+    assert_eq!(result.family.label(), "nkts");
+    assert_eq!(result.schedule.len(), 20);
+    assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
+    assert!(result.metadata.evidence.iter().any(|evidence| {
+        matches!(
+            evidence.source_kind,
+            EvidenceSourceKind::FiniteFieldConstruction | EvidenceSourceKind::StructuralComposition
+        )
+    }));
+}
+
+#[test]
 fn published_schedule_bank_constructs_24_player_case() {
     let entry = crate::solver5::catalog::published::exact_case(8, 3)
         .expect("published schedule catalog should expose the 8-3-10 case");
