@@ -249,6 +249,16 @@ fn solver5_solves_published_9_4_11_case() {
 }
 
 #[test]
+fn solver5_solves_rbibd_15_8_17_case() {
+    let input = pure_input(15, 8, 17);
+    let solver = SearchEngine::new(&input.solver);
+    let result = solver.solve(&input).expect("rbibd catalog should solve 15-8-17");
+
+    assert_eq!(result.final_score, 0.0);
+    assert_eq!(result.schedule.len(), 17);
+}
+
+#[test]
 fn solver5_solves_molr_group_fill_10_10_4_case() {
     let input = pure_input(10, 10, 4);
     let solver = SearchEngine::new(&input.solver);

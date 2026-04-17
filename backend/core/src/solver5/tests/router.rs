@@ -12,7 +12,7 @@ fn router_selects_round_robin_for_p2_cases() {
     let decision = attempt_construction(&problem).expect("router should find round robin");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::RoundRobin);
-    assert_eq!(decision.attempts.len(), 12);
+    assert_eq!(decision.attempts.len(), 13);
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::RoundRobin
             && attempt.status
@@ -377,6 +377,23 @@ fn router_selects_ritd_for_10_5_9() {
                     quality: ConstructionQuality::LowerBound {
                         gap_to_counting_bound: 3,
                     },
+                }
+    }));
+}
+
+#[test]
+fn router_selects_rbibd_catalog_for_15_8_17() {
+    let input = pure_input(15, 8, 17);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 15-8-17");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::ResolvableBIBDCatalog);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::ResolvableBIBDCatalog
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 17,
+                    quality: ConstructionQuality::ExactFrontier,
                 }
     }));
 }

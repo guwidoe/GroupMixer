@@ -38,6 +38,7 @@ fn default_target_matrix_exposes_expected_cells_and_abbreviations() {
     assert_eq!(matrix.abbreviation_for("ownsg"), Some("ownSG"));
     assert_eq!(matrix.abbreviation_for("ritd"), Some("RITD"));
     assert_eq!(matrix.abbreviation_for("molr_group_fill"), Some("MOLR+G"));
+    assert_eq!(matrix.abbreviation_for("rbibd_catalog"), Some("RBIBD"));
     assert_eq!(matrix.abbreviation_for("p4_router"), Some("P4"));
     assert_eq!(
         matrix.abbreviation_for("published_schedule_bank"),

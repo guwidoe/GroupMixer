@@ -294,6 +294,17 @@ fn ritd_family_constructs_50_player_case() {
 }
 
 #[test]
+fn rbibd_catalog_family_constructs_120_player_case() {
+    let entry = crate::solver5::catalog::rbibd::exact_case(15, 8)
+        .expect("rbibd catalog should expose the 15-8 case");
+    let result = families::construct_resolvable_bibd_catalog(entry);
+
+    assert_eq!(result.family.label(), "rbibd_catalog");
+    assert_eq!(result.schedule.len(), 17);
+    assert_eq!(result.metadata.quality, ConstructionQuality::ExactFrontier);
+}
+
+#[test]
 fn molr_group_fill_family_constructs_100_player_case() {
     let entry = crate::solver5::catalog::molr::exact_case(10, 10)
         .expect("molr catalog should expose the 10-10 case");
@@ -341,6 +352,7 @@ fn family_registry_exposes_current_portfolio_order() {
             "molr_group_fill",
             "affine_plane_prime_power",
             "p4_router",
+            "rbibd_catalog",
             "published_schedule_bank",
             "transversal_design_prime_power",
             "single_round_partition",
