@@ -206,6 +206,26 @@ fn router_selects_exact_nkts_catalog_case_for_16_3_23() {
 }
 
 #[test]
+fn router_selects_exact_nkts_catalog_case_for_20_3_29() {
+    let input = pure_input(20, 3, 29);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 20-3-29");
+
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::NearlyKirkmanTripleSystem
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::NearlyKirkmanTripleSystem
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 29,
+                    quality: ConstructionQuality::ExactFrontier,
+                }
+    }));
+}
+
+#[test]
 fn router_selects_exact_nkts_seeded_case_for_14_3_20() {
     let input = pure_input(14, 3, 20);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
@@ -436,20 +456,18 @@ fn router_selects_mols_catalog_for_18_6_19() {
 }
 
 #[test]
-fn router_selects_mols_product_for_20_3_20() {
+fn router_selects_exact_nkts_catalog_case_for_20_3_20() {
     let input = pure_input(20, 3, 20);
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 20-3-20");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::MolsProduct);
+    assert_eq!(decision.result.family, ConstructionFamilyId::NearlyKirkmanTripleSystem);
     assert!(decision.attempts.iter().any(|attempt| {
-        attempt.family == ConstructionFamilyId::MolsProduct
+        attempt.family == ConstructionFamilyId::NearlyKirkmanTripleSystem
             && attempt.status
                 == FamilyAttemptStatus::Selected {
-                    max_supported_weeks: 20,
-                    quality: ConstructionQuality::LowerBound {
-                        gap_to_counting_bound: 9,
-                    },
+                    max_supported_weeks: 29,
+                    quality: ConstructionQuality::ExactFrontier,
                 }
     }));
 }
