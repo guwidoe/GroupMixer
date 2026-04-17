@@ -12,7 +12,7 @@ fn router_selects_round_robin_for_p2_cases() {
     let decision = attempt_construction(&problem).expect("router should find round robin");
 
     assert_eq!(decision.result.family, ConstructionFamilyId::RoundRobin);
-    assert_eq!(decision.attempts.len(), 14);
+    assert_eq!(decision.attempts.len(), 15);
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::RoundRobin
             && attempt.status
@@ -354,6 +354,46 @@ fn router_selects_mols_catalog_for_18_6_19() {
                     quality: ConstructionQuality::LowerBound {
                         gap_to_counting_bound: 2,
                     },
+                }
+    }));
+}
+
+#[test]
+fn router_selects_mols_product_for_20_3_20() {
+    let input = pure_input(20, 3, 20);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 20-3-20");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::MolsProduct);
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::MolsProduct
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 20,
+                    quality: ConstructionQuality::LowerBound {
+                        gap_to_counting_bound: 9,
+                    },
+                }
+    }));
+}
+
+#[test]
+fn router_selects_mols_product_for_20_4_25() {
+    let input = pure_input(20, 4, 25);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
+    let decision = attempt_construction(&problem).expect("router should construct 20-4-25");
+
+    assert_eq!(decision.result.family, ConstructionFamilyId::MolsProduct);
+    assert_eq!(
+        decision.result.provenance.operators,
+        vec![CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert!(decision.attempts.iter().any(|attempt| {
+        attempt.family == ConstructionFamilyId::MolsProduct
+            && attempt.status
+                == FamilyAttemptStatus::Selected {
+                    max_supported_weeks: 25,
+                    quality: ConstructionQuality::NearFrontier { missing_weeks: 1 },
                 }
     }));
 }

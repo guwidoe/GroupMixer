@@ -296,6 +296,40 @@ fn mols_catalog_family_constructs_and_lifts_18_6_case_from_oa_derived_bank() {
 }
 
 #[test]
+fn mols_product_family_constructs_20_3_case() {
+    let spec = crate::solver5::families::mols_product::best_spec(20, 3)
+        .expect("mols product should support 20-3");
+    let result = families::construct_product_mols_transversal(spec, 3);
+
+    assert_eq!(result.family.label(), "mols_product");
+    assert_eq!(result.schedule.len(), 20);
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::LowerBound {
+            gap_to_counting_bound: 9,
+        }
+    );
+}
+
+#[test]
+fn mols_product_family_constructs_and_lifts_20_4_case() {
+    let spec = crate::solver5::families::mols_product::best_spec(20, 4)
+        .expect("mols product should support 20-4");
+    let result = families::construct_product_mols_transversal(spec, 4);
+
+    assert_eq!(result.family.label(), "mols_product");
+    assert_eq!(result.schedule.len(), 25);
+    assert_eq!(
+        result.provenance.operators,
+        vec![crate::solver5::types::CompositionOperatorId::RecursiveTransversalLift]
+    );
+    assert_eq!(
+        result.metadata.quality,
+        ConstructionQuality::NearFrontier { missing_weeks: 1 }
+    );
+}
+
+#[test]
 fn ownsg_family_constructs_96_player_case() {
     let entry = crate::solver5::catalog::ownsg::exact_case(12, 8)
         .expect("ownsg catalog should expose the 12-8-6 case");
@@ -413,6 +447,7 @@ fn family_registry_exposes_current_portfolio_order() {
             "kts",
             "nkts",
             "mols_catalog",
+            "mols_product",
             "ownsg",
             "ritd",
             "molr_group_fill",
