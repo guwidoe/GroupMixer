@@ -1,45 +1,44 @@
-# Autoresearch ideas: solver5 construction heuristics
+# Autoresearch ideas: unresolved-only backlog
 
-- The constructor-portfolio scaffold is now in place. Use it rather than reintroducing ad hoc family routing or inline exception logic.
-- Keep `total_constructed_weeks` as the primary objective gate; use per-cell and per-`p` metrics to understand where coverage moved.
-- The broad NKTS / composite-`p=3` push has now paid off: exact `NKTS(18)`, exact `NKTS(24)`, exact `KP(30,14)`, exact `KP(36,17)`, exact `KP(48,23)`, exact `KTS(51)`, and the generalized exact-KTS-seeded `NKTS(42)` route are in. Treat that milestone as partially complete rather than an open generic idea.
-- The triples benchmark frontier is now closed in the fixed matrix; do not re-spend cycles on `8-3-11` unless a broader reusable family beyond that benchmark cell appears.
-- The Warwick Harvey archive has now been mined for all benchmark-relevant improvements currently visible in the fixed matrix. Do not keep rescanning it as if it still contains untouched easy wins.
-- The published-schedule bank is now a real portfolio component, not just a one-off patch lane. Preserve explicit provenance per schedule and keep any transcription repairs extremely narrow, documented, and validity-checked.
-- Do **not** retry the naive cyclic `p=3` transversal-design fallback for non-prime-power group counts; it benchmarked flat and did not produce score-zero constructions on the even composite rows.
-- Build out the **general solver5 router** so every relevant `p` in the benchmark matrix trends toward a recognizable family-selection policy.
-- The fixed scored matrix frontier is now closed. If continuing, prioritize reusable theorem-family work over more patch-bank hunting.
-- The finite-field resolvable `(v,4,1)`-BIBD route for `v = 3q + 1` is now landed; it now also covers `19-4-25` after adding `GF(25)` support, so do not re-spend cycles on `7-4-9` / `10-4-13` / `19-4-25` unless a regression appears.
-- The universal single-round partition lower bound is now landed; do not spend more loop time rediscovering generic `W=1` coverage.
-- The live scored target gaps in the fixed matrix are now closed; do not keep spending loop time on already-landed frontier cells.
-- The exact `9-4-11` lane has now been landed as a source-backed published schedule; treat more 36-player foursomes work as stale unless it yields reusable theory beyond that benchmark cell.
-- Historical structural derivation note only: `RGDD(36,4,3)` via inflating a resolved `2-(12,4,3)` seed with `RTD(4,3)` local classes is no longer a current benchmark priority now that `9-4-11` is already landed; revisit only if pursuing broader post-benchmark `p=4` theory.
-- The exact `NKTS(24)` lane has now been landed as a catalog-backed schedule synthesized in solver5; treat more 24-player triples work as stale unless it yields reusable theory beyond the benchmark cell.
-- The explicit `KP(30,14)` lane has now been tried as a catalog-backed direct construction; do not spend more loop time rediscovering generic 30-player triples unless a reusable family beyond that case appears.
-- Keep broader **RBIBD / RGDD / URD / RITD / ownSG** work behind reusable-theory gains rather than already-closed fixed-matrix frontier cells.
-- The Appendix A ownSG starter-block lane is now landed both for the fixed-matrix `10-p` rows (`p=6,7,8,9`) and for several supplementary composite rows (`12-7`, `12-8`, `14-6/7/8/9`, `15-6/7/9`, `18-7`, `20-6`). Do not re-spend loop time on already-cataloged ownSG cases; if continuing this lane, look for either additional direct Appendix-backed cases that are still missing or a reusable composition step that honestly adds group rounds on top of shipped ownSG schedules.
-- The speculative "project a larger ownSG(v,k) starter-block catalog case down to 10 groups by modulo/quotient reduction" lane now looks stale across `k=6,7,8,9`: exploratory scripts on larger Appendix A cases (`84/90/120/132/156` for `k=6`, `84/98/105/126` for `k=7`, `96/112` for `k=8`, `126/135` for `k=9`) did not beat the shipped `10-p` coverage and usually collapsed back to only the first few trivial starter weeks. Do not keep iterating that projection heuristic without a genuinely new structural argument.
-- The small catalog-backed **RITD / +G** lane is now landed for the paper’s `RITD(10,2;5)+G(1)` route; treat `10-5` as covered by the reusable `ritd` family rather than as an open published-schedule-style gap.
-- The small **MOLR / MOLS lower-bound** benchmark lane is now landed for `10-10`: the shipped `molr_group_fill` family raises `10-10` from 3 to 4 via a provenance-aware `MOLRs(10,10)+G(1)` route. Treat the fixed-matrix `10-10` gap as closed rather than as an open idea.
-- A catalog-backed explicit **MOLS** family from Sage is now landed for the major non-prime-power composite rows `12-3/4/5/6`, `14-3/4/5`, `15-3/4/5`, and `18-3/4/5/6` (with the stronger order-18 bank derived explicitly from Sage's `OA_7_18`). Do not re-spend loop time on those exact cases; the useful generalization is now in the portfolio as `mols_catalog`.
-- A theorem-backed direct-product **MOLS** family is now landed for composite orders that factor into supported prime-power banks with enough shared orthogonal squares. The current benchmark-relevant `4 x 5` factorization already covers `20-3-20` directly and `20-4-25` after the existing recursive transversal lift, so do not re-spend loop time on those exact order-20 cases unless a broader factor-bank generalization or regression fix is needed.
-- A Sharma-Das-style **MOLR from explicit MOLS bank** family is now landed for the high-`p` slices of the explicit `12/14/15/18` MOLS catalogs. It now covers `12-9..12`, `14-10..14`, `15-10..15`, and `18-8..18` honestly via reusable bank truncation plus the square-order row-clique week. Do not re-spend loop time on those exact rows unless a broader bank generalization or provenance fix is needed.
-- The same **MOLR from MOLS** route is now landed for order `20` in two reusable forms: the older theorem-backed direct-product `4 x 5` bank and the stronger explicit 4-MOLS bank decoded from the landed order-20 QDM / `OA(6,20)` witness. The current shipped floor is now `20-7..9 = 5`, `20-10 = 6`, `20-11..19 = 5`, and `20-20 = 6`, while `20-5` is covered separately by the stronger QDM-backed `RTD(5,20)+G(1)` route. Do not re-spend loop time on this exact floor unless you have a broader reusable theory that beats it.
-- Narrow the older MOLS/OA caution instead of discarding it wholesale: arbitrary OA/MOLS objects still need an explicit resolution / parallel-class argument, but explicit full MOLS catalogs with a distinguished deterministic resolution square are now a validated reusable family lane.
-- If continuing this lane, only pursue broader non-prime-power square-order MOLR / MOLS theory that remains genuinely reusable beyond the fixed matrix; do not turn latent-group-fill recovery into a benchmark-shaped patch bank.
-- A speculative prime-power `q-(q+1)-q` / `RTD(q+1,q)` extension is now a bad lane: exact CP-SAT sanity checks for the smallest cases `2-3-2`, `3-4-3`, and `4-5-4` came back infeasible immediately, so there is no obvious missing finite-field family for the `p = g + 1` row just waiting to be wired into the existing transversal-design constructor.
-- A direct catalogization of `MOLRs(6,6)+G(1)` was tried after the `10-10` keep and benchmarked flat at `419`: it only re-expresses the already-covered `6-6-3` case with different provenance. Do not revisit `6-6` as an objective-improvement lane unless report/provenance cleanup is explicitly requested.
-- A paper-table sweep of the Miller–Valkov–Abel survey now appears exhausted for **pure equal-size fixed-matrix gains**: every currently paper-backed pure `g-p` line inside `2..10 x 2..10` is already matched or beaten by the shipped portfolio. Further fixed-matrix gains likely require new sources or genuinely new reusable derivations, not more transcription from the same survey tables.
-- Secondary post-benchmark lane: broaden the new `ritd` family only if additional literature-backed deletion/incomplete-transversal cases can be encoded cleanly without turning it into another benchmark-shaped patch bank.
-- Extending finite-field support to additional benchmark-relevant prime-power group counts was a strong lane and is now landed for orders `11`, `16`, `17`, `19`, and the auxiliary `25` needed for `19-4-25`; do not re-spend loop time on that same catalog expansion unless a new benchmark-relevant prime-power order appears.
-- Generic latent-group `+G` composition with the one-week fallback is now landed, including a modulo-class lift for ownSG residue groups. Do not re-spend loop time on that exact mechanism unless another family with latent groups needs a distinct layout mapping.
-- The most plausible remaining structural improvement lanes now visible are:
-  - **exact triples beyond the current landed catalog**, especially `NKTS(60)` for `20-3`, where the literature basis is explicit and the benchmark delta would still be large if a provenance-clean constructor or catalog entry can be realized honestly
-  - **exact/near-exact triples coverage beyond the current landed catalog** (`NKTS(60)`), ideally via a reusable construction route or at least provenance-clean catalog expansion rather than opaque benchmark-only schedules
-  - **remaining source-backed Sage design objects that are already explicitly resolvable or close to a clean SGP realization**. `RBIBD_120_8_1`, the explicit `MOLS_12_5 / MOLS_14_4 / MOLS_15_4 / OA_7_18-derived 5-MOLS(18)` cases, the high-`p` `molr_from_mols` truncation lane on those banks, the direct-product `4 x 5` MOLS order-20 lane, and the order-20 QDM-derived explicit 4-MOLS bank are now landed and should be treated as closed. If continuing this lane, prefer objects with an explicit resolution / parallel-class structure rather than assuming an arbitrary OA or partially understood object can be turned directly into SGP weeks without extra justification.
-  - **non-prime-power RTD / RBIBD / RGDD catalog-backed cases** where the literature basis rows are explicit and still extend beyond the newly landed MOLS/QDM coverage, such as `RGDD(20,4,2)` for `20-4`, `RGDD(44,4,3)`, any order-20 family that genuinely beats the current `5/6`-week explicit-bank floor, stronger `RTD(6,n)+G(1)`-style composite routes, and related rows already called out in the supplementary target basis metadata
-  - **stronger non-prime-power order-10 MOLR/MOLR-rectangle work** (for example, better `m x 10` orthogonal latin rectangle sets that could raise `10-8` / `10-9`, or genuinely stronger square-order `10 x 10` lower bounds). This is promising because it is a reusable rectangle/square-order family rather than a per-cell patch, but it likely needs new sources or a dedicated synthesis/search derivation pipeline.
-- A naive direct CP-SAT search for `5` MOLR of orders `8x10` and `9x10` with standard cyclic/row-normalized symmetry breaking did **not** find a witness quickly, and even the known `4`-rectangle `9x10` case was not recovered fast under that model. Treat raw CP-SAT over integer latin-rectangle variables as too weak for this lane unless it is paired with stronger structure or a different search formulation.
-- A naive "+1 more week" continuation on the current strongest `10-p` bases (`10-6-7`, `10-7-7`, `10-8-5`, `10-9-5`, `10-10-4`) and on the existing `6-6-3` square-order base was probed with a CP-SAT partition search and came back infeasible. Do not keep retrying simple one-week filler searches on those exact shipped bases unless a new structural ingredient changes the question.
-- Extend recursive `+G(t)` lifting only as a reusable composition operator, not as cell-specific glue.
-- Keep benchmark honesty: only count score-zero constructions, keep the three fixed benchmark regions unchanged (`2..10 x 2..10`, `11..20 x 2..10`, `11..20 x 11..20` with supplementary `p=1` still visual-only), and do not hardcode matrix answers into families or patch banks.
+Only keep notes here for still-unresolved issues or for dead ends that matter to those issues.
+
+## Active backlog
+- **Primary target:** find a provenance-clean exact `20-4-26` construction, ideally via a reusable `RGDD(20,4,2)` family / `4-RGDD` of type `2^40`.
+- Prefer explicit source-backed constructions, recursive theorems, or honest catalog derivations over benchmark-shaped answer imports.
+- If a promising route appears in the literature, prefer implementing the reusable family semantics rather than landing a one-off `20-4` patch.
+
+## Still-plausible lanes
+- Extract an explicit or semi-explicit `4-RGDD` / `RGDD(2^u)` construction that specializes cleanly to `u = 40`.
+- Find a recursive construction for `4-RGDD` of type `2^u` that can be encoded with honest ingredient designs already present or reasonably addable.
+- Investigate source-backed resolvable `p=4` structures adjacent to the `RGDD(20,4,2)` literature line if they genuinely imply a reusable constructor.
+- Continue the semicyclic projected-group search on 40 size-2 groups modeled as `(Z13 × Z3) ∪ {∞}` with two 13-week starter orbits. This is currently the most concrete non-RBIBD structured derivation aid on the table.
+- Also probe the stricter but potentially easier subcase where the two starter orbits are identical at the projected-group level, i.e. a single starter orbit covers each pair orbit exactly twice. This is now scripted in-repo and may be a cleaner way to reach a witness.
+- Keep distinguishing two different RGDD asymptotic directions:
+  - `fixed u, large g` Rees/ITD recursion exists in the literature, but it does **not** directly solve the needed `g=2, u=40` case
+  - the unresolved need remains a small-group explicit derivation or a recursion specialized enough to instantiate type `2^40`
+- As a secondary lane only, look for stronger reusable non-prime-power square-order MOLR / MOLS theory if it improves still-open rows without degenerating into patch banking.
+
+## Dead ends / pruning for the active target
+- Do **not** retry a naive `+1 week` continuation on the current `20-4-25` schedule: the residual uncovered-pair graph is sixteen disjoint `K5` components, so no 26th week can be added by a simple leftover-pair partition.
+- Do **not** assume an easy two-copy lift from the shipped `RBIBD(40,4,1)` family: affine/row-twisted pairings failed across several thousand structured variants.
+- Do **not** assume an easy four-copy parity lift from the same `RBIBD(40,4,1)` family: in a 60-trial sampled CP-SAT sweep, 59 sampled instances were infeasible and the remaining one timed out without a witness.
+- Treat the obvious “few-copy lift of the current `q=13` p4 RBIBD seed” story as weak unless a new structural theorem changes the model.
+- In the newer semicyclic `(Z13 × Z3) ∪ {∞}` projected-group model, the stronger symmetry-broken search has now ruled out at least these week-0 infinity starters:
+  - `[(0,0),(1,0),(2,0),∞]`
+  - `[(0,0),(1,0),(0,1),∞]`
+- Prefer the still-live mixed-layer infinity-block patterns when probing that space. Inside the vertical-first branch `[(0,0),(0,1),(0,2),∞]`, current surviving second infinity-block probes include:
+  - `[(0,0),(1,1),(2,2),∞]`
+  - `[(0,0),(1,1),(1,2),∞]`
+  - `[(0,0),(2,1),(2,2),∞]`
+  - `[(0,0),(1,1),(3,2),∞]`
+  - more generally, a `10s` normalized scan found **all 39** one-per-layer second-block orbit representatives still alive (`UNKNOWN`) against the fixed vertical first block, so that family looks broad rather than brittle
+- Representative disjoint mixed-layer pairs also remained alive after `300s`, including the vertical+vertical and vertical+diagonal examples `[(1,0),(1,1),(1,2),∞]`, `[(1,0),(2,1),(3,2),∞]`, and `[(1,0),(1,1),(2,2),∞]` paired with the fixed vertical first block.
+- By contrast, some mixed-but-more-local second infinity blocks under that same branch are already dead, including:
+  - `[(0,0),(1,0),(1,2),∞]`
+  - `[(0,0),(2,0),(2,1),∞]`
+
+## Global constraints that still matter
+- Keep the benchmark fixed and honest.
+- Count only score-zero pure-SGP schedules.
+- Do not re-open already-met target rows unless fixing a regression or landing a broader reusable family.
+- Preserve explicit provenance and report-facing family distinctions.

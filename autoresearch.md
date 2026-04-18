@@ -1,369 +1,136 @@
-# Autoresearch: solver5 construction-heuristics coverage
+# Autoresearch: solver5 unresolved construction coverage
 
-## Objective
-Build `solver5` as a **construction-first pure Social Golfer constructor portfolio** that routes equal-size pure-SGP `g-p-w` instances through explicit design-theoretic construction families before search is considered.
+## Active Objective
+Continue `solver5` as a construction-first pure Social Golfer portfolio, but keep loop time focused only on **still-unresolved benchmark gaps**.
 
-The focus in this session is **construction coverage**, not local search quality:
-- accept only pure zero-repeat SGP semantics
-- implement explicit constructor families, catalog-backed facts, composition operators, and portfolio routing in `solver5`
-- maximize how many fixed benchmark cells admit a valid zero-repeat construction, and for each `(g, p)` maximize the constructed week count `W_g,p`
+Current hard gate:
+- **Primary metric:** `total_constructed_weeks` (higher is better)
 
-The objective gate should remain **`total_constructed_weeks`**. It is not a perfect measure of the end-state library, but it is an honest and objective proof that a proposed family/routing change actually expands or strengthens constructive coverage on the fixed benchmark regions.
-
-The benchmark now scores three fixed matrices / regions:
+Current benchmark regions:
 - canonical matrix: `2 <= g <= 10`, `2 <= p <= 10`
 - additional matrix: `11 <= g <= 20`, `2 <= p <= 10`
 - additional matrix: `11 <= g <= 20`, `11 <= p <= 20`
-- pure SGP semantics only
+- `p = 1` supplementary column remains visual-only
 
-The trivial `p = 1` visual column in the first additional matrix remains
-visual-only and excluded from the objective.
-
-For each cell, the benchmark searches downward from the counting upper bound
-`floor((gp - 1) / (p - 1))` and records the largest `w` for which `solver5` returns a valid zero-repeat construction.
-
-## Metrics
-- **Primary**: `total_constructed_weeks` (higher is better) — sum of constructed `W_g,p` across the three fixed benchmark regions above.
-- **Secondary**:
-  - `frontier_gap_sum` (lower is better)
-  - `solved_cells`
-  - `exact_frontier_cells`
-  - `unsolved_cells`
-  - per-`p` constructed-week totals
-  - per-cell `W_g_p` metrics such as `W_8_4`, `W_10_4`, `W_10_10`
-
-Interpretation policy:
-- treat `total_constructed_weeks` as the hard objective gate for keeps/discards
-- use per-cell and per-`p` metrics to verify **where** coverage moved and to catch regressions hidden by the aggregate total
-- prefer changes that improve the objective by adding honest family coverage, not by distorting the benchmark question
-- use the matrix outputs (`W`, `TW`, `M`) as the human-facing progress dashboard, not as a replacement for the primary gate
-
-## How to Run
-`./autoresearch.sh`
+Run command:
+- `./autoresearch.sh`
 
 The script:
-1. runs focused `solver5` tests as a fast precheck
+1. runs focused `solver5` tests
 2. runs `backend/core/examples/solver5_construction_coverage.rs`
-3. emits structured `METRIC name=value` lines
-4. writes `autoresearch.last_run_metrics.json`
-5. renders `autoresearch.last_run_report.html`
+3. writes `autoresearch.last_run_metrics.json`
+4. regenerates `autoresearch.last_run_report.html`
 
-## Files in Scope
-- `backend/core/src/solver5/**` — solver5 construction families, routing, validation, tests
-- `backend/core/examples/solver5_construction_coverage.rs` — fixed construction-coverage benchmark harness
-- `backend/core/src/models.rs` — solver5 params / registration
-- `backend/core/src/engines/mod.rs` — solver5 engine registration
-- `backend/core/src/lib.rs` — solver5 module export
-- `backend/core/tests/recommended_settings.rs` — enum exhaustiveness fallout only
-- `backend/wasm/src/contract_projection.rs` — solver catalog projection fallout only
-- `tools/autoresearch/solver5-construction/**`
-- `autoresearch.md`
-- `autoresearch.sh`
-- `autoresearch.checks.sh`
-- `autoresearch.ideas.md`
-- `construction_heuristics_research.md`
+## Active Baseline
+Current kept benchmark baseline:
+- commit: `6f9a561`
+- `total_constructed_weeks = 2505`
+- `frontier_gap_sum = 1460`
+- `solved_cells = 271`
+- `exact_frontier_cells = 54`
+- `unsolved_cells = 0`
 
-## Off Limits
-- changing the benchmark matrix definition in a way that makes the question easier
-- counting non-zero-repeat schedules as success
-- broad solver3/solver4 heuristic work unrelated to solver5 construction coverage
-- webapp/product rewrites unrelated to registering solver5
-- benchmark gaming via special-case result files instead of explicit constructor logic
+Important still-open row near the current frontier:
+- `W_20_4 = 25`
+- literature target / basis row indicates `RGDD(20,4,2)` with `26` weeks is plausible
+
+## What Is Still Unresolved
+The main live target is now:
+1. **`20-4`** — seek a provenance-clean exact `26`-week construction, ideally via a reusable `RGDD(20,4,2)` family or an explicit source-backed derivation that can be represented honestly in solver5.
+
+Secondary unresolved directions only if they become genuinely promising:
+- broader reusable `p=4` RGDD / RBIBD theory beyond the current `20-4-25` lower bound
+- source-backed resolvable designs or recursive constructions that improve benchmark cells not already closed exactly
+- stronger reusable non-prime-power square-order MOLR / MOLS theory only if it improves still-open rows without turning into a patch bank
 
 ## Constraints
-- `solver5` should stay **pure-SGP only** for this session.
-- A cell counts as solved only if the returned schedule is valid and canonical final score is zero.
-- Prefer explicit constructor families and clean orchestration over opaque search fallback.
+- `solver5` must remain **pure-SGP only**.
+- Count only score-zero schedules.
 - Keep the benchmark fixed and honest.
-- When a family only supports a frontier or lower-bound construction, prefixes are allowed: if a family constructs `g-p-W`, taking the first `w <= W` weeks is valid.
-- Record promising but deferred families in `autoresearch.ideas.md`.
-- Use the constructor-portfolio platform that now exists; do not reintroduce ad hoc family selection, inline exception logic, or opaque fallback behavior.
-- Keep matrix reporting aligned to the canonical target definition plus the curated supplementary literature target file, and preserve the distinction between scored cells and visual-only cells.
+- Prefer explicit constructor families, catalog-backed derivations, and honest composition over opaque search fallback.
+- Do not re-open already-met target rows unless fixing a regression or landing a broader reusable family.
+- Preserve explicit provenance in reporting and family metadata.
 
-## Initial Portfolio Plan
-High-ROI constructor order from the research note:
-1. round robin / 1-factorization (`p=2`)
-2. triples via KTS / NKTS (`p=3`)
-3. general router enrichment so each `p` has a recognizable family-selection policy
-4. RTD / MOLS engine
-5. recursive clique/group fill (`+G(t)` style lifting)
-6. broader RBIBD / RGDD / RITD / URD / ownSG patches
+## Settled Context To Preserve
+These are no longer active targets, but they are important assumptions for future work:
+- the fixed scored matrix frontier is closed
+- triples work is no longer the main backlog; exact `NKTS(60)` / `20-3-29` is landed
+- order-20 high-`p` QDM / explicit-MOLS floor work is landed and not an active target
+- `20-5-21` via the QDM-backed RTD route is landed and should not regress
+- router precedence should still prefer stronger exact/source-backed routes over weaker lower bounds
 
-Interpretation note:
-- this is a **family roadmap**, not a cell-by-cell roadmap
-- solver5 should receive a pure-SGP `(g, p, w)` instance and automatically choose among applicable families
-- for every `p`, the router should converge toward a recognizable theory-backed family-selection policy
-- near-term work still happens where the ROI is best, but that does **not** mean building one-off per-cell logic
+## Active Research Notes
+### `20-4` / `RGDD(20,4,2)`
+- The strongest current shipped route for `20-4` is the theorem-backed direct-product MOLS construction at `25` weeks.
+- The clearest benchmark-relevant remaining delta is therefore `25 -> 26` on `20-4`.
+- Literature notes in the local survey point to `RGDD(20,4,2)` as the natural exact/maximal structure for this row.
 
-## Current Architecture State
-- `solver5` is now a constructor portfolio platform, not just a constructor pack.
-- The architecture now includes:
-  - family registry / portfolio interfaces
-  - typed candidate quality / evidence / applicability / residual metadata
-  - catalog-backed theorem / exception / patch-bank seams
-  - registry-driven router candidate selection
-  - explicit composition layer for structural lifts
-  - explicit future handoff seam for search, still disabled by policy
-- Normative architecture docs:
-  - `backend/core/src/solver5/ARCHITECTURE.md`
-  - `backend/core/src/solver5/PORTFOLIO_ARCHITECTURE.md`
-  - `backend/core/src/solver5/MATRIX_REPORTING.md`
+### Negative results already established for `20-4`
+- The current `20-4-25` product-bank schedule does **not** admit a trivial extra week:
+  - its uncovered-pair graph is a 4-regular union of sixteen disjoint `K5` components
+  - therefore there is no possible 26th week obtained by simply partitioning leftover pairs into twenty 4-cliques
+- A two-copy RBIBD lift looks weak:
+  - pairing the shipped `RBIBD(40,4,1)` schedule with a second affine/row-twisted copy did not yield a solvable parity lift to 80 players across several thousand structured variants
+- A four-copy RBIBD lift also looks weak:
+  - modeling `RGDD(20,4,2)` as a 26-week parity lift of four `RBIBD(40,4,1)` copies gave 59 infeasible instances out of a 60-trial sampled CP-SAT sweep, with the remaining trial timing out and no witness found
+- Conclusion:
+  - do **not** keep retrying “add one more week to the current 25-week base”
+  - do **not** assume an easy parity-lift from a small number of copies of the current `q=13` p4 RBIBD family
+  - the remaining promising lane is a genuinely different `RGDD(2^40)` source, recursion, or explicit constructive derivation
 
-## Current Historical Reference Baseline
-- The last validated solver5 coverage baseline before the `autoresearch.jsonl` reset was:
-  - commit: `0357a1f`
-  - `total_constructed_weeks = 284`
-  - `frontier_gap_sum = 302`
-  - `solved_cells = 33`
-  - `exact_frontier_cells = 17`
-- That value should be treated as a **historical reference**, not as the active ledger baseline, until the current `master` head is re-run and logged into the reset experiment file.
+### New structured search direction
+- A more general semicyclic search model now looks worth continuing as a derivation aid:
+  - represent the 40 size-2 RGDD groups as `(Z13 × Z3) ∪ {∞}`
+  - search for two 13-week starter orbits whose developments would realize the 26 projected weeks for `20-4`
+  - at the projected-group level this becomes a constrained exact-cover / multicover problem on 40 groups and 60 pair orbits
+- Early signal from that model:
+  - the projected-group formulation is **not** immediately infeasible under mixed infinity-block patterns
+  - some starter-block patterns are now ruled out quickly under the stronger in-repo symmetry-broken search:
+    - `[(0,0),(1,0),(2,0),∞]` is infeasible
+    - `[(0,0),(1,0),(0,1),∞]` is also infeasible
+  - but other mixed-layer starters remain alive after 60s-scale CP-SAT probes, e.g.:
+    - `[(0,0),(0,1),(0,2),∞]`
+    - `[(0,0),(1,1),(2,2),∞]`
+- More recent narrowing inside the `[(0,0),(0,1),(0,2),∞]` branch:
+  - forcing a second week-0 infinity block of shape `[(0,0),(1,0),(1,2),∞]` is infeasible
+  - forcing a second week-0 infinity block of shape `[(0,0),(2,0),(2,1),∞]` is infeasible
+  - several cleaner mixed-layer second infinity blocks are still alive after 45–60s probes, including:
+    - `[(0,0),(1,1),(2,2),∞]`
+    - `[(0,0),(1,1),(1,2),∞]`
+    - `[(0,0),(2,1),(2,2),∞]`
+    - `[(0,0),(1,1),(3,2),∞]`
+- A broader normalized scan of the **one-point-from-each-layer** second infinity-block family has now been run against the fixed vertical first block `[(0,0),(0,1),(0,2),∞]`:
+  - all `39` normalized orbit representatives survived a `10s` probe with status `UNKNOWN`
+  - so, within that structured family, there is currently **no quick infeasibility signal**; deeper runs are needed rather than more shallow pruning
+- Deeper `300s` probes on representative disjoint mixed-layer pairs also remained alive (`UNKNOWN`), including:
+  - `[(0,0),(0,1),(0,2),∞]` with `[(1,0),(1,1),(1,2),∞]`
+  - `[(0,0),(0,1),(0,2),∞]` with `[(1,0),(2,1),(3,2),∞]`
+  - `[(0,0),(0,1),(0,2),∞]` with `[(1,0),(1,1),(2,2),∞]`
+- This is still only a research lead, not yet a landed family or witness.
+- New tighter computational subcase now under active probing:
+  - search for a **single** 13-week starter orbit whose projected pair-orbit counts are all exactly `2`
+  - if such a starter exists, duplicating that orbit would satisfy the projected total `4`-coverage target and could yield an easier label-liftable witness than the unconstrained two-starter search
+  - early 45s probes are still `UNKNOWN`, so this is not solved yet, but it looks like a reasonable easier branch to keep testing
+- Additional literature scan note:
+  - modern Rees-product / ITD asymptotic RGDD papers were checked, but the clean extracted theorems there are mainly for **fixed numbers of groups with large group size**
+  - that asymptotic direction does not directly give an implementable exact route for the needed small-group case `RGDD(80,4,2)` / type `2^40`
 
-## Current Constructive Coverage
-- Shipped constructive families currently include:
-  - round robin / 1-factorization for `p=2`
-  - Kirkman `6t+1` coverage for supported `p=3` cases
-  - catalog-backed exact KTS cases for 9, 15, and 51 players (`5-3-7` and `17-3-25` are now exact via `kts`)
-  - catalog-backed exact NKTS / KP cases for 18, 24, 30, 36, and 48 players (`6-3-8`, `8-3-11`, `10-3-14`, `12-3-17`, and `16-3-23`)
-  - a catalog-backed exact NKTS(24) case for 24 players (`8-3-11`)
-  - pseudo-doubled NKTS constructions seeded from exact half-size KTS schedules, including both catalog-backed and finite-field exact KTS seeds (`10-3-13` still constructs honestly from `KTS(15)` as a weaker reusable route, and `14-3-20` now lands honestly from the exact `KTS(21)` seed)
-  - a catalog-backed ownSG starter-block family from Miller–Valkov–Abel Appendix A / Construction 5, currently covering:
-    - fixed-matrix rows `10-6-7`, `10-7-7`, `10-8-5`, `10-9-5`
-    - supplementary rows `12-7-7`, `12-8-6`, `14-6-9`, `14-7-8`, `14-8-8`, `14-9-7`, `15-6-10`, `15-7-9`, `15-9-7`, `18-7-10`, `20-6-13`
-  - a catalog-backed RITD family derived from the Miller–Valkov–Abel Figure 8 `ITD(10,2;6)` block set, currently covering:
-    - `10-5-9` via the paper's `RITD(10,2;5)+G(1)` route
-  - a catalog-backed MOLR / MOLS lower-bound group-fill family, currently covering:
-    - `10-10-4` by extending a validated `10-10-3` base schedule with one compatible latent-group filler week under the paper's `MOLRs(10,10)+G(1)` lower-bound route
-  - published-schedule bank coverage for source-backed triples / higher-`p` exceptions, including:
-    - `8-3-10`
-    - `6-4-7` (with one documented transcription correction on the archived source)
-    - `8-4-10`
-    - `9-4-11`
-    - `10-4-9`
-    - `6-5-6`, `6-6-3`
-    - `10-5-7`, `10-6-6`, `10-7-5`, `10-8-4`, `10-9-3`, `10-10-3`
-  - prime-power RTD / MOLS-style transversal-design constructors for `3 <= p <= g`, now including supported field orders `11`, `16`, `17`, and `19` in addition to the earlier small orders
-  - prime-power affine-plane constructors for `p = g`, now including the supplementary benchmark diagonal cases at orders `11`, `16`, `17`, and `19`
-  - recursive `+G(t)`-style lifting across RTD latent groups when `p | g` and the smaller `(g/p)-p-*` instance is already constructible
-  - a universal single-round partition family for any divisible pure-SGP instance, used as an honest reusable `W=1` lower bound when no stronger family applies
-  - a catalog-backed resolvable BIBD family derived from Sage's explicit `RBIBD(120,8,1)` construction, currently covering:
-    - `15-8-17` exactly via a deterministic parallel-class reconstruction from the cyclic `(273,17,1)` seed + hyperoval dualization data shared by Julian R. Abel
-  - a catalog-backed explicit MOLS family derived from Sage's design database and OA-derived Sage design objects, using one distinguished Latin square as the parallel-class index and the remaining orthogonal squares as symbol groups, currently covering:
-    - `12-3-16`, `12-4-13`, `12-5-12`, `12-6-13`
-    - `14-3-14`, `14-4-14`, `14-5-14`
-    - `15-3-22`, `15-4-15`, `15-5-16`
-    - `18-3-26`, `18-4-18`, `18-5-18`, `18-6-19`
-  - a theorem-backed direct-product MOLS family built from prime-power factor banks, using the product-square resolution argument and the existing recursive `+G` lift when applicable, currently covering:
-    - `20-3-20`
-    - `20-4-25` via a `4 x 5` product bank plus recursive transversal lift
-  - a catalog-backed quasi-difference-matrix RTD family built from explicit Sage / Handbook QDM data, expanding the published matrix into a resolvable OA and then reusing recursive latent-group lifting when justified, currently covering:
-    - `20-5-21` via the explicit `(19,6;1,1;1)` QDM route to `RTD(5,20)+G(1)`
-  - a Sharma-Das-style MOLR-from-MOLS family built from explicit cataloged MOLS banks by truncating to the first `p` rows and treating column classes plus square-symbol classes as weeks, currently covering:
-    - `12-9-6`, `12-10-6`, `12-11-6`, `12-12-7`
-    - `14-10-5`, `14-11-5`, `14-12-5`, `14-13-5`, `14-14-6`
-    - `15-10-5`, `15-11-5`, `15-12-5`, `15-13-5`, `15-14-5`, `15-15-6`
-    - `18-8-6`, `18-9-7`, `18-10-6`, `18-11-6`, `18-12-6`, `18-13-6`, `18-14-6`, `18-15-6`, `18-16-6`, `18-17-6`, `18-18-7`
-    - `20-7-5`, `20-8-5`, `20-9-5`, `20-10-6`, `20-11-5`, `20-12-5`, `20-13-5`, `20-14-5`, `20-15-5`, `20-16-5`, `20-17-5`, `20-18-5`, `20-19-5`, `20-20-6` via an explicit 4-MOLS bank decoded from the landed order-20 QDM / `OA(6,20)` witness
-- Active kept benchmark baseline under the *old* canonical-only benchmark was:
-  - commit: `b250b32`
-  - `total_constructed_weeks = 419`
-  - `frontier_gap_sum = 167`
-  - `solved_cells = 81`
-  - `exact_frontier_cells = 26`
-  - `unsolved_cells = 0`
-  - `p2_constructed_weeks = 99`
-  - `p3_constructed_weeks = 72`
-  - `p4_constructed_weeks = 62`
-  - `p5_constructed_weeks = 48`
-  - `p6_constructed_weeks = 38`
-  - `p7_constructed_weeks = 37`
-  - `p8_constructed_weeks = 29`
-  - `p9_constructed_weeks = 22`
-  - `p10_constructed_weeks = 12`
-- After expanding the benchmark to all three matrices, that `419` value is only a
-  historical canonical-only reference.
-- Active kept three-matrix benchmark baseline is now:
-  - latest keep: added an exact `KTS(51)` catalog entry synthesized in solver5 from the finite-field `2q+1` Kirkman construction at `q=25`, which upgrades `17-3` from the prime-power lower-bound `17` to the exact frontier `25`
-  - `total_constructed_weeks = 2496`
-  - `frontier_gap_sum = 1469`
-  - `solved_cells = 271`
-  - `exact_frontier_cells = 53`
-  - `unsolved_cells = 0`
-  - `p2_constructed_weeks = 399`
-  - `p3_constructed_weeks = 283`
-  - `p4_constructed_weeks = 238`
-  - `p5_constructed_weeks = 205`
-  - `p6_constructed_weeks = 178`
-  - `p7_constructed_weeks = 153`
-  - `p8_constructed_weeks = 148`
-  - `p9_constructed_weeks = 130`
-  - `p10_constructed_weeks = 116`
-  - `p11_constructed_weeks = 104`
-  - `p12_constructed_weeks = 94`
-  - `p13_constructed_weeks = 89`
-  - `p14_constructed_weeks = 77`
-  - `p15_constructed_weeks = 73`
-  - `p16_constructed_weeks = 69`
-  - `p17_constructed_weeks = 54`
-  - `p18_constructed_weeks = 38`
-  - `p19_constructed_weeks = 33`
-  - `p20_constructed_weeks = 15`
-  - `W_12_3 = 17`
-  - `W_12_4 = 13`
-  - `W_12_5 = 12`
-  - `W_12_6 = 13`
-  - `W_12_7 = 7`
-  - `W_12_8 = 6`
-  - `W_12_9 = 6`
-  - `W_12_10 = 6`
-  - `W_12_11 = 6`
-  - `W_12_12 = 7`
-  - `W_14_3 = 20`
-  - `W_14_4 = 14`
-  - `W_14_5 = 14`
-  - `W_14_6 = 9`
-  - `W_14_7 = 9`
-  - `W_14_8 = 8`
-  - `W_14_9 = 7`
-  - `W_14_10 = 5`
-  - `W_14_11 = 5`
-  - `W_14_12 = 5`
-  - `W_14_13 = 5`
-  - `W_14_14 = 6`
-  - `W_15_3 = 22`
-  - `W_15_4 = 15`
-  - `W_15_5 = 16`
-  - `W_15_6 = 10`
-  - `W_15_7 = 9`
-  - `W_15_8 = 17`
-  - `W_15_9 = 7`
-  - `W_15_10 = 5`
-  - `W_15_11 = 5`
-  - `W_16_3 = 23`
-  - `W_17_3 = 25`
-  - `W_15_12 = 5`
-  - `W_15_13 = 5`
-  - `W_15_14 = 5`
-  - `W_15_15 = 6`
-  - `W_16_8 = 17`
-  - `W_18_3 = 26`
-  - `W_18_4 = 18`
-  - `W_18_5 = 18`
-  - `W_18_6 = 19`
-  - `W_18_7 = 10`
-  - `W_18_8 = 6`
-  - `W_18_9 = 7`
-  - `W_18_10 = 6`
-  - `W_18_18 = 7`
-  - `W_20_3 = 20`
-  - `W_20_4 = 25`
-  - `W_20_5 = 21`
-  - `W_20_6 = 13`
-  - `W_20_7 = 5`
-  - `W_20_8 = 5`
-  - `W_20_9 = 5`
-  - `W_20_10 = 6`
-  - `W_20_11 = 5`
-  - `W_20_12 = 5`
-  - `W_20_13 = 5`
-  - `W_20_14 = 5`
-  - `W_20_15 = 5`
-  - `W_20_16 = 5`
-  - `W_20_17 = 5`
-  - `W_20_18 = 5`
-  - `W_20_19 = 5`
-  - `W_20_20 = 6`
-- The recent three-matrix keeps that established this baseline were:
-  - `4077a77` — finite-field support for `11`, `16`, `17`, `19` → `1906`
-  - `bfdbfc7` — `GF(25)` / exact `19-4-25` → `1912`
-  - `17dc468` — larger Appendix-backed ownSG catalog expansion → `1990`
-  - `2c2badc` — direct Appendix-backed `ownSG(96,8)` / `12-8-6` → `1995`
-  - `585ed03` — generic one-week latent-group `+G` lifting and modulo-class ownSG lift → `1997`
-  - `096c38d` — catalog-backed Sage `RBIBD(120,8,1)` family for `15-8-17` → `2013`
-  - `ddd9e46` — catalog-backed explicit Sage MOLS family for `12/14/15/18` composite rows → `2194`
-  - `1b82067` — OA_7_18-derived 5-MOLS order-18 expansion for `18-5` / `18-6` → `2229`
-  - `65c5ba2` — theorem-backed direct-product MOLS family for `20-3-20` and `20-4-25` via a `4 x 5` product bank → `2272`
-  - `f81ae17` — explicit MOLR-from-MOLS family for high-`p` rows on `12/14/15/18` → `2396`
-  - `d215d4f` — direct-product extension of `molr_from_mols` for order-20 high-`p` rows → `2444`
-  - `7dfecc6` — catalog-backed QDM RTD route for `20-5-21` via `RTD(5,20)+G(1)` → `2460`
-  - `a889f98` — explicit 4-MOLS bank decoded from the landed order-20 QDM / `OA(6,20)` witness for stronger `molr_from_mols` order-20 high-`p` coverage → `2474`
-  - `88dd619` — generalized exact-KTS-seeded NKTS pseudo-doubling, upgrading `14-3` to the exact `NKTS(42)` route → `2480`
-  - `b2aa217` — thesis-reproduced exact `KP(36,17)` catalog entry, upgrading `12-3` to the exact frontier `17` → `2481`
-  - `41bf49e` — thesis-reproduced exact `KP(48,23)` catalog entry, upgrading `16-3` to the exact frontier `23` → `2488`
-  - latest keep — exact `KTS(51)` catalog entry derived from the finite-field `2q+1` Kirkman construction at `q=25`, upgrading `17-3` to the exact frontier `25` → `2496`
+## Next Loop Guidance
+Preferred order:
+1. source-mine or derive a genuine `RGDD(20,4,2)` / `4-RGDD of type 2^40` construction
+2. if a clean theorem-backed recursion appears, implement it as a reusable family rather than a one-off row patch
+3. only use search as a derivation aid for a clearly structured construction, not as the construction itself
 
-## What's Been Tried
-- Initial setup established the solver5 scaffold, validator, engine registration, benchmark harness, and the round-robin baseline.
-- Prime-order RTD / affine-plane constructors were added first, then generalized to supported prime-power orders `4`, `8`, and `9` via finite-field arithmetic. Under the three-matrix benchmark this was later extended to the additional benchmark-relevant orders `11`, `16`, `17`, `19`, and `25` (with `25` specifically unlocking the `19-4-25` p4 RBIBD line).
-- Recursive lifting across latent groups is now a live mechanism and should be judged structurally, not as a one-off `9-3-13` trick. It now also supports the generic one-week partition fallback and the modulo-class layout used by ownSG residue groups, which landed honest upgrades such as `14-7: 8 -> 9` and `16-8: 16 -> 17`.
-- Kirkman `6t+1` is now part of the constructive baseline for supported `p=3` cases.
-- The constructor-portfolio architecture pass is complete: registry, metadata, catalog layer, registry-driven router, handoff seam, and portfolio docs are now in place.
-- A naive cyclic `p=3` transversal-design fallback for non-prime-power group counts was tried and discarded: it left `total_constructed_weeks` flat at `284`, so the cheap cyclic schedule does **not** unlock the even composite triple rows (`6-3-*`, `10-3-*`). Do not retry that shortcut.
-- Catalog-backed small triple families now move the benchmark honestly:
-  - exact `NKTS(18)` raised `6-3` coverage to `8`
-  - exact `NKTS(24)` now closes `8-3` at `11`
-  - exact `KTS(15)` now solves `5-3-7`
-  - a pseudo-doubling construction from `KTS(15)` solves `10-3-13`
-  - generalized exact-KTS-seeded pseudo-doubling now realizes `14-3-20` honestly from the exact `KTS(21)` seed
-  - an explicit thesis-reproduced `KP(30,14)` direct construction now closes `10-3` exactly at `14`
-  - an explicit thesis-reproduced `KP(36,17)` direct construction now closes `12-3` exactly at `17`
-  - an explicit thesis-reproduced `KP(48,23)` direct construction now closes `16-3` exactly at `23`
-  - an exact `KTS(51)` construction derived in solver5 from the finite-field `2q+1` Kirkman recipe now closes `17-3` exactly at `25`
-- Published explicit schedules are now a major honest coverage source:
-  - Warwick Harvey archive cases now cover `8-3-10`, `10-4-9`, `6-5-6`, `6-6-3`, and the `10-p-*` rows for `p=5..10`
-  - the archived `6-4-7` page entry had one obvious duplicated-player typo; a single-entry correction (`[1, 5, 16, 19] -> [1, 7, 16, 19]`) restores a valid pure-SGP schedule and is now documented inline in the catalog
-  - Alejandro Aguado's explicit `8-4-10` construction replaced the weaker `8-4-9` source-backed patch
-  - Ian Wakeling's explicit `9-4-11` schedule from the 2010 DeVenezia forum closes the remaining `9-4` scored target gap exactly
-- The Warwick archive appears exhausted for benchmark-relevant improvements inside the fixed `2..10 x 2..10` matrix after landing the `6-4`, `6-5`, `6-6`, `8-3`, `8-4`, `10-4`, and `10-p` (`p>=5`) cases above.
-- The triples frontier in the fixed matrix is now closed: `8-3-11` is covered by an exact catalog-backed `NKTS(24)` schedule synthesized in solver5 from a cyclic orbit cover plus week assignment. Do not re-spend cycles rediscovering generic 24-player triples unless a broader reusable family beyond the benchmark cell appears.
-- The `p=4` scored frontier in the fixed matrix is now also closed: `9-4-11` is covered by an explicit source-backed 36-player 11-round schedule. Do not treat `9-4-11` as a live gap anymore.
-- The ownSG starter-block family has now subsumed several weaker large-row published schedules inside the fixed matrix and has become a major supplementary-region lane:
-  - fixed-matrix improvements: `10-6: 6 -> 7`, `10-7: 5 -> 7`, `10-8: 4 -> 5`, `10-9: 3 -> 5`
-  - supplementary-region improvements: `12-7: 1 -> 7`, `12-8: 1 -> 6`, `14-6: 1 -> 9`, `14-7: 1 -> 8`, `14-8: 1 -> 8`, `14-9: 1 -> 7`, `15-6: 1 -> 10`, `15-7: 1 -> 9`, `15-9: 1 -> 7`, `18-7: 1 -> 10`, `20-6: 1 -> 13`
-  - direct Appendix-backed ownSG catalog expansion is now a proven strong lane; the stale part was the older modulo/quotient projection heuristic, not the literature-backed starter-block family itself
-- A catalog-backed RITD route from the paper's `ITD(10,2;6)` block set is now landed for the benchmark-relevant `10-5` case:
-  - `10-5: 7 -> 9` via `RITD(10,2;5)+G(1)`
-  - this should be treated as a reusable literature-structured family, not as another opaque published-schedule patch
-- A catalog-backed MOLR / MOLS lower-bound route is now landed for the benchmark-relevant `10-10` case:
-  - `10-10: 3 -> 4` via a compatible latent-group filler week on top of the validated published `10-10-3` base, matching the paper's `MOLRs(10,10)+G(1)` lower-bound line
-  - the cyclic order-10 Latin-square route was explicitly ruled out earlier; the shipped constructor instead stores the recovered filler partition as a provenance-aware catalog case and constructs the 4-week schedule deterministically
-- A catalog-backed explicit MOLS route from Sage is now landed for several non-prime-power composite rows in the added benchmark regions:
-  - the shipped `mols_catalog` family parses explicit square banks for orders `12`, `14`, `15`, and `18`, including an OA_7_18-derived 5-MOLS bank for order `18`
-  - one Latin square is used as the deterministic parallel-class index and the remaining orthogonal squares provide the symbol groups for the pure-SGP blocks
-  - recursive `+G` lifting composes on top when the latent-group residual is itself constructible, which is what pushes cases like `12-3` to `16`, `15-3` to the exact frontier `22`, and the new order-18 cases to `18-5-18` and `18-6-19`
-  - this narrows the earlier MOLS/OA skepticism: arbitrary OA/MOLS objects still need an explicit resolution argument, but explicit full MOLS catalogs with a deterministic resolution square are now a validated reusable family lane
-- A theorem-backed direct-product MOLS route is now landed for composite orders that factor into supported prime-power banks with enough shared orthogonal squares:
-  - the shipped `mols_product` family builds a product bank from supported prime-power MOLS factors and reuses the same distinguished-resolution-square interpretation as `mols_catalog`
-  - the current benchmark-relevant `4 x 5` factorization upgrades `20-3` directly to `20` weeks and `20-4` to `25` weeks after the existing recursive transversal `+G` lift
-  - this is a reusable constructive lane, not a benchmark-shaped transcription: the implementation reasons from factor banks and the direct-product theorem rather than storing order-20 answer tables
-- A Sharma-Das-style MOLR-from-MOLS route is now landed for the high-`p` rows of the explicit `12/14/15/18` MOLS banks:
-  - the shipped `molr_from_mols` family uses the first `p` rows of an explicit cataloged MOLS bank, takes column classes as one week and each square's symbol classes as additional weeks, and appends a row-clique week on square-order cases
-  - this upgrades many previously weak high-`p` supplementary rows without any imported answer tables, including `12-9..12`, `14-10..14`, `15-10..15`, and `18-8..18`
-  - keep the routing order honest: stronger exact/transversal families and source-backed families should still win when they provide more weeks than this broader MOLR lower-bound route
-- The same `molr_from_mols` route now also works over theorem-backed direct-product MOLS banks when no stronger explicit catalog bank exists:
-  - the shipped product-bank extension uses the `4 x 5` prime-power factorization for order `20`, then applies the same Sharma-Das row truncation and recursive / row-clique follow-ups
-  - this lifts `20-7..9` to `4`, `20-10` to `5`, `20-11..19` to `4`, and `20-20` to `5` without any order-20 answer tables; `20-5` is now superseded by the stronger QDM-backed `RTD(5,20)+G(1)` route
-- A catalog-backed QDM-backed RTD route is now landed for the literature-targeted `20-5` row:
-  - the shipped `rtd_qdm_catalog` family expands the explicit Sage / Handbook `(19,6;1,1;1)` quasi-difference matrix into `OA(6,20)`, reads that as a resolvable `RTD(5,20)`, and then reuses the existing recursive transversal `+G` lift
-  - this upgrades `20-5` from the interim 5-week MOLR floor to `21` weeks without importing an order-20 answer table or assuming arbitrary OA objects are automatically resolvable
-- The same landed order-20 QDM witness also supports a stronger explicit-MOLS interpretation for high-`p` rows:
-  - decoding the full `OA(6,20)` into row/column coordinates plus four symbol layers yields an explicit 4-MOLS bank of order `20`
-  - feeding that bank through the shipped `molr_from_mols` family upgrades `20-7..9` from `4` to `5`, `20-10` from `5` to `6`, `20-11..19` from `4` to `5`, and `20-20` from `5` to `6`
-  - this cleanly supersedes the weaker direct-product `4 x 5` bank on those exact order-20 high-`p` rows while preserving the same provenance-aware constructive semantics
-- Remaining live directions should stay structural constructor families, not search-based cheating:
-  - reusable RBIBD / RGDD family work that explains or subsumes current exact catalog cases beyond the fixed matrix
-  - broader non-prime-power square-order MOLR / MOLS lower-bound work only when it remains provenance-aware and genuinely reusable beyond the fixed matrix
-  - broader RBIBD / RGDD / URD / RITD / ownSG-style patches only after the highest-ROI family-policy gaps are exhausted
+Validation order for any real candidate:
+1. targeted family/router/solver tests
+2. full `cargo test -q -p gm-core solver5::tests -- --nocapture`
+3. `run_experiment(command="./autoresearch.sh", timeout_seconds=1200, checks_timeout_seconds=300)`
+4. `log_experiment(...)` with the accepted secondary-metric subset only
 
-## Immediate Next Loop Behavior
-- The old canonical-only `419` baseline is historical only; the live gate is the three-matrix baseline at `2496` from the landed exact `KTS(51)` keep.
-- The fixed scored matrix frontier remains closed; do not re-spend loop time on already-landed canonical frontier cells.
-- The universal single-round lower bound remains the honest floor for unsolved theory rows:
-  - `unsolved_cells = 0`
-  - many weak composite supplementary rows still sit at only `W=1`
-- The strongest recent reusable gain lanes have been **direct Appendix-backed ownSG catalog expansion**, the landed **generic one-week latent-group `+G` composition**, and now **source-backed / theorem-backed MOLS families**, especially the explicit `mols_catalog` and direct-product `mols_product` lanes.
-- The direct Sage `RBIBD(120,8,1)` lane has now been harvested for `15-8-17`; keep it as a reusable catalog family rather than a one-off patch, and do not re-spend loop time on that exact case.
-- The direct Sage `MOLS(12/14/15)` lane plus the OA_7_18-derived order-18 expansion have now been harvested, the high-`p` `molr_from_mols` truncation lane on those explicit banks is now harvested, and the direct-product `4 x 5` MOLS lane has now been harvested for `20-3` / `20-4`; do not re-spend loop time on those exact cases unless a parser/provenance regression appears.
-- The order-20 high-`p` rows now meet or exceed the current conservative supplementary literature targets after the landed QDM-derived explicit-MOLS upgrade, so that exact sublane is no longer the clearest ROI target.
-- The next concrete experiment should prefer a reusable structural step or a provenance-clean family catalog extension over another raw patch import. The largest remaining measurable benchmark gaps now sit in exact/near-exact triples and a few near-frontier foursome rows: `NKTS(60)` for `20-3` and `RGDD(20,4,2)` for `20-4` are now the clearest literature-backed examples after landing `KTS(51)` for `17-3`. If continuing the Sage / catalog lane, prefer constructions that are already explicitly resolvable rather than assuming an arbitrary MOLS/OA object immediately yields SGP weeks.
-- A follow-up attempt to add `MOLRs(6,6)+G(1)` as a second `molr_group_fill` catalog case benchmarked flat at `419`: it cleanly reconstructs the already-shipped `6-6-3` schedule via a 2-week base plus one filler week, but it does **not** improve the objective beyond the existing published route. Treat that lane as provenance cleanup only, not as an active coverage-improvement direction.
-- Keep preferring reusable family logic or justified composition over per-cell glue.
+## Files In Scope
+- `backend/core/src/solver5/**`
+- `backend/core/examples/solver5_construction_coverage.rs`
+- `tools/autoresearch/solver5-construction/**`
+- `autoresearch.md`
+- `autoresearch.ideas.md`
+- `construction_heuristics_research.md`
