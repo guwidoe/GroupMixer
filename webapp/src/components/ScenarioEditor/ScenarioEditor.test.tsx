@@ -55,7 +55,7 @@ vi.mock('../modals/GeneratedDemoDataModal', () => ({
 }));
 
 vi.mock('../modals/ReduceSessionsReviewModal', () => ({
-  ReduceSessionsReviewModal: () => <div>Session reduction review modal</div>,
+  ReduceSessionsReviewModal: ({ people }: { people: Array<{ id: string }> }) => <div>Session reduction review modal ({people.length})</div>,
 }));
 
 function createController(overrides: Partial<ScenarioEditorController> = {}): ScenarioEditorController {

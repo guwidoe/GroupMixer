@@ -1,11 +1,14 @@
 import { AlertTriangle, ArrowRight, Clock3, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import type { SessionCountReductionInvalidation, SessionCountReductionPlan } from '../../services/sessionCountMigration';
+import type { Person } from '../../types';
+import { namifyPersonIdsInText } from '../../utils/personReferenceText';
 import { Button } from '../ui';
 
 interface ReduceSessionsReviewModalProps {
   isOpen: boolean;
   plan: SessionCountReductionPlan | null;
+  people: Person[];
   invalidations: SessionCountReductionInvalidation[];
   onClose: () => void;
   onConfirm: () => void;
@@ -14,10 +17,12 @@ interface ReduceSessionsReviewModalProps {
 function DetailSection({
   title,
   items,
+  people,
   tone = 'neutral',
 }: {
   title: string;
   items: Array<{ title: string; detail: string }>;
+  people: Person[];
   tone?: 'neutral' | 'warning' | 'danger';
 }) {
   if (items.length === 0) {
@@ -46,10 +51,10 @@ function DetailSection({
             }}
           >
             <div className="text-sm font-medium" style={{ color: accentColor }}>
-              {item.title}
+              {namifyPersonIdsInText(item.title, people)}
             </div>
             <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-              {item.detail}
+              {namifyPersonIdsInText(item.detail, people)}
             </p>
           </div>
         ))}
@@ -61,6 +66,7 @@ function DetailSection({
 export function ReduceSessionsReviewModal({
   isOpen,
   plan,
+  people,
   invalidations,
   onClose,
   onConfirm,
@@ -134,10 +140,10 @@ export function ReduceSessionsReviewModal({
           )}
 
           <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
-            <DetailSection title="Blockers" items={plan.blockers} tone="danger" />
-            <DetailSection title="Scoped items to trim" items={trimmedItems} tone="neutral" />
-            <DetailSection title="Items to remove" items={removedItems} tone="warning" />
-            <DetailSection title="Runtime state to reset" items={invalidations} tone="warning" />
+            <DetailSection title="Blockers" items={plan.blockers} people={people} tone="danger" />
+            <DetailSection title="Scoped items to trim" items={trimmedItems} people={people} tone="neutral" />
+            <DetailSection title="Items to remove" items={removedItems} people={people} tone="warning" />
+            <DetailSection title="Runtime state to reset" items={invalidations} people={people} tone="warning" />
           </div>
 
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

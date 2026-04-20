@@ -24,6 +24,7 @@ describe('ReduceSessionsReviewModal', () => {
       <ReduceSessionsReviewModal
         isOpen
         plan={plan}
+        people={plan.nextScenario?.people ?? []}
         invalidations={[]}
         onClose={vi.fn()}
         onConfirm={vi.fn()}
@@ -58,6 +59,7 @@ describe('ReduceSessionsReviewModal', () => {
       <ReduceSessionsReviewModal
         isOpen
         plan={plan}
+        people={plan.nextScenario?.people ?? []}
         invalidations={buildSessionReductionInvalidations({
           hasActiveSolution: true,
           hasWarmStartSelection: true,
@@ -72,5 +74,38 @@ describe('ReduceSessionsReviewModal', () => {
     expect(screen.getByText(/current result will be cleared/i)).toBeInTheDocument();
     expect(screen.getByText(/warm start selection will be cleared/i)).toBeInTheDocument();
     expect(screen.getByText(/must stay apart/i)).toBeInTheDocument();
+  });
+
+  it('sanitizes person ids to display names inside review details', () => {
+    const scenario = createSampleScenario({
+      num_sessions: 3,
+      people: [
+        { id: 'person_r95i7qcu', attributes: { name: 'Ada' } },
+        { id: 'person_xf66mzvc', attributes: { name: 'Bea' } },
+        { id: 'person_5wqnmjf3', attributes: { name: 'Cleo' } },
+        { id: 'person_k6896t8m', attributes: { name: 'Dina' } },
+      ],
+      constraints: [
+        { type: 'MustStayTogether', people: ['person_r95i7qcu', 'person_xf66mzvc'], sessions: [0, 1, 2] },
+        { type: 'ShouldStayTogether', people: ['person_5wqnmjf3', 'person_k6896t8m'], sessions: [2], penalty_weight: 10 },
+      ],
+    });
+    const plan = planSessionCountReduction({ scenario, nextSessionCount: 2 });
+
+    render(
+      <ReduceSessionsReviewModal
+        isOpen
+        plan={plan}
+        people={scenario.people}
+        invalidations={[]}
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/Must stay together \(Ada, Bea\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Should stay together \(Cleo, Dina\)/i)).toBeInTheDocument();
+    expect(screen.queryByText(/person_r95i7qcu/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/person_5wqnmjf3/i)).not.toBeInTheDocument();
   });
 });

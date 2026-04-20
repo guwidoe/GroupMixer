@@ -222,6 +222,7 @@ function ScenarioEditorLoaded() {
       <ReduceSessionsReviewModal
         isOpen={controller.showSessionReductionReviewModal}
         plan={controller.sessionReductionPlan}
+        people={controller.scenario?.people ?? []}
         invalidations={controller.sessionReductionInvalidations}
         onClose={controller.handleCancelSessionReduction}
         onConfirm={controller.handleConfirmSessionReduction}
