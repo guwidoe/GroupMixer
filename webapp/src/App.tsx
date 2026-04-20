@@ -27,7 +27,27 @@ function LegacySetupRouteRedirect() {
 }
 
 function SolverRouteRedirect() {
+  const advancedModeEnabled = useAppStore((state) => state.ui.advancedModeEnabled ?? false);
+  const solution = useAppStore((state) => state.solution);
+  const lastScenarioSetupSection = useAppStore((state) => state.ui.lastScenarioSetupSection);
+
+  if (!advancedModeEnabled) {
+    return <Navigate to={solution ? '/app/results' : getScenarioSetupPath(lastScenarioSetupSection)} replace />;
+  }
+
   return <Navigate to="/app/solver/run" replace />;
+}
+
+function SolverRouteGuard() {
+  const advancedModeEnabled = useAppStore((state) => state.ui.advancedModeEnabled ?? false);
+  const solution = useAppStore((state) => state.solution);
+  const lastScenarioSetupSection = useAppStore((state) => state.ui.lastScenarioSetupSection);
+
+  if (!advancedModeEnabled) {
+    return <Navigate to={solution ? '/app/results' : getScenarioSetupPath(lastScenarioSetupSection)} replace />;
+  }
+
+  return <SolverWorkspace />;
 }
 
 function App() {
@@ -54,7 +74,7 @@ function App() {
           <Route path="scenario" element={<SetupRouteRedirect />} />
           <Route path="scenario/:section" element={<ScenarioEditor />} />
           <Route path="solver" element={<SolverRouteRedirect />} />
-          <Route path="solver/:section" element={<SolverWorkspace />} />
+          <Route path="solver/:section" element={<SolverRouteGuard />} />
           <Route path="results" element={<ResultsView />} />
           <Route path="editor" element={<ManualEditor />} />
           <Route path="history" element={<ResultsHistory />} />

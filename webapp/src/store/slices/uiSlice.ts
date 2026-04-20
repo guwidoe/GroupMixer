@@ -6,8 +6,35 @@ import type { Notification } from "../../types";
 import type { UIState, UIActions, StoreSlice } from "../types";
 import { namifyPersonIdsInText } from '../../utils/personReferenceText';
 
+const ADVANCED_MODE_STORAGE_KEY = 'groupmixer.advanced-mode.v1';
+
+function readPersistedAdvancedMode(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    return window.localStorage.getItem(ADVANCED_MODE_STORAGE_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function persistAdvancedMode(enabled: boolean) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(ADVANCED_MODE_STORAGE_KEY, String(enabled));
+  } catch {
+    // ignore storage errors
+  }
+}
+
 export const initialUIState: UIState["ui"] = {
   activeTab: "scenario",
+  advancedModeEnabled: readPersistedAdvancedMode(),
   isLoading: true, // Start with loading true
   notifications: [],
   showScenarioManager: false,
@@ -23,6 +50,13 @@ export const createUISlice: StoreSlice<UIState & UIActions> = (set, get) => ({
     set((state) => ({
       ui: { ...state.ui, activeTab },
     })),
+
+  setAdvancedModeEnabled: (advancedModeEnabled) => {
+    persistAdvancedMode(advancedModeEnabled);
+    set((state) => ({
+      ui: { ...state.ui, advancedModeEnabled },
+    }));
+  },
 
   setLoading: (isLoading) =>
     set((state) => ({

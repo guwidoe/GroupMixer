@@ -377,6 +377,7 @@ export interface AppState {
 
   ui: {
     activeTab: "scenario" | "solver" | "results" | "manage";
+    advancedModeEnabled?: boolean;
     isLoading: boolean;
     notifications: Notification[];
     showScenarioManager: boolean;

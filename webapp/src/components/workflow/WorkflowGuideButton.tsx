@@ -12,6 +12,7 @@ export function WorkflowGuideButton() {
   const currentResultId = useAppStore((state) => state.currentResultId);
   const savedScenarios = useAppStore((state) => state.savedScenarios);
   const solution = useAppStore((state) => state.solution);
+  const advancedModeEnabled = useAppStore((state) => state.ui.advancedModeEnabled ?? false);
   const selectCurrentResult = useAppStore((state) => state.selectCurrentResult);
 
   const currentScenario = currentScenarioId ? savedScenarios[currentScenarioId] : null;
@@ -25,7 +26,11 @@ export function WorkflowGuideButton() {
     hasDetailedResult: Boolean(solution && currentResultId),
   });
 
-  if (!workflowAction) {
+  if (
+    !workflowAction
+    || (!advancedModeEnabled && workflowAction.kind === 'route' && workflowAction.nextStepId === 'solver')
+    || (!advancedModeEnabled && workflowAction.kind === 'route' && workflowAction.nextStepId === 'manual-editor')
+  ) {
     return null;
   }
 

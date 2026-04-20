@@ -1,3 +1,4 @@
+/* eslint-disable react/no-multi-comp */
 import { useCallback, useRef, useState } from 'react';
 import { Bug, Menu, Save, Upload } from 'lucide-react';
 import { useAppStore } from '../store';
@@ -23,6 +24,69 @@ interface WorkspaceActionHandlers {
   onLoadScenario: () => void;
   onSaveScenario: () => void;
   onDemoCaseClick: (demoCaseId: string, demoCaseName: string) => void;
+  advancedModeEnabled: boolean;
+  onSetAdvancedModeEnabled: (enabled: boolean) => void;
+}
+
+function AdvancedModeMenuItem({
+  advancedModeEnabled,
+  onChange,
+}: {
+  advancedModeEnabled: boolean;
+  onChange: (enabled: boolean) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={advancedModeEnabled}
+      aria-label="Enable advanced mode"
+      onClick={() => onChange(!advancedModeEnabled)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="flex w-full items-start justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150"
+      title="Show the dedicated solver page and full workflow steps."
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      style={{
+        color: 'var(--text-primary)',
+        backgroundColor: hovered
+          ? 'var(--bg-secondary)'
+          : 'transparent',
+      }}
+    >
+      <span className="min-w-0">
+        <span className="block text-sm font-medium">Advanced mode</span>
+        <span className="mt-1 block text-xs leading-5" style={{ color: 'var(--text-tertiary)' }}>
+          Show the dedicated solver page and full workflow steps.
+        </span>
+      </span>
+
+      <span
+        className="mt-0.5 inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full p-0.5 transition-all duration-150"
+        style={{
+          backgroundColor: advancedModeEnabled
+            ? 'var(--color-accent)'
+            : 'color-mix(in srgb, var(--border-primary) 72%, var(--bg-secondary))',
+          boxShadow: hovered
+            ? '0 0 0 1px color-mix(in srgb, var(--color-accent) 18%, var(--border-primary))'
+            : 'none',
+        }}
+        aria-hidden="true"
+      >
+        <span
+          className="h-5 w-5 rounded-full transition-all duration-150"
+          style={{
+            backgroundColor: 'var(--bg-primary)',
+            boxShadow: '0 1px 3px color-mix(in srgb, black 20%, transparent)',
+            transform: advancedModeEnabled ? 'translateX(20px)' : 'translateX(0)',
+          }}
+        />
+      </span>
+    </button>
+  );
 }
 
 function WorkspaceInlineActions({
@@ -74,6 +138,23 @@ function WorkspaceInlineActions({
           variant="header"
           triggerLabel={closeMobileMenu ? 'Demo Data' : 'Demo'}
         />
+      </div>
+
+      <div
+        className="mt-2 rounded-2xl border px-3 py-3"
+        style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
+      >
+        <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
+          Preferences
+        </div>
+        <div className="mt-2">
+          <AdvancedModeMenuItem
+            advancedModeEnabled={handlers.advancedModeEnabled}
+            onChange={(enabled) => {
+              handlers.onSetAdvancedModeEnabled(enabled);
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -187,10 +268,23 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
 
           <div className="border-t px-4 py-3" style={{ borderColor: 'var(--border-primary)' }}>
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-              Appearance
+              Preferences
             </div>
-            <div className="mt-3">
-              <ThemeToggle showLabel size="sm" />
+            <div className="mt-2">
+              <AdvancedModeMenuItem
+                advancedModeEnabled={handlers.advancedModeEnabled}
+                onChange={(enabled) => {
+                  handlers.onSetAdvancedModeEnabled(enabled);
+                }}
+              />
+            </div>
+            <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--border-primary)' }}>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
+                Appearance
+              </div>
+              <div className="mt-3">
+                <ThemeToggle showLabel size="sm" />
+              </div>
             </div>
           </div>
 
@@ -238,6 +332,8 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
     savedScenarios,
     setShowScenarioManager,
     saveScenario,
+    ui,
+    setAdvancedModeEnabled,
     loadDemoCase,
     loadDemoCaseOverwrite,
     loadDemoCaseNewScenario,
@@ -279,6 +375,10 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
       }
 
       loadDemoCase(demoCaseId);
+    },
+    advancedModeEnabled: ui.advancedModeEnabled ?? false,
+    onSetAdvancedModeEnabled: (enabled) => {
+      setAdvancedModeEnabled(enabled);
     },
   };
 

@@ -32,6 +32,7 @@ export interface SolverSliceState {
 export interface UIState {
   ui: {
     activeTab: "scenario" | "solver" | "results" | "manage";
+    advancedModeEnabled: boolean;
     isLoading: boolean;
     notifications: Notification[];
     showScenarioManager: boolean;
@@ -94,6 +95,7 @@ export interface SolverActions {
 
 export interface UIActions {
   setActiveTab: (tab: "scenario" | "solver" | "results" | "manage") => void;
+  setAdvancedModeEnabled: (enabled: boolean) => void;
   setLoading: (loading: boolean) => void;
   setLastScenarioSetupSection: (section: string | null) => void;
   addNotification: (notification: Omit<Notification, "id">) => void;

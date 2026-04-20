@@ -57,9 +57,13 @@ describe('ResultsView', () => {
   });
 
   it('shows the empty results state when no solution is selected', () => {
+    const savedScenario = createSavedScenario({ name: 'Workshop' });
+
     useAppStore.setState({
-      scenario: createSampleScenario(),
+      scenario: savedScenario.scenario,
       solution: null,
+      currentScenarioId: savedScenario.id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
     });
 
     render(
@@ -69,6 +73,7 @@ describe('ResultsView', () => {
     );
 
     expect(screen.getByRole('heading', { name: /no results yet/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /saved results/i })).toBeInTheDocument();
   });
 
   it('shows the missing-scenario empty state when a solution exists without a recoverable scenario', () => {

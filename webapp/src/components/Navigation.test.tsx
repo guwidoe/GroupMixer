@@ -11,17 +11,26 @@ const mockStoreState = {
   setupGridUnsaved: false,
   setupGridLeaveHook: null as null | ((continueAction: () => void) => void),
   ui: {
+    advancedModeEnabled: true,
     lastScenarioSetupSection: 'people',
   },
 };
 
 vi.mock("../store", () => ({
   useAppStore: Object.assign(
-    vi.fn((selector: (state: typeof mockStoreState) => unknown) => selector(mockStoreState)),
+    vi.fn((selector?: (state: typeof mockStoreState) => unknown) => (selector ? selector(mockStoreState) : mockStoreState)),
     {
       getState: () => mockStoreState,
     },
   ),
+}));
+
+vi.mock('./SolverWorkspace/useSolverWorkspaceRunController', () => ({
+  useSolverWorkspaceRunController: () => ({
+    scenario: { people: [], groups: [], num_sessions: 3, constraints: [], settings: { solver_type: 'solver1', stop_conditions: {}, solver_params: {} } },
+    solverState: { isRunning: false },
+    handleStartSolver: vi.fn(async () => undefined),
+  }),
 }));
 
 function LocationProbe() {
@@ -35,6 +44,7 @@ describe("Navigation", () => {
     mockStoreState.manualEditorLeaveHook = null;
     mockStoreState.setupGridUnsaved = false;
     mockStoreState.setupGridLeaveHook = null;
+    mockStoreState.ui.advancedModeEnabled = true;
     mockStoreState.ui.lastScenarioSetupSection = 'people';
   });
 
@@ -56,6 +66,24 @@ describe("Navigation", () => {
 
     await user.click(screen.getByRole("link", { name: /solver/i }));
     expect(screen.getByTestId("location")).toHaveTextContent("/app/solver");
+  });
+
+  it('hides solver and editor tabs in standard mode', () => {
+    mockStoreState.ui.advancedModeEnabled = false;
+
+    renderWithRouter(
+      <>
+        <Navigation />
+        <LocationProbe />
+      </>,
+      { route: '/app/scenario' },
+    );
+
+    expect(screen.getByRole('link', { name: /setup/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /generate groups/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /results/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /solver/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /manual editor/i })).not.toBeInTheDocument();
   });
 
   it("uses the leave hook instead of navigating away from the manual editor when there are unsaved changes", async () => {
