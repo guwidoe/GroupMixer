@@ -210,7 +210,7 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     subhead:
       'Paste names, choose team count, and generate teams. Add balancing rules when the split needs more structure.',
     audienceSummary:
-      'For team-based activities where balance matters more than a pure shuffle.',
+      'Build more balanced teams by spreading skills, roles, or any other attribute across the groups.',
     faqEntries: [
       {
         question: 'How do I create random teams?',
@@ -254,15 +254,15 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     ],
   }),
   'team-shuffle-generator': createContent({
-    title: 'Team Shuffle Generator - Shuffle Teams with many Options',
+    title: 'Team Shuffle Generator - Reshuffle Teams and Keep Them Balanced',
     description:
       'Reshuffle the same roster into new teams. Keep teams balanced by role, skill, or any attribute.',
     eyebrow: 'For fresh team mixes without the admin work',
     heroTitle: 'Team Shuffle Generator',
     subhead:
-      'Take the same people and reshuffle them into new teams without rebuilding the whole setup.',
+      'Reshuffle the same roster into fresh teams. Keep the mix balanced and add pairing rules when needed.',
     audienceSummary:
-      'For facilitators and coaches who reshuffle the same roster often.',
+      'Reshuffles the same roster for drills, workshops, and repeat activities where each round needs a fresh mix.',
     faqEntries: [
       {
         question: 'What is a team shuffle generator?',
@@ -288,7 +288,7 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     subhead:
       'Paste names, set room count, and assign participants to breakout rooms. Add rounds, balance gender, experience or other attributes.',
     audienceSummary:
-      'For remote workshops, classes, and meetings that need room assignments fast.',
+      'Assigns participants to breakout rooms, rotates them across rounds, and keep the room mix more even.',
     faqEntries: [
       {
         question: 'How do I create breakout rooms?',
@@ -312,9 +312,9 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     eyebrow: 'For facilitators running collaborative sessions',
     heroTitle: 'Workshop Group Generator',
     subhead:
-      'Set up workshop groups for breakouts or group work rotate people in sessions.',
+      'Set up workshop groups for breakouts, table work, and rotating sessions.',
     audienceSummary:
-      'For facilitators who run several activities and want cleaner transitions between rounds.',
+      'Create workshop groups for breakouts and rotating sessions while keeping important pairing rules intact.',
     faqEntries: [
       {
         question: 'How do I create workshop groups?',
@@ -340,7 +340,7 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     subhead:
       'Paste a class roster and build groups. Add pairing rules or balancing when the activity needs more structure.',
     audienceSummary:
-      'For teachers who need quick classroom grouping without losing control of pairings.',
+      'Builds classroom groups while letting you control pairings and balance by skill, gender, or any other attribute.',
     faqEntries: [
       {
         question: 'How do I create student groups?',
@@ -392,7 +392,7 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     subhead:
       'Create round-based networking groups so participants keep meeting new people instead of repeating the same conversations.',
     audienceSummary:
-      'For structured networking formats where new connections matter more than random variety alone.',
+      'Generates round-based networking groups that maximize new contacts and cut down on repeated pairings.',
     faqEntries: [
       {
         question: 'How does the speed networking generator work?',
@@ -418,7 +418,7 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     subhead:
       'Create groups with rules. Keep people together, keep them apart, balance by attribute, and reduce repeat pairings.',
     audienceSummary:
-      'For assignments where the grouping rules matter as much as the grouping itself.',
+      'Builds groups around the rules first: together/apart constraints, attribute balancing, and repeated-round planning.',
     faqEntries: [
       {
         question: 'What constraints can I set?',
