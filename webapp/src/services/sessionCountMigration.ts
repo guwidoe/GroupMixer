@@ -43,6 +43,23 @@ export interface SessionCountReductionPlan {
   blockers: SessionReductionBlocker[];
 }
 
+export type SessionReductionInvalidationKind =
+  | 'active-solution'
+  | 'warm-start-selection'
+  | 'manual-editor-state';
+
+export interface SessionReductionInvalidation {
+  kind: SessionReductionInvalidationKind;
+  title: string;
+  detail: string;
+}
+
+interface BuildSessionReductionInvalidationsArgs {
+  hasActiveSolution: boolean;
+  hasWarmStartSelection: boolean;
+  hasManualEditorState: boolean;
+}
+
 interface PlanSessionCountReductionArgs {
   scenario: Scenario;
   nextSessionCount: number;
@@ -415,4 +432,38 @@ export function planSessionCountReduction({ scenario, nextSessionCount }: PlanSe
     changes,
     blockers,
   };
+}
+
+export function buildSessionReductionInvalidations({
+  hasActiveSolution,
+  hasWarmStartSelection,
+  hasManualEditorState,
+}: BuildSessionReductionInvalidationsArgs): SessionReductionInvalidation[] {
+  const invalidations: SessionReductionInvalidation[] = [];
+
+  if (hasActiveSolution) {
+    invalidations.push({
+      kind: 'active-solution',
+      title: 'Current result will be cleared',
+      detail: 'The active solver result no longer matches the reduced session horizon and will be removed from the workspace view.',
+    });
+  }
+
+  if (hasWarmStartSelection) {
+    invalidations.push({
+      kind: 'warm-start-selection',
+      title: 'Warm start selection will be cleared',
+      detail: 'Any selected warm-start result will be deselected because its schedule may reference deleted sessions.',
+    });
+  }
+
+  if (hasManualEditorState) {
+    invalidations.push({
+      kind: 'manual-editor-state',
+      title: 'Manual editor state will be reset',
+      detail: 'Unsaved manual-editor changes are tied to the old session shape and will be discarded.',
+    });
+  }
+
+  return invalidations;
 }

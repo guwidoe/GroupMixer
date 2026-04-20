@@ -1,11 +1,12 @@
 import { AlertTriangle, ArrowRight, Clock3, X } from 'lucide-react';
 import { createPortal } from 'react-dom';
-import type { SessionCountReductionPlan } from '../../services/sessionCountMigration';
+import type { SessionCountReductionInvalidation, SessionCountReductionPlan } from '../../services/sessionCountMigration';
 import { Button } from '../ui';
 
 interface ReduceSessionsReviewModalProps {
   isOpen: boolean;
   plan: SessionCountReductionPlan | null;
+  invalidations: SessionCountReductionInvalidation[];
   onClose: () => void;
   onConfirm: () => void;
 }
@@ -60,6 +61,7 @@ function DetailSection({
 export function ReduceSessionsReviewModal({
   isOpen,
   plan,
+  invalidations,
   onClose,
   onConfirm,
 }: ReduceSessionsReviewModalProps) {
@@ -118,6 +120,7 @@ export function ReduceSessionsReviewModal({
             <DetailSection title="Blockers" items={plan.blockers} tone="danger" />
             <DetailSection title="Changes" items={trimmedItems} tone="neutral" />
             <DetailSection title="Removals" items={removedItems} tone="warning" />
+            <DetailSection title="Runtime resets" items={invalidations} tone="warning" />
           </div>
 
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

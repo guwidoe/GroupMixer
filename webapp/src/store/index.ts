@@ -337,6 +337,48 @@ export const useAppStore = create<AppStore>()(
         return savedScenario.id;
       },
 
+      applySessionReductionScenario: (scenario) => {
+        const state = get();
+        const nextWorkspace = resolveScenarioWorkspaceState(scenario, state.attributeDefinitions);
+
+        if (state.currentScenarioId) {
+          scenarioStorage.updateScenario(
+            state.currentScenarioId,
+            nextWorkspace.scenario,
+            nextWorkspace.attributeDefinitions,
+          );
+        }
+
+        set((current) => ({
+          scenario: nextWorkspace.scenario,
+          solution: null,
+          currentResultId: null,
+          selectedResultIds: [],
+          solverState: initialSolverState,
+          attributeDefinitions: nextWorkspace.attributeDefinitions,
+          savedScenarios:
+            current.currentScenarioId && current.savedScenarios[current.currentScenarioId]
+              ? {
+                  ...current.savedScenarios,
+                  [current.currentScenarioId]: {
+                    ...current.savedScenarios[current.currentScenarioId],
+                    scenario: nextWorkspace.scenario,
+                    attributeDefinitions: nextWorkspace.attributeDefinitions,
+                    updatedAt: Date.now(),
+                  },
+                }
+              : current.savedScenarios,
+          ui: {
+            ...current.ui,
+            activeTab: 'scenario',
+            warmStartResultId: null,
+            showResultComparison: false,
+          },
+          manualEditorUnsaved: false,
+          manualEditorLeaveHook: null,
+        }));
+      },
+
       initializeApp: () => {
         window.setTimeout(() => {
           get().loadSavedScenarios();

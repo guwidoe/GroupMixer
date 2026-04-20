@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createSampleScenario } from '../test/fixtures';
 import type { Scenario } from '../types';
-import { planSessionCountReduction } from './sessionCountMigration';
+import { buildSessionReductionInvalidations, planSessionCountReduction } from './sessionCountMigration';
 
 function createScenario(overrides: Partial<Scenario> = {}): Scenario {
   return createSampleScenario({
@@ -168,5 +168,17 @@ describe('planSessionCountReduction', () => {
         }),
       ]),
     );
+  });
+
+  it('describes runtime/editor state that must be invalidated after confirmation', () => {
+    expect(buildSessionReductionInvalidations({
+      hasActiveSolution: true,
+      hasWarmStartSelection: true,
+      hasManualEditorState: true,
+    })).toEqual([
+      expect.objectContaining({ kind: 'active-solution' }),
+      expect.objectContaining({ kind: 'warm-start-selection' }),
+      expect.objectContaining({ kind: 'manual-editor-state' }),
+    ]);
   });
 });

@@ -223,6 +223,55 @@ describe('useAppStore initialization', () => {
     );
   });
 
+  it('applies a reduced-session scenario while clearing active runtime state', () => {
+    vi.useFakeTimers();
+    const savedScenario = createSavedScenario({
+      id: 'scenario-with-result',
+      scenario: createSampleScenario({ num_sessions: 4 }),
+    });
+    scenarioStorage.saveScenario(savedScenario);
+
+    useAppStore.setState({
+      scenario: savedScenario.scenario,
+      attributeDefinitions: savedScenario.attributeDefinitions,
+      currentScenarioId: savedScenario.id,
+      currentResultId: savedScenario.results[0].id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
+      solution: createSampleSolution(),
+      selectedResultIds: [savedScenario.results[0].id],
+      solverState: {
+        ...useAppStore.getState().solverState,
+        isComplete: true,
+      },
+      ui: {
+        ...useAppStore.getState().ui,
+        activeTab: 'results',
+        warmStartResultId: savedScenario.results[0].id,
+        showResultComparison: true,
+      },
+      manualEditorUnsaved: true,
+      manualEditorLeaveHook: vi.fn(),
+    });
+
+    const reducedScenario = createSampleScenario({ num_sessions: 2 });
+    useAppStore.getState().applySessionReductionScenario(reducedScenario);
+    vi.runAllTimers();
+
+    const state = useAppStore.getState();
+    expect(state.scenario).toMatchObject(reducedScenario);
+    expect(state.solution).toBeNull();
+    expect(state.currentResultId).toBeNull();
+    expect(state.selectedResultIds).toEqual([]);
+    expect(state.ui.activeTab).toBe('scenario');
+    expect(state.ui.warmStartResultId).toBeNull();
+    expect(state.ui.showResultComparison).toBe(false);
+    expect(state.manualEditorUnsaved).toBe(false);
+    expect(state.manualEditorLeaveHook).toBeNull();
+    expect(state.solverState.isComplete).toBe(false);
+    expect(scenarioStorage.getScenario(savedScenario.id)?.scenario.num_sessions).toBe(2);
+    vi.useRealTimers();
+  });
+
   it('selects a saved result as the active result blob within the current scenario', () => {
     const savedScenario = createSavedScenario();
 

@@ -15,7 +15,11 @@ import {
   GENERATED_DEMO_CASE_ID,
   type GeneratedDemoScenarioOptions,
 } from '../../services/demoScenarioGenerator';
-import { planSessionCountReduction, type SessionCountReductionPlan } from '../../services/sessionCountMigration';
+import {
+  buildSessionReductionInvalidations,
+  planSessionCountReduction,
+  type SessionCountReductionPlan,
+} from '../../services/sessionCountMigration';
 
 export type ScenarioEditorSection = ScenarioSetupSectionId;
 
@@ -40,7 +44,11 @@ export function useScenarioEditorController() {
     saveScenario,
     updateCurrentScenario,
     updateScenario,
+    applySessionReductionScenario,
     ui,
+    solution,
+    currentResultId,
+    manualEditorUnsaved,
   } = useAppStore();
 
   const { section } = useParams<{ section: string }>();
@@ -271,7 +279,7 @@ export function useScenarioEditorController() {
     }
 
     setSessionsCount(sessionReductionPlan.nextSessionCount);
-    setScenario(sessionReductionPlan.nextScenario);
+    applySessionReductionScenario(sessionReductionPlan.nextScenario);
     setSessionReductionPlan(null);
 
     addNotification({
@@ -284,6 +292,14 @@ export function useScenarioEditorController() {
   const navigateToSection = (sectionId: ScenarioSetupSectionId) => {
     navigate(`/app/scenario/${sectionId}`);
   };
+
+  const sessionReductionInvalidations = sessionReductionPlan
+    ? buildSessionReductionInvalidations({
+        hasActiveSolution: Boolean(solution || currentResultId),
+        hasWarmStartSelection: Boolean(ui.warmStartResultId),
+        hasManualEditorState: manualEditorUnsaved,
+      })
+    : [];
 
   return {
     scenario,
@@ -315,6 +331,7 @@ export function useScenarioEditorController() {
     handleGeneratedDemoSubmit,
     handleSessionsCountChange,
     sessionReductionPlan,
+    sessionReductionInvalidations,
     showSessionReductionReviewModal: sessionReductionPlan !== null,
     handleCancelSessionReduction,
     handleConfirmSessionReduction,

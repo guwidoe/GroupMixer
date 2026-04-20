@@ -4,6 +4,7 @@ import { createSampleScenario } from '../../test/fixtures';
 import { useScenarioEditorController } from './useScenarioEditorController';
 
 const mockSetScenario = vi.fn();
+const mockApplySessionReductionScenario = vi.fn();
 const mockAddNotification = vi.fn();
 const mockLoadDemoCase = vi.fn();
 const mockLoadDemoCaseOverwrite = vi.fn();
@@ -37,6 +38,7 @@ const mockScenario = createSampleScenario({
 const mockStore = {
   scenario: mockScenario,
   setScenario: mockSetScenario,
+  applySessionReductionScenario: mockApplySessionReductionScenario,
   resolveScenario: vi.fn(() => mockScenario),
   addNotification: mockAddNotification,
   loadDemoCase: mockLoadDemoCase,
@@ -51,16 +53,19 @@ const mockStore = {
   setAttributeDefinitions: vi.fn(),
   setShowScenarioManager: mockSetShowScenarioManager,
   currentScenarioId: null,
+  currentResultId: 'result-1',
   saveScenario: mockSaveScenario,
   updateCurrentScenario: mockUpdateCurrentScenario,
   updateScenario: mockUpdateScenario,
+  solution: { final_score: 1 },
+  manualEditorUnsaved: true,
   ui: {
     activeTab: 'scenario',
     isLoading: false,
     notifications: [],
     showScenarioManager: false,
     showResultComparison: false,
-    warmStartResultId: null,
+    warmStartResultId: 'warm-start-1',
     lastScenarioSetupSection: 'sessions',
   },
 };
@@ -178,6 +183,7 @@ vi.mock('./scenarioEditorActions', () => ({
 describe('useScenarioEditorController session reductions', () => {
   beforeEach(() => {
     mockSetScenario.mockReset();
+    mockApplySessionReductionScenario.mockReset();
     mockAddNotification.mockReset();
     mockNavigate.mockReset();
   });
@@ -198,6 +204,11 @@ describe('useScenarioEditorController session reductions', () => {
         canApply: true,
       }),
     );
+    expect(result.current.sessionReductionInvalidations).toEqual([
+      expect.objectContaining({ kind: 'active-solution' }),
+      expect.objectContaining({ kind: 'warm-start-selection' }),
+      expect.objectContaining({ kind: 'manual-editor-state' }),
+    ]);
   });
 
   it('applies a reviewed reduction when confirmed', () => {
@@ -211,7 +222,7 @@ describe('useScenarioEditorController session reductions', () => {
       result.current.handleConfirmSessionReduction();
     });
 
-    expect(mockSetScenario).toHaveBeenCalledWith(
+    expect(mockApplySessionReductionScenario).toHaveBeenCalledWith(
       expect.objectContaining({
         num_sessions: 3,
         constraints: [

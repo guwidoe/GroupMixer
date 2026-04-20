@@ -174,6 +174,7 @@ export interface WorkspaceActions {
   replaceWorkspace: (input: WorkspaceBridgeInput) => void;
   syncWorkspaceDraft: (input: WorkspaceDraftSyncInput) => string;
   loadWorkspaceAsNewScenario: (input: WorkspaceDraftSyncInput) => string | null;
+  applySessionReductionScenario: (scenario: Scenario) => void;
 }
 
 export interface UtilityActions {

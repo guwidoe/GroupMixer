@@ -81,6 +81,7 @@ function createController(overrides: Partial<ScenarioEditorController> = {}): Sc
     handleGeneratedDemoSubmit: vi.fn(),
     handleSessionsCountChange: vi.fn(),
     sessionReductionPlan: null,
+    sessionReductionInvalidations: [],
     showSessionReductionReviewModal: false,
     handleCancelSessionReduction: vi.fn(),
     handleConfirmSessionReduction: vi.fn(),
