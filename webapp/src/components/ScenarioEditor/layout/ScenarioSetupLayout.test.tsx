@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { useAppStore } from '../../../store';
 import { createAttributeDefinition } from '../../../services/scenarioAttributes';
 import type { Scenario } from '../../../types';
 import { ScenarioSetupLayout } from './ScenarioSetupLayout';
@@ -30,6 +31,11 @@ function createScenario(): Scenario {
 }
 
 describe('ScenarioSetupLayout', () => {
+  beforeEach(() => {
+    useAppStore.getState().reset();
+    useAppStore.getState().setAdvancedModeEnabled(true);
+  });
+
   it('renders grouped compact sidebar navigation with the active section highlighted', () => {
     const onNavigate = vi.fn();
 
@@ -55,6 +61,26 @@ describe('ScenarioSetupLayout', () => {
     expect(activeItem).toHaveAttribute('aria-current', 'page');
     expect(within(activeItem).getByText('1')).toBeInTheDocument();
     expect(within(sidebar).queryByText(/define the attribute schema/i)).not.toBeInTheDocument();
+  });
+
+  it('hides the optimization group in standard mode', () => {
+    useAppStore.getState().setAdvancedModeEnabled(false);
+
+    render(
+      <ScenarioSetupLayout
+        scenario={createScenario()}
+        attributeDefinitions={[createAttributeDefinition('role', ['dev', 'pm'], 'attr-role')]}
+        objectiveCount={1}
+        activeSection="people"
+        onNavigate={vi.fn()}
+      >
+        <div>Section content</div>
+      </ScenarioSetupLayout>,
+    );
+
+    const sidebar = screen.getByLabelText('Scenario Setup navigation');
+    expect(within(sidebar).queryByText('Optimization')).not.toBeInTheDocument();
+    expect(within(sidebar).queryByRole('button', { name: /^objectives$/i })).not.toBeInTheDocument();
   });
 
   it('shows a hover affordance for inactive sidebar items without overriding the active state', async () => {
