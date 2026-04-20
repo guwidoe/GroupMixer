@@ -80,7 +80,7 @@ describe('ToolLandingPage SEO wiring', () => {
       'https://www.groupmixer.app/random-team-generator',
     );
     expect(document.querySelector('meta[property="og:title"]')?.getAttribute('content')).toBe(
-      'Random Team Generator — Create Balanced Teams Fast | GroupMixer',
+      'Random Team Generator - Create Balanced Teams',
     );
 
     const schema = document.getElementById('groupmixer-route-schema');
@@ -465,10 +465,10 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('button', { name: /generate groups/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /generate groups/i })).toHaveClass('btn-primary');
     
-    // Trust signals visible (exact match on the dot-prefixed trust items)
-    expect(screen.getByText('Private (processed in your browser)')).toBeInTheDocument();
-    expect(screen.getByText('No sign-up')).toBeInTheDocument();
-    expect(screen.getByText('Results in seconds')).toBeInTheDocument();
+    // Core capability bullets remain visible above the fold
+    expect(screen.getByText('Keep together or apart')).toBeInTheDocument();
+    expect(screen.getAllByText('Multiple rounds').length).toBeGreaterThan(0);
+    expect(screen.getByText('Balance by attribute')).toBeInTheDocument();
 
     // Optimizer CTA fills the desktop dead-space under the hero copy
     expect(screen.getByText(/want to do better than random/i)).toBeInTheDocument();
