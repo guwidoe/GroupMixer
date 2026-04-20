@@ -2,7 +2,6 @@ import React from 'react';
 import { Users, X as CloseIcon } from 'lucide-react';
 import { getPersonDisplayName } from '../services/scenarioAttributes';
 import type { Person } from '../types';
-import { Tooltip } from './Tooltip';
 
 interface ConstraintPersonChipProps {
   personId: string;
@@ -63,14 +62,8 @@ const ConstraintPersonChip: React.FC<ConstraintPersonChipProps> = ({ personId, p
     </span>
   );
 
-  return person ? (
-    <Tooltip content={person.id}>{content}</Tooltip>
-  ) : (
-    // For missing people, show raw content (tooltip isn't very helpful)
-    content
-  );
+  return content;
 };
 
 export default ConstraintPersonChip;
-
 

@@ -4,6 +4,7 @@
 
 import type { Notification } from "../../types";
 import type { UIState, UIActions, StoreSlice } from "../types";
+import { namifyPersonIdsInText } from '../../utils/personReferenceText';
 
 export const initialUIState: UIState["ui"] = {
   activeTab: "scenario",
@@ -34,9 +35,12 @@ export const createUISlice: StoreSlice<UIState & UIActions> = (set, get) => ({
     })),
 
   addNotification: (notification) => {
+    const people = get().scenario?.people ?? [];
     const id = Date.now().toString();
     const newNotification: Notification = {
       ...notification,
+      title: namifyPersonIdsInText(notification.title, people),
+      message: namifyPersonIdsInText(notification.message, people),
       id,
       duration: notification.duration ?? 5000, // Default 5 seconds
     };
