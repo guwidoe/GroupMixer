@@ -5,6 +5,7 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store';
 import { solveScenario } from '../services/solver/solveScenario';
 import { createSampleScenario, createSampleSolverSettings } from '../test/fixtures';
+import { buildScenarioFromDraft } from '../utils/quickSetup/buildScenarioFromDraft';
 import ToolLandingPage from './ToolLandingPage';
 import { getToolPageConfig, TOOL_PAGE_CONFIGS } from './toolPageConfigs';
 
@@ -268,7 +269,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await waitFor(() => expect(scrollIntoViewMock).toHaveBeenCalled());
   }, 10000);
 
-  it('syncs a new advanced-editor scenario in the background and carries edits into /app', async () => {
+  it('creates a new advanced-editor scenario on demand and carries edits into /app', async () => {
     const user = userEvent.setup();
 
     render(
@@ -294,10 +295,10 @@ describe('ToolLandingPage SEO wiring', () => {
     ]);
   }, 10000);
 
-  it('warns before overwriting an existing advanced workspace and can keep the current workspace instead', async () => {
+  it('loads landing-page data into a new scenario instead of overwriting the current workspace', async () => {
     const user = userEvent.setup();
 
-    useAppStore.getState().syncWorkspaceDraft({
+    const existingScenarioId = useAppStore.getState().syncWorkspaceDraft({
       scenario: createSampleScenario({
         people: [{ id: 'Existing', attributes: { name: 'Existing' } }],
         settings: createSampleSolverSettings(),
@@ -318,20 +319,114 @@ describe('ToolLandingPage SEO wiring', () => {
 
     await user.click(screen.getAllByRole('button', { name: /scenario editor/i })[0]);
 
-    expect(screen.getByRole('heading', { name: /overwrite current workspace/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /keep current workspace/i })).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /keep current workspace/i }));
-
-    expect(screen.queryByRole('heading', { name: /overwrite current workspace/i })).not.toBeInTheDocument();
-    expect(screen.getByTestId('location-probe')).toHaveTextContent('/app/scenario');
-    expect(useAppStore.getState().scenario?.people.map((person) => person.id)).toEqual(['Existing']);
+    const state = useAppStore.getState();
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/app/scenario/people');
+    expect(state.currentScenarioId).toBeTruthy();
+    expect(state.currentScenarioId).not.toBe(existingScenarioId);
+    expect(state.scenario?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    expect(state.savedScenarios[existingScenarioId]?.scenario.people.map((person) => person.id)).toEqual(['Existing']);
+    expect(state.ui.notifications.at(-1)).toEqual(
+      expect.objectContaining({
+        title: 'Landing Setup Loaded',
+        message: expect.stringMatching(/restored from Scenario Manager/i),
+      }),
+    );
   }, 10000);
 
-  it('can overwrite the existing advanced workspace with landing-page data after confirmation', async () => {
+  it('reuses the current advanced-editor scenario when the setup already matches', async () => {
+    const user = userEvent.setup();
+    const matchingScenario = buildScenarioFromDraft({
+      participantInput: 'Ada\nGrace\nLinus\nMargaret',
+      groupingMode: 'groupCount',
+      groupingValue: 4,
+      sessions: 1,
+      preset: getToolPageConfig('home', 'en').defaultPreset,
+      avoidRepeatPairings: false,
+      keepTogetherInput: '',
+      avoidPairingsInput: '',
+      inputMode: 'names',
+      balanceAttributeKey: null,
+      advancedOpen: false,
+      workspaceScenarioId: null,
+    }).scenario;
+
+    const existingScenarioId = useAppStore.getState().syncWorkspaceDraft({
+      scenario: matchingScenario,
+      scenarioName: 'Existing workspace',
+    });
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    const textarea = screen.getByLabelText(/participants/i);
+    await user.clear(textarea);
+    await user.type(textarea, 'Ada\nGrace\nLinus\nMargaret');
+
+    await user.click(screen.getAllByRole('button', { name: /scenario editor/i })[0]);
+
+    const state = useAppStore.getState();
+    expect(state.currentScenarioId).toBe(existingScenarioId);
+    expect(Object.keys(state.savedScenarios)).toHaveLength(1);
+    expect(state.ui.notifications).toEqual([]);
+  }, 10000);
+
+  it('does not silently resync landing data over a diverged editor workspace before the user opens the full editor', async () => {
+    const workspaceScenarioId = useAppStore.getState().syncWorkspaceDraft({
+      scenario: createSampleScenario({
+        people: [
+          { id: 'Ada', attributes: { name: 'Ada' } },
+          { id: 'Grace', attributes: { name: 'Grace' } },
+          { id: 'Linus', attributes: { name: 'Linus' } },
+          { id: 'Margaret', attributes: { name: 'Margaret' } },
+        ],
+        settings: createSampleSolverSettings(),
+      }),
+      scenarioName: 'Landing draft',
+    });
+
+    window.localStorage.setItem('groupmixer.quick-setup.home.v1', JSON.stringify({
+      participantInput: 'Ada\nGrace\nLinus\nMargaret',
+      groupingMode: 'groupCount',
+      groupingValue: 4,
+      sessions: 1,
+      preset: getToolPageConfig('home', 'en').defaultPreset,
+      avoidRepeatPairings: false,
+      keepTogetherInput: '',
+      avoidPairingsInput: '',
+      inputMode: 'names',
+      balanceAttributeKey: null,
+      advancedOpen: false,
+      workspaceScenarioId,
+    }));
+
+    useAppStore.getState().updateScenario({
+      people: [
+        { id: 'Edited', attributes: { name: 'Edited' } },
+        { id: 'Scenario', attributes: { name: 'Scenario' } },
+      ],
+      groups: [{ id: 'edited-group', size: 2 }],
+      constraints: [{ type: 'MustStayApart', people: ['Edited', 'Scenario'] }],
+      num_sessions: 2,
+    });
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
+
+    expect(useAppStore.getState().scenario?.people.map((person) => person.id)).toEqual(['Edited', 'Scenario']);
+  }, 10000);
+
+  it('creates a fresh scenario when reopening from landing even after the advanced editor diverged', async () => {
     const user = userEvent.setup();
 
-    useAppStore.getState().syncWorkspaceDraft({
+    const existingScenarioId = useAppStore.getState().syncWorkspaceDraft({
       scenario: createSampleScenario({
         people: [{ id: 'Existing', attributes: { name: 'Existing' } }],
         settings: createSampleSolverSettings(),
@@ -342,7 +437,6 @@ describe('ToolLandingPage SEO wiring', () => {
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
-        <LocationProbe />
       </MemoryRouter>,
     );
 
@@ -351,10 +445,12 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.type(textarea, 'Ada\nGrace\nLinus\nMargaret');
 
     await user.click(screen.getAllByRole('button', { name: /scenario editor/i })[0]);
-    await user.click(screen.getByRole('button', { name: /open with landing data/i }));
 
-    expect(screen.getByTestId('location-probe')).toHaveTextContent('/app/scenario/people');
-    expect(useAppStore.getState().scenario?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    const state = useAppStore.getState();
+    expect(state.currentScenarioId).toBeTruthy();
+    expect(state.currentScenarioId).not.toBe(existingScenarioId);
+    expect(state.scenario?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    expect(state.savedScenarios[existingScenarioId]?.scenario.people.map((person) => person.id)).toEqual(['Existing']);
   }, 10000);
 
   it('shows the tool form above the fold with participants input and generate button', () => {

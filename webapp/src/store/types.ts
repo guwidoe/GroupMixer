@@ -173,6 +173,7 @@ export interface WorkspaceDraftSyncInput extends WorkspaceBridgeInput {
 export interface WorkspaceActions {
   replaceWorkspace: (input: WorkspaceBridgeInput) => void;
   syncWorkspaceDraft: (input: WorkspaceDraftSyncInput) => string;
+  loadWorkspaceAsNewScenario: (input: WorkspaceDraftSyncInput) => string | null;
 }
 
 export interface UtilityActions {

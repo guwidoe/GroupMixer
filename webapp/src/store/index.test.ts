@@ -166,6 +166,63 @@ describe('useAppStore initialization', () => {
     expect(scenarioStorage.getScenario(staleDraft.id)?.scenario.num_sessions).toBe(4);
   });
 
+  it('reuses the current workspace when landing data matches the existing scenario content', () => {
+    const existing = scenarioStorage.createScenario(
+      'Random Group Generator draft',
+      createSampleScenario(),
+    );
+
+    useAppStore.setState({
+      scenario: existing.scenario,
+      attributeDefinitions: existing.attributeDefinitions,
+      currentScenarioId: existing.id,
+      savedScenarios: { [existing.id]: existing },
+    });
+
+    const returnedId = useAppStore.getState().loadWorkspaceAsNewScenario({
+      scenario: createSampleScenario(),
+      solution: null,
+      scenarioName: 'Random Group Generator draft',
+    });
+
+    const state = useAppStore.getState();
+    expect(returnedId).toBe(existing.id);
+    expect(state.currentScenarioId).toBe(existing.id);
+    expect(Object.keys(scenarioStorage.getAllScenarios())).toHaveLength(1);
+    expect(state.ui.notifications).toEqual([]);
+  });
+
+  it('creates a new scenario for landing data and preserves the previous workspace', () => {
+    const existing = scenarioStorage.createScenario(
+      'Existing workspace',
+      createSampleScenario({ num_sessions: 3 }),
+    );
+
+    useAppStore.setState({
+      scenario: existing.scenario,
+      attributeDefinitions: existing.attributeDefinitions,
+      currentScenarioId: existing.id,
+      savedScenarios: { [existing.id]: existing },
+    });
+
+    const returnedId = useAppStore.getState().loadWorkspaceAsNewScenario({
+      scenario: createSampleScenario({ num_sessions: 1 }),
+      solution: null,
+      scenarioName: 'Random Group Generator draft',
+    });
+
+    const state = useAppStore.getState();
+    expect(returnedId).toBeTruthy();
+    expect(returnedId).not.toBe(existing.id);
+    expect(state.currentScenarioId).toBe(returnedId);
+    expect(scenarioStorage.getScenario(existing.id)?.scenario.num_sessions).toBe(3);
+    expect(state.ui.notifications.at(-1)).toEqual(
+      expect.objectContaining({
+        title: 'Landing Setup Loaded',
+      }),
+    );
+  });
+
   it('selects a saved result as the active result blob within the current scenario', () => {
     const savedScenario = createSavedScenario();
 

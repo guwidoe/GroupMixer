@@ -17,7 +17,8 @@ import { devtools } from 'zustand/middleware';
 import type { AppStore } from './types';
 import type { AttributeDefinition, Scenario, Solution } from '../types';
 import { resolveScenarioWorkspaceState } from '../services/scenarioAttributes';
-import { scenarioStorage } from '../services/scenarioStorage';
+import { buildScenarioContentHash, scenarioStorage } from '../services/scenarioStorage';
+import { createDefaultSolverSettings } from '../services/solverUi';
 
 import {
   createScenarioSlice,
@@ -81,6 +82,40 @@ function solverStateFromWorkspaceSolution(solution: Solution | null) {
     elapsedTime: solution.elapsed_time_ms,
     noImprovementCount: solution.benchmark_telemetry?.no_improvement_count ?? 0,
   };
+}
+
+function hasScenarioSetupContent(scenario: Scenario | null) {
+  if (!scenario) {
+    return false;
+  }
+
+  const emptyScenario: Scenario = {
+    people: [],
+    groups: [],
+    num_sessions: 3,
+    constraints: [],
+    settings: createDefaultSolverSettings(),
+  };
+
+  return JSON.stringify({
+    people: scenario.people,
+    groups: scenario.groups,
+    num_sessions: scenario.num_sessions,
+    objectives: scenario.objectives ?? [],
+    constraints: scenario.constraints,
+    settings: scenario.settings,
+  }) !== JSON.stringify({
+    people: emptyScenario.people,
+    groups: emptyScenario.groups,
+    num_sessions: emptyScenario.num_sessions,
+    objectives: emptyScenario.objectives ?? [],
+    constraints: emptyScenario.constraints,
+    settings: emptyScenario.settings,
+  });
+}
+
+function createRecoveredWorkspaceName() {
+  return `Recovered workspace ${new Date().toLocaleString()}`;
 }
 
 export const useAppStore = create<AppStore>()(
@@ -198,6 +233,106 @@ export const useAppStore = create<AppStore>()(
           setupGridUnsaved: false,
           setupGridLeaveHook: null,
         }));
+
+        return savedScenario.id;
+      },
+
+      loadWorkspaceAsNewScenario: ({
+        scenario,
+        solution = null,
+        attributeDefinitions,
+        scenarioName,
+      }) => {
+        const state = get();
+        const hadPreviousWorkspace = hasScenarioSetupContent(state.scenario);
+        const previousWorkspaceWasPreserved = Boolean(state.currentScenarioId) || hadPreviousWorkspace;
+        const nextWorkspace = resolveScenarioWorkspaceState(scenario, attributeDefinitions ?? state.attributeDefinitions);
+
+        if (state.scenario && buildScenarioContentHash(state.scenario) === buildScenarioContentHash(nextWorkspace.scenario)) {
+          set((current) => ({
+            scenario: nextWorkspace.scenario,
+            solution,
+            currentResultId: null,
+            selectedResultIds: [],
+            solverState: solverStateFromWorkspaceSolution(solution),
+            attributeDefinitions: nextWorkspace.attributeDefinitions,
+            ui: {
+              ...current.ui,
+              activeTab: solution ? 'results' : 'scenario',
+              warmStartResultId: null,
+              showResultComparison: false,
+              showScenarioManager: false,
+              isLoading: false,
+            },
+            manualEditorUnsaved: false,
+            manualEditorLeaveHook: null,
+            setupGridUnsaved: false,
+            setupGridLeaveHook: null,
+          }));
+
+          return state.currentScenarioId ?? null;
+        }
+
+        if (!state.currentScenarioId && hadPreviousWorkspace) {
+          const recoveredWorkspace = resolveScenarioWorkspaceState(
+            state.scenario,
+            state.attributeDefinitions,
+          );
+          const recoveredScenario = scenarioStorage.createScenario(
+            createRecoveredWorkspaceName(),
+            recoveredWorkspace.scenario,
+            recoveredWorkspace.attributeDefinitions,
+          );
+
+          set((current) => ({
+            savedScenarios: {
+              ...current.savedScenarios,
+              [recoveredScenario.id]: recoveredScenario,
+            },
+          }));
+        }
+
+        const savedScenario = scenarioStorage.createScenario(
+          scenarioName,
+          nextWorkspace.scenario,
+          nextWorkspace.attributeDefinitions,
+        );
+
+        scenarioStorage.setCurrentScenarioId(savedScenario.id);
+
+        set((current) => ({
+          scenario: savedScenario.scenario,
+          solution,
+          currentScenarioId: savedScenario.id,
+          currentResultId: null,
+          savedScenarios: {
+            ...current.savedScenarios,
+            [savedScenario.id]: savedScenario,
+          },
+          selectedResultIds: [],
+          solverState: solverStateFromWorkspaceSolution(solution),
+          attributeDefinitions: savedScenario.attributeDefinitions,
+          ui: {
+            ...current.ui,
+            activeTab: solution ? 'results' : 'scenario',
+            warmStartResultId: null,
+            showResultComparison: false,
+            showScenarioManager: false,
+            isLoading: false,
+          },
+          manualEditorUnsaved: false,
+          manualEditorLeaveHook: null,
+          setupGridUnsaved: false,
+          setupGridLeaveHook: null,
+        }));
+
+        get().addNotification({
+          type: 'success',
+          title: 'Landing Setup Loaded',
+          message: previousWorkspaceWasPreserved
+            ? 'Loaded the landing-page setup into a new scenario. Your previous settings were preserved and can be restored from Scenario Manager.'
+            : 'Loaded the landing-page setup into a new scenario.',
+        });
 
         return savedScenario.id;
       },
