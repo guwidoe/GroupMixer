@@ -85,7 +85,7 @@ export function ReduceSessionsReviewModal({
                 Review Session Reduction
               </h3>
               <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                Reducing sessions can trim or remove session-scoped setup. Review the affected items before applying the change.
+                Reducing sessions can trim or remove session-scoped setup. Nothing changes until you confirm this migration.
               </p>
             </div>
             <button
@@ -116,11 +116,28 @@ export function ReduceSessionsReviewModal({
             </div>
           </div>
 
+          {!plan.canApply && (
+            <div
+              className="mb-4 rounded-lg border p-3"
+              style={{
+                backgroundColor: 'color-mix(in srgb, var(--color-error-600) 8%, var(--bg-primary))',
+                borderColor: 'color-mix(in srgb, var(--color-error-600) 28%, var(--border-primary))',
+              }}
+            >
+              <p className="text-sm font-medium" style={{ color: 'var(--color-error-600)' }}>
+                Apply reduction is disabled until the blockers below are resolved.
+              </p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                Resolve the blocked people, pair-meeting targets, or solver session scope first, then retry the reduction.
+              </p>
+            </div>
+          )}
+
           <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-1">
             <DetailSection title="Blockers" items={plan.blockers} tone="danger" />
-            <DetailSection title="Changes" items={trimmedItems} tone="neutral" />
-            <DetailSection title="Removals" items={removedItems} tone="warning" />
-            <DetailSection title="Runtime resets" items={invalidations} tone="warning" />
+            <DetailSection title="Scoped items to trim" items={trimmedItems} tone="neutral" />
+            <DetailSection title="Items to remove" items={removedItems} tone="warning" />
+            <DetailSection title="Runtime state to reset" items={invalidations} tone="warning" />
           </div>
 
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

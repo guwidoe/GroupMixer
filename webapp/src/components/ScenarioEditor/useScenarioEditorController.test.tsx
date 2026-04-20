@@ -241,6 +241,7 @@ describe('useScenarioEditorController session reductions', () => {
       expect.objectContaining({
         type: 'success',
         title: 'Sessions Updated',
+        message: expect.stringContaining('constraints trimmed'),
       }),
     );
   });

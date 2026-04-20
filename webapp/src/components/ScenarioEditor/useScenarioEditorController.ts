@@ -278,6 +278,21 @@ export function useScenarioEditorController() {
       return;
     }
 
+    const summaryParts = [
+      sessionReductionPlan.summary.peopleTrimmed > 0
+        ? `${sessionReductionPlan.summary.peopleTrimmed} people trimmed`
+        : null,
+      sessionReductionPlan.summary.groupsTrimmed > 0
+        ? `${sessionReductionPlan.summary.groupsTrimmed} groups truncated`
+        : null,
+      sessionReductionPlan.summary.constraintsTrimmed > 0
+        ? `${sessionReductionPlan.summary.constraintsTrimmed} constraints trimmed`
+        : null,
+      sessionReductionPlan.summary.constraintsRemoved > 0
+        ? `${sessionReductionPlan.summary.constraintsRemoved} constraints removed`
+        : null,
+    ].filter(Boolean).join(', ');
+
     setSessionsCount(sessionReductionPlan.nextSessionCount);
     applySessionReductionScenario(sessionReductionPlan.nextScenario);
     setSessionReductionPlan(null);
@@ -285,7 +300,9 @@ export function useScenarioEditorController() {
     addNotification({
       type: 'success',
       title: 'Sessions Updated',
-      message: `Reduced the scenario from ${sessionReductionPlan.previousSessionCount} sessions to ${sessionReductionPlan.nextSessionCount}.`,
+      message: summaryParts.length > 0
+        ? `Reduced the scenario from ${sessionReductionPlan.previousSessionCount} sessions to ${sessionReductionPlan.nextSessionCount}; ${summaryParts}.`
+        : `Reduced the scenario from ${sessionReductionPlan.previousSessionCount} sessions to ${sessionReductionPlan.nextSessionCount}.`,
     });
   };
 

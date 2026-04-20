@@ -33,6 +33,7 @@ describe('ReduceSessionsReviewModal', () => {
     expect(screen.getByRole('heading', { name: /review session reduction/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /apply reduction/i })).toBeDisabled();
     expect(screen.getByText(/person p3/i)).toBeInTheDocument();
+    expect(screen.getByText(/apply reduction is disabled until the blockers below are resolved/i)).toBeInTheDocument();
   });
 
   it('shows runtime invalidations alongside plan details', () => {
@@ -67,7 +68,7 @@ describe('ReduceSessionsReviewModal', () => {
       />,
     );
 
-    expect(screen.getByText(/runtime resets/i)).toBeInTheDocument();
+    expect(screen.getByText(/runtime state to reset/i)).toBeInTheDocument();
     expect(screen.getByText(/current result will be cleared/i)).toBeInTheDocument();
     expect(screen.getByText(/warm start selection will be cleared/i)).toBeInTheDocument();
     expect(screen.getByText(/must stay apart/i)).toBeInTheDocument();
