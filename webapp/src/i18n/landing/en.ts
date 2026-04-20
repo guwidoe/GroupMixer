@@ -154,9 +154,9 @@ function createContent({
 
 export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent> = {
   home: createContent({
-    title: 'Random Group Generator — Split Names into Teams Instantly | GroupMixer',
+    title: 'Random Group Generator - Split Names into Teams Instantly',
     description:
-      'Free random group generator. Paste names, pick group count, and generate balanced groups in seconds. No sign-up required. Add constraints when you need them.',
+      'Split a list of names into groups. Balance gender or skills. Avoid pairings. Keep friends together. Multiple rounds with minimal repeats.',
     eyebrow: 'For classrooms, workshops, and events',
     heroTitle: 'Random Group Generator',
     subhead:
