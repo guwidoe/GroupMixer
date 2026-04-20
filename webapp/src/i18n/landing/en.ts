@@ -184,7 +184,7 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     subhead:
       'Paste names, choose group count or group size, and split the list right away.',
     audienceSummary:
-      'For class activities, workshop breakouts, and any quick split from a name list.',
+      'Splits any name list into groups for class activities, workshop breakouts, and quick event logistics.',
     faqEntries: [
       {
         question: 'How does the random group generator work?',
