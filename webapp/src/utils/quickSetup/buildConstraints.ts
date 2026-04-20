@@ -65,19 +65,19 @@ function deriveDesiredValues(people: Person[], groups: Group[], attributeKey: st
 export function buildConstraints(
   draft: Pick<
     QuickSetupDraft,
-    'sessions' | 'avoidRepeatPairings' | 'keepTogetherInput' | 'avoidPairingsInput' | 'balanceAttributeKey'
+    'sessions' | 'keepTogetherInput' | 'avoidPairingsInput' | 'balanceAttributeKey'
   >,
   people: Person[],
   groups: Group[],
 ): Constraint[] {
   const constraints: Constraint[] = [];
 
-  if (draft.avoidRepeatPairings && draft.sessions > 1) {
+  if (draft.sessions > 1) {
     constraints.push({
       type: 'RepeatEncounter',
       max_allowed_encounters: 1,
       penalty_function: 'squared',
-      penalty_weight: 120,
+      penalty_weight: 1,
     });
   }
 

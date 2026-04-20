@@ -47,20 +47,6 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             />
           </div>
 
-          <label className="flex items-center gap-3 rounded-2xl border px-4 py-3" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
-            <input
-              type="checkbox"
-              checked={draft.avoidRepeatPairings}
-              onChange={(event) => controller.updateDraft((current) => ({ ...current, avoidRepeatPairings: event.target.checked }))}
-            />
-            <div>
-              <div className="text-sm font-medium">{labels.avoidRepeatPairingsLabel}</div>
-              <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {labels.avoidRepeatPairingsDescription}
-              </div>
-            </div>
-          </label>
-
           <div>
             <label htmlFor="keepTogetherInput" className="mb-2 block text-sm font-medium">
               {labels.keepTogetherLabel}

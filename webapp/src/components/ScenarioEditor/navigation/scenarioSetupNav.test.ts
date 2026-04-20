@@ -47,8 +47,8 @@ describe('scenarioSetupNav', () => {
     expect(grouped[1]?.sections.map((section) => section.id)).toEqual(['immovable-people', 'must-stay-together', 'must-stay-apart']);
     expect(grouped[2]?.sections.map((section) => section.id)).toEqual([
       'repeat-encounter',
-      'should-not-be-together',
       'should-stay-together',
+      'should-not-be-together',
       'attribute-balance',
       'pair-meeting-count',
     ]);

@@ -12,7 +12,6 @@ function makeDraft(overrides: Partial<QuickSetupDraft> = {}): QuickSetupDraft {
     groupingValue: 2,
     sessions: 1,
     preset: 'balanced',
-    avoidRepeatPairings: false,
     keepTogetherInput: '',
     avoidPairingsInput: '',
     inputMode: 'names',
@@ -56,7 +55,6 @@ describe('quick setup scenario mapping', () => {
         ].join('\n'),
         inputMode: 'csv',
         sessions: 3,
-        avoidRepeatPairings: true,
         keepTogetherInput: 'Alice, Cara',
         avoidPairingsInput: 'Bob - Dan',
         balanceAttributeKey: 'department',
@@ -78,6 +76,7 @@ describe('quick setup scenario mapping', () => {
         expect.objectContaining({
           type: 'RepeatEncounter',
           max_allowed_encounters: 1,
+          penalty_weight: 1,
         }),
         expect.objectContaining({
           type: 'MustStayTogether',

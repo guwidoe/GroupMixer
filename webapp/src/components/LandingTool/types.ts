@@ -9,7 +9,6 @@ export interface QuickSetupDraft {
   groupingValue: number;
   sessions: number;
   preset: ToolPagePreset;
-  avoidRepeatPairings: boolean;
   keepTogetherInput: string;
   avoidPairingsInput: string;
   inputMode: QuickSetupInputMode;

@@ -58,7 +58,6 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
     groupingValue: 4,
     sessions: pageConfig.defaultPreset === 'networking' ? 3 : 1,
     preset: pageConfig.defaultPreset,
-    avoidRepeatPairings: pageConfig.defaultPreset === 'networking',
     keepTogetherInput: '',
     avoidPairingsInput: '',
     inputMode: 'names',
@@ -213,6 +212,7 @@ function generateSessions(draft: QuickSetupDraft, analysis: QuickSetupAnalysis, 
   const random = mulberry32(seed);
   const pairCounts = new Map<string, number>();
   const sessions: QuickSetupSessionResult[] = [];
+  const avoidRepeatPairings = draft.sessions > 1;
 
   const avoidPairs = new Set(
     analysis.avoidPairings.map((pair) => pairKey(normalizeName(pair.left), normalizeName(pair.right))),
@@ -266,7 +266,7 @@ function generateSessions(draft: QuickSetupDraft, analysis: QuickSetupAnalysis, 
         let score = group.members.length * 2;
         score += Math.max(0, projectedSize - preferredGroupSize) * 8;
 
-        if (draft.avoidRepeatPairings) {
+        if (avoidRepeatPairings) {
           for (const member of entity) {
             for (const existing of group.members) {
               score += (pairCounts.get(pairKey(member.id, existing.id)) ?? 0) * 20;
@@ -300,7 +300,7 @@ function generateSessions(draft: QuickSetupDraft, analysis: QuickSetupAnalysis, 
       (bestGroup ?? groups[0]).members.push(...entity);
     }
 
-    if (draft.avoidRepeatPairings) {
+    if (avoidRepeatPairings) {
       for (const group of groups) {
         for (let leftIndex = 0; leftIndex < group.members.length; leftIndex += 1) {
           for (let rightIndex = leftIndex + 1; rightIndex < group.members.length; rightIndex += 1) {
@@ -436,7 +436,6 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
         ...current,
         preset,
         sessions: preset === 'networking' ? Math.max(2, current.sessions) : current.sessions,
-        avoidRepeatPairings: preset === 'networking' ? true : current.avoidRepeatPairings,
       }));
     },
     [setDraft],
