@@ -15,6 +15,7 @@ import {
   GENERATED_DEMO_CASE_ID,
   type GeneratedDemoScenarioOptions,
 } from '../../services/demoScenarioGenerator';
+import { planSessionCountReduction, type SessionCountReductionPlan } from '../../services/sessionCountMigration';
 
 export type ScenarioEditorSection = ScenarioSetupSectionId;
 
@@ -53,6 +54,7 @@ export function useScenarioEditorController() {
   const [pendingDemoCaseId, setPendingDemoCaseId] = useState<string | null>(null);
   const [pendingDemoCaseName, setPendingDemoCaseName] = useState<string | null>(null);
   const [pendingGeneratedScenario, setPendingGeneratedScenario] = useState<Scenario | null>(null);
+  const [sessionReductionPlan, setSessionReductionPlan] = useState<SessionCountReductionPlan | null>(null);
 
   const entities = useScenarioEditorEntities({
     scenario,
@@ -115,6 +117,10 @@ export function useScenarioEditorController() {
       }
     }
   }, [scenario, currentScenarioId, updateCurrentScenario, addNotification]);
+
+  useEffect(() => {
+    setSessionsCount(scenario?.num_sessions || 3);
+  }, [scenario?.num_sessions]);
 
   const handleSaveScenario = () => {
     if (!scenario) return;
@@ -227,19 +233,52 @@ export function useScenarioEditorController() {
   };
 
   const handleSessionsCountChange = (count: number | null) => {
-    if (count !== null) {
+    if (count === null) {
+      return;
+    }
+
+    const currentScenario = scenario;
+    const previousSessionCount = currentScenario?.num_sessions ?? sessionsCount;
+
+    if (!currentScenario || count >= previousSessionCount) {
       setSessionsCount(count);
 
       const updatedScenario: Scenario = {
-        people: scenario?.people || [],
-        groups: scenario?.groups || [],
+        people: currentScenario?.people || [],
+        groups: currentScenario?.groups || [],
         num_sessions: count,
-        constraints: scenario?.constraints || [],
-        settings: scenario?.settings || getDefaultSolverSettings(),
+        constraints: currentScenario?.constraints || [],
+        settings: currentScenario?.settings || getDefaultSolverSettings(),
       };
 
       setScenario(updatedScenario);
+      return;
     }
+
+    setSessionReductionPlan(planSessionCountReduction({
+      scenario: currentScenario,
+      nextSessionCount: count,
+    }));
+  };
+
+  const handleCancelSessionReduction = () => {
+    setSessionReductionPlan(null);
+  };
+
+  const handleConfirmSessionReduction = () => {
+    if (!sessionReductionPlan?.canApply || !sessionReductionPlan.nextScenario) {
+      return;
+    }
+
+    setSessionsCount(sessionReductionPlan.nextSessionCount);
+    setScenario(sessionReductionPlan.nextScenario);
+    setSessionReductionPlan(null);
+
+    addNotification({
+      type: 'success',
+      title: 'Sessions Updated',
+      message: `Reduced the scenario from ${sessionReductionPlan.previousSessionCount} sessions to ${sessionReductionPlan.nextSessionCount}.`,
+    });
   };
 
   const navigateToSection = (sectionId: ScenarioSetupSectionId) => {
@@ -275,6 +314,10 @@ export function useScenarioEditorController() {
     handleDemoCancel,
     handleGeneratedDemoSubmit,
     handleSessionsCountChange,
+    sessionReductionPlan,
+    showSessionReductionReviewModal: sessionReductionPlan !== null,
+    handleCancelSessionReduction,
+    handleConfirmSessionReduction,
     navigateToSection,
   };
 }

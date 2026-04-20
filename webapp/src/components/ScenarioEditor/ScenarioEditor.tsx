@@ -2,6 +2,7 @@ import React from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { DemoDataWarningModal } from '../modals/DemoDataWarningModal';
 import { GeneratedDemoDataModal } from '../modals/GeneratedDemoDataModal';
+import { ReduceSessionsReviewModal } from '../modals/ReduceSessionsReviewModal';
 import { ConstraintFormModal } from './ConstraintFormModal';
 import { ScenarioSetupLayout } from './layout/ScenarioSetupLayout';
 import { ScenarioEditorConstraintModals } from './ScenarioEditorConstraintModals';
@@ -216,6 +217,13 @@ function ScenarioEditorLoaded() {
         isOpen={controller.showGeneratedDemoModal}
         onClose={controller.handleDemoCancel}
         onGenerate={controller.handleGeneratedDemoSubmit}
+      />
+
+      <ReduceSessionsReviewModal
+        isOpen={controller.showSessionReductionReviewModal}
+        plan={controller.sessionReductionPlan}
+        onClose={controller.handleCancelSessionReduction}
+        onConfirm={controller.handleConfirmSessionReduction}
       />
     </div>
   );
