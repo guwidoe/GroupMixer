@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { BarChart3, Target } from 'lucide-react';
 import { useAppStore } from '../store';
 import { createResultClipboardText, createResultExportFile, type ResultClipboardAction, type ResultExportAction } from '../utils/csvExport';
@@ -14,6 +15,7 @@ import { ResultsSchedule } from './ResultsView/ResultsSchedule';
 
 export function ResultsView() {
   const { scenario, solution, solverState, currentScenarioId, currentResultId, savedScenarios, restoreResultAsNewScenario, addNotification } = useAppStore();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'visualize'>('grid');
   const [vizPluginId, setVizPluginId] = useLocalStorageState('resultsVisualizationPlugin', 'scheduleMatrix');
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -230,7 +232,7 @@ export function ResultsView() {
         <Target className="w-16 h-16 mb-4" style={{ color: 'var(--text-tertiary)' }} />
         <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>No Results Yet</h3>
         <p className="text-center max-w-md" style={{ color: 'var(--text-secondary)' }}>
-          Run the solver or select one of the results from the Results tab to see optimization results and group assignments.
+          Run the solver or open a saved result from Saved Results to inspect assignments, exports, and group layouts.
         </p>
       </div>
     );
@@ -255,6 +257,8 @@ export function ResultsView() {
         solution={solution}
         summary={resultsModel?.summary ?? null}
         configDiff={configDiff}
+        showSavedResultsAction={Boolean(currentScenarioId)}
+        onOpenSavedResults={() => navigate('/app/history')}
         configDetailsOpen={configDetailsOpen}
         onToggleConfigDetails={() => setConfigDetailsOpen(!configDetailsOpen)}
         onRestoreConfig={() => {

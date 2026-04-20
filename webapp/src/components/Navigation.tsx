@@ -18,16 +18,10 @@ const WORKFLOW_TABS = [
     description: 'Run the optimization algorithm',
   },
   {
-    id: 'manage',
-    path: '/app/history',
-    label: 'Saved Results',
-    description: 'Browse, compare, and manage saved results',
-  },
-  {
     id: 'results',
     path: '/app/results',
-    label: 'Current Result',
-    shortLabel: 'Current',
+    label: 'Results',
+    shortLabel: 'Results',
     description: 'Inspect the active result in detail',
   },
   {

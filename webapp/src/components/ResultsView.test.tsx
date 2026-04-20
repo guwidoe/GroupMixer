@@ -1,6 +1,7 @@
 /* eslint-disable react/no-multi-comp */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResultsView } from './ResultsView';
 import { useAppStore } from '../store';
@@ -61,7 +62,11 @@ describe('ResultsView', () => {
       solution: null,
     });
 
-    render(<ResultsView />);
+    render(
+      <MemoryRouter>
+        <ResultsView />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('heading', { name: /no results yet/i })).toBeInTheDocument();
   });
@@ -74,7 +79,11 @@ describe('ResultsView', () => {
       savedScenarios: {},
     });
 
-    render(<ResultsView />);
+    render(
+      <MemoryRouter>
+        <ResultsView />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('heading', { name: /no results available/i })).toBeInTheDocument();
   });
@@ -110,7 +119,11 @@ describe('ResultsView', () => {
       restoreResultAsNewScenario: restoreResultAsNewScenario as never,
     });
 
-    render(<ResultsView />);
+    render(
+      <MemoryRouter>
+        <ResultsView />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText('header:Snapshot Result')).toBeInTheDocument();
     expect(screen.getByText('summary:2')).toBeInTheDocument();

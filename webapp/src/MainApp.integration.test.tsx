@@ -365,6 +365,28 @@ describe("MainApp stateful integration routes", () => {
 
     expect(await screen.findByRole("heading", { name: /optimization results/i })).toBeInTheDocument();
     expect(screen.getByText(/assignment layout/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /saved results/i })).toBeInTheDocument();
+  });
+
+  it('opens saved results from the current result header', async () => {
+    const user = userEvent.setup();
+    const savedScenario = createSavedScenario({
+      id: 'scenario-1',
+      scenario: createSampleScenario(),
+    });
+
+    useAppStore.setState({
+      scenario: savedScenario.scenario,
+      solution: savedScenario.results[0].solution,
+      currentScenarioId: savedScenario.id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
+    });
+
+    renderAppRoute('/app/results');
+
+    await user.click(await screen.findByRole('button', { name: /saved results/i }));
+
+    expect(await screen.findByRole('heading', { name: /saved results/i })).toBeInTheDocument();
   });
 
   it("renders the real /app/history surface and can navigate into result details from persisted state", async () => {
