@@ -64,6 +64,9 @@ These are no longer active targets, but they are important assumptions for futur
 - The strongest current shipped route for `20-4` is the theorem-backed direct-product MOLS construction at `25` weeks.
 - The clearest benchmark-relevant remaining delta is therefore `25 -> 26` on `20-4`.
 - Literature notes in the local survey point to `RGDD(20,4,2)` as the natural exact/maximal structure for this row.
+- Stronger literature status note:
+  - this is no longer just a vague target-row hint; the later `Resolvable group divisible designs with block size four and general index` existence line appears to make type `2^40` with index `2` an existence-supported case
+  - so the remaining gap is increasingly about finding or reconstructing an **implementable constructive payload**, not about whether the case is believed to exist at all
 
 ### Negative results already established for `20-4`
 - The current `20-4-25` product-bank schedule does **not** admit a trivial extra week:
@@ -110,10 +113,65 @@ These are no longer active targets, but they are important assumptions for futur
 - New tighter computational subcase now under active probing:
   - search for a **single** 13-week starter orbit whose projected pair-orbit counts are all exactly `2`
   - if such a starter exists, duplicating that orbit would satisfy the projected total `4`-coverage target and could yield an easier label-liftable witness than the unconstrained two-starter search
-  - early 45s probes are still `UNKNOWN`, so this is not solved yet, but it looks like a reasonable easier branch to keep testing
+  - this subcase is now materially narrower than the unconstrained two-starter search:
+    - a `10s` normalized infinity-block scan (with the week normalized by requiring some infinity block through ordinary group `0`) ruled out **31** orbit representatives immediately and left only **8** non-vertical reps alive (`UNKNOWN`)
+    - the surviving normalized non-vertical infinity-block reps are exactly:
+      - `[(0,0),(0,1),(1,2),∞]`
+      - `[(0,0),(1,1),(1,2),∞]`
+      - `[(0,0),(1,1),(2,2),∞]`
+      - `[(0,0),(1,1),(3,2),∞]`
+      - `[(0,0),(1,1),(4,2),∞]`
+      - `[(0,0),(1,1),(5,2),∞]`
+      - `[(0,0),(1,1),(6,2),∞]`
+      - `[(0,0),(1,1),(12,2),∞]`
+    - the vertical case `[(0,0),(0,1),(0,2),∞]` is also separately known to stay alive from longer direct probes and should remain in scope
+    - representative `60s` follow-up probes on all eight surviving non-vertical reps still came back `UNKNOWN`
+    - fixing the vertical block `[(0,0),(0,1),(0,2),∞]` together with any one of those eight surviving non-vertical second infinity-block patterns also stayed alive at `20s`
+    - deeper `10s` second-infinity-block scans now show that not all surviving first blocks are equally permissive:
+      - with first block `[(0,0),(0,1),(1,2),∞]`, only the vertical block is pruned quickly so far; the scan finished with `38/39` second-block reps still `UNKNOWN`
+      - with first block `[(0,0),(1,1),(2,2),∞]`, exactly three quick dead second blocks are now known: the vertical block, `[(0,0),(0,1),(1,2),∞]`, and `[(0,0),(1,1),(1,2),∞]`; the other `36/39` second-block reps remained `UNKNOWN`
+  - this suggests the doubled-single-starter branch has internal structure: the side-case `[(0,0),(0,1),(1,2),∞]` looks broad, while some diagonal-style first blocks already force a small forbidden set of nearby second blocks
+  - deeper `300s` pair probes are still leaving multiple structurally different pair patterns alive, for example:
+    - side + shifted-diagonal: `[(0,0),(0,1),(1,2),∞]` with `[(1,0),(1,1),(1,2),∞]`
+    - far-diagonal + shifted-diagonal: `[(0,0),(1,1),(12,2),∞]` with `[(1,0),(1,1),(1,2),∞]`
+    - diagonal + later diagonal: `[(0,0),(1,1),(3,2),∞]` with `[(0,0),(1,1),(4,2),∞]`
+    - diagonal + later diagonal: `[(0,0),(1,1),(3,2),∞]` with `[(0,0),(1,1),(5,2),∞]`
+  - more specifically, the diagonal-style family now shows a clear **nested forbidden-prefix** pattern under `10s` second-block scans:
+    - first `[(0,0),(1,1),(2,2),∞]` quickly forbids `{ vertical, side, diag-1 }`
+    - first `[(0,0),(1,1),(3,2),∞]` quickly forbids `{ vertical, side, diag-1, diag-2 }`
+    - first `[(0,0),(1,1),(4,2),∞]` quickly forbids `{ vertical, side, diag-1, diag-2, diag-3 }`
+    - first `[(0,0),(1,1),(5,2),∞]` quickly forbids `{ vertical, side, diag-1, diag-2, diag-3, diag-4 }`
+    - this nested pattern is now confirmed further out in the same family:
+      - first `[(0,0),(1,1),(12,2),∞]` quickly forbids `{ vertical, side, diag-1, diag-2, diag-3, diag-4, diag-5, diag-6 }` under a finished `10s` scan, while `31/39` second-block reps still remain alive
+      - the ongoing scan for first `[(0,0),(1,1),(6,2),∞]` is so far consistent with the same pattern, already killing the earlier diagonal cases quickly
+  - in this doubled-single-starter model, each projected group appears exactly twice per week, so the infinity group must lie in **exactly two** starter blocks; that means the meaningful search object is a *pair* of infinity blocks, not a larger infinity-block set
+  - so this stricter branch is promising because it is now **small enough to enumerate and deepen**, even though no witness has appeared yet
 - Additional literature scan note:
   - modern Rees-product / ITD asymptotic RGDD papers were checked, but the clean extracted theorems there are mainly for **fixed numbers of groups with large group size**
   - that asymptotic direction does not directly give an implementable exact route for the needed small-group case `RGDD(80,4,2)` / type `2^40`
+  - local frame-survey notes also rule out a direct ordinary `4`-frame route for this target: Theorem 4.1 there requires `4`-frames of type `h^u` to have `h ≡ 0 (mod 3)`, so the desired group size `h=2` is outside the basic `4`-frame existence line
+- New source-backed constructive lead from Cao–Ma 2011 (`doi:10.1360/012010-463`):
+  - Theorem 31 gives a `(4,2)`-SRGDD of type `2^u` for `u ≡ 4 (mod 6)`, which includes `u = 40`
+  - in the paper's proof sketch, the `u = 40` case specializes to the chain `u = 3v + 1` with `v = 13`, so the target is reduced to a `(4,2)`-SF of type `6^13`
+  - Theorems 29/30 in the same paper then point further back to a `4`-frame of type `3^13`
+  - so the current semicyclic `(Z13 × Z3)` research is now aligned with an explicit literature proof chain rather than being only an ad-hoc search direction
+  - however, this still does **not** hand us an explicit starter list for `u = 40`; we still need to reconstruct or synthesize the concrete `3^13` / `6^13` ingredient honestly
+- New in-repo derivation aid:
+  - `tools/autoresearch/solver5-construction/research/frame3_13_search.py` now probes a cyclic week-0 starter for a `4`-frame of type `3^13`
+  - the stricter cyclic `4`-frame ingredient also remains computationally alive after deeper runs:
+    - an unforced `300s` run still returned `UNKNOWN`
+    - a later unforced `900s` run also still returned `UNKNOWN`
+    - forcing `[(1,0),(2,1),(3,2),(4,0)]` also remained `UNKNOWN` at `300s`
+    - forcing `[(1,0),(2,0),(3,1),(4,2)]` also remained `UNKNOWN` at `300s`
+    - forcing `[(1,0),(2,1),(3,1),(4,2)]` also remained `UNKNOWN` at `600s`
+  - early forced-block probes already show nontrivial local structure in that smaller frame model:
+    - `[(1,0),(2,0),(3,1),(4,1)]` is infeasible within seconds
+    - `[(1,0),(2,0),(3,0),(4,1)]` is also infeasible within seconds
+    - more mixed-layer patterns such as `[(1,0),(2,0),(3,1),(4,2)]`, `[(1,0),(2,1),(3,1),(4,2)]`, and `[(1,0),(2,1),(3,2),(4,0)]` remain alive at short time limits
+  - a new normalized first-block scan on the `4-F(3^13)` ingredient gives a stronger local pattern:
+    - among the first `40` normalized representatives at `8s`, exactly `20` are already `INFEASIBLE`
+    - in particular, every scanned block of the form `[(1,0),(2,0),(3,0),(d,*)]` with `d ∈ {4,...,12}` died quickly
+    - by contrast, many neighboring mixed-layer blocks of the form `[(1,0),(2,0),(3,1),(d,*)]` remained `UNKNOWN`, with only a few quick dead exceptions so far (`[(1,0),(2,0),(3,1),(4,1)]` and `[(1,0),(2,0),(3,1),(8,0)]` in the first scanned tranche)
 
 ## Next Loop Guidance
 Preferred order:
