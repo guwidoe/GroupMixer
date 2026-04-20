@@ -18,7 +18,8 @@ const mockUpdateCurrentScenario = vi.fn();
 const mockUpdateScenario = vi.fn();
 const mockNavigate = vi.fn();
 
-const mockScenario = createSampleScenario({
+function createReviewableScenario() {
+  return createSampleScenario({
   num_sessions: 4,
   people: [
     { id: 'p1', attributes: { name: 'Alice' } },
@@ -33,13 +34,14 @@ const mockScenario = createSampleScenario({
   constraints: [
     { type: 'MustStayApart', people: ['p1', 'p2'], sessions: [1, 2, 3] },
   ],
-});
+  });
+}
 
 const mockStore = {
-  scenario: mockScenario,
+  scenario: createReviewableScenario(),
   setScenario: mockSetScenario,
   applySessionReductionScenario: mockApplySessionReductionScenario,
-  resolveScenario: vi.fn(() => mockScenario),
+  resolveScenario: vi.fn(() => mockStore.scenario),
   addNotification: mockAddNotification,
   loadDemoCase: mockLoadDemoCase,
   loadDemoCaseOverwrite: mockLoadDemoCaseOverwrite,
@@ -182,6 +184,11 @@ vi.mock('./scenarioEditorActions', () => ({
 
 describe('useScenarioEditorController session reductions', () => {
   beforeEach(() => {
+    mockStore.scenario = createReviewableScenario();
+    mockStore.currentResultId = 'result-1';
+    mockStore.solution = { final_score: 1 };
+    mockStore.manualEditorUnsaved = true;
+    mockStore.ui.warmStartResultId = 'warm-start-1';
     mockSetScenario.mockReset();
     mockApplySessionReductionScenario.mockReset();
     mockAddNotification.mockReset();
@@ -236,5 +243,48 @@ describe('useScenarioEditorController session reductions', () => {
         title: 'Sessions Updated',
       }),
     );
+  });
+
+  it('cancels a pending reduction without mutating the scenario', () => {
+    const { result } = renderHook(() => useScenarioEditorController());
+
+    act(() => {
+      result.current.handleSessionsCountChange(3);
+    });
+
+    act(() => {
+      result.current.handleCancelSessionReduction();
+    });
+
+    expect(result.current.showSessionReductionReviewModal).toBe(false);
+    expect(mockApplySessionReductionScenario).not.toHaveBeenCalled();
+    expect(mockSetScenario).not.toHaveBeenCalled();
+  });
+
+  it('keeps blocked reductions unapplied', () => {
+    mockStore.scenario = createSampleScenario({
+      num_sessions: 4,
+      people: [
+        { id: 'p1', attributes: { name: 'Alice' } },
+        { id: 'p2', attributes: { name: 'Bob' }, sessions: [0, 1, 2] },
+        { id: 'p3', attributes: { name: 'Cara' }, sessions: [3] },
+        { id: 'p4', attributes: { name: 'Dan' } },
+      ],
+      constraints: [],
+    });
+
+    const { result } = renderHook(() => useScenarioEditorController());
+
+    act(() => {
+      result.current.handleSessionsCountChange(3);
+    });
+
+    expect(result.current.sessionReductionPlan?.canApply).toBe(false);
+
+    act(() => {
+      result.current.handleConfirmSessionReduction();
+    });
+
+    expect(mockApplySessionReductionScenario).not.toHaveBeenCalled();
   });
 });
