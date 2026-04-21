@@ -328,10 +328,10 @@ Typical usage:
   --time-limit 1
 ```
 
-This writes:
+This writes solver6-specific artifacts so the solver5 and solver6 reports can coexist:
 
-- `autoresearch.last_run_metrics.json`
-- `autoresearch.last_run_report.html`
+- `autoresearch.solver6.last_run_metrics.json`
+- `autoresearch.solver6.last_run_report.html`
 
 The wrapper intentionally keeps the report generation reproducible from a single
 command rather than requiring manual JSON/HTML steps.

@@ -21,10 +21,10 @@ solver6 optimality-frontier matrix.
 
 ## Artifacts
 
-The wrapper writes:
+The wrapper writes solver6-specific artifacts so the solver5 and solver6 reports can coexist:
 
-- `autoresearch.last_run_metrics.json`
-- `autoresearch.last_run_report.html`
+- `autoresearch.solver6.last_run_metrics.json`
+- `autoresearch.solver6.last_run_report.html`
 
 ## Notes
 

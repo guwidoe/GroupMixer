@@ -13,3 +13,5 @@ python3 "$ROOT/tools/autoresearch/solver5-construction/check_matrix_artifact.py"
 python3 "$ROOT/tools/autoresearch/solver5-construction/generate_matrix_report.py" \
   "$ROOT/autoresearch.last_run_metrics.json" \
   "$ROOT/autoresearch.last_run_report.html"
+cp "$ROOT/autoresearch.last_run_metrics.json" "$ROOT/autoresearch.solver5.last_run_metrics.json"
+cp "$ROOT/autoresearch.last_run_report.html" "$ROOT/autoresearch.solver5.last_run_report.html"
