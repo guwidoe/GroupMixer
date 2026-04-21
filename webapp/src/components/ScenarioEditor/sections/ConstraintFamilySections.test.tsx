@@ -241,6 +241,8 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('columnheader', { name: /targets/i })).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /female/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /^male /i })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('female count')).toHaveValue('2');
+    expect(screen.getByLabelText('male count')).toHaveValue('1');
     expect(screen.getByRole('button', { name: /disable target for female/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /disable target for male/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /adjust boundary between female and male/i })).toBeInTheDocument();
@@ -283,6 +285,64 @@ describe('ConstraintFamilySections', () => {
 
     expect(screen.getByText('Mode')).toBeInTheDocument();
     expect(screen.getByText('exact')).toBeInTheDocument();
+    expect(screen.getByLabelText('female count')).toHaveValue('2');
+  });
+
+  it('allows inline attribute-balance editing on cards', async () => {
+    const user = userEvent.setup();
+    const setScenario = vi.fn();
+
+    useAppStore.setState({
+      ...useAppStore.getState(),
+      setScenario,
+    });
+
+    render(
+      <SoftConstraintFamilySection
+        family="AttributeBalance"
+        onAdd={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+
+    const femaleInput = screen.getByLabelText('female count');
+    fireEvent.change(femaleInput, { target: { value: '3' } });
+
+    expect(setScenario).toHaveBeenCalledWith(
+      expect.objectContaining({
+        constraints: expect.arrayContaining([
+          expect.objectContaining({
+            type: 'AttributeBalance',
+            desired_values: { female: 3, male: 1 },
+          }),
+        ]),
+      }),
+    );
+  });
+
+  it('keeps background card clicks opening the attribute-balance modal', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+
+    render(
+      <SoftConstraintFamilySection
+        family="AttributeBalance"
+        onAdd={vi.fn()}
+        onEdit={onEdit}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    await user.click(screen.getByRole('button', { name: /edit balance attributes constraint/i }));
+
+    expect(onEdit).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'AttributeBalance' }),
+      expect.any(Number),
+    );
   });
 
   it('validates attribute-balance target JSON keys against the selected attribute options', async () => {

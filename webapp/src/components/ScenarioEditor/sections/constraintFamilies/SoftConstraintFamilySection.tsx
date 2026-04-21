@@ -309,6 +309,7 @@ export function SoftConstraintFamilySection({
                   }
                   onOpen={() => onEdit(constraint, index)}
                   openLabel={`Edit ${copy.title.toLowerCase()} constraint`}
+                  allowInteractiveChildren={constraint.type === 'AttributeBalance'}
                   actions={
                     <>
                       {family === 'ShouldStayTogether' && isSelectingShould ? (
@@ -325,7 +326,9 @@ export function SoftConstraintFamilySection({
                   {constraint.type === 'ShouldNotBeTogether' || constraint.type === 'ShouldStayTogether'
                     ? renderPeopleConstraintContent(scenario, constraint, index, setScenario)
                     : null}
-                  {constraint.type === 'AttributeBalance' ? renderAttributeBalanceContent(constraint) : null}
+                  {constraint.type === 'AttributeBalance'
+                    ? renderAttributeBalanceContent(scenario, constraint, index, setScenario, attributeDefinitions)
+                    : null}
                   {constraint.type === 'PairMeetingCount' ? renderPairMeetingCountContent(scenario, constraint) : null}
                 </SetupItemCard>
               )}
@@ -452,7 +455,7 @@ export function SoftConstraintFamilySection({
                             onCommit={onCommit}
                           />
                         ),
-                        width: 300,
+                        width: 360,
                       },
                       {
                         kind: 'primitive' as const,

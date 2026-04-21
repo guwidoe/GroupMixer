@@ -23,17 +23,18 @@ function ControlledTargetsEditor({
 }
 
 describe('AttributeBalanceTargetsEditor', () => {
-  it('reuses the compact distribution control for grid editing', async () => {
+  it('reuses the full distribution control for grid editing', async () => {
     const user = userEvent.setup();
 
     render(<ControlledTargetsEditor initialValue={{ female: 2 }} maxValue={4} />);
 
-    expect(screen.queryByLabelText('female count')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('female count')).toHaveValue('2');
     expect(screen.queryByText(/allocated \d/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /enable target for male/i }));
 
     expect(screen.getByRole('button', { name: /adjust boundary between female and male/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /disable target for male/i })).toHaveAttribute('title', 'male');
+    expect(screen.getByLabelText('male count')).toHaveValue('0');
   });
 });
