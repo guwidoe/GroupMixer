@@ -4,6 +4,7 @@ import { createSampleScenario } from '../../test/fixtures';
 import { useScenarioEditorController } from './useScenarioEditorController';
 
 const mockSetScenario = vi.fn();
+const mockSetScenarioDocument = vi.fn();
 const mockApplySessionReductionScenario = vi.fn();
 const mockAddNotification = vi.fn();
 const mockLoadDemoCase = vi.fn();
@@ -40,6 +41,7 @@ function createReviewableScenario() {
 const mockStore = {
   scenario: createReviewableScenario(),
   setScenario: mockSetScenario,
+  setScenarioDocument: mockSetScenarioDocument,
   applySessionReductionScenario: mockApplySessionReductionScenario,
   resolveScenario: vi.fn(() => mockStore.scenario),
   addNotification: mockAddNotification,
@@ -52,7 +54,6 @@ const mockStore = {
   attributeDefinitions: [],
   addAttributeDefinition: vi.fn(),
   removeAttributeDefinition: vi.fn(),
-  setAttributeDefinitions: vi.fn(),
   setShowScenarioManager: mockSetShowScenarioManager,
   currentScenarioId: null,
   currentResultId: 'result-1',

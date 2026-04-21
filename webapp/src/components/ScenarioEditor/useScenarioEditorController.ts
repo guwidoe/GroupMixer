@@ -27,6 +27,7 @@ export function useScenarioEditorController() {
   const {
     scenario,
     setScenario,
+    setScenarioDocument,
     resolveScenario,
     addNotification,
     loadDemoCase,
@@ -38,7 +39,6 @@ export function useScenarioEditorController() {
     attributeDefinitions,
     addAttributeDefinition,
     removeAttributeDefinition,
-    setAttributeDefinitions,
     setShowScenarioManager,
     currentScenarioId,
     saveScenario,
@@ -68,7 +68,7 @@ export function useScenarioEditorController() {
     scenario,
     attributeDefinitions,
     addAttributeDefinition,
-    setAttributeDefinitions,
+    setScenarioDocument,
     addNotification,
     setScenario,
   });
@@ -86,8 +86,7 @@ export function useScenarioEditorController() {
       scenario,
       attributeDefinitions,
       addNotification,
-      setAttributeDefinitions,
-      setScenario,
+      setScenarioDocument,
     }),
   };
 
@@ -111,20 +110,6 @@ export function useScenarioEditorController() {
     }
     return 1;
   })();
-
-  useEffect(() => {
-    if (scenario && currentScenarioId) {
-      try {
-        updateCurrentScenario(currentScenarioId, scenario);
-      } catch (error) {
-        addNotification({
-          type: 'error',
-          title: 'Auto-save Failed',
-          message: error instanceof Error ? error.message : 'Failed to persist scenario changes.',
-        });
-      }
-    }
-  }, [scenario, currentScenarioId, updateCurrentScenario, addNotification]);
 
   useEffect(() => {
     setSessionsCount(scenario?.num_sessions || 3);
