@@ -239,11 +239,11 @@ def render_cell_glyph(cell, reference_index):
         desired_method = cell.get("desired_method_abbreviation")
         preference_reason = cell.get("method_preference_reason")
         method_chip_classes = ["method-chip"]
-        if desired_method is not None:
-            if method == desired_method:
-                method_chip_classes.append("method-chip-reached")
-            elif preference_reason:
+        if method is not None:
+            if desired_method is not None and method != desired_method and preference_reason:
                 method_chip_classes.append("method-chip-pending")
+            else:
+                method_chip_classes.append("method-chip-reached")
         glyph_parts.append(
             "<div class='method-cluster'>"
             f"<span class='{' '.join(method_chip_classes)}'>{html.escape(str(cell['glyph_bottom_right_text']))}</span>"
@@ -393,8 +393,12 @@ def main():
         f"<h1>{html.escape(artifact['matrix_name'])}</h1>",
         f"<p class='meta'>version {artifact['matrix_version']} · {len(matrices)} matrix views over one global cell universe · benchmark regions {html.escape(render_benchmark_regions(benchmark_regions))}</p>",
         "<div class='legend-block'>",
-        "<div class='legend-row'><span class='legend-key'>Universal glyph grammar</span><span><code>W</code> center = current achieved weeks</span><span><code>O</code> top-left = exact optimum when known</span><span><code>T</code> top-right = primary target</span><span><code>U</code> bottom-left = upper bound</span><span><code>M</code> bottom-right = current method; when a desired family differs, show <code>M→D</code></span></div>",
-        "<div class='legend-row'><span class='legend-key'>Target sources</span><span>Canonical matrix uses roadmap <code>T</code> values and may also encode a desired roadmap family in the method slot.</span><span>Supplementary matrices use curated literature <code>T</code> values when available.</span><span><code>U</code> always means the counting upper bound.</span></div>",
+        "<div class='legend-row'><span class='legend-key'>Universal glyph grammar</span><span><code>W</code> center = current achieved weeks</span><span><code>O</code> top-left = exact optimum when known</span><span><code>T</code> top-right = primary target</span><span><code>U</code> bottom-left = upper bound</span><span><code>M</code> bottom-right = current method; show <code>M→D</code> only for explicit, policy-approved upgrades</span></div>",
+        "<div class='legend-row'><span class='legend-key'>Target sources</span><span>Some views draw <code>T</code> from the roadmap target matrix.</span><span>Some views draw <code>T</code> from curated literature-backed targets.</span><span><code>U</code> always means the counting upper bound.</span></div>",
+        "<div class='legend-row'><span class='legend-key'>Method chips</span>",
+        render_scale_swatch("accepted / satisfied method", "rgba(187,247,208,0.95)"),
+        render_scale_swatch("approved upgrade exists", "rgba(254,215,170,0.95)"),
+        "</div>",
         "<div class='legend-row'><span class='legend-key'>Fill</span>",
         render_scale_swatch("far from basis", progress_fill_color(0, 10, False)),
         render_scale_swatch("close to basis", progress_fill_color(8, 10, False)),

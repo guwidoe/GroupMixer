@@ -180,6 +180,15 @@ mentions another family name.
 If the current method is acceptable, equivalent in presentation, or there is no
 explicit upgrade policy yet, the chip must show only `M`.
 
+Chip colors are also strict:
+
+- green = the current method is accepted for that cell
+- orange = an explicit policy-approved upgrade exists, so the cell shows `M→D`
+
+Neutral/white method chips should be avoided for cells that already have a
+current method, because that silently hides whether the method is accepted or
+pending an approved upgrade.
+
 ## Fill and border semantics
 
 The renderer uses one coherent visual policy everywhere.
