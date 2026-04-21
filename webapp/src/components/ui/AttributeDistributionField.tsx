@@ -5,6 +5,7 @@ import {
   getDividerPositions,
   moveDistributionDivider,
   normalizeAttributeDistributionValue,
+  setAttributeBucketCount,
   summarizeAttributeDistribution,
   type AttributeDistributionValue,
   type DistributionBucket,
@@ -260,13 +261,7 @@ export function AttributeDistributionField({
                         return;
                       }
                       const rounded = nextRaw === '' ? 0 : Math.max(0, Math.round(Number(nextRaw)));
-                      const nextValue = { ...normalizedValue };
-                      if (rounded > 0) {
-                        nextValue[bucket.key] = rounded;
-                      } else {
-                        delete nextValue[bucket.key];
-                      }
-                      onChange(nextValue);
+                      onChange(setAttributeBucketCount(value, buckets, bucket.key, rounded));
                     }}
                   />
                   <button

@@ -75,4 +75,38 @@ describe('AttributeBalanceModal', () => {
     expect(screen.getByLabelText('female count')).toHaveValue('2');
     expect(screen.getByLabelText('male count')).toHaveValue('0');
   });
+
+  it('preserves explicit zero targets when saving exact-mode constraints', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+
+    render(
+      <AttributeBalanceModal
+        initial={{
+          type: 'AttributeBalance',
+          group_id: 'g1',
+          attribute_id: 'attr-gender',
+          attribute_key: 'gender',
+          desired_values: { female: 2, male: 1 },
+          penalty_weight: 10,
+          mode: 'exact',
+          sessions: undefined,
+        }}
+        onCancel={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    const maleInput = screen.getByLabelText('male count');
+    await user.clear(maleInput);
+    await user.tab();
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        desired_values: { female: 2, male: 0 },
+        mode: 'exact',
+      }),
+    );
+  });
 });

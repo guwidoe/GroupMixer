@@ -42,9 +42,7 @@ export function normalizeAttributeDistributionValue(
     }
 
     const count = clampToInt(raw);
-    if (count > 0) {
-      normalized[key] = count;
-    }
+    normalized[key] = count;
   });
 
   return normalized;
@@ -110,11 +108,7 @@ export function setAttributeBucketCount(
   }
 
   const rounded = clampToInt(nextCount);
-  if (rounded <= 0) {
-    delete normalized[key];
-  } else {
-    normalized[key] = rounded;
-  }
+  normalized[key] = rounded;
 
   return normalized;
 }
@@ -162,13 +156,19 @@ export function moveDistributionDivider(
   nextCounts[dividerIndex + 1] = clampToInt((nextCounts[dividerIndex + 1] ?? 0) - delta);
 
   const nextValue: AttributeDistributionValue = {};
+  const explicitZeroKeys = new Set(
+    Object.entries(normalizeAttributeDistributionValue(value, buckets))
+      .filter(([, count]) => count === 0)
+      .map(([key]) => key),
+  );
   buckets.forEach((bucket, index) => {
     if (bucket.kind !== 'attribute') {
       return;
     }
 
     const count = clampToInt(nextCounts[index] ?? 0);
-    if (count > 0) {
+    const isAffectedBucket = index === dividerIndex || index === dividerIndex + 1;
+    if (count > 0 || explicitZeroKeys.has(bucket.key) || isAffectedBucket) {
       nextValue[bucket.key] = count;
     }
   });
