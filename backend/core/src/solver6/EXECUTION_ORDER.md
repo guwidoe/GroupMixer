@@ -287,11 +287,14 @@ Do **not** finalize benchmark claims for solver6 impossible-case performance unt
 Epic:
 - `TODO-b01a0ea2` — EPIC: Benchmark and document solver6 impossible-case performance
 
+Normative reporting spec for this phase:
+- `backend/core/src/solver6/MATRIX_REPORTING.md`
+
 ### Sub-order inside this phase
 
-1. `TODO-ece7359d` — Add solver6 benchmark matrix for exact and impossible cases
-2. `TODO-5d7f2f73` — Report solver6 seed quality vs post-search quality
-3. `TODO-96a00da0` — Document solver6 objective, seed, and search semantics
+1. `TODO-ece7359d` — Add solver6 week-sweep benchmark artifact and frontier matrix
+2. `TODO-5d7f2f73` — Report solver6 seed quality vs post-search quality in the matrix UI
+3. `TODO-96a00da0` — Document solver6 objective, seed, search, and matrix semantics
 
 ### Why last
 
@@ -307,10 +310,12 @@ This phase should happen once:
 
 ### Required outputs to call solver6 v1 reviewable
 
-- benchmark matrix checked in
-- lower-bound-gap reporting for linear repeat excess
-- seed vs post-search reporting
-- docs aligned with actual implemented behavior
+- per-`(g,p,w)` benchmark artifact checked in or reproducibly generated
+- linear lower-bound attainment matrix over a fixed cap (initially `100` weeks)
+- parallel squared-lower-bound report layer
+- per-cell embedded `10x10` week mini-matrix
+- click-through detail analytics with seed vs post-search metrics
+- docs aligned with actual implemented behavior and report semantics
 
 ---
 
@@ -333,9 +338,9 @@ If a single linear checklist is needed, use this exact order:
 13. `TODO-b9575865` — exact/prefix tail attachment policy
 14. `TODO-93db51f8` — heuristic tail generator
 15. `TODO-2f1371d2` — compare mixed seeds against pure block duplication
-16. `TODO-ece7359d` — benchmark matrix for exact and impossible cases
-17. `TODO-5d7f2f73` — report seed quality vs post-search quality
-18. `TODO-96a00da0` — document solver6 semantics
+16. `TODO-ece7359d` — week-sweep benchmark artifact and frontier matrix
+17. `TODO-5d7f2f73` — seed-vs-search reporting in the matrix UI
+18. `TODO-96a00da0` — document solver6 semantics and matrix reporting
 
 ---
 

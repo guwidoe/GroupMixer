@@ -80,6 +80,31 @@ Planned move/search machinery:
 - breakout / diversification
 - pair-frequency telemetry
 
+## Current implemented benchmark review surface
+
+Solver6 milestone-7 review work is now anchored to the matrix-reporting workflow
+defined in:
+
+- `backend/core/src/solver6/MATRIX_REPORTING.md`
+
+That workflow is normative for performance claims about impossible pure-SGP
+cases.
+
+Current review expectations:
+
+- benchmark week sweeps explicitly up to a fixed cap (currently `100` by default)
+- treat **linear lower-bound attainment** as the primary optimality layer
+- treat **squared lower-bound attainment** as a parallel secondary layer
+- keep the week axis visible through an embedded per-cell `10x10` week matrix
+- make seed-vs-search contribution inspectable through click-through cell detail
+
+Solver6 benchmark claims should therefore be phrased in terms of:
+
+- contiguous frontier
+- best observed hit when it differs
+- exact weeks vs lower-bound-tight impossible weeks
+- explicit seed-family and local-search contribution
+
 
 ## Extension rules
 

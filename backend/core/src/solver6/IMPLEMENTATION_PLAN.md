@@ -355,16 +355,32 @@ Handle `k * w0 + r` cases where exact atoms do not tile the horizon cleanly.
 ### Goal
 Turn solver6 into an honest measured solver family instead of a promising prototype.
 
+The reporting direction for this milestone is now defined in:
+
+- `backend/core/src/solver6/MATRIX_REPORTING.md`
+
 ### Deliverables
 
 - benchmark suite for exact and impossible pure-SGP cases
-- before/after seed-vs-search comparison tables
-- lower-bound gap reporting for linear repeat excess
+- a per-`(g,p,w)` analytics artifact that records:
+  - seed metrics
+  - post-search metrics
+  - linear lower bound / gap
+  - squared lower bound / gap
+  - selected seed family
+  - execution status and runtime
+- an HTML matrix report modeled after the solver5 report, but with solver6 semantics:
+  - outer `(g,p)` matrix
+  - per-cell headline frontier label
+  - embedded `10x10` week mini-matrix for weeks `1..100`
+  - click-through enlarged detail analytics per outer cell
+  - separate linear and squared report layers
 - docs updates describing:
   - exact handoff behavior
   - impossible-case objective semantics
   - seed families
   - relabeling strategy
+  - benchmark/report semantics for contiguous frontier vs best observed hit
 
 ### Required benchmark set
 
@@ -372,9 +388,29 @@ At minimum include:
 
 - exact cells already solved by solver5
 - `8-4-20`
+- non-multiple mixed-tail cases such as `8-3-21`
 - several `(g,p,2*w0)` and `(g,p,3*w0)` cases when exact `w0` atoms exist
 - a small case where duplicated identity blocks are obviously suboptimal
 - at least one case like `6-6-3` frontier extension where unused-pair mass is large
+
+### Required report semantics
+
+The milestone is not done with a flat CSV-style benchmark dump.
+It must produce a matrix report that answers:
+
+- for each `(g,p)`, which weeks `1..100` hit the linear lower bound?
+- which of those are exact zero-repeat weeks?
+- where does squared-lower-bound attainment agree or differ?
+- how much of the final quality came from the seed vs the local search?
+
+The primary headline per outer cell should be:
+
+- contiguous frontier `F`
+- optional best observed hit `B` when `B > F`
+- `≥100` only when all tested weeks through cap `100` hit
+
+This keeps the report solver5-like at a glance while still exposing the real
+three-dimensional week-sweep behavior inside each cell.
 
 ---
 
