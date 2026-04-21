@@ -194,6 +194,9 @@ def build_cell_title(cell):
     method = cell.get("method_abbreviation")
     if method:
         parts.append(f"M={method}")
+    desired_method = cell.get("desired_method_abbreviation")
+    if desired_method and desired_method != method:
+        parts.append(f"desired family={desired_method}")
     quality = cell.get("quality_label")
     if quality:
         parts.append(f"quality={quality}")
@@ -225,9 +228,17 @@ def render_cell_glyph(cell, reference_index):
         f"<div class='{' '.join(center_classes)}'>{html.escape(cell.get('glyph_center_text', '·'))}</div>",
     ]
     if cell.get("glyph_bottom_right_text"):
+        method = cell.get("method_abbreviation")
+        desired_method = cell.get("desired_method_abbreviation")
+        method_chip_classes = ["method-chip"]
+        if desired_method is not None:
+            if method == desired_method:
+                method_chip_classes.append("method-chip-reached")
+            else:
+                method_chip_classes.append("method-chip-pending")
         glyph_parts.append(
             "<div class='method-cluster'>"
-            f"<span class='method-chip'>{html.escape(str(cell['glyph_bottom_right_text']))}</span>"
+            f"<span class='{' '.join(method_chip_classes)}'>{html.escape(str(cell['glyph_bottom_right_text']))}</span>"
             "</div>"
         )
     glyph_parts.append("</div>")
@@ -368,6 +379,8 @@ def main():
         ".center-value.faded{color:#94a3b8;font-weight:600;}"
         ".method-cluster{position:absolute;right:6px;bottom:6px;display:flex;align-items:center;justify-content:flex-end;gap:2px;}"
         ".method-chip{padding:1px 4px;border-radius:999px;font-size:8px;line-height:1.0;font-weight:700;color:#0f172a;background:rgba(255,255,255,0.82);border:1px solid rgba(15,23,42,0.12);white-space:nowrap;}"
+        ".method-chip-reached{background:rgba(187,247,208,0.95);border-color:rgba(22,163,74,0.45);color:#14532d;}"
+        ".method-chip-pending{background:rgba(254,215,170,0.95);border-color:rgba(217,119,6,0.45);color:#7c2d12;}"
         ".lit-ref{font-size:9px;line-height:1;vertical-align:super;margin-left:1px;}"
         ".lit-ref a{color:#1d4ed8;text-decoration:none;}"
         ".lit-ref a:hover{text-decoration:underline;}"
@@ -376,8 +389,8 @@ def main():
         f"<h1>{html.escape(artifact['matrix_name'])}</h1>",
         f"<p class='meta'>version {artifact['matrix_version']} · visual region g={artifact['visual_bounds']['g_min']}..{artifact['visual_bounds']['g_max']}, p={artifact['visual_bounds']['p_min']}..{artifact['visual_bounds']['p_max']} · benchmark regions {html.escape(render_benchmark_regions(benchmark_regions))}</p>",
         "<div class='legend-block'>",
-        "<div class='legend-row'><span class='legend-key'>Universal glyph grammar</span><span><code>W</code> center = current achieved weeks</span><span><code>O</code> top-left = exact optimum when known</span><span><code>T</code> top-right = primary target</span><span><code>U</code> bottom-left = upper bound</span><span><code>M</code> bottom-right = achieving method</span></div>",
-        "<div class='legend-row'><span class='legend-key'>Target sources</span><span>Canonical matrix uses roadmap <code>T</code> values.</span><span>Supplementary matrices use curated literature <code>T</code> values when available.</span><span><code>U</code> always means the counting upper bound.</span></div>",
+        "<div class='legend-row'><span class='legend-key'>Universal glyph grammar</span><span><code>W</code> center = current achieved weeks</span><span><code>O</code> top-left = exact optimum when known</span><span><code>T</code> top-right = primary target</span><span><code>U</code> bottom-left = upper bound</span><span><code>M</code> bottom-right = current method; when a desired family differs, show <code>M→D</code></span></div>",
+        "<div class='legend-row'><span class='legend-key'>Target sources</span><span>Canonical matrix uses roadmap <code>T</code> values and may also encode a desired roadmap family in the method slot.</span><span>Supplementary matrices use curated literature <code>T</code> values when available.</span><span><code>U</code> always means the counting upper bound.</span></div>",
         "<div class='legend-row'><span class='legend-key'>Fill</span>",
         render_scale_swatch("far from basis", progress_fill_color(0, 10, False)),
         render_scale_swatch("close to basis", progress_fill_color(8, 10, False)),
@@ -403,12 +416,12 @@ def main():
                     "glyph_top_left_text": "O11",
                     "glyph_top_right_text": "T10",
                     "glyph_bottom_left_text": "U13",
-                    "glyph_bottom_right_text": "RTD",
+                    "glyph_bottom_right_text": "RTD→P4",
                     "target_reference_keys": [],
                 },
                 literature_reference_index,
             ),
-            "same slots and same meanings everywhere",
+            "same slots and same meanings everywhere, including desired-family upgrades",
         ),
         render_sample(
             "Solved exact cell",

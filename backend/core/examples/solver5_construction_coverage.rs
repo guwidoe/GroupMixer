@@ -35,6 +35,7 @@ struct CellSummary {
     border_kind: String,
     target_kind: Option<String>,
     method_abbreviation: Option<String>,
+    desired_method_abbreviation: Option<String>,
     target_basis: Option<String>,
     target_reference_keys: Vec<String>,
     upper_bound_basis: Option<String>,
@@ -351,6 +352,7 @@ fn build_cell_summary(
     upper_bound_weeks: Option<usize>,
     proven_optimal_weeks: Option<usize>,
     method_abbreviation: Option<String>,
+    desired_method_abbreviation: Option<String>,
     target_kind: Option<String>,
     target_basis: Option<String>,
     target_reference_keys: Vec<String>,
@@ -407,6 +409,18 @@ fn build_cell_summary(
         "optimal_unknown".to_string()
     };
 
+    let glyph_bottom_right_text = match (
+        method_abbreviation.as_deref(),
+        desired_method_abbreviation.as_deref(),
+    ) {
+        (Some(current), Some(desired)) if current != desired => {
+            Some(format!("{current}→{desired}"))
+        }
+        (Some(current), _) => Some(current.to_string()),
+        (None, Some(desired)) => Some(format!("?→{desired}")),
+        (None, None) => None,
+    };
+
     CellSummary {
         g: groups,
         p: group_size,
@@ -420,12 +434,13 @@ fn build_cell_summary(
         glyph_top_left_text,
         glyph_top_right_text,
         glyph_bottom_left_text,
-        glyph_bottom_right_text: method_abbreviation.clone(),
+        glyph_bottom_right_text,
         fill_basis_weeks: fill_basis.0,
         fill_basis_kind: fill_basis.1,
         border_kind,
         target_kind,
         method_abbreviation,
+        desired_method_abbreviation,
         target_basis,
         target_reference_keys,
         upper_bound_basis,
@@ -491,6 +506,9 @@ fn summarize_scored_cell(
     inspection: Option<Solver5ConstructionInspection>,
 ) -> CellSummary {
     let roadmap_target_method_label = target_matrix.target_method_for(groups, group_size);
+    let desired_method_abbreviation = roadmap_target_method_label
+        .and_then(|label| target_matrix.abbreviation_for(label))
+        .map(str::to_string);
     let target_basis = roadmap_target_method_label.map(|label| {
         let abbreviation = target_matrix.abbreviation_for(label).unwrap_or(label);
         format!("Roadmap target family: {abbreviation}")
@@ -520,6 +538,7 @@ fn summarize_scored_cell(
         Some(upper_bound),
         proven_optimal_weeks,
         method_abbreviation,
+        desired_method_abbreviation,
         Some("roadmap".into()),
         target_basis,
         target_reference_keys,
@@ -604,6 +623,7 @@ fn build_supplementary_cell(
                     .to_string(),
             ),
             None,
+            None,
             literature_target_basis,
             literature_reference_keys,
             None,
@@ -640,6 +660,7 @@ fn build_supplementary_cell(
         Some(upper_bound),
         None,
         method_abbreviation,
+        None,
         Some("literature".into()),
         literature_target_basis,
         literature_reference_keys,
@@ -786,6 +807,7 @@ fn visual_only_cell(
                 .unwrap_or("VIS")
                 .to_string(),
         ),
+        None,
         None,
         None,
         Vec::new(),

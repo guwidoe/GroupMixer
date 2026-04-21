@@ -23,6 +23,7 @@ REQUIRED_CELL_FIELDS = {
     "border_kind",
     "target_kind",
     "method_abbreviation",
+    "desired_method_abbreviation",
     "target_basis",
     "target_reference_keys",
     "upper_bound_basis",
@@ -77,10 +78,19 @@ def validate_cell(cell, label):
             )
 
     method = cell.get("method_abbreviation")
+    desired_method = cell.get("desired_method_abbreviation")
     bottom_right = cell.get("glyph_bottom_right_text")
-    if method != bottom_right:
+    if method is not None and desired_method is not None and method != desired_method:
+        expected_bottom_right = f"{method}→{desired_method}"
+    elif method is not None:
+        expected_bottom_right = method
+    elif desired_method is not None:
+        expected_bottom_right = f"?→{desired_method}"
+    else:
+        expected_bottom_right = None
+    if expected_bottom_right != bottom_right:
         raise AssertionError(
-            f"{label} expected glyph_bottom_right_text to equal method_abbreviation ({method!r} vs {bottom_right!r})"
+            f"{label} expected glyph_bottom_right_text={expected_bottom_right!r}, got {bottom_right!r}"
         )
 
     visual_only = cell.get("visual_only")

@@ -140,7 +140,9 @@ Every rendered matrix cell now uses the **same glyph semantics**.
 - top-left = exact optimum `O` when known
 - top-right = primary comparison target `T`
 - bottom-left = upper bound `U`
-- bottom-right = achieving method `M`
+- bottom-right = current achieving method `M`; when the current construction is
+  still more special-case than the intended generalized family, show `M→D`
+  where `D` is the desired family target
 
 This grammar does **not** change between the canonical matrix and the
 supplementary matrices.
@@ -196,8 +198,9 @@ Why:
 
 The matrices are a **complement**, not a replacement:
 - `total_constructed_weeks` is the keep/discard gate
-- `W`, `T`, `U`, `O`, and `M` explain where progress happened and what still
-  needs work
+- `W`, `T`, `U`, `O`, and `M` explain where progress happened, and `M→D`
+  highlights where a current result is real but still needs method
+  generalization
 - the auxiliary literature-backed rows keep conservative roadmap targets from
   being mistaken for the current best-known constructive frontier
 
@@ -219,7 +222,8 @@ Current HTML cell semantics for **every** matrix:
 - top-left = exact optimum `O_g,p` when encoded
 - top-right = primary target `T_g,p`
 - bottom-left = counting upper bound `U_g,p`
-- bottom-right = current method badge `M_g,p`
+- bottom-right = current method badge `M_g,p`; when a desired roadmap family
+  differs, the report shows `M_g,p → D_g,p`
 
 Tiny superscript reference indices may be attached to `T` labels when a curated
 literature source is available for that target.
