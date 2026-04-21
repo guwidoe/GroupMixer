@@ -105,42 +105,7 @@ impl RoutingFailure {
 pub(super) fn attempt_construction(
     problem: &PureSgpProblem,
 ) -> Result<RouterDecision, RoutingFailure> {
-    let registrations = families::registered_families();
-    let mut non_candidate_attempts = Vec::new();
-    let mut candidates = Vec::new();
-
-    for (precedence, family) in registrations.iter().enumerate() {
-        match family.evaluate(problem) {
-            FamilyEvaluation::NotApplicable { reason } => {
-                non_candidate_attempts.push(FamilyAttempt {
-                    family: family.id(),
-                    status: FamilyAttemptStatus::NotApplicable { reason },
-                })
-            }
-            FamilyEvaluation::Applicable { .. } => {
-                let Some(result) = family.construct(problem) else {
-                    non_candidate_attempts.push(FamilyAttempt {
-                        family: family.id(),
-                        status: FamilyAttemptStatus::ConstructionFailed {
-                            reason: "evaluation said applicable but construction returned None",
-                        },
-                    });
-                    continue;
-                };
-                candidates.push(CandidateRecord {
-                    family: family.id(),
-                    precedence,
-                    result,
-                });
-            }
-        }
-    }
-
-    let Some(best_idx) = best_candidate_index(&candidates) else {
-        return Err(RoutingFailure {
-            attempts: non_candidate_attempts,
-        });
-    };
+    let (non_candidate_attempts, candidates, best_idx) = ranked_candidates(problem)?;
 
     let selected_family = candidates[best_idx].family;
     let mut attempts = non_candidate_attempts;
@@ -189,11 +154,65 @@ pub(super) fn attempt_construction(
     Err(RoutingFailure { attempts })
 }
 
+pub(super) fn best_available_construction(
+    problem: &PureSgpProblem,
+) -> Result<ConstructionResult, RoutingFailure> {
+    let (_, candidates, best_idx) = ranked_candidates(problem)?;
+    Ok(candidates
+        .into_iter()
+        .nth(best_idx)
+        .expect("best candidate index should refer to an existing candidate")
+        .result)
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CandidateRecord {
     family: ConstructionFamilyId,
     precedence: usize,
     result: ConstructionResult,
+}
+
+fn ranked_candidates(
+    problem: &PureSgpProblem,
+) -> Result<(Vec<FamilyAttempt>, Vec<CandidateRecord>, usize), RoutingFailure> {
+    let registrations = families::registered_families();
+    let mut non_candidate_attempts = Vec::new();
+    let mut candidates = Vec::new();
+
+    for (precedence, family) in registrations.iter().enumerate() {
+        match family.evaluate(problem) {
+            FamilyEvaluation::NotApplicable { reason } => {
+                non_candidate_attempts.push(FamilyAttempt {
+                    family: family.id(),
+                    status: FamilyAttemptStatus::NotApplicable { reason },
+                })
+            }
+            FamilyEvaluation::Applicable { .. } => {
+                let Some(result) = family.construct(problem) else {
+                    non_candidate_attempts.push(FamilyAttempt {
+                        family: family.id(),
+                        status: FamilyAttemptStatus::ConstructionFailed {
+                            reason: "evaluation said applicable but construction returned None",
+                        },
+                    });
+                    continue;
+                };
+                candidates.push(CandidateRecord {
+                    family: family.id(),
+                    precedence,
+                    result,
+                });
+            }
+        }
+    }
+
+    let Some(best_idx) = best_candidate_index(&candidates) else {
+        return Err(RoutingFailure {
+            attempts: non_candidate_attempts,
+        });
+    };
+
+    Ok((non_candidate_attempts, candidates, best_idx))
 }
 
 fn best_candidate_index(candidates: &[CandidateRecord]) -> Option<usize> {

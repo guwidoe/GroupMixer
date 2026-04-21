@@ -1,3 +1,4 @@
+mod atoms;
 mod catalog;
 mod families;
 mod handoff;

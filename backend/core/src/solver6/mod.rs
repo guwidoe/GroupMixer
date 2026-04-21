@@ -1,10 +1,14 @@
 use crate::models::{
-    ApiInput, Solver5Params, SolverConfiguration, SolverKind, SolverParams, SolverResult,
+    ApiInput, SolverConfiguration, SolverParams, SolverResult,
 };
-use crate::solver5::SearchEngine as Solver5SearchEngine;
+use crate::solver5::atoms::{
+    build_solver_result_from_atom_for_solver6_input, query_construction_atom_from_solver6_input,
+    Solver5AtomSpanRequest,
+};
 use crate::solver_support::SolverError;
 
 mod problem;
+pub mod score;
 mod scaffolding;
 
 #[cfg(test)]
@@ -54,15 +58,10 @@ impl SearchEngine {
     }
 
     fn try_solver5_exact_handoff(&self, input: &ApiInput) -> Result<SolverResult, SolverError> {
-        let mut solver5_input = input.clone();
-        solver5_input.solver = solver5_configuration_from_solver6(&self.configuration);
-        Solver5SearchEngine::new(&solver5_input.solver).solve(&solver5_input)
+        let atom = query_construction_atom_from_solver6_input(
+            input,
+            Solver5AtomSpanRequest::RequestedSpan,
+        )?;
+        build_solver_result_from_atom_for_solver6_input(input, &atom)
     }
-}
-
-fn solver5_configuration_from_solver6(configuration: &SolverConfiguration) -> SolverConfiguration {
-    let mut bridged = configuration.clone();
-    bridged.solver_type = SolverKind::Solver5.canonical_id().into();
-    bridged.solver_params = SolverParams::Solver5(Solver5Params::default());
-    bridged
 }
