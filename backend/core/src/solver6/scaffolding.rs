@@ -58,6 +58,9 @@ fn seed_strategy_label(strategy: Solver6SeedStrategy) -> &'static str {
 
 fn search_strategy_label(strategy: Solver6SearchStrategy) -> &'static str {
     match strategy {
+        Solver6SearchStrategy::DeterministicBestImprovingHillClimb => {
+            "deterministic_best_improving_hill_climb"
+        }
         Solver6SearchStrategy::ReservedRepeatAwareLocalSearch => {
             "reserved_repeat_aware_local_search"
         }

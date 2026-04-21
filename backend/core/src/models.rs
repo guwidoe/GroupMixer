@@ -1052,8 +1052,10 @@ pub enum Solver6PairRepeatPenaltyModel {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum Solver6SearchStrategy {
-    /// Reserved repeat-aware local-search phase used by the future seeded hybrid pipeline.
+    /// Deterministic best-improving same-week hill climbing.
     #[default]
+    DeterministicBestImprovingHillClimb,
+    /// Exploratory repeat-aware local search with tabu and breakout.
     ReservedRepeatAwareLocalSearch,
 }
 

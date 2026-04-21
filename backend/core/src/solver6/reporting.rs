@@ -401,7 +401,7 @@ pub fn pure_input_for_benchmark(
                 exact_construction_handoff_enabled: true,
                 seed_strategy: crate::models::Solver6SeedStrategy::Solver5ExactBlockComposition,
                 pair_repeat_penalty_model: benchmark.active_penalty_model,
-                search_strategy: crate::models::Solver6SearchStrategy::ReservedRepeatAwareLocalSearch,
+                search_strategy: crate::models::Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
             }),
             logging: Default::default(),
             telemetry: Default::default(),

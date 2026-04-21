@@ -5,12 +5,12 @@ pub(crate) mod tabu;
 
 use self::breakout::{BreakoutConfig, BreakoutRng};
 use self::delta::{
-    enumerate_same_week_swap_moves, evaluate_same_week_swap, same_week_swap_is_better,
-    EvaluatedSameWeekSwapMove,
+    enumerate_same_week_swap_moves, evaluate_same_week_swap, find_best_same_week_swap,
+    same_week_swap_is_better, EvaluatedSameWeekSwapMove,
 };
 use self::state::LocalSearchState;
 use self::tabu::{RepeatAwareTabuMemory, RepeatAwareTabuPolicy};
-use crate::models::{StopConditions, StopReason};
+use crate::models::{Solver6SearchStrategy, StopConditions, StopReason};
 use crate::solver6::problem::PureSgpProblem;
 use crate::solver_support::SolverError;
 use std::time::Instant;
@@ -68,6 +68,21 @@ impl RepeatAwareLocalSearchConfig {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct DeterministicHillClimbConfig {
+    pub max_iterations: u64,
+    pub time_limit_seconds: Option<u64>,
+}
+
+impl DeterministicHillClimbConfig {
+    pub(crate) fn for_solver_configuration(stop_conditions: &StopConditions) -> Self {
+        Self {
+            max_iterations: stop_conditions.max_iterations.unwrap_or(5_000),
+            time_limit_seconds: stop_conditions.time_limit_seconds,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RepeatAwareSearchTelemetry {
     pub initial_active_score: u64,
@@ -100,6 +115,99 @@ pub(crate) struct RepeatAwareLocalSearchOutcome {
     pub telemetry: RepeatAwareSearchTelemetry,
 }
 
+pub(crate) fn run_configured_local_search(
+    state: &mut LocalSearchState,
+    strategy: Solver6SearchStrategy,
+    stop_conditions: &StopConditions,
+    problem: &PureSgpProblem,
+    effective_seed: u64,
+) -> Result<RepeatAwareLocalSearchOutcome, SolverError> {
+    match strategy {
+        Solver6SearchStrategy::DeterministicBestImprovingHillClimb => {
+            run_deterministic_hill_climb(
+                state,
+                DeterministicHillClimbConfig::for_solver_configuration(stop_conditions),
+            )
+        }
+        Solver6SearchStrategy::ReservedRepeatAwareLocalSearch => run_repeat_aware_local_search(
+            state,
+            RepeatAwareLocalSearchConfig::for_solver_configuration(
+                stop_conditions,
+                problem,
+                effective_seed,
+            ),
+        ),
+    }
+}
+
+pub(crate) fn run_deterministic_hill_climb(
+    state: &mut LocalSearchState,
+    config: DeterministicHillClimbConfig,
+) -> Result<RepeatAwareLocalSearchOutcome, SolverError> {
+    let initial_active_score = state.current_active_score();
+    let initial_linear_repeat_excess = state.pair_state().linear_repeat_excess();
+    let initial_max_pair_frequency = state.pair_state().max_pair_frequency();
+    let initial_multiplicity_histogram = state.pair_state().multiplicity_histogram().to_vec();
+
+    if search_has_reached_known_optimum(state) {
+        return Ok(build_outcome_from_state(
+            state,
+            StopReason::OptimalScoreReached,
+            initial_active_score,
+            initial_linear_repeat_excess,
+            initial_max_pair_frequency,
+            initial_multiplicity_histogram,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ));
+    }
+
+    let start = Instant::now();
+    let mut improving_moves_accepted = 0u64;
+
+    let stop_reason = loop {
+        if state.current_iteration() >= config.max_iterations {
+            break StopReason::MaxIterationsReached;
+        }
+        if config.time_limit_seconds.is_some_and(|seconds| start.elapsed().as_secs() >= seconds) {
+            break StopReason::TimeLimitReached;
+        }
+
+        let Some(best_move) = find_best_same_week_swap(state)? else {
+            break StopReason::NoImprovementLimitReached;
+        };
+        if !best_move.improves_current() {
+            break StopReason::NoImprovementLimitReached;
+        }
+
+        state.apply_evaluated_swap(&best_move)?;
+        improving_moves_accepted += 1;
+
+        if search_has_reached_known_optimum(state) {
+            break StopReason::OptimalScoreReached;
+        }
+    };
+
+    Ok(build_outcome_from_state(
+        state,
+        stop_reason,
+        initial_active_score,
+        initial_linear_repeat_excess,
+        initial_max_pair_frequency,
+        initial_multiplicity_histogram,
+        improving_moves_accepted,
+        0,
+        0,
+        0,
+        0,
+        0,
+    ))
+}
+
 pub(crate) fn run_repeat_aware_local_search(
     state: &mut LocalSearchState,
     config: RepeatAwareLocalSearchConfig,
@@ -110,33 +218,20 @@ pub(crate) fn run_repeat_aware_local_search(
     let initial_multiplicity_histogram = state.pair_state().multiplicity_histogram().to_vec();
 
     if search_has_reached_known_optimum(state) {
-        return Ok(RepeatAwareLocalSearchOutcome {
-            best_schedule: state.best_schedule().to_vec(),
-            best_active_score: state.best_active_score(),
-            best_iteration: state.best().iteration,
-            iterations_completed: state.current_iteration(),
-            stop_reason: StopReason::OptimalScoreReached,
-            telemetry: RepeatAwareSearchTelemetry {
-                initial_active_score,
-                final_active_score: state.current_active_score(),
-                best_active_score: state.best_active_score(),
-                initial_linear_repeat_excess,
-                final_linear_repeat_excess: state.pair_state().linear_repeat_excess(),
-                best_linear_repeat_excess: state.best().pair_state.linear_repeat_excess(),
-                initial_max_pair_frequency,
-                final_max_pair_frequency: state.pair_state().max_pair_frequency(),
-                best_max_pair_frequency: state.best().pair_state.max_pair_frequency(),
-                initial_multiplicity_histogram: initial_multiplicity_histogram.clone(),
-                final_multiplicity_histogram: state.pair_state().multiplicity_histogram().to_vec(),
-                best_multiplicity_histogram: state.best().pair_state.multiplicity_histogram().to_vec(),
-                improving_moves_accepted: 0,
-                non_improving_moves_accepted: 0,
-                breakout_count: 0,
-                breakout_swaps_applied: 0,
-                tabu_pruned_candidates: 0,
-                max_stagnation_streak: 0,
-            },
-        });
+        return Ok(build_outcome_from_state(
+            state,
+            StopReason::OptimalScoreReached,
+            initial_active_score,
+            initial_linear_repeat_excess,
+            initial_max_pair_frequency,
+            initial_multiplicity_histogram,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+        ));
     }
 
     let start = Instant::now();
@@ -200,7 +295,37 @@ pub(crate) fn run_repeat_aware_local_search(
         }
     };
 
-    Ok(RepeatAwareLocalSearchOutcome {
+    Ok(build_outcome_from_state(
+        state,
+        stop_reason,
+        initial_active_score,
+        initial_linear_repeat_excess,
+        initial_max_pair_frequency,
+        initial_multiplicity_histogram,
+        improving_moves_accepted,
+        non_improving_moves_accepted,
+        breakout_count,
+        breakout_swaps_applied,
+        tabu_pruned_candidates,
+        max_stagnation_streak,
+    ))
+}
+
+fn build_outcome_from_state(
+    state: &LocalSearchState,
+    stop_reason: StopReason,
+    initial_active_score: u64,
+    initial_linear_repeat_excess: u64,
+    initial_max_pair_frequency: usize,
+    initial_multiplicity_histogram: Vec<usize>,
+    improving_moves_accepted: u64,
+    non_improving_moves_accepted: u64,
+    breakout_count: u64,
+    breakout_swaps_applied: u64,
+    tabu_pruned_candidates: u64,
+    max_stagnation_streak: u64,
+) -> RepeatAwareLocalSearchOutcome {
+    RepeatAwareLocalSearchOutcome {
         best_schedule: state.best_schedule().to_vec(),
         best_active_score: state.best_active_score(),
         best_iteration: state.best().iteration,
@@ -226,7 +351,7 @@ pub(crate) fn run_repeat_aware_local_search(
             tabu_pruned_candidates,
             max_stagnation_streak,
         },
-    })
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -272,8 +397,9 @@ fn search_has_reached_known_optimum(state: &LocalSearchState) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        breakout::BreakoutConfig, run_repeat_aware_local_search,
-        select_best_admissible_same_week_swap, RepeatAwareLocalSearchConfig,
+        breakout::BreakoutConfig, run_deterministic_hill_climb, run_repeat_aware_local_search,
+        select_best_admissible_same_week_swap, DeterministicHillClimbConfig,
+        RepeatAwareLocalSearchConfig,
     };
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
@@ -419,6 +545,35 @@ mod tests {
         assert_eq!(outcome.best_active_score, 0);
         assert_eq!(outcome.best_iteration, 1);
         assert!(outcome.telemetry.improving_moves_accepted >= 1);
+        assert_eq!(outcome.stop_reason, StopReason::OptimalScoreReached);
+        assert_eq!(state.best_active_score(), 0);
+        state.assert_matches_recompute().unwrap();
+    }
+
+    #[test]
+    fn deterministic_hill_climb_improves_a_worsened_seed() {
+        let mut state = LocalSearchState::new(
+            problem_2_2_3(),
+            worsened_2_2_3(),
+            Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
+        )
+        .unwrap();
+
+        let outcome = run_deterministic_hill_climb(
+            &mut state,
+            DeterministicHillClimbConfig {
+                max_iterations: 10,
+                time_limit_seconds: None,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(outcome.best_active_score, 0);
+        assert_eq!(outcome.best_iteration, 1);
+        assert_eq!(outcome.iterations_completed, 1);
+        assert_eq!(outcome.telemetry.improving_moves_accepted, 1);
+        assert_eq!(outcome.telemetry.breakout_count, 0);
+        assert_eq!(outcome.telemetry.non_improving_moves_accepted, 0);
         assert_eq!(outcome.stop_reason, StopReason::OptimalScoreReached);
         assert_eq!(state.best_active_score(), 0);
         state.assert_matches_recompute().unwrap();

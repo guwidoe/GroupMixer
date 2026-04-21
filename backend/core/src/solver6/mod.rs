@@ -23,13 +23,12 @@ use problem::PureSgpProblem;
 use result::build_solver_result;
 use scaffolding::ReservedExecutionPlan;
 use search::{
-    run_repeat_aware_local_search, state::LocalSearchState, RepeatAwareLocalSearchOutcome,
-    RepeatAwareLocalSearchConfig,
+    run_configured_local_search, state::LocalSearchState, RepeatAwareLocalSearchOutcome,
 };
 use seed::mixed::{build_preferred_mixed_seed, MixedSeedSelection};
 
 pub const SOLVER6_NOTES: &str =
-    "Hybrid pure-SGP repeat-minimization solver family. Solver6 combines solver5 exact constructions with deterministic exact-block relabeling, explicit mixed-tail seed selection (dominant-prefix, requested-tail atom, heuristic tail), and repeat-aware same-week local search for impossible pure-SGP cases, while still failing explicitly for unsupported seed families.";
+    "Hybrid pure-SGP repeat-minimization solver family. Solver6 combines solver5 exact constructions with deterministic exact-block relabeling, explicit mixed-tail seed selection (dominant-prefix, requested-tail atom, heuristic tail), and deterministic best-improving same-week hill climbing by default for impossible pure-SGP cases, while still failing explicitly for unsupported seed families.";
 
 #[derive(Debug, Clone)]
 struct ExecutedSolver6Run {
@@ -115,13 +114,12 @@ fn execute_solver6_run(
         selection.seed.schedule.clone(),
         params.pair_repeat_penalty_model,
     )?;
-    let outcome = run_repeat_aware_local_search(
+    let outcome = run_configured_local_search(
         &mut state,
-        RepeatAwareLocalSearchConfig::for_solver_configuration(
-            &configuration.stop_conditions,
-            &problem,
-            effective_seed,
-        ),
+        params.search_strategy,
+        &configuration.stop_conditions,
+        &problem,
+        effective_seed,
     )?;
 
     Ok(ExecutedSolver6Run {

@@ -88,7 +88,7 @@ fn solver6_exact_block_search_returns_an_impossible_case_result() {
         exact_construction_handoff_enabled: false,
         seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
         pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
-        search_strategy: Solver6SearchStrategy::ReservedRepeatAwareLocalSearch,
+        search_strategy: Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
     });
 
     let result = SearchEngine::new(&input.solver)
@@ -107,12 +107,12 @@ fn solver6_exact_block_search_supports_non_linear_objective_modes() {
         exact_construction_handoff_enabled: false,
         seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
         pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::TriangularRepeatExcess,
-        search_strategy: Solver6SearchStrategy::ReservedRepeatAwareLocalSearch,
+        search_strategy: Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
     });
 
     let result = SearchEngine::new(&input.solver)
         .solve(&input)
-        .expect("solver6 should solve through the triangular repeat-aware search path");
+        .expect("solver6 should solve through the triangular deterministic hill-climb path");
     assert_eq!(result.schedule.len(), 20);
     assert!(result.repetition_penalty > 0);
 }
@@ -126,7 +126,7 @@ fn solver6_exact_block_search_handles_non_multiple_horizons_via_mixed_seeds() {
         exact_construction_handoff_enabled: false,
         seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
         pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
-        search_strategy: Solver6SearchStrategy::ReservedRepeatAwareLocalSearch,
+        search_strategy: Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
     });
 
     let result = SearchEngine::new(&input.solver)
