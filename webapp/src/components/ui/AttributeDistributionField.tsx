@@ -246,9 +246,29 @@ export function AttributeDistributionField({
                   >
                     −
                   </button>
-                  <span className="attribute-distribution__chip-value" aria-label={`${bucket.label} count`}>
-                    {count}
-                  </span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    className="attribute-distribution__chip-input"
+                    aria-label={`${bucket.label} count`}
+                    disabled={disabled}
+                    value={String(count)}
+                    onChange={(event) => {
+                      const nextRaw = event.target.value;
+                      if (!/^\d*$/.test(nextRaw)) {
+                        return;
+                      }
+                      const rounded = nextRaw === '' ? 0 : Math.max(0, Math.round(Number(nextRaw)));
+                      const nextValue = { ...normalizedValue };
+                      if (rounded > 0) {
+                        nextValue[bucket.key] = rounded;
+                      } else {
+                        delete nextValue[bucket.key];
+                      }
+                      onChange(nextValue);
+                    }}
+                  />
                   <button
                     type="button"
                     className="attribute-distribution__stepper"

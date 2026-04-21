@@ -1005,6 +1005,24 @@
     color: var(--text-primary);
   }
 
+  .attribute-distribution__chip-input {
+    width: 2.4rem;
+    min-width: 0;
+    padding: 0.18rem 0.35rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-primary);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .attribute-distribution__chip-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+  }
+
   .attribute-distribution__stepper {
     width: 1.7rem;
     height: 1.7rem;

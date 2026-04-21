@@ -43,15 +43,15 @@ describe('AttributeBalanceModal', () => {
     render(<AttributeBalanceModal onCancel={vi.fn()} onSave={vi.fn()} />);
 
     expect(screen.getByText(/using the smallest selected-session group capacity \(2\)/i)).toBeInTheDocument();
-    expect(screen.getByLabelText('female count')).toHaveTextContent('1');
-    expect(screen.getByLabelText('male count')).toHaveTextContent('1');
+    expect(screen.getByLabelText('female count')).toHaveValue('1');
+    expect(screen.getByLabelText('male count')).toHaveValue('1');
     expect(screen.getByLabelText(/not allocated count/i)).toHaveTextContent('0');
 
     await user.click(screen.getByRole('radio', { name: /only selected sessions/i }));
     await user.click(screen.getByRole('checkbox', { name: '2' }));
 
-    expect(screen.getByLabelText('female count')).toHaveTextContent('4');
-    expect(screen.getByLabelText('male count')).toHaveTextContent('0');
+    expect(screen.getByLabelText('female count')).toHaveValue('4');
+    expect(screen.getByLabelText('male count')).toHaveValue('0');
   });
 
   it('preserves edit-mode values instead of reseeding them', () => {
@@ -72,7 +72,7 @@ describe('AttributeBalanceModal', () => {
       />,
     );
 
-    expect(screen.getByLabelText('female count')).toHaveTextContent('2');
-    expect(screen.getByLabelText('male count')).toHaveTextContent('0');
+    expect(screen.getByLabelText('female count')).toHaveValue('2');
+    expect(screen.getByLabelText('male count')).toHaveValue('0');
   });
 });
