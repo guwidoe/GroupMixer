@@ -231,12 +231,37 @@ function ScenarioEditorLoaded() {
   );
 }
 
+function DeferredScenarioEditorMount({
+  activeSection,
+  navigationSection,
+}: {
+  activeSection: ScenarioEditorSection;
+  navigationSection: ScenarioSetupSectionId;
+}) {
+  const [shouldMountController, setShouldMountController] = React.useState(false);
+
+  React.useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setShouldMountController(true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
+  if (!shouldMountController) {
+    return <ScenarioEditorShell activeSection={activeSection} navigationSection={navigationSection} />;
+  }
+
+  return <ScenarioEditorLoaded />;
+}
+
 export function ScenarioEditor() {
   const { section } = useParams<{ section: string }>();
   const navigate = useNavigate();
   const setLastScenarioSetupSection = useAppStore((state) => state.setLastScenarioSetupSection);
   const { activeSection, navigationSection } = resolveRouteSection(section);
-  const [shouldMountController, setShouldMountController] = React.useState(false);
 
   React.useEffect(() => {
     const redirectSection = getScenarioSetupLegacyRedirect(section);
@@ -249,20 +274,11 @@ export function ScenarioEditor() {
     setLastScenarioSetupSection(navigationSection);
   }, [navigationSection, setLastScenarioSetupSection]);
 
-  React.useEffect(() => {
-    setShouldMountController(false);
-    const timeoutId = window.setTimeout(() => {
-      setShouldMountController(true);
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [section]);
-
-  if (!shouldMountController) {
-    return <ScenarioEditorShell activeSection={activeSection} navigationSection={navigationSection} />;
-  }
-
-  return <ScenarioEditorLoaded />;
+  return (
+    <DeferredScenarioEditorMount
+      key={navigationSection}
+      activeSection={activeSection}
+      navigationSection={navigationSection}
+    />
+  );
 }
