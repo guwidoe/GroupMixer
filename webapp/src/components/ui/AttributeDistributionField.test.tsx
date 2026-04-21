@@ -47,13 +47,10 @@ describe('AttributeDistributionField', () => {
   });
 
   it('allows direct manual editing of chip values', async () => {
-    const user = userEvent.setup();
-
     render(<ControlledField initialValue={{ A: 2, B: 1 }} capacity={5} />);
 
     const input = screen.getByLabelText('B count');
-    await user.clear(input);
-    await user.type(input, '4');
+    fireEvent.change(input, { target: { value: '4' } });
     fireEvent.blur(input);
 
     expect(screen.getByLabelText('B count')).toHaveValue('4');
@@ -65,18 +62,16 @@ describe('AttributeDistributionField', () => {
     render(<ControlledField initialValue={{ A: 2, C: 1 }} capacity={5} />);
 
     expect(screen.queryByRole('button', { name: /adjust boundary between a and b/i })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /b not targeted/i }));
+    await user.click(screen.getByRole('button', { name: /enable target for b/i }));
 
     expect(screen.getByLabelText('B count')).toHaveValue('0');
     expect(screen.getByRole('button', { name: /adjust boundary between a and b/i })).toBeInTheDocument();
   });
 
   it('allows manual over-allocation and disables drag affordance while over capacity', async () => {
-    const user = userEvent.setup();
-
     render(<ControlledField initialValue={{ A: 2, B: 1 }} capacity={3} />);
 
-    await user.click(screen.getByRole('button', { name: /increase a/i }));
+    fireEvent.change(screen.getByLabelText('A count'), { target: { value: '3' } });
 
     expect(screen.getByText(/allocated values exceed the current capacity/i)).toBeInTheDocument();
     expect(screen.getByLabelText('A count')).toHaveValue('3');

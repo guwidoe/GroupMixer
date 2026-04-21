@@ -51,7 +51,7 @@ describe('AttributeBalanceModal', () => {
     await user.click(screen.getByRole('checkbox', { name: '2' }));
 
     expect(screen.getByLabelText('female count')).toHaveValue('4');
-    expect(screen.getByRole('button', { name: /male not targeted/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /enable target for male/i })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('preserves edit-mode values instead of reseeding them', () => {
@@ -73,7 +73,7 @@ describe('AttributeBalanceModal', () => {
     );
 
     expect(screen.getByLabelText('female count')).toHaveValue('2');
-    expect(screen.getByRole('button', { name: /male not targeted/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /enable target for male/i })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('preserves explicit zero targets when saving exact-mode constraints', async () => {

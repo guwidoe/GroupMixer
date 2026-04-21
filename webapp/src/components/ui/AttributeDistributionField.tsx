@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  adjustAttributeBucketCount,
   getBarBucketCounts,
   getDividerPositions,
   moveDistributionDivider,
@@ -12,6 +11,8 @@ import {
 } from './attributeDistribution';
 
 export type AttributeDistributionFieldVariant = 'default' | 'compact';
+
+const INLINE_LABEL_PERCENT_THRESHOLD = 24;
 
 interface ActiveDistributionDrag {
   source: 'line' | 'dot';
@@ -53,6 +54,25 @@ function getSegmentColor(index: number, bucketKind: DistributionBucket['kind']) 
   }
 
   return SEGMENT_COLORS[index % SEGMENT_COLORS.length];
+}
+
+function getSegmentTextColor(index: number, bucketKind: DistributionBucket['kind']) {
+  if (bucketKind === 'unallocated') {
+    return 'var(--text-primary)';
+  }
+
+  const textColors = [
+    '#ffffff',
+    '#062b27',
+    '#2a1800',
+    '#ffffff',
+    '#ffffff',
+    '#062b35',
+    '#1c2400',
+    '#2a1606',
+  ];
+
+  return textColors[index % textColors.length];
 }
 
 function buildCenteredClusterOffsets(positions: number[]) {
@@ -110,11 +130,44 @@ export function AttributeDistributionField({
   const dividerPositions = useMemo(() => getDividerPositions(barBucketCounts), [barBucketCounts]);
   const togglePositions = useMemo(() => getDividerPositions(allBucketCounts).slice(0, attributeBuckets.length), [allBucketCounts, attributeBuckets.length]);
   const barRef = useRef<HTMLDivElement | null>(null);
+  const editableInputRefs = useRef(new Map<string, HTMLInputElement | null>());
+  const pendingFocusKeyRef = useRef<string | null>(null);
   const [activeDrag, setActiveDrag] = useState<ActiveDistributionDrag | null>(null);
   const dragMovedRef = useRef(false);
   const dragEnabled = !disabled && summary.capacity > 0 && !summary.isOverallocated;
   const resolvedShowSummary = showSummary ?? variant === 'default';
   const resolvedShowChips = showChips ?? variant === 'default';
+  const bucketStates = useMemo(() => attributeBuckets.map((bucket, index) => {
+    const count = normalizedValue[bucket.key] ?? 0;
+    const isActive = Object.prototype.hasOwnProperty.call(normalizedValue, bucket.key);
+    const widthPercent = summary.capacity > 0 ? (count / summary.capacity) * 100 : 0;
+    const canInlineEdit = variant === 'default' && isActive && count > 0 && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD;
+
+    return {
+      bucket,
+      index,
+      count,
+      isActive,
+      color: getSegmentColor(index, bucket.kind),
+      textColor: getSegmentTextColor(index, bucket.kind),
+      widthPercent,
+      canInlineEdit,
+      showInlineLabel: canInlineEdit && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD,
+      needsLegend: !canInlineEdit || !isActive || count === 0,
+    };
+  }), [attributeBuckets, normalizedValue, summary.capacity, variant]);
+  const bucketStateByKey = useMemo(
+    () => new Map(bucketStates.map((state) => [state.bucket.key, state])),
+    [bucketStates],
+  );
+
+  const registerEditableInput = React.useCallback((key: string, node: HTMLInputElement | null) => {
+    if (node) {
+      editableInputRefs.current.set(key, node);
+    } else {
+      editableInputRefs.current.delete(key);
+    }
+  }, []);
 
   const handleClusterOffsets = useMemo(() => buildCenteredClusterOffsets(dividerPositions), [dividerPositions]);
   const toggleClusterOffsets = useMemo(() => buildCenteredClusterOffsets(togglePositions), [togglePositions]);
@@ -178,6 +231,22 @@ export function AttributeDistributionField({
     };
   }, [activeDrag, attributeBuckets, dragEnabled, normalizedValue, onChange, summary.capacity, toggleBucketActive]);
 
+  useEffect(() => {
+    const pendingFocusKey = pendingFocusKeyRef.current;
+    if (!pendingFocusKey) {
+      return;
+    }
+
+    const target = editableInputRefs.current.get(pendingFocusKey);
+    if (!target) {
+      return;
+    }
+
+    target.focus();
+    target.select();
+    pendingFocusKeyRef.current = null;
+  }, [bucketStates]);
+
   return (
     <div
       className={[
@@ -218,6 +287,7 @@ export function AttributeDistributionField({
 
                   const colorIndex = buckets.findIndex((candidate) => candidate.key === bucket.key);
                   const widthPercent = summary.capacity > 0 ? (units / summary.capacity) * 100 : 0;
+                  const bucketState = bucket.kind === 'attribute' ? bucketStateByKey.get(bucket.key) : null;
                   return (
                     <div
                       key={bucket.key}
@@ -228,10 +298,48 @@ export function AttributeDistributionField({
                       style={{
                         width: `${widthPercent}%`,
                         background: getSegmentColor(colorIndex >= 0 ? colorIndex : 0, bucket.kind),
+                        '--attribute-distribution-segment-text-color': bucketState?.textColor ?? getSegmentTextColor(colorIndex >= 0 ? colorIndex : 0, bucket.kind),
                       }}
                     >
-                      <span className="attribute-distribution__segment-label">{bucket.label}</span>
-                      <span className="attribute-distribution__segment-value">{units}</span>
+                      {bucket.kind === 'attribute' ? (
+                        bucketState?.canInlineEdit ? (
+                          <>
+                            {bucketState.showInlineLabel ? <span className="attribute-distribution__segment-label">{bucket.label}</span> : null}
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              className="attribute-distribution__segment-input"
+                              aria-label={`${bucket.label} count`}
+                              disabled={disabled}
+                              value={String(units)}
+                              ref={(node) => registerEditableInput(bucket.key, node)}
+                              onChange={(event) => {
+                                const nextRaw = event.target.value;
+                                if (!/^\d*$/.test(nextRaw)) {
+                                  return;
+                                }
+                                const rounded = nextRaw === '' ? 0 : Math.max(0, Math.round(Number(nextRaw)));
+                                const nextWillInlineEdit = variant === 'default'
+                                  && rounded > 0
+                                  && summary.capacity > 0
+                                  && ((rounded / summary.capacity) * 100) >= INLINE_LABEL_PERCENT_THRESHOLD;
+                                if (!nextWillInlineEdit) {
+                                  pendingFocusKeyRef.current = bucket.key;
+                                }
+                                onChange(setAttributeBucketCount(normalizedValue, buckets, bucket.key, rounded));
+                              }}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              onClick={(event) => event.stopPropagation()}
+                            />
+                          </>
+                        ) : null
+                      ) : (
+                        <>
+                          <span className="attribute-distribution__segment-label">{bucket.label}</span>
+                          <span className="attribute-distribution__segment-value">{units}</span>
+                        </>
+                      )}
                     </div>
                   );
                 })}
@@ -358,89 +466,50 @@ export function AttributeDistributionField({
       </div>
 
       {resolvedShowChips ? (
-        <div className="attribute-distribution__chips">
-          {attributeBuckets.map((bucket, index) => {
-            const count = normalizedValue[bucket.key] ?? 0;
-            const isActive = Object.prototype.hasOwnProperty.call(normalizedValue, bucket.key);
-            return (
-              <div
-                key={bucket.key}
-                className={[
-                  'attribute-distribution__chip',
-                  isActive ? 'attribute-distribution__chip--active' : 'attribute-distribution__chip--inactive',
-                  'attribute-distribution__chip--toggleable',
-                ].filter(Boolean).join(' ')}
-                role="button"
-                aria-pressed={isActive}
-                tabIndex={0}
-                onClick={() => toggleBucketActive(bucket)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    toggleBucketActive(bucket);
-                  }
-                }}
-              >
-                <div className="attribute-distribution__chip-heading">
-                  <span
-                    className="attribute-distribution__chip-swatch"
-                    style={{ background: getSegmentColor(index, bucket.kind) }}
-                    aria-hidden="true"
-                  />
-                  <span className="attribute-distribution__chip-label">{bucket.label}</span>
-                </div>
-
-                {isActive ? (
-                  <div className="attribute-distribution__chip-controls" onClick={(event) => event.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="attribute-distribution__stepper"
-                      disabled={disabled || count <= 0}
-                      aria-label={`Decrease ${bucket.label}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onChange(adjustAttributeBucketCount(normalizedValue, buckets, bucket.key, -1));
-                      }}
-                    >
-                      −
-                    </button>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      className="attribute-distribution__chip-input"
-                      aria-label={`${bucket.label} count`}
-                      disabled={disabled}
-                      value={String(count)}
-                      onChange={(event) => {
-                        const nextRaw = event.target.value;
-                        if (!/^\d*$/.test(nextRaw)) {
-                          return;
-                        }
-                        const rounded = nextRaw === '' ? 0 : Math.max(0, Math.round(Number(nextRaw)));
-                        onChange(setAttributeBucketCount(normalizedValue, buckets, bucket.key, rounded));
-                      }}
-                      onClick={(event) => event.stopPropagation()}
-                    />
-                    <button
-                      type="button"
-                      className="attribute-distribution__stepper"
-                      disabled={disabled}
-                      aria-label={`Increase ${bucket.label}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onChange(adjustAttributeBucketCount(normalizedValue, buckets, bucket.key, 1));
-                      }}
-                    >
-                      +
-                    </button>
-                  </div>
-                ) : (
-                  <div className="attribute-distribution__chip-inactive-note">Not targeted</div>
-                )}
-              </div>
-            );
-          })}
+        <div className="attribute-distribution__support-legend">
+          {bucketStates.filter((state) => state.needsLegend).map((state) => (
+            <div
+              key={state.bucket.key}
+              className={[
+                'attribute-distribution__support-item',
+                state.isActive ? 'attribute-distribution__support-item--active' : 'attribute-distribution__support-item--inactive',
+              ].filter(Boolean).join(' ')}
+            >
+              <span
+                className="attribute-distribution__support-swatch"
+                style={{ background: state.color }}
+                aria-hidden="true"
+              />
+              <span className="attribute-distribution__support-label">{state.bucket.label}</span>
+              {state.isActive ? (
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  className="attribute-distribution__support-input"
+                  aria-label={`${state.bucket.label} count`}
+                  disabled={disabled}
+                  value={String(state.count)}
+                  ref={(node) => registerEditableInput(state.bucket.key, node)}
+                  onChange={(event) => {
+                    const nextRaw = event.target.value;
+                    if (!/^\d*$/.test(nextRaw)) {
+                      return;
+                    }
+                    const rounded = nextRaw === '' ? 0 : Math.max(0, Math.round(Number(nextRaw)));
+                    const nextWillInlineEdit = variant === 'default'
+                      && rounded > 0
+                      && summary.capacity > 0
+                      && ((rounded / summary.capacity) * 100) >= INLINE_LABEL_PERCENT_THRESHOLD;
+                    if (nextWillInlineEdit) {
+                      pendingFocusKeyRef.current = state.bucket.key;
+                    }
+                    onChange(setAttributeBucketCount(normalizedValue, buckets, state.bucket.key, rounded));
+                  }}
+                />
+              ) : null}
+            </div>
+          ))}
         </div>
       ) : null}
 
