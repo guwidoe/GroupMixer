@@ -10,6 +10,7 @@ use crate::solver_support::SolverError;
 mod problem;
 pub mod score;
 mod scaffolding;
+mod search;
 mod seed;
 
 #[cfg(test)]

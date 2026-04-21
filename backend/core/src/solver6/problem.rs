@@ -1,7 +1,7 @@
 use crate::models::{ApiInput, Constraint, Objective, RepeatEncounterParams, SolverKind};
 use crate::solver_support::SolverError;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct PureSgpProblem {
     pub(super) num_groups: usize,
     pub(super) group_size: usize,
