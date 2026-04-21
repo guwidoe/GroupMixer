@@ -384,6 +384,9 @@ impl CellResolver<'_> {
         let method_preference = resolve_method_preference(
             method_abbreviation.as_deref(),
             target.desired_method_abbreviation.as_deref(),
+            groups,
+            group_size,
+            target.basis.as_deref(),
         );
 
         build_cell_summary(
@@ -497,9 +500,66 @@ fn approved_method_upgrade(current: &str, desired: &str) -> Option<(&'static str
     }
 }
 
+fn inferred_basis_family_abbreviation(
+    groups: usize,
+    group_size: usize,
+    basis: Option<&str>,
+) -> Option<&'static str> {
+    let basis = basis?;
+    if basis.contains("round-robin") || basis.contains("1-factorization") {
+        Some("RR")
+    } else if basis.contains("NKTS$(") || basis.contains("KP(") {
+        Some("NKTS")
+    } else if basis.contains("KTS$(") || basis.contains("Kirkman") {
+        Some("KTS")
+    } else if basis.contains("RGDD$(") && group_size == 4 {
+        Some("P4")
+    } else if basis.contains("ownSG$(") {
+        Some("ownSG")
+    } else if basis.contains("RITD") {
+        Some("RITD")
+    } else if basis.contains("MOLRs$(") || basis.contains("MOLR lower bound") {
+        Some("MOLR")
+    } else if basis.contains("RTD$(") || basis.contains("RTD lower bound") {
+        Some("RTD")
+    } else if basis.contains("RBIBD$(") {
+        if groups == group_size && basis.contains("affine plane") {
+            Some("AP")
+        } else {
+            Some("RBIBD")
+        }
+    } else if basis.contains("affine plane") {
+        Some("AP")
+    } else {
+        None
+    }
+}
+
+fn method_matches_basis_family(
+    current_method_abbreviation: &str,
+    basis_family_abbreviation: &str,
+    groups: usize,
+    group_size: usize,
+) -> bool {
+    current_method_abbreviation == basis_family_abbreviation
+        || (basis_family_abbreviation == "KTS" && current_method_abbreviation.starts_with("KTS"))
+        || (basis_family_abbreviation == "AP"
+            && current_method_abbreviation == "AP"
+            && groups == group_size)
+        || (basis_family_abbreviation == "RBIBD"
+            && groups == group_size
+            && current_method_abbreviation == "AP")
+        || (basis_family_abbreviation == "RBIBD"
+            && group_size == 4
+            && current_method_abbreviation == "P4")
+}
+
 fn resolve_method_preference(
     current_method_abbreviation: Option<&str>,
     desired_method_abbreviation: Option<&str>,
+    groups: usize,
+    group_size: usize,
+    basis: Option<&str>,
 ) -> MethodPreference {
     match (current_method_abbreviation, desired_method_abbreviation) {
         (Some(current), Some(desired)) if current == desired => MethodPreference {
@@ -526,7 +586,14 @@ fn resolve_method_preference(
             }
         }
         (Some(_current), None) => MethodPreference {
-            policy_status: "unresolved".to_string(),
+            policy_status: if inferred_basis_family_abbreviation(groups, group_size, basis)
+                .is_some_and(|basis_family| {
+                    method_matches_basis_family(_current, basis_family, groups, group_size)
+                }) {
+                "accepted".to_string()
+            } else {
+                "unresolved".to_string()
+            },
             desired_method_abbreviation: None,
             reason_code: None,
             reason: None,

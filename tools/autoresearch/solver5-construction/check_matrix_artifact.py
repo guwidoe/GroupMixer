@@ -39,6 +39,49 @@ REQUIRED_CELL_FIELDS = {
 }
 
 
+def inferred_basis_family(cell):
+    basis = cell.get("target_basis")
+    if not basis:
+        return None
+    g = cell["g"]
+    p = cell["p"]
+    if "round-robin" in basis or "1-factorization" in basis:
+        return "RR"
+    if "NKTS$(" in basis or "KP(" in basis:
+        return "NKTS"
+    if "KTS$(" in basis or "Kirkman" in basis:
+        return "KTS"
+    if "RGDD$(" in basis and p == 4:
+        return "P4"
+    if "ownSG$(" in basis:
+        return "ownSG"
+    if "RITD" in basis:
+        return "RITD"
+    if "MOLRs$(" in basis or "MOLR lower bound" in basis:
+        return "MOLR"
+    if "RTD$(" in basis or "RTD lower bound" in basis:
+        return "RTD"
+    if "RBIBD$(" in basis:
+        if g == p and "affine plane" in basis:
+            return "AP"
+        return "RBIBD"
+    if "affine plane" in basis:
+        return "AP"
+    return None
+
+
+def method_matches_basis_family(method, basis_family, cell):
+    g = cell["g"]
+    p = cell["p"]
+    return (
+        method == basis_family
+        or (basis_family == "KTS" and method.startswith("KTS"))
+        or (basis_family == "AP" and method == "AP" and g == p)
+        or (basis_family == "RBIBD" and g == p and method == "AP")
+        or (basis_family == "RBIBD" and p == 4 and method == "P4")
+    )
+
+
 def validate_cell(cell, label):
     missing = REQUIRED_CELL_FIELDS - set(cell.keys())
     if missing:
@@ -104,7 +147,11 @@ def validate_cell(cell, label):
             )
         expected_bottom_right = f"{method}→{desired_method}"
     elif method is not None:
-        expected_status = "accepted" if desired_method == method else "unresolved"
+        basis_family = inferred_basis_family(cell)
+        expected_status = "accepted" if (
+            desired_method == method
+            or (basis_family is not None and method_matches_basis_family(method, basis_family, cell))
+        ) else "unresolved"
         if method_policy_status != expected_status:
             raise AssertionError(
                 f"{label} expected method_policy_status={expected_status!r}, got {method_policy_status!r}"
