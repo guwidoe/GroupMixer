@@ -196,7 +196,14 @@ def build_cell_title(cell):
         parts.append(f"M={method}")
     desired_method = cell.get("desired_method_abbreviation")
     if desired_method and desired_method != method:
-        parts.append(f"desired family={desired_method}")
+        parts.append(f"preferred family={desired_method}")
+    preference_reason = cell.get("method_preference_reason")
+    preference_reason_code = cell.get("method_preference_reason_code")
+    if preference_reason:
+        if preference_reason_code:
+            parts.append(f"method upgrade [{preference_reason_code}]={preference_reason}")
+        else:
+            parts.append(f"method upgrade={preference_reason}")
     quality = cell.get("quality_label")
     if quality:
         parts.append(f"quality={quality}")
@@ -230,11 +237,12 @@ def render_cell_glyph(cell, reference_index):
     if cell.get("glyph_bottom_right_text"):
         method = cell.get("method_abbreviation")
         desired_method = cell.get("desired_method_abbreviation")
+        preference_reason = cell.get("method_preference_reason")
         method_chip_classes = ["method-chip"]
         if desired_method is not None:
             if method == desired_method:
                 method_chip_classes.append("method-chip-reached")
-            else:
+            elif preference_reason:
                 method_chip_classes.append("method-chip-pending")
         glyph_parts.append(
             "<div class='method-cluster'>"

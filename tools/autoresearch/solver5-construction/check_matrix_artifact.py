@@ -24,6 +24,8 @@ REQUIRED_CELL_FIELDS = {
     "target_kind",
     "method_abbreviation",
     "desired_method_abbreviation",
+    "method_preference_reason_code",
+    "method_preference_reason",
     "target_basis",
     "target_reference_keys",
     "upper_bound_basis",
@@ -79,15 +81,27 @@ def validate_cell(cell, label):
 
     method = cell.get("method_abbreviation")
     desired_method = cell.get("desired_method_abbreviation")
+    preference_reason_code = cell.get("method_preference_reason_code")
+    preference_reason = cell.get("method_preference_reason")
     bottom_right = cell.get("glyph_bottom_right_text")
     if method is not None and desired_method is not None and method != desired_method:
+        if not preference_reason_code or not preference_reason:
+            raise AssertionError(
+                f"{label} must provide a method preference reason for trusted upgrades"
+            )
         expected_bottom_right = f"{method}→{desired_method}"
     elif method is not None:
         expected_bottom_right = method
-    elif desired_method is not None:
-        expected_bottom_right = f"?→{desired_method}"
     else:
         expected_bottom_right = None
+    if desired_method == method and (preference_reason_code is not None or preference_reason is not None):
+        raise AssertionError(
+            f"{label} should not attach a preference reason when current method already matches desired method"
+        )
+    if desired_method is None and (preference_reason_code is not None or preference_reason is not None):
+        raise AssertionError(
+            f"{label} cannot attach a preference reason without an explicit desired method"
+        )
     if expected_bottom_right != bottom_right:
         raise AssertionError(
             f"{label} expected glyph_bottom_right_text={expected_bottom_right!r}, got {bottom_right!r}"

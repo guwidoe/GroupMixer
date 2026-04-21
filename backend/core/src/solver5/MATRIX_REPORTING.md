@@ -145,8 +145,8 @@ Every rendered matrix cell now uses the **same glyph semantics**.
 - top-right = primary comparison target `T`
 - bottom-left = upper bound `U`
 - bottom-right = current achieving method `M`; when the current construction is
-  still more special-case than the intended generalized family, show `M→D`
-  where `D` is the desired family target
+  still more special-case than an **explicitly policy-approved** preferred
+  family, show `M→D` where `D` is that preferred family target
 
 This grammar does **not** change between matrix views.
 
@@ -162,6 +162,23 @@ the attached references:
 - all matrices: `O` is shown only when an exact optimum is actually encoded
 
 The report must not switch corner meanings by matrix type.
+
+## Method-arrow trust policy
+
+Method arrows are intentionally strict.
+
+The report may show `M→D` only when all of the following are true:
+
+- `M` is the currently achieving method
+- `D` is an explicitly encoded preferred family target
+- the upgrade from `M` to `D` is approved by a stable policy rule
+- the cell carries an explicit reason code / reason text for that upgrade
+
+The report must **not** create arrows just because a literature basis string
+mentions another family name.
+
+If the current method is acceptable, equivalent in presentation, or there is no
+explicit upgrade policy yet, the chip must show only `M`.
 
 ## Fill and border semantics
 
@@ -226,7 +243,8 @@ Current HTML cell semantics for **every** matrix:
 - top-right = primary target `T_g,p`
 - bottom-left = counting upper bound `U_g,p`
 - bottom-right = current method badge `M_g,p`; when a desired roadmap family
-  differs, the report shows `M_g,p → D_g,p`
+  differs under an explicit policy-approved method upgrade, the report shows
+  `M_g,p → D_g,p`
 
 Tiny superscript reference indices may be attached to `T` labels when a curated
 literature source is available for that target.
@@ -250,6 +268,8 @@ The HTML also includes:
 - a literature-reference table for superscripted target citations
 - tooltip/detail text carrying target basis, upper-bound basis, and known
   constructive lower-bound context when available
+- tooltip/detail text carrying explicit method-upgrade reasons when an arrow is
+  shown
 
 ## Editing workflow
 

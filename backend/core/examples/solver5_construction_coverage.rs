@@ -36,6 +36,8 @@ struct CellSummary {
     target_kind: Option<String>,
     method_abbreviation: Option<String>,
     desired_method_abbreviation: Option<String>,
+    method_preference_reason_code: Option<String>,
+    method_preference_reason: Option<String>,
     target_basis: Option<String>,
     target_reference_keys: Vec<String>,
     upper_bound_basis: Option<String>,
@@ -312,11 +314,9 @@ impl CellKnowledgeLayer<'_> {
         } else {
             Vec::new()
         };
-        let desired_method_abbreviation =
-            infer_desired_method_from_basis(groups, group_size, basis.as_deref());
         TargetInfo {
             weeks,
-            desired_method_abbreviation,
+            desired_method_abbreviation: None,
             kind: Some("literature".into()),
             basis,
             reference_keys,
@@ -380,11 +380,9 @@ impl CellResolver<'_> {
                 )
             })
             .unwrap_or((None, Vec::new(), None));
-        let desired_method_abbreviation = finalize_desired_method_abbreviation(
+        let method_preference = resolve_method_preference(
             method_abbreviation.as_deref(),
             target.desired_method_abbreviation.as_deref(),
-            target.weeks,
-            constructed_weeks,
         );
 
         build_cell_summary(
@@ -399,7 +397,9 @@ impl CellResolver<'_> {
             Some(upper_bound),
             proven_optimal_weeks,
             method_abbreviation,
-            desired_method_abbreviation,
+            method_preference.desired_method_abbreviation,
+            method_preference.reason_code,
+            method_preference.reason,
             target.kind,
             target.basis,
             target.reference_keys,
@@ -442,6 +442,8 @@ impl CellResolver<'_> {
             None,
             None,
             None,
+            None,
+            None,
             Vec::new(),
             None,
             None,
@@ -463,69 +465,65 @@ struct TargetInfo {
     reference_keys: Vec<String>,
 }
 
-fn infer_desired_method_from_basis(
-    groups: usize,
-    group_size: usize,
-    basis: Option<&str>,
-) -> Option<String> {
-    let basis = basis?;
-    let desired = if basis.contains("round-robin") || basis.contains("1-factorization") {
-        "RR"
-    } else if basis.contains("NKTS$(") || basis.contains("KP(") {
-        "NKTS"
-    } else if basis.contains("KTS$(") || basis.contains("Kirkman") {
-        if group_size == 3 && groups % 2 == 1 {
-            "KTS"
-        } else {
-            "KTS"
-        }
-    } else if basis.contains("RGDD$(") && group_size == 4 {
-        "P4"
-    } else if basis.contains("ownSG$(") {
-        "ownSG"
-    } else if basis.contains("RITD") {
-        "RITD"
-    } else if basis.contains("MOLRs$(") || basis.contains("MOLR lower bound") {
-        "MOLR"
-    } else if basis.contains("RTD$(") || basis.contains("RTD lower bound") {
-        "RTD"
-    } else if basis.contains("RBIBD$(") {
-        if groups == group_size && basis.contains("Exact diagonal prime-power") {
-            "AP"
-        } else {
-            "RBIBD"
-        }
-    } else if basis.contains("affine plane") {
-        "AP"
-    } else {
-        return None;
-    };
-
-    Some(desired.into())
+struct MethodPreference {
+    desired_method_abbreviation: Option<String>,
+    reason_code: Option<String>,
+    reason: Option<String>,
 }
 
-fn finalize_desired_method_abbreviation(
+fn approved_method_upgrade(current: &str, desired: &str) -> Option<(&'static str, &'static str)> {
+    match (current, desired) {
+        ("PSB", "P4") => Some((
+            "instance_bank_to_general_family",
+            "replace the published schedule bank with the reusable p=4 family",
+        )),
+        ("RTD+G", "KTS") => Some((
+            "composite_to_direct_family",
+            "replace the grouped transversal extension with the direct Kirkman triple-system family",
+        )),
+        ("RTD", "P4") => Some((
+            "transversal_to_dedicated_p4_family",
+            "replace the transversal-derived construction with the dedicated p=4 family",
+        )),
+        ("AP", "P4") => Some((
+            "diagonal_to_dedicated_p4_family",
+            "prefer the dedicated p=4 family over the diagonal affine-plane-only realization",
+        )),
+        _ => None,
+    }
+}
+
+fn resolve_method_preference(
     current_method_abbreviation: Option<&str>,
     desired_method_abbreviation: Option<&str>,
-    target_weeks: Option<usize>,
-    constructed_weeks: usize,
-) -> Option<String> {
-    if let Some(desired) = desired_method_abbreviation {
-        return Some(desired.to_string());
-    }
-
-    if let Some(current) = current_method_abbreviation {
-        if target_weeks.is_some_and(|target| target == constructed_weeks) {
-            return Some(current.to_string());
+) -> MethodPreference {
+    match (current_method_abbreviation, desired_method_abbreviation) {
+        (Some(current), Some(desired)) if current == desired => MethodPreference {
+            desired_method_abbreviation: Some(desired.to_string()),
+            reason_code: None,
+            reason: None,
+        },
+        (Some(current), Some(desired)) => {
+            if let Some((reason_code, reason)) = approved_method_upgrade(current, desired) {
+                MethodPreference {
+                    desired_method_abbreviation: Some(desired.to_string()),
+                    reason_code: Some(reason_code.to_string()),
+                    reason: Some(reason.to_string()),
+                }
+            } else {
+                MethodPreference {
+                    desired_method_abbreviation: None,
+                    reason_code: None,
+                    reason: None,
+                }
+            }
         }
-        return Some("?".into());
+        _ => MethodPreference {
+            desired_method_abbreviation: None,
+            reason_code: None,
+            reason: None,
+        },
     }
-
-    if target_weeks.is_some() {
-        return Some("?".into());
-    }
-
-    None
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -568,6 +566,8 @@ fn build_cell_summary(
     proven_optimal_weeks: Option<usize>,
     method_abbreviation: Option<String>,
     desired_method_abbreviation: Option<String>,
+    method_preference_reason_code: Option<String>,
+    method_preference_reason: Option<String>,
     target_kind: Option<String>,
     target_basis: Option<String>,
     target_reference_keys: Vec<String>,
@@ -632,8 +632,7 @@ fn build_cell_summary(
             Some(format!("{current}→{desired}"))
         }
         (Some(current), _) => Some(current.to_string()),
-        (None, Some(desired)) => Some(format!("?→{desired}")),
-        (None, None) => None,
+        _ => None,
     };
 
     CellSummary {
@@ -656,6 +655,8 @@ fn build_cell_summary(
         target_kind,
         method_abbreviation,
         desired_method_abbreviation,
+        method_preference_reason_code,
+        method_preference_reason,
         target_basis,
         target_reference_keys,
         upper_bound_basis,
