@@ -3,6 +3,8 @@ export const SUPPORTED_LOCALES = ['en', 'de', 'es', 'fr', 'ja', 'hi', 'zh'] as c
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 export type ToolPagePreset = 'random' | 'balanced' | 'networking';
+export type ToolPageMode = 'quick-randomizer' | 'constraint-optimizer' | 'multi-round' | 'social-golfer';
+export type ToolPageSectionSet = 'standard' | 'technical';
 
 export type ToolPageKey =
   | 'home'
@@ -15,7 +17,11 @@ export type ToolPageKey =
   | 'student-group-generator'
   | 'icebreaker-group-generator'
   | 'speed-networking-generator'
-  | 'group-generator-with-constraints';
+  | 'group-generator-with-constraints'
+  | 'multi-round-group-assignment-tool'
+  | 'group-assignment-optimizer'
+  | 'social-golfer-problem-solver'
+  | 'constraint-based-team-generator';
 
 export interface ToolPageFaqEntry {
   question: string;
@@ -162,10 +168,24 @@ export interface ToolPageInventoryConfig {
   rolloutStage: 'live' | 'next' | 'backlog';
 }
 
+export interface ToolPageQuickSetupDefaults {
+  inputMode: 'names' | 'csv';
+  groupingMode: 'groupCount' | 'groupSize';
+  groupingValue: number;
+  sessions: number;
+  advancedOpen: boolean;
+  balanceAttributeKey: string | null;
+  keepTogetherInput: string;
+  avoidPairingsInput: string;
+}
+
 export interface ToolPageDefinition {
   key: ToolPageKey;
   slug: string;
+  mode: ToolPageMode;
+  sectionSet: ToolPageSectionSet;
   defaultPreset: ToolPagePreset;
+  quickSetupDefaults: ToolPageQuickSetupDefaults;
   liveLocales: SupportedLocale[];
   experiment: ToolPageExperimentConfig;
   inventory: ToolPageInventoryConfig;

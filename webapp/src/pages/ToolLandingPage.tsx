@@ -229,20 +229,16 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     navigateToAdvancedWorkspace(target);
   };
 
-  const { draft, participantCount, estimatedGroupCount, estimatedGroupSize, updateDraft } = controller;
+  const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
   const displayedGroupCount = Math.max(1, estimatedGroupCount);
   const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
   const heroOrderClass = controller.result ? 'order-3 lg:order-1' : 'order-2 lg:order-1';
-
-  useEffect(() => {
-    if (draft.inputMode !== 'names') {
-      updateDraft((current) => ({
-        ...current,
-        inputMode: 'names',
-        balanceAttributeKey: null,
-      }));
-    }
-  }, [draft.inputMode, updateDraft]);
+  const useCasesGridClassName = config.sectionSet === 'technical'
+    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3'
+    : 'mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+  const advancedGridClassName = config.sectionSet === 'technical'
+    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4'
+    : 'mt-8 grid gap-4 sm:grid-cols-2';
 
   const resultsSection = controller.result ? (
     <div
@@ -587,7 +583,21 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                   <label htmlFor="participantInput" className="text-sm font-medium">
                     {ui.quickSetup.participantsLabel}
                   </label>
-                  <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                  <div className="flex flex-wrap items-center justify-end gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                    <button
+                      type="button"
+                      className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
+                      style={{ borderColor: 'var(--border-primary)' }}
+                      onClick={() =>
+                        controller.updateDraft((current) => ({
+                          ...current,
+                          inputMode: current.inputMode === 'csv' ? 'names' : 'csv',
+                          balanceAttributeKey: null,
+                        }))
+                      }
+                    >
+                      {draft.inputMode === 'csv' ? ui.quickSetup.switchToNamesLabel : ui.quickSetup.switchToCsvLabel}
+                    </button>
                     <button
                       type="button"
                       className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
@@ -612,7 +622,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                   onChange={(event) =>
                     controller.updateDraft((current) => ({ ...current, participantInput: event.target.value }))
                   }
-                  placeholder={ui.quickSetup.namesPlaceholder}
+                  placeholder={draft.inputMode === 'csv' ? ui.quickSetup.csvPlaceholder : ui.quickSetup.namesPlaceholder}
                   className="min-h-[130px] w-full rounded-xl border px-3 py-2.5 text-sm leading-relaxed outline-none transition-shadow focus:ring-2"
                   style={{
                     borderColor: 'var(--border-primary)',
@@ -722,7 +732,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               {config.useCasesSection.description}
             </p>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={useCasesGridClassName}>
               {config.useCasesSection.cards.map((item) => (
                 <div key={item.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
                   <h3 className="text-base font-semibold">{item.title}</h3>
@@ -742,7 +752,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               {config.advancedSection.description}
             </p>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className={advancedGridClassName}>
               {config.advancedSection.cards.map((item) => (
                 <div key={item.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
                   <h3 className="text-base font-semibold">{item.title}</h3>

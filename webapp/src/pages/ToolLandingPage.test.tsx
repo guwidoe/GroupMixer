@@ -474,6 +474,27 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getAllByRole('button', { name: /open scenario editor/i })[0]).toHaveClass('btn-primary');
   }, 10000);
 
+  it('uses explicit technical-page defaults without involving localized behavior', () => {
+    const config = getToolPageConfig('group-assignment-optimizer', 'en');
+
+    expect(config.mode).toBe('constraint-optimizer');
+    expect(config.sectionSet).toBe('technical');
+    expect(config.liveLocales).toEqual(['en']);
+    expect(() => getToolPageConfig('group-assignment-optimizer', 'de')).toThrow(/not live for locale de/);
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="group-assignment-optimizer" locale="en" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Group Assignment Optimizer' })).toBeInTheDocument();
+    expect((screen.getByLabelText(/participants/i) as HTMLTextAreaElement).value).toContain('name,team,role');
+    expect(screen.getByRole('button', { name: /switch to names/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/balance groups by attribute/i)).toHaveValue('role');
+    expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();
+  });
+
   it('stacks the generator above the hero content on mobile while preserving desktop order classes', () => {
     render(
       <MemoryRouter>

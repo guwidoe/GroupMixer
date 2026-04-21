@@ -20,10 +20,13 @@ import {
   type ToolPageInventoryConfig,
   type ToolPageKey,
   type ToolPageLocalizedContent,
+  type ToolPageMode,
   type ToolPageOptimizerCtaContent,
   type ToolPagePreset,
+  type ToolPageQuickSetupDefaults,
   type ToolPageRouteEntry,
   type ToolPageSectionContent,
+  type ToolPageSectionSet,
   type ToolPageSeoContent,
 } from './toolPageTypes';
 import { TOOL_PAGE_DEFINITIONS_DATA } from './toolPageConfigs.data.mjs';
@@ -81,6 +84,66 @@ function assertPreset(value: unknown, path: string): ToolPagePreset {
   }
 
   failConfig(`${path} must be one of random, balanced, or networking.`);
+}
+
+function assertMode(value: unknown, path: string): ToolPageMode {
+  if (value === 'quick-randomizer' || value === 'constraint-optimizer' || value === 'multi-round' || value === 'social-golfer') {
+    return value;
+  }
+
+  failConfig(`${path} must be one of quick-randomizer, constraint-optimizer, multi-round, or social-golfer.`);
+}
+
+function assertSectionSet(value: unknown, path: string): ToolPageSectionSet {
+  if (value === 'standard' || value === 'technical') {
+    return value;
+  }
+
+  failConfig(`${path} must be "standard" or "technical".`);
+}
+
+function assertQuickSetupDefaults(value: unknown, path: string): ToolPageQuickSetupDefaults {
+  if (typeof value !== 'object' || value === null) {
+    failConfig(`${path} must be an object.`);
+  }
+
+  const record = value as Record<string, unknown>;
+  const inputMode = record.inputMode;
+  const groupingMode = record.groupingMode;
+  const groupingValue = record.groupingValue;
+  const sessions = record.sessions;
+  const advancedOpen = record.advancedOpen;
+  const balanceAttributeKey = record.balanceAttributeKey;
+
+  if (inputMode !== 'names' && inputMode !== 'csv') {
+    failConfig(`${path}.inputMode must be "names" or "csv".`);
+  }
+  if (groupingMode !== 'groupCount' && groupingMode !== 'groupSize') {
+    failConfig(`${path}.groupingMode must be "groupCount" or "groupSize".`);
+  }
+  if (typeof groupingValue !== 'number' || !Number.isInteger(groupingValue) || groupingValue < 1) {
+    failConfig(`${path}.groupingValue must be a positive integer.`);
+  }
+  if (typeof sessions !== 'number' || !Number.isInteger(sessions) || sessions < 1) {
+    failConfig(`${path}.sessions must be a positive integer.`);
+  }
+  if (typeof advancedOpen !== 'boolean') {
+    failConfig(`${path}.advancedOpen must be a boolean.`);
+  }
+  if (balanceAttributeKey !== null && typeof balanceAttributeKey !== 'string') {
+    failConfig(`${path}.balanceAttributeKey must be a string or null.`);
+  }
+
+  return {
+    inputMode,
+    groupingMode,
+    groupingValue,
+    sessions,
+    advancedOpen,
+    balanceAttributeKey,
+    keepTogetherInput: assertString(record.keepTogetherInput, `${path}.keepTogetherInput`),
+    avoidPairingsInput: assertString(record.avoidPairingsInput, `${path}.avoidPairingsInput`),
+  };
 }
 
 function assertPriority(value: unknown, path: string): ToolPageInventoryConfig['priority'] {
@@ -271,7 +334,10 @@ function validateDefinition(key: ToolPageKey, value: unknown): ToolPageDefinitio
   const definition: ToolPageDefinition = {
     key,
     slug: key === 'home' ? '' : assertNonEmptyString(record.slug, `${key}.slug`),
+    mode: assertMode(record.mode, `${key}.mode`),
+    sectionSet: assertSectionSet(record.sectionSet, `${key}.sectionSet`),
     defaultPreset: assertPreset(record.defaultPreset, `${key}.defaultPreset`),
+    quickSetupDefaults: assertQuickSetupDefaults(record.quickSetupDefaults, `${key}.quickSetupDefaults`),
     liveLocales: assertLocaleList(record.liveLocales, `${key}.liveLocales`),
     experiment: {
       label: assertNonEmptyString((experiment as { label?: unknown }).label, `${key}.experiment.label`),
@@ -396,9 +462,11 @@ for (const route of TOOL_PAGE_ROUTES) {
   seenCanonicalPaths.add(route.path);
 }
 
-export const TOOL_PAGE_INVENTORY = Object.values(TOOL_PAGE_DEFINITIONS).map(({ key, slug, inventory, experiment, liveLocales }) => ({
+export const TOOL_PAGE_INVENTORY = Object.values(TOOL_PAGE_DEFINITIONS).map(({ key, slug, mode, sectionSet, inventory, experiment, liveLocales }) => ({
   key,
   slug,
+  mode,
+  sectionSet,
   liveLocales,
   ...inventory,
   experimentLabel: experiment.label,

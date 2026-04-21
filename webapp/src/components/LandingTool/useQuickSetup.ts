@@ -52,17 +52,20 @@ export interface QuickSetupController {
 }
 
 function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
+  const defaults = pageConfig.quickSetupDefaults;
   return {
-    participantInput: getLandingSampleNamesText(pageConfig.locale),
-    groupingMode: 'groupCount',
-    groupingValue: 4,
-    sessions: pageConfig.defaultPreset === 'networking' ? 3 : 1,
+    participantInput: defaults.inputMode === 'csv'
+      ? getLandingSampleCsvText(pageConfig.locale)
+      : getLandingSampleNamesText(pageConfig.locale),
+    groupingMode: defaults.groupingMode,
+    groupingValue: defaults.groupingValue,
+    sessions: defaults.sessions,
     preset: pageConfig.defaultPreset,
-    keepTogetherInput: '',
-    avoidPairingsInput: '',
-    inputMode: 'names',
-    balanceAttributeKey: null,
-    advancedOpen: false,
+    keepTogetherInput: defaults.keepTogetherInput,
+    avoidPairingsInput: defaults.avoidPairingsInput,
+    inputMode: defaults.inputMode,
+    balanceAttributeKey: defaults.balanceAttributeKey,
+    advancedOpen: defaults.advancedOpen,
     workspaceScenarioId: null,
   };
 }

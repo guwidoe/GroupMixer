@@ -559,4 +559,24 @@
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/group-generator-with-constraints" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/group-generator-with-constraints" />
   </url>
+  <url>
+    <loc>https://www.groupmixer.app/multi-round-group-assignment-tool</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/multi-round-group-assignment-tool" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/multi-round-group-assignment-tool" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/group-assignment-optimizer</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/group-assignment-optimizer" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/group-assignment-optimizer" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/social-golfer-problem-solver</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/social-golfer-problem-solver" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/social-golfer-problem-solver" />
+  </url>
+  <url>
+    <loc>https://www.groupmixer.app/constraint-based-team-generator</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/constraint-based-team-generator" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/constraint-based-team-generator" />
+  </url>
 </urlset>
