@@ -354,7 +354,14 @@ impl CellResolver<'_> {
             .knowledge
             .resolve_target_info(groups, group_size, upper_bound);
         let heuristic_target_weeks = self.knowledge.heuristic_target_weeks(groups, group_size);
-        let proven_optimal_weeks = self.knowledge.proven_optimal_weeks(groups, group_size);
+        let proven_optimal_weeks = self
+            .knowledge
+            .proven_optimal_weeks(groups, group_size)
+            .or_else(|| {
+                target
+                    .weeks
+                    .filter(|target_weeks| *target_weeks == upper_bound)
+            });
         let optimality_lower_bound_weeks = self
             .knowledge
             .optimality_lower_bound_weeks(groups, group_size);
