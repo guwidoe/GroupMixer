@@ -312,9 +312,11 @@ impl CellKnowledgeLayer<'_> {
         } else {
             Vec::new()
         };
+        let desired_method_abbreviation =
+            infer_desired_method_from_basis(groups, group_size, basis.as_deref());
         TargetInfo {
             weeks,
-            desired_method_abbreviation: None,
+            desired_method_abbreviation,
             kind: Some("literature".into()),
             basis,
             reference_keys,
@@ -371,6 +373,12 @@ impl CellResolver<'_> {
                 )
             })
             .unwrap_or((None, Vec::new(), None));
+        let desired_method_abbreviation = finalize_desired_method_abbreviation(
+            method_abbreviation.as_deref(),
+            target.desired_method_abbreviation.as_deref(),
+            target.weeks,
+            constructed_weeks,
+        );
 
         build_cell_summary(
             groups,
@@ -384,7 +392,7 @@ impl CellResolver<'_> {
             Some(upper_bound),
             proven_optimal_weeks,
             method_abbreviation,
-            target.desired_method_abbreviation,
+            desired_method_abbreviation,
             target.kind,
             target.basis,
             target.reference_keys,
@@ -446,6 +454,71 @@ struct TargetInfo {
     kind: Option<String>,
     basis: Option<String>,
     reference_keys: Vec<String>,
+}
+
+fn infer_desired_method_from_basis(
+    groups: usize,
+    group_size: usize,
+    basis: Option<&str>,
+) -> Option<String> {
+    let basis = basis?;
+    let desired = if basis.contains("round-robin") || basis.contains("1-factorization") {
+        "RR"
+    } else if basis.contains("NKTS$(") || basis.contains("KP(") {
+        "NKTS"
+    } else if basis.contains("KTS$(") || basis.contains("Kirkman") {
+        if group_size == 3 && groups % 2 == 1 {
+            "KTS"
+        } else {
+            "KTS"
+        }
+    } else if basis.contains("RGDD$(") && group_size == 4 {
+        "P4"
+    } else if basis.contains("ownSG$(") {
+        "ownSG"
+    } else if basis.contains("RITD") {
+        "RITD"
+    } else if basis.contains("MOLRs$(") || basis.contains("MOLR lower bound") {
+        "MOLR"
+    } else if basis.contains("RTD$(") || basis.contains("RTD lower bound") {
+        "RTD"
+    } else if basis.contains("RBIBD$(") {
+        if groups == group_size && basis.contains("Exact diagonal prime-power") {
+            "AP"
+        } else {
+            "RBIBD"
+        }
+    } else if basis.contains("affine plane") {
+        "AP"
+    } else {
+        return None;
+    };
+
+    Some(desired.into())
+}
+
+fn finalize_desired_method_abbreviation(
+    current_method_abbreviation: Option<&str>,
+    desired_method_abbreviation: Option<&str>,
+    target_weeks: Option<usize>,
+    constructed_weeks: usize,
+) -> Option<String> {
+    if let Some(desired) = desired_method_abbreviation {
+        return Some(desired.to_string());
+    }
+
+    if let Some(current) = current_method_abbreviation {
+        if target_weeks.is_some_and(|target| target == constructed_weeks) {
+            return Some(current.to_string());
+        }
+        return Some("?".into());
+    }
+
+    if target_weeks.is_some() {
+        return Some("?".into());
+    }
+
+    None
 }
 
 #[allow(clippy::too_many_arguments)]
