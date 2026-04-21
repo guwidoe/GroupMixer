@@ -5,6 +5,7 @@ import { GeneratedDemoDataModal } from '../modals/GeneratedDemoDataModal';
 import { ReduceSessionsReviewModal } from '../modals/ReduceSessionsReviewModal';
 import { ConstraintFormModal } from './ConstraintFormModal';
 import { ScenarioSetupLayout } from './layout/ScenarioSetupLayout';
+import { ScenarioDocumentHistoryBar } from './ScenarioDocumentHistoryBar';
 import { ScenarioEditorConstraintModals } from './ScenarioEditorConstraintModals';
 import { ScenarioEditorForms } from './ScenarioEditorForms';
 import { ScenarioSetupSectionRenderer } from './ScenarioSetupSectionRenderer';
@@ -12,7 +13,7 @@ import { getScenarioSetupLegacyRedirect, resolveScenarioSetupSection } from './n
 import type { ScenarioSetupSectionId } from './navigation/scenarioSetupNavTypes';
 import { useDeferredScenarioSectionContent, useDeferredScenarioSetupSummary } from './useDeferredScenarioSectionContent';
 import { useScenarioEditorController, type ScenarioEditorSection } from './useScenarioEditorController';
-import { useAppStore } from '../../store';
+import { useAppStore, useScenarioDocumentHistory } from '../../store';
 
 function ScenarioEditorLoadingState({ label, message }: { label: string; message: string }) {
   return (
@@ -76,8 +77,28 @@ function ScenarioEditorShell({ activeSection, navigationSection }: { activeSecti
   );
 }
 
+function isEditableShortcutTarget(target: EventTarget | null) {
+  const element = target instanceof HTMLElement ? target : null;
+  if (!element) {
+    return false;
+  }
+
+  if (element.isContentEditable) {
+    return true;
+  }
+
+  const tagName = element.tagName.toLowerCase();
+  return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+}
+
 function ScenarioEditorLoaded() {
   const controller = useScenarioEditorController();
+  const pastCount = useScenarioDocumentHistory((state) => state.pastStates.length);
+  const futureCount = useScenarioDocumentHistory((state) => state.futureStates.length);
+  const undoScenarioDocument = useAppStore((state) => state.undoScenarioDocument);
+  const redoScenarioDocument = useAppStore((state) => state.redoScenarioDocument);
+  const canUndo = pastCount > 0;
+  const canRedo = futureCount > 0;
   const handleNavigateToSection = React.useCallback((sectionId: ScenarioSetupSectionId) => {
     if (sectionId === controller.navigationSection) {
       return;
@@ -110,6 +131,34 @@ function ScenarioEditorLoaded() {
     ? 'The setup shell is ready. Scenario data is loading asynchronously to keep navigation responsive.'
     : 'The setup shell is ready. Large scenario content is loading asynchronously to keep navigation responsive.';
 
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || isEditableShortcutTarget(event.target)) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      const wantsRedo = key === 'y' || (key === 'z' && event.shiftKey);
+      const wantsUndo = key === 'z' && !event.shiftKey;
+
+      if (wantsUndo && canUndo) {
+        event.preventDefault();
+        undoScenarioDocument();
+        return;
+      }
+
+      if (wantsRedo && canRedo) {
+        event.preventDefault();
+        redoScenarioDocument();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [canRedo, canUndo, redoScenarioDocument, undoScenarioDocument]);
+
   return (
     <div className="space-y-6 md:flex md:h-full md:min-h-0 md:flex-col md:space-y-0">
       <ScenarioSetupLayout
@@ -118,6 +167,14 @@ function ScenarioEditorLoaded() {
         objectiveCount={deferredSummary.summaryObjectiveCount}
         activeSection={controller.navigationSection}
         onNavigate={handleNavigateToSection}
+        headerContent={(
+          <ScenarioDocumentHistoryBar
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={undoScenarioDocument}
+            onRedo={redoScenarioDocument}
+          />
+        )}
       >
         {showSectionLoadingState ? (
           <ScenarioEditorLoadingState label={sectionLoadingLabel} message={sectionLoadingMessage} />

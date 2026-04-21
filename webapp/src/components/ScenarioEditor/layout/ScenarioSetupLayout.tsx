@@ -14,6 +14,7 @@ interface ScenarioSetupLayoutProps {
   onNavigate: (sectionId: ScenarioSetupSectionId) => void;
   sidebarHeader?: React.ReactNode;
   collapsedSidebarHeader?: React.ReactNode;
+  headerContent?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -25,6 +26,7 @@ export function ScenarioSetupLayout({
   onNavigate,
   sidebarHeader,
   collapsedSidebarHeader,
+  headerContent,
   children,
 }: ScenarioSetupLayoutProps) {
   const advancedModeEnabled = useAppStore((state) => state.ui.advancedModeEnabled ?? false);
@@ -65,7 +67,10 @@ export function ScenarioSetupLayout({
       sidebarHeader={sidebarHeader}
       collapsedSidebarHeader={collapsedSidebarHeader}
     >
-      {children}
+      <div className="space-y-4">
+        {headerContent ? <div>{headerContent}</div> : null}
+        {children}
+      </div>
     </WorkspaceLayout>
   );
 }
