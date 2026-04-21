@@ -7,6 +7,7 @@ import type { UIState, UIActions, StoreSlice } from "../types";
 import { namifyPersonIdsInText } from '../../utils/personReferenceText';
 
 const ADVANCED_MODE_STORAGE_KEY = 'groupmixer.advanced-mode.v1';
+const WORKFLOW_GUIDE_BUTTON_STORAGE_KEY = 'groupmixer.show-workflow-guide-button.v1';
 
 function readPersistedAdvancedMode(): boolean {
   if (typeof window === 'undefined') {
@@ -32,9 +33,35 @@ function persistAdvancedMode(enabled: boolean) {
   }
 }
 
+function readPersistedWorkflowGuideButtonPreference(): boolean {
+  if (typeof window === 'undefined') {
+    return true;
+  }
+
+  try {
+    const persisted = window.localStorage.getItem(WORKFLOW_GUIDE_BUTTON_STORAGE_KEY);
+    return persisted == null ? true : persisted === 'true';
+  } catch {
+    return true;
+  }
+}
+
+function persistWorkflowGuideButtonPreference(show: boolean) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(WORKFLOW_GUIDE_BUTTON_STORAGE_KEY, String(show));
+  } catch {
+    // ignore storage errors
+  }
+}
+
 export const initialUIState: UIState["ui"] = {
   activeTab: "scenario",
   advancedModeEnabled: readPersistedAdvancedMode(),
+  showWorkflowGuideButton: readPersistedWorkflowGuideButtonPreference(),
   isLoading: true, // Start with loading true
   notifications: [],
   showScenarioManager: false,
@@ -55,6 +82,13 @@ export const createUISlice: StoreSlice<UIState & UIActions> = (set, get) => ({
     persistAdvancedMode(advancedModeEnabled);
     set((state) => ({
       ui: { ...state.ui, advancedModeEnabled },
+    }));
+  },
+
+  setShowWorkflowGuideButton: (showWorkflowGuideButton) => {
+    persistWorkflowGuideButtonPreference(showWorkflowGuideButton);
+    set((state) => ({
+      ui: { ...state.ui, showWorkflowGuideButton },
     }));
   },
 

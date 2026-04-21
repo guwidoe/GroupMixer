@@ -39,6 +39,7 @@ describe('Header', () => {
     const setShowScenarioManager = vi.fn();
     const saveScenario = vi.fn();
     const setAdvancedModeEnabled = vi.fn();
+    const setShowWorkflowGuideButton = vi.fn();
     const loadDemoCaseOverwrite = vi.fn();
 
     const savedScenario = createSavedScenario({
@@ -54,6 +55,7 @@ describe('Header', () => {
       setShowScenarioManager,
       saveScenario,
       setAdvancedModeEnabled,
+      setShowWorkflowGuideButton,
       loadDemoCase: vi.fn(),
       loadDemoCaseOverwrite,
       loadDemoCaseNewScenario: vi.fn(),
@@ -73,12 +75,14 @@ describe('Header', () => {
     await user.click(screen.getAllByRole('button', { name: /load/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /save/i })[0]);
     await user.click(screen.getAllByRole('switch', { name: /enable advanced mode/i })[0]);
+    await user.click(screen.getAllByRole('switch', { name: /show workflow guide button/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /demo data/i })[0]);
     await user.click(screen.getByRole('button', { name: /overwrite/i }));
 
     expect(setShowScenarioManager).toHaveBeenCalledTimes(1);
     expect(saveScenario).toHaveBeenCalledWith('Workshop Plan');
     expect(setAdvancedModeEnabled).toHaveBeenCalledWith(true);
+    expect(setShowWorkflowGuideButton).toHaveBeenCalledWith(false);
     expect(loadDemoCaseOverwrite).toHaveBeenCalledWith('demo-1');
   });
 

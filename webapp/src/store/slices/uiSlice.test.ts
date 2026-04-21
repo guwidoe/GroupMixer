@@ -39,6 +39,7 @@ describe("createUISlice", () => {
 
     harness.slice.setActiveTab("solver");
     harness.slice.setAdvancedModeEnabled(true);
+    harness.slice.setShowWorkflowGuideButton(false);
     harness.slice.setLoading(false);
     harness.slice.setLastScenarioSetupSection("groups");
     harness.slice.setShowScenarioManager(true);
@@ -47,6 +48,7 @@ describe("createUISlice", () => {
     expect(harness.getState().ui).toMatchObject({
       activeTab: "solver",
       advancedModeEnabled: true,
+      showWorkflowGuideButton: false,
       isLoading: false,
       lastScenarioSetupSection: "groups",
       showScenarioManager: true,

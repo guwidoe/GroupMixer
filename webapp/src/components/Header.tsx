@@ -26,13 +26,21 @@ interface WorkspaceActionHandlers {
   onDemoCaseClick: (demoCaseId: string, demoCaseName: string) => void;
   advancedModeEnabled: boolean;
   onSetAdvancedModeEnabled: (enabled: boolean) => void;
+  showWorkflowGuideButton: boolean;
+  onSetShowWorkflowGuideButton: (show: boolean) => void;
 }
 
-function AdvancedModeMenuItem({
-  advancedModeEnabled,
+function PreferenceToggleMenuItem({
+  checked,
+  label,
+  description,
+  ariaLabel,
   onChange,
 }: {
-  advancedModeEnabled: boolean;
+  checked: boolean;
+  label: string;
+  description: string;
+  ariaLabel: string;
   onChange: (enabled: boolean) => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -41,13 +49,13 @@ function AdvancedModeMenuItem({
     <button
       type="button"
       role="switch"
-      aria-checked={advancedModeEnabled}
-      aria-label="Enable advanced mode"
-      onClick={() => onChange(!advancedModeEnabled)}
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={() => onChange(!checked)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      className="flex w-full items-start justify-between gap-3 rounded-xl px-3 py-2.5 text-left transition-all duration-150"
-      title="Show the dedicated solver page and full workflow steps."
+      className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-all duration-150"
+      title={description}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
       style={{
@@ -57,17 +65,12 @@ function AdvancedModeMenuItem({
           : 'transparent',
       }}
     >
-      <span className="min-w-0">
-        <span className="block text-sm font-medium">Advanced mode</span>
-        <span className="mt-1 block text-xs leading-5" style={{ color: 'var(--text-tertiary)' }}>
-          Show the dedicated solver page and full workflow steps.
-        </span>
-      </span>
+      <span className="min-w-0 text-sm font-medium">{label}</span>
 
       <span
         className="mt-0.5 inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full p-0.5 transition-all duration-150"
         style={{
-          backgroundColor: advancedModeEnabled
+          backgroundColor: checked
             ? 'var(--color-accent)'
             : 'color-mix(in srgb, var(--border-primary) 72%, var(--bg-secondary))',
           boxShadow: hovered
@@ -81,7 +84,7 @@ function AdvancedModeMenuItem({
           style={{
             backgroundColor: 'var(--bg-primary)',
             boxShadow: '0 1px 3px color-mix(in srgb, black 20%, transparent)',
-            transform: advancedModeEnabled ? 'translateX(20px)' : 'translateX(0)',
+            transform: checked ? 'translateX(20px)' : 'translateX(0)',
           }}
         />
       </span>
@@ -147,11 +150,23 @@ function WorkspaceInlineActions({
         <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
           Preferences
         </div>
-        <div className="mt-2">
-          <AdvancedModeMenuItem
-            advancedModeEnabled={handlers.advancedModeEnabled}
+        <div className="mt-2 space-y-1.5">
+          <PreferenceToggleMenuItem
+            checked={handlers.advancedModeEnabled}
+            label="Advanced mode"
+            description="Show the dedicated solver page and full workflow steps."
+            ariaLabel="Enable advanced mode"
             onChange={(enabled) => {
               handlers.onSetAdvancedModeEnabled(enabled);
+            }}
+          />
+          <PreferenceToggleMenuItem
+            checked={handlers.showWorkflowGuideButton}
+            label="Show workflow guide button"
+            description="Show the floating next-step button in the bottom-right corner."
+            ariaLabel="Show workflow guide button"
+            onChange={(show) => {
+              handlers.onSetShowWorkflowGuideButton(show);
             }}
           />
         </div>
@@ -270,11 +285,23 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
               Preferences
             </div>
-            <div className="mt-2">
-              <AdvancedModeMenuItem
-                advancedModeEnabled={handlers.advancedModeEnabled}
+            <div className="mt-2 space-y-1.5">
+              <PreferenceToggleMenuItem
+                checked={handlers.advancedModeEnabled}
+                label="Advanced mode"
+                description="Show the dedicated solver page and full workflow steps."
+                ariaLabel="Enable advanced mode"
                 onChange={(enabled) => {
                   handlers.onSetAdvancedModeEnabled(enabled);
+                }}
+              />
+              <PreferenceToggleMenuItem
+                checked={handlers.showWorkflowGuideButton}
+                label="Show workflow guide button"
+                description="Show the floating next-step button in the bottom-right corner."
+                ariaLabel="Show workflow guide button"
+                onChange={(show) => {
+                  handlers.onSetShowWorkflowGuideButton(show);
                 }}
               />
             </div>
@@ -334,6 +361,7 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
     saveScenario,
     ui,
     setAdvancedModeEnabled,
+    setShowWorkflowGuideButton,
     loadDemoCase,
     loadDemoCaseOverwrite,
     loadDemoCaseNewScenario,
@@ -379,6 +407,10 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
     advancedModeEnabled: ui.advancedModeEnabled ?? false,
     onSetAdvancedModeEnabled: (enabled) => {
       setAdvancedModeEnabled(enabled);
+    },
+    showWorkflowGuideButton: ui.showWorkflowGuideButton ?? true,
+    onSetShowWorkflowGuideButton: (show) => {
+      setShowWorkflowGuideButton(show);
     },
   };
 

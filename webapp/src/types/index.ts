@@ -378,6 +378,7 @@ export interface AppState {
   ui: {
     activeTab: "scenario" | "solver" | "results" | "manage";
     advancedModeEnabled?: boolean;
+    showWorkflowGuideButton?: boolean;
     isLoading: boolean;
     notifications: Notification[];
     showScenarioManager: boolean;
