@@ -264,7 +264,6 @@ export function AttributeDistributionField({
                   <span className="attribute-distribution__chip-value" aria-label="Not allocated count">
                     {count}
                   </span>
-                  <span className="attribute-distribution__chip-caption">Derived from remaining capacity</span>
                 </div>
               )}
             </div>

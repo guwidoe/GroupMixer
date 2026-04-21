@@ -136,16 +136,8 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
 
   const isPenaltyWeightValid = (value: number | null) => value !== null && value > 0;
 
-  const distributionHint = selectedAttribute
-    ? [
-        'Drag the divider handles to repartition the group, or use the chips for precise edits and intentional over-allocation.',
-        capacityResolution.hasVariance
-          ? `Using the smallest selected-session group capacity (${capacityResolution.capacity}) because capacity varies by session.`
-          : null,
-        'Suggested counts are seeded from the selected sessions\' attribute mix, including missing values as Not allocated.',
-      ]
-        .filter(Boolean)
-        .join(' ')
+  const distributionHint = selectedAttribute && capacityResolution.hasVariance
+    ? `Using the smallest selected-session group capacity (${capacityResolution.capacity}) because capacity varies by session.`
     : undefined;
 
   if (!scenario) {
