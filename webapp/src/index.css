@@ -668,11 +668,7 @@
   }
 
   .number-field--default .number-field__controls {
-    padding: 0.75rem;
-    border-radius: 1rem;
-    border: 1px solid var(--border-primary);
-    background-color: color-mix(in srgb, var(--bg-secondary) 92%, white 8%);
-    box-shadow: var(--shadow);
+    align-items: center;
   }
 
   .number-field--compact .number-field__controls {
@@ -687,10 +683,49 @@
   }
 
   .number-field__slider {
+    -webkit-appearance: none;
+    appearance: none;
     width: 100%;
-    accent-color: var(--color-accent);
+    height: 0.5rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--border-primary) 88%, white 12%);
+    background: color-mix(in srgb, var(--bg-secondary) 82%, white 18%);
     cursor: pointer;
     margin: 0;
+  }
+
+  .number-field__slider::-webkit-slider-runnable-track {
+    height: 0.5rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--bg-secondary) 82%, white 18%);
+  }
+
+  .number-field__slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin-top: -0.3125rem;
+    border-radius: 999px;
+    border: 2px solid color-mix(in srgb, var(--color-accent) 72%, white 28%);
+    background: var(--color-accent);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  }
+
+  .number-field__slider::-moz-range-track {
+    height: 0.5rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--border-primary) 88%, white 12%);
+    background: color-mix(in srgb, var(--bg-secondary) 82%, white 18%);
+  }
+
+  .number-field__slider::-moz-range-thumb {
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 999px;
+    border: 2px solid color-mix(in srgb, var(--color-accent) 72%, white 28%);
+    background: var(--color-accent);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
   }
 
   .number-field__slider:disabled {
@@ -713,10 +748,12 @@
   }
 
   .number-field--default .number-field__input {
-    max-width: 4.75rem;
+    max-width: 4.25rem;
     justify-self: end;
-    padding-inline: 0.625rem;
-    border-radius: 0.875rem;
+    padding-inline: 0.5rem;
+    padding-block: 0.45rem;
+    border-radius: 0.75rem;
+    background-color: color-mix(in srgb, var(--bg-primary) 92%, white 8%);
   }
 
   .number-field--compact .number-field__input {
@@ -746,12 +783,11 @@
     .number-field--default .number-field__controls {
       grid-template-columns: minmax(0, 1fr) auto;
       align-items: center;
-      column-gap: 0.875rem;
+      column-gap: 0.75rem;
     }
 
     .number-field--default .number-field__slider-column {
-      padding-right: 0.875rem;
-      border-right: 1px solid var(--border-primary);
+      padding-right: 0.75rem;
     }
   }
 
