@@ -10,5 +10,8 @@ export { Button, getButtonClassName } from './Button';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './Button';
 export { NumberField } from './NumberField';
 export type { NumberFieldKind, NumberFieldProps, NumberFieldVariant } from './NumberField';
+export { AttributeDistributionField } from './AttributeDistributionField';
+export type { AttributeDistributionValue, DistributionBucket } from './attributeDistribution';
+export { DISTRIBUTION_UNALLOCATED_KEY, getAttributeDistributionBuckets } from './attributeDistribution';
 export { NUMBER_FIELD_PRESETS, withContextualMax } from './numberFieldPresets';
 export type { ModalWidth } from './ModalWrapper';
