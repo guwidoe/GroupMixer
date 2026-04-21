@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AttributeDistributionField } from './AttributeDistributionField';
 import { getAttributeDistributionBuckets } from './attributeDistribution';
 
@@ -29,6 +29,30 @@ function ControlledField({
       variant={variant}
       showSummary={showSummary}
       showChips={showChips}
+    />
+  );
+}
+
+function ControlledFieldWithSpy({
+  initialValue,
+  capacity,
+  onChangeSpy,
+}: {
+  initialValue: Record<string, number>;
+  capacity: number;
+  onChangeSpy: (value: Record<string, number>) => void;
+}) {
+  const [value, setValue] = React.useState<Record<string, number>>(initialValue);
+  return (
+    <AttributeDistributionField
+      label="Desired Distribution"
+      buckets={getAttributeDistributionBuckets(['A', 'B', 'C'])}
+      value={value}
+      capacity={capacity}
+      onChange={(nextValue) => {
+        onChangeSpy(nextValue);
+        setValue(nextValue);
+      }}
     />
   );
 }
@@ -116,6 +140,52 @@ describe('AttributeDistributionField', () => {
     expect(screen.getByLabelText('A count')).toHaveValue('1');
     expect(screen.getByLabelText('B count')).toHaveValue('1');
     expect(screen.getByRole('button', { name: /^disable target for a$/i })).toBeInTheDocument();
+  });
+
+  it('keeps legend layout stable until drag ends', () => {
+    const { container } = render(<ControlledField initialValue={{ A: 2, B: 2 }} capacity={8} />);
+
+    const bar = screen.getByRole('group', { name: 'Desired Distribution' });
+    Object.defineProperty(bar, 'getBoundingClientRect', {
+      value: () => ({ left: 0, width: 100, top: 0, right: 100, bottom: 40, height: 40, x: 0, y: 0, toJSON: () => ({}) }),
+    });
+
+    expect(container.querySelectorAll('.attribute-distribution__support-item')).toHaveLength(1);
+
+    const handle = screen.getByRole('button', { name: /adjust boundary between a and b/i });
+    fireEvent.pointerDown(handle, { clientX: 50, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 10 });
+
+    expect(screen.getByLabelText('A count')).toHaveValue('1');
+    expect(container.querySelectorAll('.attribute-distribution__support-item')).toHaveLength(1);
+
+    fireEvent.pointerUp(window, { clientX: 10 });
+
+    expect(container.querySelectorAll('.attribute-distribution__support-item')).toHaveLength(2);
+  });
+
+  it('commits drag changes once on release instead of every pointer move', () => {
+    const onChangeSpy = vi.fn();
+
+    render(<ControlledFieldWithSpy initialValue={{ A: 2, B: 2 }} capacity={8} onChangeSpy={onChangeSpy} />);
+
+    const bar = screen.getByRole('group', { name: 'Desired Distribution' });
+    Object.defineProperty(bar, 'getBoundingClientRect', {
+      value: () => ({ left: 0, width: 100, top: 0, right: 100, bottom: 40, height: 40, x: 0, y: 0, toJSON: () => ({}) }),
+    });
+
+    const handle = screen.getByRole('button', { name: /adjust boundary between a and b/i });
+    fireEvent.pointerDown(handle, { clientX: 50, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 40 });
+    fireEvent.pointerMove(window, { clientX: 25 });
+    fireEvent.pointerMove(window, { clientX: 10 });
+
+    expect(onChangeSpy).not.toHaveBeenCalled();
+
+    fireEvent.pointerUp(window, { clientX: 20 });
+
+    expect(onChangeSpy).toHaveBeenCalledTimes(1);
+    expect(onChangeSpy).toHaveBeenCalledWith({ A: 1, B: 3 });
   });
 
   it('lets legend dots toggle attributes that do not fit inline', async () => {

@@ -33,6 +33,12 @@ interface ActiveDistributionDrag {
   toggleBucketKey?: string;
 }
 
+interface FrozenBucketLayoutState {
+  canInlineEdit: boolean;
+  showInlineLabel: boolean;
+  needsLegend: boolean;
+}
+
 interface AttributeDistributionFieldProps {
   buckets: DistributionBucket[];
   value?: AttributeDistributionValue;
@@ -149,6 +155,7 @@ export function AttributeDistributionField({
   const editableInputRefs = useRef(new Map<string, HTMLInputElement | null>());
   const pendingFocusKeyRef = useRef<string | null>(null);
   const [activeDrag, setActiveDrag] = useState<ActiveDistributionDrag | null>(null);
+  const [frozenBucketLayout, setFrozenBucketLayout] = useState<Record<string, FrozenBucketLayoutState> | null>(null);
   const dragMovedRef = useRef(false);
   const dragEnabled = !disabled && summary.capacity > 0 && !summary.isOverallocated;
   const resolvedShowSummary = showSummary ?? variant === 'default';
@@ -158,6 +165,7 @@ export function AttributeDistributionField({
     const isActive = Object.prototype.hasOwnProperty.call(localValue, bucket.key);
     const widthPercent = summary.capacity > 0 ? (count / summary.capacity) * 100 : 0;
     const canInlineEdit = variant === 'default' && isActive && count > 0 && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD;
+    const frozenState = frozenBucketLayout?.[bucket.key];
 
     return {
       bucket,
@@ -167,11 +175,11 @@ export function AttributeDistributionField({
       color: getSegmentColor(index, bucket.kind),
       textColor: getSegmentTextColor(index, bucket.kind),
       widthPercent,
-      canInlineEdit,
-      showInlineLabel: canInlineEdit && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD,
-      needsLegend: !canInlineEdit || !isActive || count === 0,
+      canInlineEdit: frozenState?.canInlineEdit ?? canInlineEdit,
+      showInlineLabel: frozenState?.showInlineLabel ?? (canInlineEdit && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD),
+      needsLegend: frozenState?.needsLegend ?? (!canInlineEdit || !isActive || count === 0),
     };
-  }), [attributeBuckets, localValue, summary.capacity, variant]);
+  }), [attributeBuckets, frozenBucketLayout, localValue, summary.capacity, variant]);
   const bucketStateByKey = useMemo(
     () => new Map(bucketStates.map((state) => [state.bucket.key, state])),
     [bucketStates],
@@ -187,6 +195,14 @@ export function AttributeDistributionField({
 
   const handleClusterOffsets = useMemo(() => buildCenteredClusterOffsets(dividerPositions), [dividerPositions]);
   const toggleClusterOffsets = useMemo(() => buildCenteredClusterOffsets(togglePositions), [togglePositions]);
+
+  const freezeCurrentLayout = React.useCallback(() => {
+    setFrozenBucketLayout(Object.fromEntries(bucketStates.map((state) => [state.bucket.key, {
+      canInlineEdit: state.canInlineEdit,
+      showInlineLabel: state.showInlineLabel,
+      needsLegend: state.needsLegend,
+    }])));
+  }, [bucketStates]);
 
   useEffect(() => {
     localValueRef.current = localValue;
@@ -208,13 +224,18 @@ export function AttributeDistributionField({
     onChange(queuedValue);
   }, [onChange]);
 
-  const queueValueChange = React.useCallback((nextValue: AttributeDistributionValue, immediate = false) => {
+  const queueValueChange = React.useCallback((nextValue: AttributeDistributionValue, mode: 'immediate' | 'raf' | 'local' = 'raf') => {
     const normalizedNextValue = normalizeAttributeDistributionValue(nextValue, buckets);
     localValueRef.current = normalizedNextValue;
     setLocalValue(normalizedNextValue);
+
+    if (mode === 'local') {
+      return;
+    }
+
     queuedExternalValueRef.current = normalizedNextValue;
 
-    if (immediate) {
+    if (mode === 'immediate') {
       flushQueuedExternalChange();
       return;
     }
@@ -241,7 +262,7 @@ export function AttributeDistributionField({
     } else {
       nextValue[bucket.key] = 0;
     }
-    queueValueChange(nextValue, true);
+    queueValueChange(nextValue, 'immediate');
   }, [disabled, queueValueChange]);
 
   useEffect(() => {
@@ -291,11 +312,17 @@ export function AttributeDistributionField({
           resolvePosition(event.clientX),
           summary.capacity,
         ),
+        'local',
       );
     };
 
     const stopDragging = () => {
-      flushQueuedExternalChange();
+      if (dragMovedRef.current) {
+        queueValueChange(localValueRef.current, 'immediate');
+      } else {
+        flushQueuedExternalChange();
+      }
+      setFrozenBucketLayout(null);
 
       if (activeDrag.source === 'dot' && !dragMovedRef.current && activeDrag.toggleBucketKey) {
         const bucket = attributeBuckets.find((candidate) => candidate.key === activeDrag.toggleBucketKey);
@@ -420,7 +447,7 @@ export function AttributeDistributionField({
                                 if (!nextWillInlineEdit) {
                                   pendingFocusKeyRef.current = bucket.key;
                                 }
-                                queueValueChange(setAttributeBucketCount(localValueRef.current, buckets, bucket.key, rounded), true);
+                                queueValueChange(setAttributeBucketCount(localValueRef.current, buckets, bucket.key, rounded), 'immediate');
                               }}
                               onPointerDown={(event) => event.stopPropagation()}
                               onClick={(event) => event.stopPropagation()}
@@ -464,6 +491,7 @@ export function AttributeDistributionField({
                         return;
                       }
 
+                      freezeCurrentLayout();
                       event.preventDefault();
                       event.currentTarget.setPointerCapture?.(event.pointerId);
                       dragMovedRef.current = false;
@@ -511,6 +539,7 @@ export function AttributeDistributionField({
                       if (!dragEnabled) {
                         return;
                       }
+                      freezeCurrentLayout();
                       event.preventDefault();
                       event.currentTarget.setPointerCapture?.(event.pointerId);
                       dragMovedRef.current = false;
@@ -541,7 +570,7 @@ export function AttributeDistributionField({
                           position + delta * step,
                           summary.capacity,
                         ),
-                        true,
+                        'immediate',
                       );
                     }}
                   >
@@ -602,7 +631,7 @@ export function AttributeDistributionField({
                     if (nextWillInlineEdit) {
                       pendingFocusKeyRef.current = state.bucket.key;
                     }
-                    queueValueChange(setAttributeBucketCount(localValueRef.current, buckets, state.bucket.key, rounded), true);
+                    queueValueChange(setAttributeBucketCount(localValueRef.current, buckets, state.bucket.key, rounded), 'immediate');
                   }}
                 />
               ) : null}
