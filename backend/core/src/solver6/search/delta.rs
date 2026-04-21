@@ -182,7 +182,7 @@ pub(crate) fn find_best_same_week_swap(
     Ok(best)
 }
 
-fn same_week_swap_is_better(
+pub(crate) fn same_week_swap_is_better(
     candidate: &EvaluatedSameWeekSwapMove,
     incumbent: &EvaluatedSameWeekSwapMove,
 ) -> bool {
