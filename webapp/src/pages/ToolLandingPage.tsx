@@ -10,6 +10,7 @@ import { LandingFooter } from '../components/LandingPage/LandingFooter';
 import { LandingLanguageSelector } from '../components/LandingPage/LandingLanguageSelector';
 import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../components/ui';
 import { interpolate } from '../i18n/interpolate';
 import { getLandingUiContent } from '../i18n/landingUi';
 import { Seo } from '../components/Seo';
@@ -623,52 +624,32 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
 
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="groupCountValue" className="mb-1.5 block text-sm font-medium">
-                    {ui.quickSetup.groupingValueGroupCountLabel}
-                  </label>
-                  <input
-                    id="groupCountValue"
-                    type="number"
-                    min={1}
+                  <NumberField
+                    label={ui.quickSetup.groupingValueGroupCountLabel}
                     value={displayedGroupCount}
-                    onChange={(event) =>
+                    onChange={(value) =>
                       controller.updateDraft((current) => ({
                         ...current,
                         groupingMode: 'groupCount',
-                        groupingValue: Math.max(1, Number(event.target.value) || 1),
+                        groupingValue: Math.max(1, value ?? 1),
                       }))
                     }
-                    className="w-full rounded-xl border px-3 py-2 text-sm outline-none transition-shadow focus:ring-2"
-                    style={{
-                      borderColor: 'var(--border-primary)',
-                      backgroundColor: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                    }}
+                    {...NUMBER_FIELD_PRESETS.groupCount}
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="peoplePerGroupValue" className="mb-1.5 block text-sm font-medium">
-                    {ui.quickSetup.groupingValueGroupSizeLabel}
-                  </label>
-                  <input
-                    id="peoplePerGroupValue"
-                    type="number"
-                    min={1}
+                  <NumberField
+                    label={ui.quickSetup.groupingValueGroupSizeLabel}
                     value={displayedPeoplePerGroup}
-                    onChange={(event) =>
+                    onChange={(value) =>
                       controller.updateDraft((current) => ({
                         ...current,
                         groupingMode: 'groupSize',
-                        groupingValue: Math.max(1, Number(event.target.value) || 1),
+                        groupingValue: Math.max(1, value ?? 1),
                       }))
                     }
-                    className="w-full rounded-xl border px-3 py-2 text-sm outline-none transition-shadow focus:ring-2"
-                    style={{
-                      borderColor: 'var(--border-primary)',
-                      backgroundColor: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
-                    }}
+                    {...NUMBER_FIELD_PRESETS.groupSize}
                   />
                 </div>
               </div>
