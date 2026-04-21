@@ -54,13 +54,17 @@ export function AttributeDistributionField({
   className,
 }: AttributeDistributionFieldProps) {
   const normalizedValue = useMemo(() => normalizeAttributeDistributionValue(value, buckets), [value, buckets]);
+  const activeBarBuckets = useMemo(
+    () => buckets.filter((bucket) => bucket.kind === 'unallocated' || Object.prototype.hasOwnProperty.call(normalizedValue, bucket.key)),
+    [buckets, normalizedValue],
+  );
   const summary = useMemo(
     () => summarizeAttributeDistribution(normalizedValue, buckets, capacity),
     [normalizedValue, buckets, capacity],
   );
   const barBucketCounts = useMemo(
-    () => getBarBucketCounts(buckets, normalizedValue, summary.capacity),
-    [buckets, normalizedValue, summary.capacity],
+    () => getBarBucketCounts(activeBarBuckets, normalizedValue, summary.capacity),
+    [activeBarBuckets, normalizedValue, summary.capacity],
   );
   const dividerPositions = useMemo(() => getDividerPositions(barBucketCounts), [barBucketCounts]);
   const barRef = useRef<HTMLDivElement | null>(null);
@@ -92,7 +96,7 @@ export function AttributeDistributionField({
     };
 
     const handlePointerMove = (event: PointerEvent) => {
-      onChange(moveDistributionDivider(normalizedValue, buckets, activeDivider, resolvePosition(event.clientX), summary.capacity));
+      onChange(moveDistributionDivider(normalizedValue, activeBarBuckets, activeDivider, resolvePosition(event.clientX), summary.capacity));
     };
 
     const stopDragging = () => {
@@ -108,7 +112,21 @@ export function AttributeDistributionField({
       window.removeEventListener('pointerup', stopDragging);
       window.removeEventListener('pointercancel', stopDragging);
     };
-  }, [activeDivider, buckets, dragEnabled, normalizedValue, onChange, summary.capacity]);
+  }, [activeBarBuckets, activeDivider, dragEnabled, normalizedValue, onChange, summary.capacity]);
+
+  const toggleBucketActive = (bucket: DistributionBucket) => {
+    if (bucket.kind !== 'attribute' || disabled) {
+      return;
+    }
+
+    const nextValue = { ...normalizedValue };
+    if (Object.prototype.hasOwnProperty.call(normalizedValue, bucket.key)) {
+      delete nextValue[bucket.key];
+    } else {
+      nextValue[bucket.key] = 0;
+    }
+    onChange(nextValue);
+  };
 
   return (
     <div className={['attribute-distribution', disabled ? 'attribute-distribution--disabled' : null, className].filter(Boolean).join(' ')}>
@@ -132,11 +150,13 @@ export function AttributeDistributionField({
         >
           {summary.capacity > 0 ? (
             <div className="attribute-distribution__segments" aria-hidden="true">
-              {buckets.map((bucket, index) => {
+              {activeBarBuckets.map((bucket, index) => {
                 const units = barBucketCounts[index] ?? 0;
                 if (units <= 0) {
                   return null;
                 }
+
+                const colorIndex = buckets.findIndex((candidate) => candidate.key === bucket.key);
 
                 const widthPercent = summary.capacity > 0 ? (units / summary.capacity) * 100 : 0;
                 return (
@@ -144,10 +164,10 @@ export function AttributeDistributionField({
                     key={bucket.key}
                     className={['attribute-distribution__segment', bucket.kind === 'unallocated' ? 'attribute-distribution__segment--unallocated' : null]
                       .filter(Boolean)
-                      .join(' ')}
+                    .join(' ')}
                     style={{
                       width: `${widthPercent}%`,
-                      background: getSegmentColor(index, bucket.kind),
+                      background: getSegmentColor(colorIndex >= 0 ? colorIndex : 0, bucket.kind),
                     }}
                   >
                     <span className="attribute-distribution__segment-label">{bucket.label}</span>
@@ -163,8 +183,8 @@ export function AttributeDistributionField({
           {summary.capacity > 0
             ? dividerPositions.map((position, index) => {
                 const leftPercent = summary.capacity > 0 ? (position / summary.capacity) * 100 : 0;
-                const leftBucket = buckets[index];
-                const rightBucket = buckets[index + 1];
+                const leftBucket = activeBarBuckets[index];
+                const rightBucket = activeBarBuckets[index + 1];
                 return (
                   <button
                     key={`${leftBucket?.key ?? index}-${rightBucket?.key ?? index}`}
@@ -199,7 +219,7 @@ export function AttributeDistributionField({
                       onChange(
                         moveDistributionDivider(
                           normalizedValue,
-                          buckets,
+                          activeBarBuckets,
                           index,
                           position + delta * step,
                           summary.capacity,
@@ -223,10 +243,30 @@ export function AttributeDistributionField({
       </div>
 
       <div className="attribute-distribution__chips">
-        {buckets.map((bucket, index) => {
+        {buckets.filter((bucket) => bucket.kind === 'attribute').map((bucket, index) => {
           const count = bucket.kind === 'unallocated' ? summary.unallocatedCount : normalizedValue[bucket.key] ?? 0;
+          const isActive = bucket.kind === 'unallocated' || Object.prototype.hasOwnProperty.call(normalizedValue, bucket.key);
           return (
-            <div key={bucket.key} className="attribute-distribution__chip">
+            <div
+              key={bucket.key}
+              className={[
+                'attribute-distribution__chip',
+                isActive ? 'attribute-distribution__chip--active' : 'attribute-distribution__chip--inactive',
+                bucket.kind === 'attribute' ? 'attribute-distribution__chip--toggleable' : null,
+              ]
+                .filter(Boolean)
+                .join(' ')}
+              role="button"
+              aria-pressed={isActive}
+              tabIndex={0}
+              onClick={() => toggleBucketActive(bucket)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  toggleBucketActive(bucket);
+                }
+              }}
+            >
               <div className="attribute-distribution__chip-heading">
                 <span
                   className="attribute-distribution__chip-swatch"
@@ -236,14 +276,17 @@ export function AttributeDistributionField({
                 <span className="attribute-distribution__chip-label">{bucket.label}</span>
               </div>
 
-              {bucket.kind === 'attribute' ? (
-                <div className="attribute-distribution__chip-controls">
+              {isActive ? (
+                <div className="attribute-distribution__chip-controls" onClick={(event) => event.stopPropagation()}>
                   <button
                     type="button"
                     className="attribute-distribution__stepper"
                     disabled={disabled || count <= 0}
                     aria-label={`Decrease ${bucket.label}`}
-                    onClick={() => onChange(adjustAttributeBucketCount(normalizedValue, buckets, bucket.key, -1))}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onChange(adjustAttributeBucketCount(normalizedValue, buckets, bucket.key, -1));
+                    }}
                   >
                     −
                   </button>
@@ -263,23 +306,23 @@ export function AttributeDistributionField({
                       const rounded = nextRaw === '' ? 0 : Math.max(0, Math.round(Number(nextRaw)));
                       onChange(setAttributeBucketCount(value, buckets, bucket.key, rounded));
                     }}
+                    onClick={(event) => event.stopPropagation()}
                   />
                   <button
                     type="button"
                     className="attribute-distribution__stepper"
                     disabled={disabled}
                     aria-label={`Increase ${bucket.label}`}
-                    onClick={() => onChange(adjustAttributeBucketCount(normalizedValue, buckets, bucket.key, 1))}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onChange(adjustAttributeBucketCount(normalizedValue, buckets, bucket.key, 1));
+                    }}
                   >
                     +
                   </button>
                 </div>
               ) : (
-                <div className="attribute-distribution__chip-static">
-                  <span className="attribute-distribution__chip-value" aria-label="Not allocated count">
-                    {count}
-                  </span>
-                </div>
+                <div className="attribute-distribution__chip-inactive-note">Not targeted</div>
               )}
             </div>
           );
