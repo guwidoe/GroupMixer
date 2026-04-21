@@ -82,6 +82,10 @@ def method_matches_basis_family(method, basis_family, cell):
     )
 
 
+def is_pigeonhole_one_week_exact(cell):
+    return cell["g"] > 1 and cell["p"] > 1 and cell["p"] > cell["g"]
+
+
 def validate_cell(cell, label):
     missing = REQUIRED_CELL_FIELDS - set(cell.keys())
     if missing:
@@ -150,6 +154,7 @@ def validate_cell(cell, label):
         basis_family = inferred_basis_family(cell)
         expected_status = "accepted" if (
             desired_method == method
+            or (method == "1W" and is_pigeonhole_one_week_exact(cell))
             or (basis_family is not None and method_matches_basis_family(method, basis_family, cell))
         ) else "unresolved"
         if method_policy_status != expected_status:

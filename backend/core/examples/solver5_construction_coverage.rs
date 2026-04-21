@@ -362,6 +362,13 @@ impl CellResolver<'_> {
                 target
                     .weeks
                     .filter(|target_weeks| *target_weeks == upper_bound)
+            })
+            .or_else(|| {
+                if is_pigeonhole_one_week_exact(groups, group_size) {
+                    Some(1)
+                } else {
+                    None
+                }
             });
         let optimality_lower_bound_weeks = self
             .knowledge
@@ -554,6 +561,10 @@ fn method_matches_basis_family(
             && current_method_abbreviation == "P4")
 }
 
+fn is_pigeonhole_one_week_exact(groups: usize, group_size: usize) -> bool {
+    groups > 1 && group_size > 1 && group_size > groups
+}
+
 fn resolve_method_preference(
     current_method_abbreviation: Option<&str>,
     desired_method_abbreviation: Option<&str>,
@@ -586,10 +597,12 @@ fn resolve_method_preference(
             }
         }
         (Some(_current), None) => MethodPreference {
-            policy_status: if inferred_basis_family_abbreviation(groups, group_size, basis)
-                .is_some_and(|basis_family| {
-                    method_matches_basis_family(_current, basis_family, groups, group_size)
-                }) {
+            policy_status: if (_current == "1W" && is_pigeonhole_one_week_exact(groups, group_size))
+                || inferred_basis_family_abbreviation(groups, group_size, basis).is_some_and(
+                    |basis_family| {
+                        method_matches_basis_family(_current, basis_family, groups, group_size)
+                    },
+                ) {
                 "accepted".to_string()
             } else {
                 "unresolved".to_string()

@@ -161,6 +161,11 @@ the attached references:
   bottom-left slot
 - all matrices: `O` is shown only when an exact optimum is actually encoded
 
+The reporting layer may also mark some exact optima from global impossibility
+logic, not only from table rows. In particular, when `p > g`, the pigeonhole
+argument forbids any non-repeating second week, so `W=1` is exact and the `1W`
+method badge should be treated as accepted rather than unresolved.
+
 The report must not switch corner meanings by matrix type.
 
 ## Method-arrow trust policy
