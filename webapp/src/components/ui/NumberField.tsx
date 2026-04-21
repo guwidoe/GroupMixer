@@ -132,11 +132,12 @@ export function NumberField({
   const isInvalid = Boolean(error) || hasParseError || hasRangeError;
   const effectiveLargeStep = largeStep ?? step * 10;
   const sliderMin = typeof min === 'number' ? min : 0;
-  const sliderEnabled = showSlider && variant !== 'compact' && typeof softMax === 'number';
+  const effectiveSoftMax = softMax ?? max;
+  const sliderEnabled = showSlider && variant !== 'compact' && typeof effectiveSoftMax === 'number';
   const sliderValue = sliderEnabled
-    ? clamp(value ?? sliderMin, sliderMin, softMax)
+    ? clamp(value ?? sliderMin, sliderMin, effectiveSoftMax)
     : undefined;
-  const isOverflowing = sliderEnabled && typeof softMax === 'number' && value != null && value > softMax;
+  const isOverflowing = sliderEnabled && typeof effectiveSoftMax === 'number' && value != null && value > effectiveSoftMax;
 
   const commitDraft = () => {
     if (disabled) return;
@@ -187,29 +188,29 @@ export function NumberField({
             <input
               type="range"
               min={sliderMin}
-              max={softMax}
+              max={effectiveSoftMax}
               step={step}
               value={sliderValue}
               disabled={disabled}
               aria-label={sliderAriaLabel ?? (typeof label === 'string' ? `${label} slider` : 'Numeric slider')}
               className={['number-field__slider', isOverflowing ? 'number-field__slider--overflow' : null].filter(Boolean).join(' ')}
               onChange={(event) => {
-                const next = normalizeNumber(Number(event.target.value), { kind, step, min: sliderMin, max: softMax });
+                const next = normalizeNumber(Number(event.target.value), { kind, step, min: sliderMin, max: effectiveSoftMax });
                 onChange(next);
                 setDraft(formatValue(next, kind, step));
               }}
               onMouseUp={(event) => {
-                const next = normalizeNumber(Number((event.currentTarget as HTMLInputElement).value), { kind, step, min: sliderMin, max: softMax });
+                const next = normalizeNumber(Number((event.currentTarget as HTMLInputElement).value), { kind, step, min: sliderMin, max: effectiveSoftMax });
                 onCommit?.(next);
               }}
               onTouchEnd={(event) => {
-                const next = normalizeNumber(Number((event.currentTarget as HTMLInputElement).value), { kind, step, min: sliderMin, max: softMax });
+                const next = normalizeNumber(Number((event.currentTarget as HTMLInputElement).value), { kind, step, min: sliderMin, max: effectiveSoftMax });
                 onCommit?.(next);
               }}
             />
             <div className="number-field__scale" aria-hidden="true">
               <span>{sliderMin}</span>
-              <span>{isOverflowing ? `${softMax}+` : softMax}</span>
+              <span>{isOverflowing ? `${effectiveSoftMax}+` : effectiveSoftMax}</span>
             </div>
           </div>
         ) : null}

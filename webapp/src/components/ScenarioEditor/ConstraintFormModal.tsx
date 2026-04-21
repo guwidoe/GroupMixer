@@ -2,7 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import type { AttributeDefinition, Constraint, Scenario } from '../../types';
 import { getConstraintDisplayName } from '../../utils/constraintDisplay';
-import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
+import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../ui';
 import { SessionScopeField } from './shared/SessionScopeField';
 import { createAllSessionScopeDraft, type SessionScopeDraft } from './shared/sessionScope';
 
@@ -50,6 +50,10 @@ export function ConstraintFormModal({
 
   const sessions = Array.from({ length: sessionsCount }, (_, i) => i);
   const currentSessionScope = constraintForm.sessionScope ?? createAllSessionScopeDraft();
+  const selectedGroup = scenario?.groups.find((group) => group.id === constraintForm.group_id);
+  const selectedGroupMaxCapacity = selectedGroup
+    ? Math.max(selectedGroup.size, ...(selectedGroup.session_sizes ?? []))
+    : undefined;
 
   return (
     <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50">
@@ -103,7 +107,7 @@ export function ConstraintFormModal({
                   value={constraintForm.max_allowed_encounters ?? null}
                   onChange={(value) => setConstraintForm((prev) => ({ ...prev, max_allowed_encounters: value ?? undefined }))}
                   error={constraintForm.max_allowed_encounters === undefined || constraintForm.max_allowed_encounters < 0 ? 'Enter 0 or greater.' : undefined}
-                  {...NUMBER_FIELD_PRESETS.meetingTarget}
+                  {...withContextualMax(NUMBER_FIELD_PRESETS.meetingTarget, sessionsCount)}
                 />
                 <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
                   Maximum number of times any two people can be in the same group across all sessions
@@ -205,7 +209,7 @@ export function ConstraintFormModal({
                             }}
                             variant="compact"
                             showSlider={false}
-                            {...NUMBER_FIELD_PRESETS.attributeTargetCount}
+                            {...withContextualMax(NUMBER_FIELD_PRESETS.attributeTargetCount, selectedGroupMaxCapacity)}
                             className="flex-1"
                           />
                         </div>

@@ -4,7 +4,7 @@ import type { Constraint, Person } from '../../types';
 import { getConstraintAddLabel, getConstraintEditLabel } from '../../utils/constraintDisplay';
 import ConstraintPersonChip from '../ConstraintPersonChip';
 import PersonCard from '../PersonCard';
-import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
+import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../ui';
 
 interface Props {
   people: Person[];
@@ -61,6 +61,7 @@ export function PairMeetingCountModal({ people, totalSessions, initial, onCancel
       return id.includes(q) || name.includes(q);
     });
   }, [people, personSearch]);
+  const targetMeetingLimit = (form.sessions.length > 0 ? form.sessions : allSessions).length;
 
   const handleSave = () => {
     setError('');
@@ -167,7 +168,7 @@ export function PairMeetingCountModal({ people, totalSessions, initial, onCancel
                 onChange={(value) => setForm({ ...form, target: value == null ? '' : Math.max(0, Math.round(value)) })}
                 variant="compact"
                 showSlider={false}
-                {...NUMBER_FIELD_PRESETS.meetingTarget}
+                {...withContextualMax(NUMBER_FIELD_PRESETS.meetingTarget, targetMeetingLimit)}
               />
             </div>
             <div>

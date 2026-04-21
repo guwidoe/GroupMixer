@@ -5,7 +5,7 @@ import { findAttributeDefinition } from '../../services/scenarioAttributes';
 import { useAppStore } from '../../store';
 import { getConstraintAddLabel, getConstraintEditLabel } from '../../utils/constraintDisplay';
 import { SessionScopeField } from '../ScenarioEditor/shared/SessionScopeField';
-import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
+import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../ui';
 import {
   createAllSessionScopeDraft,
   optionalSessionsToDraft,
@@ -140,6 +140,10 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
     id: formState.attribute_id,
     name: formState.attribute_key,
   });
+  const selectedGroup = scenario.groups?.find((group) => group.id === formState.group_id);
+  const selectedGroupMaxCapacity = selectedGroup
+    ? Math.max(selectedGroup.size, ...(selectedGroup.session_sizes ?? []))
+    : undefined;
 
   return (
     <div className="fixed inset-0 modal-backdrop flex items-center justify-center z-50 p-4">
@@ -206,7 +210,7 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
                       onChange={(value) => handleDesiredValueChange(val, value == null ? '' : String(value))}
                       variant="compact"
                       showSlider={false}
-                      {...NUMBER_FIELD_PRESETS.attributeTargetCount}
+                      {...withContextualMax(NUMBER_FIELD_PRESETS.attributeTargetCount, selectedGroupMaxCapacity)}
                       className="w-full sm:w-32"
                     />
                   </div>

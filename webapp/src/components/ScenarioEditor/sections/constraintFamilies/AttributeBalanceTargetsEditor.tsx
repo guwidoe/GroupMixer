@@ -1,11 +1,12 @@
 import React from 'react';
-import { NumberField, NUMBER_FIELD_PRESETS } from '../../../ui';
+import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../../../ui';
 
 interface AttributeBalanceTargetsEditorProps {
   options: string[];
   value?: Record<string, number>;
   onCommit: (value: Record<string, number>) => void;
   disabled?: boolean;
+  maxValue?: number;
 }
 
 export function AttributeBalanceTargetsEditor({
@@ -13,6 +14,7 @@ export function AttributeBalanceTargetsEditor({
   value,
   onCommit,
   disabled = false,
+  maxValue,
 }: AttributeBalanceTargetsEditorProps) {
   const targets = value ?? {};
   const unknownKeys = Object.keys(targets)
@@ -50,7 +52,7 @@ export function AttributeBalanceTargetsEditor({
             }}
             variant="compact"
             showSlider={false}
-            {...NUMBER_FIELD_PRESETS.attributeTargetCount}
+            {...withContextualMax(NUMBER_FIELD_PRESETS.attributeTargetCount, maxValue)}
             inputClassName="h-9"
             className="w-full"
           />

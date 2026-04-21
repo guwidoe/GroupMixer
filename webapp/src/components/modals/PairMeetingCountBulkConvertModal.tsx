@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { Person } from '../../types';
 import { getConstraintDisplayName } from '../../utils/constraintDisplay';
-import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
+import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../ui';
 
 type Mode = 'at_least' | 'exact' | 'at_most';
 
@@ -40,6 +40,7 @@ const PairMeetingCountBulkConvertModal: React.FC<Props> = ({ selectedCount, tota
   });
 
   const allSessions = useMemo(() => Array.from({ length: totalSessions }, (_, i) => i), [totalSessions]);
+  const targetMeetingLimit = (sessions.length > 0 ? sessions : allSessions).length;
 
   const handleConvert = () => {
     setError('');
@@ -144,7 +145,7 @@ const PairMeetingCountBulkConvertModal: React.FC<Props> = ({ selectedCount, tota
                 onChange={(value) => setTarget(Math.max(0, Math.round(value ?? 0)))}
                 variant="compact"
                 showSlider={false}
-                {...NUMBER_FIELD_PRESETS.meetingTarget}
+                {...withContextualMax(NUMBER_FIELD_PRESETS.meetingTarget, targetMeetingLimit)}
               />
             </div>
             <div>

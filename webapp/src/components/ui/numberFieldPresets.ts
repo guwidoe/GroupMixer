@@ -5,6 +5,22 @@ type PresetConfig = Pick<
   'min' | 'softMax' | 'max' | 'step' | 'kind' | 'variant' | 'showSlider' | 'allowEmpty'
 >;
 
+export function withContextualMax(preset: PresetConfig, contextualMax?: number | null): PresetConfig {
+  if (contextualMax == null || !Number.isFinite(contextualMax)) {
+    return preset;
+  }
+
+  const resolvedMax = Math.max(preset.min ?? contextualMax, contextualMax);
+  const hardMax = typeof preset.max === 'number' ? Math.min(preset.max, resolvedMax) : resolvedMax;
+  const baseSoftMax = preset.softMax ?? preset.max;
+
+  return {
+    ...preset,
+    max: hardMax,
+    softMax: typeof baseSoftMax === 'number' ? Math.min(baseSoftMax, hardMax) : hardMax,
+  };
+}
+
 export const NUMBER_FIELD_PRESETS = {
   sessionCount: { min: 1, softMax: 10, step: 1, kind: 'int' },
   groupSize: { min: 1, softMax: 12, step: 1, kind: 'int' },

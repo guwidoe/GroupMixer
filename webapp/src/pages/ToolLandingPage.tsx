@@ -10,7 +10,7 @@ import { LandingFooter } from '../components/LandingPage/LandingFooter';
 import { LandingLanguageSelector } from '../components/LandingPage/LandingLanguageSelector';
 import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
-import { NumberField, NUMBER_FIELD_PRESETS } from '../components/ui';
+import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../components/ui';
 import { interpolate } from '../i18n/interpolate';
 import { getLandingUiContent } from '../i18n/landingUi';
 import { Seo } from '../components/Seo';
@@ -634,7 +634,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                         groupingValue: Math.max(1, value ?? 1),
                       }))
                     }
-                    {...NUMBER_FIELD_PRESETS.groupCount}
+                    {...withContextualMax(NUMBER_FIELD_PRESETS.groupCount, participantCount > 0 ? participantCount : undefined)}
                   />
                 </div>
 
@@ -649,7 +649,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                         groupingValue: Math.max(1, value ?? 1),
                       }))
                     }
-                    {...NUMBER_FIELD_PRESETS.groupSize}
+                    {...withContextualMax(NUMBER_FIELD_PRESETS.groupSize, participantCount > 0 ? participantCount : undefined)}
                   />
                 </div>
               </div>

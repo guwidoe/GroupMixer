@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import type { Constraint } from '../../types';
+import { useAppStore } from '../../store';
 import { getConstraintAddLabel, getConstraintEditLabel } from '../../utils/constraintDisplay';
-import { ModalWrapper, ModalHeader, ModalFooter, FormValidationError, NumberField, NUMBER_FIELD_PRESETS } from '../ui';
+import { ModalWrapper, ModalHeader, ModalFooter, FormValidationError, NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../ui';
 
 interface Props {
   initial?: Constraint | null; // if editing existing
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function RepeatEncounterModal({ initial, onCancel, onSave }: Props) {
+  const totalSessions = useAppStore((state) => state.resolveScenario().num_sessions || 1);
   const editing = !!initial;
 
   const getInitialState = () => {
@@ -95,7 +97,7 @@ export function RepeatEncounterModal({ initial, onCancel, onSave }: Props) {
             value={formState.max_allowed_encounters}
             onChange={(value) => setFormState((prev) => ({ ...prev, max_allowed_encounters: value }))}
             error={!isMaxEncountersValid(formState.max_allowed_encounters) ? 'Enter 0 or greater.' : undefined}
-            {...NUMBER_FIELD_PRESETS.meetingTarget}
+            {...withContextualMax(NUMBER_FIELD_PRESETS.meetingTarget, totalSessions)}
           />
           <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>The number of times any two people can be in the same group before penalties apply.</p>
         </div>

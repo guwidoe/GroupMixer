@@ -77,6 +77,10 @@ export function SoftConstraintFamilySection({
   const copy = SOFT_SECTION_COPY[family];
   const items = getIndexedConstraints(scenario, family);
   const searchValue = search.trim().toLowerCase();
+  const getGroupMaxCapacity = (groupId?: string) => {
+    const group = scenario.groups.find((entry) => entry.id === groupId);
+    return group ? Math.max(group.size, ...(group.session_sizes ?? [])) : undefined;
+  };
 
   const filteredItems = viewMode === 'cards'
     ? items.filter(({ constraint }) => {
@@ -444,6 +448,7 @@ export function SoftConstraintFamilySection({
                             disabled={disabled}
                             options={getAttributeBalanceTargetOptions(row.constraint, attributeDefinitions)}
                             value={(value as Record<string, number> | undefined) ?? {}}
+                            maxValue={getGroupMaxCapacity(row.constraint.group_id)}
                             onCommit={onCommit}
                           />
                         ),

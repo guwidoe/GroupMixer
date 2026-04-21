@@ -1,5 +1,5 @@
 import { RotateCcw, Sparkles } from 'lucide-react';
-import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
+import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../ui';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupBasicFormProps {
@@ -115,7 +115,10 @@ export function QuickSetupBasicForm({ controller }: QuickSetupBasicFormProps) {
           label={draft.groupingMode === 'groupCount' ? 'Number of groups' : 'People per group'}
           value={draft.groupingValue}
           onChange={(value) => controller.updateDraft((current) => ({ ...current, groupingValue: Math.max(1, value ?? 1) }))}
-          {...(draft.groupingMode === 'groupCount' ? NUMBER_FIELD_PRESETS.groupCount : NUMBER_FIELD_PRESETS.groupSize)}
+          {...withContextualMax(
+            draft.groupingMode === 'groupCount' ? NUMBER_FIELD_PRESETS.groupCount : NUMBER_FIELD_PRESETS.groupSize,
+            participantCount > 0 ? participantCount : undefined,
+          )}
           className="rounded-2xl border px-4 py-3"
         />
       </div>

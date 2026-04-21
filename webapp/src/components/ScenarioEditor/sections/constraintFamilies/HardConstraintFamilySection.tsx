@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 import type { Constraint } from '../../../../types';
-import { Button, NumberField, NUMBER_FIELD_PRESETS } from '../../../ui';
+import { Button, NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../../../ui';
 import { replaceConstraintsAtIndices } from '../../../constraints/constraintMutations';
 import { SetupActionsMenu } from '../../shared/SetupActionsMenu';
 import { SetupCardSearchToolbar } from '../../shared/SetupCardSearchToolbar';
@@ -233,7 +233,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                       onChange={(value) => setMinMembers(value == null ? '' : Math.max(0, Math.round(value)))}
                       variant="compact"
                       showSlider={false}
-                      {...NUMBER_FIELD_PRESETS.meetingTarget}
+                      {...withContextualMax(NUMBER_FIELD_PRESETS.meetingTarget, scenario.people.length)}
                     />
                   </span>
                 </label>

@@ -10,5 +10,5 @@ export { Button, getButtonClassName } from './Button';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './Button';
 export { NumberField } from './NumberField';
 export type { NumberFieldKind, NumberFieldProps, NumberFieldVariant } from './NumberField';
-export { NUMBER_FIELD_PRESETS } from './numberFieldPresets';
+export { NUMBER_FIELD_PRESETS, withContextualMax } from './numberFieldPresets';
 export type { ModalWidth } from './ModalWrapper';
