@@ -1,5 +1,8 @@
 import React from 'react';
-import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../../../ui';
+import {
+  AttributeDistributionField,
+  getAttributeDistributionBuckets,
+} from '../../../ui';
 
 interface AttributeBalanceTargetsEditorProps {
   options: string[];
@@ -29,38 +32,24 @@ export function AttributeBalanceTargetsEditor({
     );
   }
 
+  const allocatedTotal = Object.values(targets).reduce((sum, count) => sum + Math.max(0, Math.round(Number(count) || 0)), 0);
+  const effectiveCapacity = typeof maxValue === 'number' ? Math.max(maxValue, allocatedTotal) : allocatedTotal;
+
   return (
-    <div className="min-w-[14rem] space-y-2">
-      {options.map((option) => (
-        <label key={option} className="grid grid-cols-[minmax(0,1fr)_5.5rem] items-center gap-2 text-sm">
-          <span className="truncate" title={option} style={{ color: 'var(--text-secondary)' }}>
-            {option}
-          </span>
-          <NumberField
-            label={undefined}
-            inputAriaLabel={`Target for ${option}`}
-            disabled={disabled}
-            value={targets[option] ?? null}
-            onChange={(nextValue) => {
-              const nextTargets = { ...targets };
-              if (nextValue == null) {
-                delete nextTargets[option];
-              } else {
-                nextTargets[option] = nextValue;
-              }
-              onCommit(nextTargets);
-            }}
-            variant="compact"
-            showSlider={false}
-            {...withContextualMax(NUMBER_FIELD_PRESETS.attributeTargetCount, maxValue)}
-            inputClassName="h-9"
-            className="w-full"
-          />
-        </label>
-      ))}
+    <div className="min-w-[16rem]">
+      <AttributeDistributionField
+        buckets={getAttributeDistributionBuckets(options)}
+        value={targets}
+        capacity={effectiveCapacity}
+        onChange={(nextValue) => onCommit(nextValue)}
+        disabled={disabled}
+        variant="compact"
+        showSummary={false}
+        showChips={false}
+      />
       {unknownKeys.length > 0 ? (
         <div
-          className="rounded-xl border px-3 py-2 text-xs"
+          className="mt-2 rounded-xl border px-3 py-2 text-xs"
           style={{
             borderColor: 'var(--color-warning)',
             backgroundColor: 'color-mix(in srgb, var(--color-warning) 10%, var(--bg-primary) 90%)',

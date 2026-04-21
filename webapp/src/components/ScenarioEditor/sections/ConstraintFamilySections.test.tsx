@@ -241,8 +241,9 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('columnheader', { name: /targets/i })).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /female/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /^male /i })).not.toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /target for female/i })).toHaveValue('2');
-    expect(screen.getByRole('textbox', { name: /target for male/i })).toHaveValue('1');
+    expect(screen.getByRole('button', { name: /disable target for female/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /disable target for male/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /adjust boundary between female and male/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /balance attributes csv/i });

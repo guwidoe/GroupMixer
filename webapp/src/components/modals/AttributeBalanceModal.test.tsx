@@ -45,13 +45,13 @@ describe('AttributeBalanceModal', () => {
     expect(screen.getByText(/using the smallest selected-session group capacity \(2\)/i)).toBeInTheDocument();
     expect(screen.getByLabelText('female count')).toHaveValue('1');
     expect(screen.getByLabelText('male count')).toHaveValue('1');
-    expect(screen.getByLabelText(/not allocated count/i)).toHaveTextContent('0');
+    expect(screen.getAllByText(/not allocated/i).length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole('radio', { name: /only selected sessions/i }));
     await user.click(screen.getByRole('checkbox', { name: '2' }));
 
     expect(screen.getByLabelText('female count')).toHaveValue('4');
-    expect(screen.getByLabelText('male count')).toHaveValue('0');
+    expect(screen.getByRole('button', { name: /male not targeted/i })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('preserves edit-mode values instead of reseeding them', () => {
@@ -73,7 +73,7 @@ describe('AttributeBalanceModal', () => {
     );
 
     expect(screen.getByLabelText('female count')).toHaveValue('2');
-    expect(screen.getByLabelText('male count')).toHaveValue('0');
+    expect(screen.getByRole('button', { name: /male not targeted/i })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('preserves explicit zero targets when saving exact-mode constraints', async () => {

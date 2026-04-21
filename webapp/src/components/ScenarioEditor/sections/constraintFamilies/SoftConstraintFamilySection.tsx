@@ -452,7 +452,7 @@ export function SoftConstraintFamilySection({
                             onCommit={onCommit}
                           />
                         ),
-                        width: 260,
+                        width: 300,
                       },
                       {
                         kind: 'primitive' as const,
