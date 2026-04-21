@@ -648,6 +648,97 @@
     box-shadow: 0 0 0 2px var(--color-accent), 0 0 0 4px rgba(59, 130, 246, 0.1);
   }
 
+  .number-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .number-field__label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .number-field__controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .number-field--compact .number-field__controls {
+    gap: 0.5rem;
+  }
+
+  .number-field__slider-column {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .number-field__slider {
+    width: 100%;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  .number-field__slider:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
+  .number-field__scale {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+  }
+
+  .number-field__input {
+    min-width: 0;
+  }
+
+  .number-field__input--invalid {
+    border-color: var(--color-error-600);
+  }
+
+  .number-field__hint {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+  }
+
+  .number-field__error {
+    font-size: 0.75rem;
+    color: var(--color-error-600);
+  }
+
+  .number-field--disabled {
+    opacity: 0.7;
+  }
+
+  @media (min-width: 640px) {
+    .number-field__controls {
+      flex-direction: row;
+      align-items: start;
+    }
+
+    .number-field--compact .number-field__controls {
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .number-field__slider-column {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .number-field__input {
+      width: 7rem;
+      flex: 0 0 auto;
+    }
+  }
+
   /* Modal backdrop with blur effect */
   .modal-backdrop {
     backdrop-filter: blur(8px);
