@@ -63,7 +63,7 @@ def render_week_grid(cell, layer_key, week_cap):
     return "".join(parts)
 
 
-def render_outer_cell(cell, layer_key, week_cap):
+def render_outer_cell(cell, layer_key, week_cap, matrix_index):
     summary = cell[LAYER_CONFIG[layer_key]["summary_key"]]
     title = (
         f"{cell['g']}-{cell['p']} | frontier={summary['contiguous_frontier']}"
@@ -75,7 +75,8 @@ def render_outer_cell(cell, layer_key, week_cap):
         title += f" | {cell['skip_reason']}"
     return (
         f"<button class='outer-cell{' benchmark-skipped' if not cell['benchmark_eligible'] else ''}'"
-        f" title='{html.escape(title)}'>"
+        f" title='{html.escape(title)}'"
+        f" data-matrix-index='{matrix_index}' data-g='{cell['g']}' data-p='{cell['p']}'>"
         f"<div class='outer-cell-headline'>{html.escape(summary['headline_label'])}</div>"
         f"<div class='outer-cell-subtitle'>{cell['g']}-{cell['p']}</div>"
         f"{render_week_grid(cell, layer_key, week_cap)}"
@@ -83,7 +84,7 @@ def render_outer_cell(cell, layer_key, week_cap):
     )
 
 
-def render_matrix_view(matrix, layer_key, week_cap):
+def render_matrix_view(matrix, layer_key, week_cap, matrix_index):
     bounds = matrix["bounds"]
     cell_map = build_cell_map(matrix["cells"])
     parts = [
@@ -99,7 +100,7 @@ def render_matrix_view(matrix, layer_key, week_cap):
         parts.append(f"<tr><th>{g}</th>")
         for p in range(bounds["p_min"], bounds["p_max"] + 1):
             cell = cell_map[(g, p)]
-            parts.append(f"<td>{render_outer_cell(cell, layer_key, week_cap)}</td>")
+            parts.append(f"<td>{render_outer_cell(cell, layer_key, week_cap, matrix_index)}</td>")
         parts.append("</tr>")
     parts.append("</tbody></table></section>")
     return "".join(parts)
@@ -112,16 +113,15 @@ def render_layer(artifact, layer_key):
         f"<section class='layer-panel' data-layer='{layer_key}'>",
         f"<p class='meta'>{html.escape(config['description'])}</p>",
     ]
-    for matrix in artifact["matrices"]:
-        parts.append(render_matrix_view(matrix, layer_key, week_cap))
+    for idx, matrix in enumerate(artifact["matrices"]):
+        parts.append(render_matrix_view(matrix, layer_key, week_cap, idx))
     parts.append("</section>")
     return "".join(parts)
 
 
 def render_html(artifact):
     config = artifact["config"]
-    linear_active = "is-active"
-    squared_active = ""
+    embedded_json = json.dumps(artifact)
     return f"""<!DOCTYPE html>
 <html lang='en'>
 <head>
@@ -133,6 +133,7 @@ def render_html(artifact):
       --bg: #0f172a;
       --panel: #111827;
       --panel-2: #1f2937;
+      --panel-3: #0b1220;
       --text: #e5e7eb;
       --muted: #94a3b8;
       --line: #334155;
@@ -141,7 +142,9 @@ def render_html(artifact):
       --miss: #ef4444;
       --na: #64748b;
       --na2: #475569;
+      --accent: #38bdf8;
     }}
+    * {{ box-sizing: border-box; }}
     body {{
       margin: 0;
       padding: 24px;
@@ -158,20 +161,20 @@ def render_html(artifact):
       padding: 16px 18px;
       margin-bottom: 18px;
     }}
-    .config-grid {{
+    .config-grid, .summary-grid {{
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 10px;
       margin-top: 12px;
     }}
-    .config-item {{
+    .config-item, .summary-card {{
       background: rgba(255,255,255,0.03);
       border: 1px solid rgba(148,163,184,0.2);
       border-radius: 10px;
       padding: 10px 12px;
     }}
-    .config-item .label {{ display:block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }}
-    .config-item .value {{ font-weight: 600; }}
+    .config-item .label, .summary-card .label {{ display:block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }}
+    .config-item .value, .summary-card .value {{ font-weight: 600; }}
     .tab-row {{ display:flex; gap:10px; margin: 18px 0; }}
     .tab-button {{
       background: var(--panel-2);
@@ -198,12 +201,14 @@ def render_html(artifact):
       border-radius: 12px;
       color: var(--text);
       padding: 8px;
-      cursor: default;
+      cursor: pointer;
+      transition: transform .08s ease, border-color .08s ease;
     }}
+    .outer-cell:hover {{ border-color: rgba(56,189,248,0.65); transform: translateY(-1px); }}
     .outer-cell-subtitle {{ color: var(--muted); font-size: 12px; margin-bottom: 6px; }}
     .outer-cell-headline {{ font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 4px; }}
     .benchmark-skipped .outer-cell-headline {{ color: #cbd5e1; }}
-    .mini-grid {{
+    .mini-grid, .large-grid {{
       display: grid;
       grid-template-columns: repeat(10, minmax(0, 1fr));
       gap: 2px;
@@ -215,6 +220,55 @@ def render_html(artifact):
     .week-tight {{ background: var(--tight); }}
     .week-miss {{ background: var(--miss); }}
     .week-unavailable {{ background: var(--na); }}
+    .modal-backdrop {{
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,0.78);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 1000;
+    }}
+    .modal-backdrop.is-open {{ display: flex; }}
+    .detail-modal {{
+      width: min(1400px, 100%);
+      max-height: 92vh;
+      overflow: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    }}
+    .detail-header {{ display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom: 14px; }}
+    .close-button {{
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }}
+    .detail-layout {{ display:grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 18px; }}
+    .detail-card {{ background: var(--panel-3); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 14px; }}
+    .large-week {{ aspect-ratio: 1 / 1; border-radius: 6px; position: relative; min-width: 0; }}
+    .large-week-label {{ position:absolute; inset:auto 4px 4px auto; font-size: 10px; color: rgba(255,255,255,0.85); font-weight: 700; }}
+    .large-week.empty .large-week-label {{ display:none; }}
+    .detail-table-wrap {{ overflow: auto; max-height: 62vh; }}
+    table.detail-table {{ border-collapse: collapse; width: 100%; min-width: 980px; }}
+    table.detail-table th, table.detail-table td {{ border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }}
+    table.detail-table th {{ background: rgba(255,255,255,0.03); position: sticky; top: 0; }}
+    .pill {{ display:inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid rgba(148,163,184,0.25); }}
+    .pill-exact {{ background: rgba(22,101,52,0.35); }}
+    .pill-tight {{ background: rgba(34,197,94,0.22); }}
+    .pill-miss {{ background: rgba(239,68,68,0.18); }}
+    .pill-na {{ background: rgba(100,116,139,0.25); }}
+    .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }}
+    .contribution-note {{ color: var(--muted); font-size: 12px; line-height: 1.4; }}
+    @media (max-width: 980px) {{
+      .detail-layout {{ grid-template-columns: 1fr; }}
+    }}
   </style>
 </head>
 <body>
@@ -240,21 +294,212 @@ def render_html(artifact):
     </div>
   </section>
   <div class='tab-row'>
-    <button class='tab-button {linear_active}' data-layer-target='linear'>{html.escape(LAYER_CONFIG['linear']['label'])}</button>
-    <button class='tab-button {squared_active}' data-layer-target='squared'>{html.escape(LAYER_CONFIG['squared']['label'])}</button>
+    <button class='tab-button is-active' data-layer-target='linear'>{html.escape(LAYER_CONFIG['linear']['label'])}</button>
+    <button class='tab-button' data-layer-target='squared'>{html.escape(LAYER_CONFIG['squared']['label'])}</button>
   </div>
   <div id='report-root'>
     {render_layer(artifact, 'linear')}
     {render_layer(artifact, 'squared')}
   </div>
+  <div class='modal-backdrop' id='detail-backdrop'>
+    <div class='detail-modal'>
+      <div class='detail-header'>
+        <div>
+          <h2 id='detail-title'>cell detail</h2>
+          <p class='meta' id='detail-subtitle'></p>
+        </div>
+        <button class='close-button' id='detail-close'>Close</button>
+      </div>
+      <div id='detail-body'></div>
+    </div>
+  </div>
   <script>
+    const ARTIFACT = {embedded_json};
+    const LAYER_CONFIG = {json.dumps(LAYER_CONFIG)};
     const tabs = document.querySelectorAll('.tab-button');
     const panels = document.querySelectorAll('.layer-panel');
+    const backdrop = document.getElementById('detail-backdrop');
+    const detailTitle = document.getElementById('detail-title');
+    const detailSubtitle = document.getElementById('detail-subtitle');
+    const detailBody = document.getElementById('detail-body');
+    let currentLayer = 'linear';
+
     function setLayer(layer) {{
+      currentLayer = layer;
       tabs.forEach(btn => btn.classList.toggle('is-active', btn.dataset.layerTarget === layer));
       panels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.layer === layer));
     }}
+
+    function statusClass(status) {{
+      return {{
+        exact: 'week-exact',
+        lower_bound_tight: 'week-tight',
+        miss: 'week-miss',
+        unsupported: 'week-unavailable',
+        timeout: 'week-unavailable',
+        error: 'week-unavailable',
+        not_run: 'week-unavailable',
+      }}[status] || 'week-unavailable';
+    }}
+
+    function statusPill(status) {{
+      const label = status.replace(/_/g, ' ');
+      const cls = status === 'exact'
+        ? 'pill pill-exact'
+        : status === 'lower_bound_tight'
+        ? 'pill pill-tight'
+        : status === 'miss'
+        ? 'pill pill-miss'
+        : 'pill pill-na';
+      return `<span class="${{cls}}">${{label}}</span>`;
+    }}
+
+    function contributionNarrative(week) {{
+      if (!week.seed_metrics || !week.final_metrics) {{
+        return week.error_message || 'no benchmark data';
+      }}
+      const seedLinearGap = week.seed_metrics.linear_repeat_lower_bound_gap;
+      const finalLinearGap = week.final_metrics.linear_repeat_lower_bound_gap;
+      const seedSquaredGap = week.seed_metrics.squared_repeat_lower_bound_gap;
+      const finalSquaredGap = week.final_metrics.squared_repeat_lower_bound_gap;
+      if (seedLinearGap === 0 && finalLinearGap === 0 && seedSquaredGap === 0 && finalSquaredGap === 0) {{
+        return 'seed already tight; search only needed to confirm / preserve the optimum';
+      }}
+      if (seedLinearGap === 0 && finalLinearGap === 0) {{
+        return 'seed already hit the linear bound before local search';
+      }}
+      if (finalLinearGap === 0 && seedLinearGap > 0) {{
+        return 'local search closed the remaining linear lower-bound gap';
+      }}
+      if (finalLinearGap < seedLinearGap || finalSquaredGap < seedSquaredGap) {{
+        return 'local search improved the seed but did not close every gap';
+      }}
+      if (finalLinearGap === seedLinearGap && finalSquaredGap === seedSquaredGap) {{
+        return 'search failed to improve the seed materially';
+      }}
+      return 'search changed the incumbent, but the final result is not better on every tracked gap';
+    }}
+
+    function renderLargeGrid(cell, layer) {{
+      const statusKey = LAYER_CONFIG[layer].status_key;
+      const weekCap = ARTIFACT.config.week_cap;
+      const rows = Math.max(1, Math.ceil(weekCap / 10));
+      const totalSlots = rows * 10;
+      let html = `<div class="large-grid">`;
+      for (let index = 0; index < totalSlots; index += 1) {{
+        if (index < cell.week_results.length) {{
+          const week = cell.week_results[index];
+          const status = week[statusKey];
+          html += `<div class="large-week ${'{'}statusClass(status){'}'}" title="week ${'{'}week.week{'}'}: ${'{'}status.replace(/_/g, ' '){'}'}"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+        }} else {{
+          html += `<div class="large-week empty week-unavailable"></div>`;
+        }}
+      }}
+      html += `</div>`;
+      return html;
+    }}
+
+    function metricText(value) {{
+      return value == null ? '—' : String(value);
+    }}
+
+    function renderWeekRows(cell, layer) {{
+      const statusKey = LAYER_CONFIG[layer].status_key;
+      return cell.week_results.map(week => {{
+        const seed = week.seed_metrics;
+        const finalMetrics = week.final_metrics;
+        const candidates = (week.mixed_seed_candidates || []).map(candidate =>
+          `${'{'}candidate.family{'}'}:${'{'}candidate.linear_repeat_lower_bound_gap{'}'}`
+        ).join(', ');
+        const search = week.search_telemetry
+          ? `it=${'{'}week.search_telemetry.iterations_completed{'}'}, best@${'{'}week.search_telemetry.best_iteration{'}'}, breakouts=${'{'}week.search_telemetry.breakout_count{'}'}`
+          : '—';
+        return `<tr>
+          <td class="mono">${'{'}week.week{'}'}</td>
+          <td>${'{'}statusPill(week[statusKey]){'}'}</td>
+          <td>${'{'}week.seed_family || '—'{'}'}</td>
+          <td class="mono">${'{'}seed ? seed.linear_repeat_lower_bound_gap : '—'{'}'}</td>
+          <td class="mono">${'{'}finalMetrics ? finalMetrics.linear_repeat_lower_bound_gap : '—'{'}'}</td>
+          <td class="mono">${'{'}seed ? seed.squared_repeat_lower_bound_gap : '—'{'}'}</td>
+          <td class="mono">${'{'}finalMetrics ? finalMetrics.squared_repeat_lower_bound_gap : '—'{'}'}</td>
+          <td class="mono">${'{'}week.runtime_seconds == null ? '—' : week.runtime_seconds.toFixed(3){'}'}</td>
+          <td class="mono">${'{'}week.stop_reason || '—'{'}'}</td>
+          <td class="contribution-note">${'{'}contributionNarrative(week){'}'}</td>
+          <td class="contribution-note">${'{'}candidates || '—'{'}'}</td>
+          <td class="contribution-note">${'{'}search{'}'}</td>
+        </tr>`;
+      }}).join('');
+    }}
+
+    function showDetail(matrixIndex, g, p) {{
+      const matrix = ARTIFACT.matrices[Number(matrixIndex)];
+      const cell = matrix.cells.find(candidate => candidate.g === Number(g) && candidate.p === Number(p));
+      if (!cell) return;
+      const summary = cell[LAYER_CONFIG[currentLayer].summary_key];
+      detailTitle.textContent = `${'{'}cell.g{'}'}-${'{'}cell.p{'}'} · ${'{'}LAYER_CONFIG[currentLayer].label{'}'}`;
+      detailSubtitle.textContent = `people=${'{'}cell.num_people{'}'} · frontier=${'{'}summary.contiguous_frontier{'}'} · best observed=${'{'}summary.best_observed_hit{'}'} · first miss=${'{'}summary.first_miss_week ?? '—'{'}'}`;
+      detailBody.innerHTML = `
+        <div class="detail-layout">
+          <div>
+            <div class="detail-card">
+              <h3>Week grid</h3>
+              <p class="meta">Larger view of the inner week matrix for this outer cell.</p>
+              ${'{'}renderLargeGrid(cell, currentLayer){'}'}
+            </div>
+            <div class="detail-card">
+              <h3>Summary</h3>
+              <div class="summary-grid">
+                <div class="summary-card"><span class="label">frontier</span><span class="value">${'{'}summary.contiguous_frontier{'}'}</span></div>
+                <div class="summary-card"><span class="label">best observed</span><span class="value">${'{'}summary.best_observed_hit{'}'}</span></div>
+                <div class="summary-card"><span class="label">exact weeks</span><span class="value">${'{'}summary.exact_week_count{'}'}</span></div>
+                <div class="summary-card"><span class="label">tight weeks</span><span class="value">${'{'}summary.lower_bound_tight_week_count{'}'}</span></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="detail-card">
+              <h3>Per-week analytics</h3>
+              <p class="meta">The table keeps seed-vs-search contributions explicit: whether the seed was already tight, whether local search closed the gap, and when it failed to move the frontier.</p>
+              <div class="detail-table-wrap">
+                <table class="detail-table">
+                  <thead>
+                    <tr>
+                      <th>week</th>
+                      <th>status</th>
+                      <th>seed family</th>
+                      <th>seed linear gap</th>
+                      <th>final linear gap</th>
+                      <th>seed squared gap</th>
+                      <th>final squared gap</th>
+                      <th>runtime (s)</th>
+                      <th>stop reason</th>
+                      <th>seed vs search</th>
+                      <th>mixed candidates</th>
+                      <th>search summary</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${'{'}renderWeekRows(cell, currentLayer){'}'}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      backdrop.classList.add('is-open');
+    }}
+
     tabs.forEach(btn => btn.addEventListener('click', () => setLayer(btn.dataset.layerTarget)));
+    document.querySelectorAll('.outer-cell').forEach(btn => {{
+      btn.addEventListener('click', () => showDetail(btn.dataset.matrixIndex, btn.dataset.g, btn.dataset.p));
+    }});
+    document.getElementById('detail-close').addEventListener('click', () => backdrop.classList.remove('is-open'));
+    backdrop.addEventListener('click', (event) => {{
+      if (event.target === backdrop) backdrop.classList.remove('is-open');
+    }});
+    window.addEventListener('keydown', event => {{
+      if (event.key === 'Escape') backdrop.classList.remove('is-open');
+    }});
     setLayer('linear');
   </script>
 </body>
