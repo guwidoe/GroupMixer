@@ -51,11 +51,8 @@ struct CellSummary {
 struct MatrixArtifact<'a> {
     matrix_name: &'a str,
     matrix_version: u32,
-    visual_bounds: BoundsArtifact,
-    scored_bounds: BoundsArtifact,
     benchmark_regions: Vec<BenchmarkRegionArtifact>,
-    cells: Vec<CellSummary>,
-    supplementary_matrices: Vec<SupplementaryMatrixArtifact>,
+    matrices: Vec<MatrixViewArtifact>,
     literature_references: Vec<LiteratureReferenceArtifact>,
 }
 
@@ -74,7 +71,7 @@ struct BenchmarkRegionArtifact {
 }
 
 #[derive(Debug, Serialize)]
-struct SupplementaryMatrixArtifact {
+struct MatrixViewArtifact {
     title: String,
     subtitle: String,
     bounds: BoundsArtifact,
@@ -173,7 +170,6 @@ fn main() {
             },
         },
     ];
-    let mut cells = Vec::new();
     let mut total_constructed_weeks = 0usize;
     let mut frontier_gap_sum = 0usize;
     let mut solved_cells = 0usize;
@@ -189,40 +185,28 @@ fn main() {
         knowledge: &knowledge,
     };
 
-    for groups in target_matrix.visual_bounds.g_min..=target_matrix.visual_bounds.g_max {
-        for group_size in target_matrix.visual_bounds.p_min..=target_matrix.visual_bounds.p_max {
-            let cell = resolver.resolve_cell(groups, group_size);
-            let constructed_weeks = cell.constructed_weeks.unwrap_or(0);
-            if let Some(upper_bound) = cell.upper_bound_weeks {
-                accumulate_benchmark_metrics(
-                    group_size,
-                    upper_bound,
-                    constructed_weeks,
-                    &mut total_constructed_weeks,
-                    &mut frontier_gap_sum,
-                    &mut solved_cells,
-                    &mut exact_frontier_cells,
-                    &mut benchmark_cell_count,
-                    &mut per_p_totals,
-                );
-            }
-            cells.push(cell);
-        }
-    }
-
-    let supplementary_matrices = vec![
-        build_supplementary_matrix(
-            "Supplementary coverage: g=11..20, p=1..10",
-            "Universal glyph grammar: center=W, top-left=O, top-right=T, bottom-left=U, bottom-right=M. In this region T comes from curated literature when available, U is always the counting upper bound, and the trivial p=1 column stays visual-only.",
+    let matrices = vec![
+        build_matrix_view(
+            "Coverage view: g=1..10, p=1..10",
+            "Range view over the global cell universe. Universal glyph grammar: center=W, top-left=O, top-right=T, bottom-left=U, bottom-right=M.",
+            1,
+            10,
+            1,
+            10,
+            &resolver,
+        ),
+        build_matrix_view(
+            "Coverage view: g=11..20, p=1..10",
+            "Range view over the same global cell universe. Universal glyph grammar: center=W, top-left=O, top-right=T, bottom-left=U, bottom-right=M.",
             11,
             20,
             1,
             10,
             &resolver,
         ),
-        build_supplementary_matrix(
-            "Supplementary coverage: g=11..20, p=11..20",
-            "Universal glyph grammar: center=W, top-left=O, top-right=T, bottom-left=U, bottom-right=M. In this region T comes from curated literature when available, U is always the counting upper bound, and blank T means no clean literature target has been curated yet.",
+        build_matrix_view(
+            "Coverage view: g=11..20, p=11..20",
+            "Range view over the same global cell universe. Universal glyph grammar: center=W, top-left=O, top-right=T, bottom-left=U, bottom-right=M.",
             11,
             20,
             11,
@@ -231,7 +215,7 @@ fn main() {
         ),
     ];
 
-    for matrix in &supplementary_matrices {
+    for matrix in &matrices {
         for cell in &matrix.cells {
             if let (Some(upper_bound), Some(constructed_weeks)) =
                 (cell.upper_bound_weeks, cell.constructed_weeks)
@@ -262,12 +246,7 @@ fn main() {
     for (group_size, total) in per_p_totals {
         println!("METRIC p{}_constructed_weeks={}", group_size, total);
     }
-    for cell in &cells {
-        if let Some(constructed_weeks) = cell.constructed_weeks {
-            println!("METRIC W_{}_{}={}", cell.g, cell.p, constructed_weeks);
-        }
-    }
-    for matrix in &supplementary_matrices {
+    for matrix in &matrices {
         for cell in &matrix.cells {
             if let Some(constructed_weeks) = cell.constructed_weeks {
                 println!("METRIC W_{}_{}={}", cell.g, cell.p, constructed_weeks);
@@ -279,21 +258,8 @@ fn main() {
         let artifact = MatrixArtifact {
             matrix_name: &target_matrix.name,
             matrix_version: target_matrix.version,
-            visual_bounds: BoundsArtifact {
-                g_min: target_matrix.visual_bounds.g_min,
-                g_max: target_matrix.visual_bounds.g_max,
-                p_min: target_matrix.visual_bounds.p_min,
-                p_max: target_matrix.visual_bounds.p_max,
-            },
-            scored_bounds: BoundsArtifact {
-                g_min: target_matrix.scored_bounds.g_min,
-                g_max: target_matrix.scored_bounds.g_max,
-                p_min: target_matrix.scored_bounds.p_min,
-                p_max: target_matrix.scored_bounds.p_max,
-            },
             benchmark_regions,
-            cells,
-            supplementary_matrices,
+            matrices,
             literature_references,
         };
         let json = serde_json::to_string_pretty(&artifact)
@@ -622,7 +588,7 @@ fn build_cell_summary(
     }
 }
 
-fn build_supplementary_matrix(
+fn build_matrix_view(
     title: &str,
     subtitle: &str,
     g_min: usize,
@@ -630,7 +596,7 @@ fn build_supplementary_matrix(
     p_min: usize,
     p_max: usize,
     resolver: &CellResolver<'_>,
-) -> SupplementaryMatrixArtifact {
+) -> MatrixViewArtifact {
     let mut cells = Vec::new();
     for groups in g_min..=g_max {
         for group_size in p_min..=p_max {
@@ -638,7 +604,7 @@ fn build_supplementary_matrix(
         }
     }
 
-    SupplementaryMatrixArtifact {
+    MatrixViewArtifact {
         title: title.into(),
         subtitle: subtitle.into(),
         bounds: BoundsArtifact {

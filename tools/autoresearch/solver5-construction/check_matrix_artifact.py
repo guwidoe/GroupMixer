@@ -134,9 +134,10 @@ def main():
     args = parser.parse_args()
 
     artifact = json.loads(Path(args.artifact).read_text())
-    for cell in artifact.get("cells", []):
-        validate_cell(cell, f"canonical ({cell['g']},{cell['p']})")
-    for matrix in artifact.get("supplementary_matrices", []):
+    matrices = artifact.get("matrices", [])
+    if not matrices:
+        raise AssertionError("artifact must expose non-empty matrices views")
+    for matrix in matrices:
         for cell in matrix.get("cells", []):
             validate_cell(cell, f"{matrix['title']} ({cell['g']},{cell['p']})")
 

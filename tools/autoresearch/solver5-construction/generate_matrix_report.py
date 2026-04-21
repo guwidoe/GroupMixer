@@ -338,14 +338,10 @@ def main():
     args = parser.parse_args()
 
     artifact = json.loads(Path(args.artifact).read_text())
-    cells = artifact["cells"]
-    supplementary_matrices = artifact.get("supplementary_matrices", [])
+    matrices = artifact["matrices"]
     literature_references = artifact.get("literature_references", [])
     literature_reference_index = build_literature_reference_index(artifact)
     benchmark_regions = artifact.get("benchmark_regions", [])
-    rows = range(artifact["visual_bounds"]["g_min"], artifact["visual_bounds"]["g_max"] + 1)
-    cols = range(artifact["visual_bounds"]["p_min"], artifact["visual_bounds"]["p_max"] + 1)
-    cell_map = build_matrix(cells)
 
     page = [
         "<!doctype html><html><head><meta charset='utf-8'>",
@@ -387,7 +383,7 @@ def main():
         "code{background:#f1f5f9;border-radius:6px;padding:1px 5px;font-size:11px;}"
         "</style></head><body>",
         f"<h1>{html.escape(artifact['matrix_name'])}</h1>",
-        f"<p class='meta'>version {artifact['matrix_version']} · visual region g={artifact['visual_bounds']['g_min']}..{artifact['visual_bounds']['g_max']}, p={artifact['visual_bounds']['p_min']}..{artifact['visual_bounds']['p_max']} · benchmark regions {html.escape(render_benchmark_regions(benchmark_regions))}</p>",
+        f"<p class='meta'>version {artifact['matrix_version']} · {len(matrices)} matrix views over one global cell universe · benchmark regions {html.escape(render_benchmark_regions(benchmark_regions))}</p>",
         "<div class='legend-block'>",
         "<div class='legend-row'><span class='legend-key'>Universal glyph grammar</span><span><code>W</code> center = current achieved weeks</span><span><code>O</code> top-left = exact optimum when known</span><span><code>T</code> top-right = primary target</span><span><code>U</code> bottom-left = upper bound</span><span><code>M</code> bottom-right = current method; when a desired family differs, show <code>M→D</code></span></div>",
         "<div class='legend-row'><span class='legend-key'>Target sources</span><span>Canonical matrix uses roadmap <code>T</code> values and may also encode a desired roadmap family in the method slot.</span><span>Supplementary matrices use curated literature <code>T</code> values when available.</span><span><code>U</code> always means the counting upper bound.</span></div>",
@@ -483,8 +479,7 @@ def main():
         "</div></div>",
     ]
 
-    page.append(render_matrix_table("Coverage dashboard", rows, cols, cell_map, literature_reference_index))
-    for matrix in supplementary_matrices:
+    for matrix in matrices:
         bounds = matrix["bounds"]
         page.append(
             render_matrix_table(
