@@ -159,7 +159,7 @@ function createContent({
 
 export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent> = {
   home: createContent({
-    title: 'Random Group Generator - Split Names into Teams Instantly',
+    title: 'Random Group Generator - Split Names into Balanced Teams',
     description: HOME_FEATURE_SUMMARY,
     eyebrow: 'For classrooms, workshops, and events',
     heroTitle: 'Random Group Generator',
