@@ -27,6 +27,8 @@ type WorkflowAction = {
 type WorkflowItem = WorkflowTab | WorkflowAction;
 type NavigationVariant = 'standalone' | 'embedded' | 'mobile-menu';
 
+const EMBEDDED_SCENARIO_HISTORY_SLOT_CLASS = 'w-[5.25rem] shrink-0';
+
 const ADVANCED_WORKFLOW_TABS: WorkflowTab[] = [
   {
     kind: 'tab',
@@ -292,6 +294,15 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
     closeMobileMenu?.();
   };
 
+  const scenarioHistoryControls = showScenarioHistoryControls ? (
+    <ScenarioDocumentHistoryBar
+      canUndo={scenarioHistoryPastCount > 0}
+      canRedo={scenarioHistoryFutureCount > 0}
+      onUndo={undoScenarioDocument}
+      onRedo={redoScenarioDocument}
+    />
+  ) : null;
+
   const content = variant === 'mobile-menu' ? (
     <div className="space-y-1.5">
       <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
@@ -368,8 +379,13 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
       })}
     </div>
   ) : (
-    <div className={variant === 'embedded' ? 'flex min-w-0 items-center justify-center gap-2' : ''}>
-      <ScrollArea orientation="horizontal" className={variant === 'embedded' ? 'min-w-0 flex-1' : 'px-4 py-2'}>
+    <div
+      className={variant === 'embedded'
+        ? 'grid min-w-0 grid-cols-[5.25rem_minmax(0,1fr)_5.25rem] items-center gap-2'
+        : ''}
+    >
+      {variant === 'embedded' ? <div className={EMBEDDED_SCENARIO_HISTORY_SLOT_CLASS} aria-hidden="true" /> : null}
+      <ScrollArea orientation="horizontal" className={variant === 'embedded' ? 'min-w-0' : 'px-4 py-2'}>
         <div className={variant === 'embedded' ? 'flex min-w-max items-center justify-center' : 'mx-auto flex min-w-max items-center justify-center'}>
           <div
             className="inline-flex items-center rounded-[1.1rem] border px-1.5 py-1"
@@ -463,14 +479,9 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
           </div>
         </div>
       </ScrollArea>
-      {showScenarioHistoryControls && variant === 'embedded' ? (
-        <div className="flex-shrink-0">
-          <ScenarioDocumentHistoryBar
-            canUndo={scenarioHistoryPastCount > 0}
-            canRedo={scenarioHistoryFutureCount > 0}
-            onUndo={undoScenarioDocument}
-            onRedo={redoScenarioDocument}
-          />
+      {variant === 'embedded' ? (
+        <div className={`${EMBEDDED_SCENARIO_HISTORY_SLOT_CLASS} flex items-center justify-end`}>
+          {scenarioHistoryControls}
         </div>
       ) : null}
     </div>
