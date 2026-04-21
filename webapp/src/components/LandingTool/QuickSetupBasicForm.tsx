@@ -119,7 +119,6 @@ export function QuickSetupBasicForm({ controller }: QuickSetupBasicFormProps) {
             draft.groupingMode === 'groupCount' ? NUMBER_FIELD_PRESETS.groupCount : NUMBER_FIELD_PRESETS.groupSize,
             participantCount > 0 ? participantCount : undefined,
           )}
-          className="rounded-2xl border px-4 py-3"
         />
       </div>
 

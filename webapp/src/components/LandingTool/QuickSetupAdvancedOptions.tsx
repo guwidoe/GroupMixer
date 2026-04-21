@@ -39,7 +39,6 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
               value={draft.sessions}
               onChange={(value) => controller.updateDraft((current) => ({ ...current, sessions: Math.max(1, value ?? 1) }))}
               {...NUMBER_FIELD_PRESETS.sessionCount}
-              className="rounded-2xl border px-4 py-3"
             />
           </div>
 
