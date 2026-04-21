@@ -1,4 +1,5 @@
 import { RotateCcw, Sparkles } from 'lucide-react';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupBasicFormProps {
@@ -110,21 +111,12 @@ export function QuickSetupBasicForm({ controller }: QuickSetupBasicFormProps) {
       </fieldset>
 
       <div>
-        <label htmlFor="groupingValue" className="mb-2 block text-sm font-medium">
-          {draft.groupingMode === 'groupCount' ? 'Number of groups' : 'People per group'}
-        </label>
-        <input
-          id="groupingValue"
-          type="number"
-          min={1}
+        <NumberField
+          label={draft.groupingMode === 'groupCount' ? 'Number of groups' : 'People per group'}
           value={draft.groupingValue}
-          onChange={(event) => controller.updateDraft((current) => ({ ...current, groupingValue: Math.max(1, Number(event.target.value) || 1) }))}
-          className="w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-shadow focus:ring-2"
-          style={{
-            borderColor: 'var(--border-primary)',
-            backgroundColor: 'var(--bg-secondary)',
-            color: 'var(--text-primary)',
-          }}
+          onChange={(value) => controller.updateDraft((current) => ({ ...current, groupingValue: Math.max(1, value ?? 1) }))}
+          {...(draft.groupingMode === 'groupCount' ? NUMBER_FIELD_PRESETS.groupCount : NUMBER_FIELD_PRESETS.groupSize)}
+          className="rounded-2xl border px-4 py-3"
         />
       </div>
 

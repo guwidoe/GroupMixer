@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupAdvancedOptionsProps {
@@ -33,17 +34,12 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
       {draft.advancedOpen && (
         <div className="mt-5 space-y-5 border-t pt-5" style={{ borderColor: 'var(--border-primary)' }}>
           <div>
-            <label htmlFor="sessions" className="mb-2 block text-sm font-medium">
-              {labels.sessionsLabel}
-            </label>
-            <input
-              id="sessions"
-              type="number"
-              min={1}
+            <NumberField
+              label={labels.sessionsLabel}
               value={draft.sessions}
-              onChange={(event) => controller.updateDraft((current) => ({ ...current, sessions: Math.max(1, Number(event.target.value) || 1) }))}
-              className="w-full rounded-2xl border px-4 py-3 text-sm outline-none focus:ring-2"
-              style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+              onChange={(value) => controller.updateDraft((current) => ({ ...current, sessions: Math.max(1, value ?? 1) }))}
+              {...NUMBER_FIELD_PRESETS.sessionCount}
+              className="rounded-2xl border px-4 py-3"
             />
           </div>
 
