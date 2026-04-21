@@ -82,7 +82,8 @@ fn build_relabel(order: usize, excluded: &[bool]) -> Vec<Option<usize>> {
 }
 
 fn relabel_block(block: Vec<usize>, relabel: &[Option<usize>]) -> Vec<usize> {
-    block.into_iter()
+    block
+        .into_iter()
         .map(|point| relabel[point].expect("relabel should exist for non-hyperoval points"))
         .collect()
 }
