@@ -1,11 +1,12 @@
 use super::problem::PureSgpProblem;
 use super::score::PairFrequencySummary;
 use crate::models::Solver6PairRepeatPenaltyModel;
-use crate::models::{ApiInput, SolverParams};
-use crate::solver5::atoms::{
-    query_construction_atom_from_solver6_input, Solver5AtomSpanRequest, Solver5ConstructionAtom,
-};
+use crate::solver5::atoms::Solver5ConstructionAtom;
 use crate::solver_support::SolverError;
+
+pub(crate) mod relabeling;
+
+pub(crate) use relabeling::build_identity_exact_block_seed;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SeedSourceKind {
@@ -41,12 +42,14 @@ impl SeedAtomId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SeedRelabelingKind {
     Identity,
+    ExplicitPermutation,
 }
 
 impl SeedRelabelingKind {
     pub(crate) fn label(self) -> &'static str {
         match self {
             Self::Identity => "identity",
+            Self::ExplicitPermutation => "explicit_permutation",
         }
     }
 }
@@ -62,6 +65,13 @@ impl SeedRelabelingSummary {
         Self {
             kind: SeedRelabelingKind::Identity,
             changed_people: 0,
+        }
+    }
+
+    pub(crate) fn explicit_permutation(changed_people: usize) -> Self {
+        Self {
+            kind: SeedRelabelingKind::ExplicitPermutation,
+            changed_people,
         }
     }
 }
@@ -112,7 +122,7 @@ pub(crate) struct SeedPairTelemetry {
 }
 
 impl SeedPairTelemetry {
-    fn from_schedule(
+    pub(super) fn from_schedule(
         num_people: usize,
         schedule: &[Vec<Vec<usize>>],
         active_penalty_model: Solver6PairRepeatPenaltyModel,
@@ -187,78 +197,7 @@ pub(crate) struct ExactBlockSeed {
     pub diagnostics: ExactBlockSeedDiagnostics,
 }
 
-pub(crate) fn build_identity_exact_block_seed(
-    input: &ApiInput,
-) -> Result<ExactBlockSeed, SolverError> {
-    let problem = PureSgpProblem::from_input(input)?;
-    let atom = query_construction_atom_from_solver6_input(
-        input,
-        Solver5AtomSpanRequest::BestAvailableFullSpan,
-    )?;
-    let atom_weeks = atom.returned_weeks();
-    if atom_weeks == 0 {
-        return Err(SolverError::ValidationError(
-            "solver6 exact-block seed builder received an empty solver5 atom".into(),
-        ));
-    }
-    if atom_weeks > problem.num_weeks {
-        return Err(SolverError::ValidationError(format!(
-            "solver6 identity exact-block seed builder expected a best available atom no longer than the requested horizon, but got {} weeks for requested {}",
-            atom_weeks, problem.num_weeks
-        )));
-    }
-
-    let full_copies = problem.num_weeks / atom_weeks;
-    let remainder = problem.num_weeks % atom_weeks;
-    if remainder != 0 {
-        return Err(SolverError::ValidationError(format!(
-            "solver6 identity exact-block seed builder currently supports only k * w0 tilings; requested {} weeks with best solver5 atom span {} leaves remainder {}",
-            problem.num_weeks, atom_weeks, remainder
-        )));
-    }
-
-    let atom_id = SeedAtomId::from_solver5_atom(&atom);
-    let mut schedule = Vec::with_capacity(problem.num_weeks);
-    let mut atom_uses = Vec::with_capacity(full_copies);
-    for copy_index in 0..full_copies {
-        let week_range_start = schedule.len();
-        schedule.extend(atom.schedule.iter().cloned());
-        atom_uses.push(SeedAtomUsage::new(
-            atom_id.clone(),
-            copy_index,
-            atom_weeks,
-            week_range_start,
-            week_range_start + atom_weeks,
-            SeedRelabelingSummary::identity(),
-        ));
-    }
-
-    validate_full_schedule_shape(&problem, &schedule)?;
-    let active_penalty_model = match &input.solver.solver_params {
-        SolverParams::Solver6(params) => params.pair_repeat_penalty_model,
-        _ => {
-            return Err(SolverError::ValidationError(
-                "solver6 identity exact-block seed builder expected solver6 params".into(),
-            ));
-        }
-    };
-    let pair_telemetry = SeedPairTelemetry::from_schedule(
-        problem.num_groups * problem.group_size,
-        &schedule,
-        active_penalty_model,
-    )?;
-
-    Ok(ExactBlockSeed {
-        schedule,
-        diagnostics: ExactBlockSeedDiagnostics {
-            total_weeks: problem.num_weeks,
-            atom_uses,
-            pair_telemetry: Some(pair_telemetry),
-        },
-    })
-}
-
-fn validate_full_schedule_shape(
+pub(super) fn validate_full_schedule_shape(
     problem: &PureSgpProblem,
     schedule: &[Vec<Vec<usize>>],
 ) -> Result<(), SolverError> {
