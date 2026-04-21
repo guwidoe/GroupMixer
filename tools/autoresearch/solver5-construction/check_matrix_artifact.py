@@ -24,6 +24,7 @@ REQUIRED_CELL_FIELDS = {
     "target_kind",
     "method_abbreviation",
     "desired_method_abbreviation",
+    "method_policy_status",
     "method_preference_reason_code",
     "method_preference_reason",
     "target_basis",
@@ -79,20 +80,41 @@ def validate_cell(cell, label):
                 f"{label} expected glyph_top_left_text={expected!r}, got {optimal_text!r}"
             )
 
+    visual_only = cell.get("visual_only")
     method = cell.get("method_abbreviation")
     desired_method = cell.get("desired_method_abbreviation")
+    method_policy_status = cell.get("method_policy_status")
     preference_reason_code = cell.get("method_preference_reason_code")
     preference_reason = cell.get("method_preference_reason")
     bottom_right = cell.get("glyph_bottom_right_text")
-    if method is not None and desired_method is not None and method != desired_method:
+    if visual_only:
+        if method_policy_status != "none":
+            raise AssertionError(
+                f"{label} visual-only cells must use method_policy_status='none'"
+            )
+        expected_bottom_right = method
+    elif method is not None and desired_method is not None and method != desired_method:
+        if method_policy_status != "upgrade_pending":
+            raise AssertionError(
+                f"{label} must use method_policy_status='upgrade_pending' for trusted upgrades"
+            )
         if not preference_reason_code or not preference_reason:
             raise AssertionError(
                 f"{label} must provide a method preference reason for trusted upgrades"
             )
         expected_bottom_right = f"{method}→{desired_method}"
     elif method is not None:
+        expected_status = "accepted" if desired_method == method else "unresolved"
+        if method_policy_status != expected_status:
+            raise AssertionError(
+                f"{label} expected method_policy_status={expected_status!r}, got {method_policy_status!r}"
+            )
         expected_bottom_right = method
     else:
+        if method_policy_status != "none":
+            raise AssertionError(
+                f"{label} expected method_policy_status='none' without a method, got {method_policy_status!r}"
+            )
         expected_bottom_right = None
     if desired_method == method and (preference_reason_code is not None or preference_reason is not None):
         raise AssertionError(
@@ -107,7 +129,6 @@ def validate_cell(cell, label):
             f"{label} expected glyph_bottom_right_text={expected_bottom_right!r}, got {bottom_right!r}"
         )
 
-    visual_only = cell.get("visual_only")
     fill_basis_weeks = cell.get("fill_basis_weeks")
     fill_basis_kind = cell.get("fill_basis_kind")
     if visual_only:

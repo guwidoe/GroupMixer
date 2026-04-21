@@ -184,10 +184,17 @@ Chip colors are also strict:
 
 - green = the current method is accepted for that cell
 - orange = an explicit policy-approved upgrade exists, so the cell shows `M→D`
+- blue = the current method is shown, but method-policy judgment is still unresolved
 
 Neutral/white method chips should be avoided for cells that already have a
 current method, because that silently hides whether the method is accepted or
 pending an approved upgrade.
+
+This means an orange border with a blue chip is valid and meaningful:
+
+- the result is known to be below exact optimum
+- but the project has not yet explicitly decided whether the current method is
+  acceptable or whether a preferred replacement family should be targeted
 
 ## Fill and border semantics
 

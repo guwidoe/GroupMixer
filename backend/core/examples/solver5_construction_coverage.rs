@@ -36,6 +36,7 @@ struct CellSummary {
     target_kind: Option<String>,
     method_abbreviation: Option<String>,
     desired_method_abbreviation: Option<String>,
+    method_policy_status: String,
     method_preference_reason_code: Option<String>,
     method_preference_reason: Option<String>,
     target_basis: Option<String>,
@@ -398,6 +399,7 @@ impl CellResolver<'_> {
             proven_optimal_weeks,
             method_abbreviation,
             method_preference.desired_method_abbreviation,
+            method_preference.policy_status,
             method_preference.reason_code,
             method_preference.reason,
             target.kind,
@@ -440,6 +442,7 @@ impl CellResolver<'_> {
                     .to_string(),
             ),
             None,
+            "none".into(),
             None,
             None,
             None,
@@ -466,6 +469,7 @@ struct TargetInfo {
 }
 
 struct MethodPreference {
+    policy_status: String,
     desired_method_abbreviation: Option<String>,
     reason_code: Option<String>,
     reason: Option<String>,
@@ -499,6 +503,7 @@ fn resolve_method_preference(
 ) -> MethodPreference {
     match (current_method_abbreviation, desired_method_abbreviation) {
         (Some(current), Some(desired)) if current == desired => MethodPreference {
+            policy_status: "accepted".to_string(),
             desired_method_abbreviation: Some(desired.to_string()),
             reason_code: None,
             reason: None,
@@ -506,19 +511,28 @@ fn resolve_method_preference(
         (Some(current), Some(desired)) => {
             if let Some((reason_code, reason)) = approved_method_upgrade(current, desired) {
                 MethodPreference {
+                    policy_status: "upgrade_pending".to_string(),
                     desired_method_abbreviation: Some(desired.to_string()),
                     reason_code: Some(reason_code.to_string()),
                     reason: Some(reason.to_string()),
                 }
             } else {
                 MethodPreference {
+                    policy_status: "unresolved".to_string(),
                     desired_method_abbreviation: None,
                     reason_code: None,
                     reason: None,
                 }
             }
         }
+        (Some(_current), None) => MethodPreference {
+            policy_status: "unresolved".to_string(),
+            desired_method_abbreviation: None,
+            reason_code: None,
+            reason: None,
+        },
         _ => MethodPreference {
+            policy_status: "none".to_string(),
             desired_method_abbreviation: None,
             reason_code: None,
             reason: None,
@@ -566,6 +580,7 @@ fn build_cell_summary(
     proven_optimal_weeks: Option<usize>,
     method_abbreviation: Option<String>,
     desired_method_abbreviation: Option<String>,
+    method_policy_status: String,
     method_preference_reason_code: Option<String>,
     method_preference_reason: Option<String>,
     target_kind: Option<String>,
@@ -655,6 +670,7 @@ fn build_cell_summary(
         target_kind,
         method_abbreviation,
         desired_method_abbreviation,
+        method_policy_status,
         method_preference_reason_code,
         method_preference_reason,
         target_basis,

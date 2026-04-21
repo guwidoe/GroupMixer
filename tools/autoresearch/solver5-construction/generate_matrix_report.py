@@ -197,6 +197,9 @@ def build_cell_title(cell):
     desired_method = cell.get("desired_method_abbreviation")
     if desired_method and desired_method != method:
         parts.append(f"preferred family={desired_method}")
+    method_policy_status = cell.get("method_policy_status")
+    if method_policy_status and method_policy_status != "none":
+        parts.append(f"method status={method_policy_status}")
     preference_reason = cell.get("method_preference_reason")
     preference_reason_code = cell.get("method_preference_reason_code")
     if preference_reason:
@@ -236,14 +239,15 @@ def render_cell_glyph(cell, reference_index):
     ]
     if cell.get("glyph_bottom_right_text"):
         method = cell.get("method_abbreviation")
-        desired_method = cell.get("desired_method_abbreviation")
-        preference_reason = cell.get("method_preference_reason")
+        method_policy_status = cell.get("method_policy_status")
         method_chip_classes = ["method-chip"]
         if method is not None:
-            if desired_method is not None and method != desired_method and preference_reason:
+            if method_policy_status == "upgrade_pending":
                 method_chip_classes.append("method-chip-pending")
-            else:
+            elif method_policy_status == "accepted":
                 method_chip_classes.append("method-chip-reached")
+            elif method_policy_status == "unresolved":
+                method_chip_classes.append("method-chip-unresolved")
         glyph_parts.append(
             "<div class='method-cluster'>"
             f"<span class='{' '.join(method_chip_classes)}'>{html.escape(str(cell['glyph_bottom_right_text']))}</span>"
@@ -385,6 +389,7 @@ def main():
         ".method-chip{padding:1px 4px;border-radius:999px;font-size:8px;line-height:1.0;font-weight:700;color:#0f172a;background:rgba(255,255,255,0.82);border:1px solid rgba(15,23,42,0.12);white-space:nowrap;}"
         ".method-chip-reached{background:rgba(187,247,208,0.95);border-color:rgba(22,163,74,0.45);color:#14532d;}"
         ".method-chip-pending{background:rgba(254,215,170,0.95);border-color:rgba(217,119,6,0.45);color:#7c2d12;}"
+        ".method-chip-unresolved{background:rgba(191,219,254,0.95);border-color:rgba(37,99,235,0.45);color:#1e3a8a;}"
         ".lit-ref{font-size:9px;line-height:1;vertical-align:super;margin-left:1px;}"
         ".lit-ref a{color:#1d4ed8;text-decoration:none;}"
         ".lit-ref a:hover{text-decoration:underline;}"
@@ -398,6 +403,7 @@ def main():
         "<div class='legend-row'><span class='legend-key'>Method chips</span>",
         render_scale_swatch("accepted / satisfied method", "rgba(187,247,208,0.95)"),
         render_scale_swatch("approved upgrade exists", "rgba(254,215,170,0.95)"),
+        render_scale_swatch("policy unresolved", "rgba(191,219,254,0.95)"),
         "</div>",
         "<div class='legend-row'><span class='legend-key'>Fill</span>",
         render_scale_swatch("far from basis", progress_fill_color(0, 10, False)),
@@ -425,6 +431,7 @@ def main():
                     "glyph_top_right_text": "T10",
                     "glyph_bottom_left_text": "U13",
                     "glyph_bottom_right_text": "RTD→P4",
+                    "method_policy_status": "upgrade_pending",
                     "target_reference_keys": [],
                 },
                 literature_reference_index,
@@ -444,6 +451,7 @@ def main():
                     "glyph_top_right_text": "T19",
                     "glyph_bottom_left_text": "U19",
                     "glyph_bottom_right_text": "RR",
+                    "method_policy_status": "accepted",
                     "target_reference_keys": [],
                 },
                 literature_reference_index,
@@ -451,7 +459,7 @@ def main():
             "coherent even when values coincide; no smart hiding",
         ),
         render_sample(
-            "Supplementary literature cell",
+            "Literature-backed cell",
             render_cell_glyph(
                 {
                     "constructed_weeks": 5,
@@ -463,6 +471,7 @@ def main():
                     "glyph_top_right_text": "T13",
                     "glyph_bottom_left_text": "U16",
                     "glyph_bottom_right_text": "ownSG",
+                    "method_policy_status": "unresolved",
                     "target_reference_keys": ["mva2026"],
                 },
                 {"mva2026": {"index": 1, "citation": "example"}},
@@ -482,6 +491,7 @@ def main():
                     "glyph_top_right_text": "T7",
                     "glyph_bottom_left_text": "U9",
                     "glyph_bottom_right_text": None,
+                    "method_policy_status": "none",
                     "target_reference_keys": [],
                 },
                 literature_reference_index,
