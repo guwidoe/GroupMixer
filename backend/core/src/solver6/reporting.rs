@@ -398,8 +398,10 @@ pub fn pure_input_for_benchmark(
             solver_type: SolverKind::Solver6.canonical_id().into(),
             stop_conditions: benchmark.stop_conditions.clone(),
             solver_params: SolverParams::Solver6(Solver6Params {
+                exact_construction_handoff_enabled: true,
+                seed_strategy: crate::models::Solver6SeedStrategy::Solver5ExactBlockComposition,
                 pair_repeat_penalty_model: benchmark.active_penalty_model,
-                ..Solver6Params::default()
+                search_strategy: crate::models::Solver6SearchStrategy::ReservedRepeatAwareLocalSearch,
             }),
             logging: Default::default(),
             telemetry: Default::default(),
