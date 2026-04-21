@@ -24,6 +24,19 @@ impl ReservedExecutionPlan {
             self.objective, self.seed_strategy, self.search_strategy
         )
     }
+
+    pub(super) fn reserved_message_after_seed(
+        &self,
+        groups: usize,
+        group_size: usize,
+        weeks: usize,
+        seed_summary: &str,
+    ) -> String {
+        format!(
+            "solver6 accepted pure-SGP instance {groups}-{group_size}-{weeks}, built a deterministic exact-block seed, but relabeling / repeat-aware local search are still reserved. Seed diagnostics: {seed_summary}. Reserved execution plan: objective={}, seed_strategy={}, search_strategy={}",
+            self.objective, self.seed_strategy, self.search_strategy
+        )
+    }
 }
 
 fn objective_label(model: Solver6PairRepeatPenaltyModel) -> &'static str {

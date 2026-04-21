@@ -1,6 +1,7 @@
 use super::problem::PureSgpProblem;
+use super::score::PairFrequencySummary;
 use crate::models::Solver6PairRepeatPenaltyModel;
-use crate::models::ApiInput;
+use crate::models::{ApiInput, SolverParams};
 use crate::solver5::atoms::{
     query_construction_atom_from_solver6_input, Solver5AtomSpanRequest, Solver5ConstructionAtom,
 };
@@ -110,11 +111,74 @@ pub(crate) struct SeedPairTelemetry {
     pub multiplicity_histogram: Vec<usize>,
 }
 
+impl SeedPairTelemetry {
+    fn from_schedule(
+        num_people: usize,
+        schedule: &[Vec<Vec<usize>>],
+        active_penalty_model: Solver6PairRepeatPenaltyModel,
+    ) -> Result<Self, SolverError> {
+        let summary = PairFrequencySummary::from_raw_schedule(num_people, schedule)?;
+        Ok(Self {
+            active_penalty_model,
+            active_penalty_score: summary.score_for_model(active_penalty_model),
+            linear_repeat_excess: summary.linear_repeat_excess(),
+            triangular_repeat_excess: summary.triangular_repeat_excess(),
+            squared_repeat_excess: summary.squared_repeat_excess(),
+            distinct_pairs_covered: summary.distinct_pairs_covered(),
+            max_pair_frequency: summary.max_pair_frequency(),
+            total_pair_incidences: summary.total_pair_incidences(),
+            linear_repeat_lower_bound: summary.linear_repeat_excess_lower_bound(),
+            linear_repeat_lower_bound_gap: summary.linear_repeat_excess_lower_bound_gap(),
+            multiplicity_histogram: summary.multiplicity_histogram().counts_by_frequency().to_vec(),
+        })
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ExactBlockSeedDiagnostics {
     pub total_weeks: usize,
     pub atom_uses: Vec<SeedAtomUsage>,
     pub pair_telemetry: Option<SeedPairTelemetry>,
+}
+
+impl ExactBlockSeedDiagnostics {
+    pub(crate) fn concise_summary(&self) -> String {
+        let block_list = self
+            .atom_uses
+            .iter()
+            .map(|usage| {
+                format!(
+                    "{}@{}..{}({})",
+                    usage.atom_id.display_label(),
+                    usage.week_range_start,
+                    usage.week_range_end_exclusive,
+                    usage.relabeling.kind.label()
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        let pair_summary = self.pair_telemetry.as_ref().map_or_else(
+            || "pair_telemetry=unavailable".to_string(),
+            |telemetry| {
+                format!(
+                    "active_score={}, max_pair_frequency={}, linear_repeat_excess={}, lower_bound_gap={}",
+                    telemetry.active_penalty_score,
+                    telemetry.max_pair_frequency,
+                    telemetry.linear_repeat_excess,
+                    telemetry.linear_repeat_lower_bound_gap
+                )
+            },
+        );
+
+        format!(
+            "weeks={}, atom_copies={}, blocks=[{}], {}",
+            self.total_weeks,
+            self.atom_uses.len(),
+            block_list,
+            pair_summary
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -170,13 +234,26 @@ pub(crate) fn build_identity_exact_block_seed(
     }
 
     validate_full_schedule_shape(&problem, &schedule)?;
+    let active_penalty_model = match &input.solver.solver_params {
+        SolverParams::Solver6(params) => params.pair_repeat_penalty_model,
+        _ => {
+            return Err(SolverError::ValidationError(
+                "solver6 identity exact-block seed builder expected solver6 params".into(),
+            ));
+        }
+    };
+    let pair_telemetry = SeedPairTelemetry::from_schedule(
+        problem.num_groups * problem.group_size,
+        &schedule,
+        active_penalty_model,
+    )?;
 
     Ok(ExactBlockSeed {
         schedule,
         diagnostics: ExactBlockSeedDiagnostics {
             total_weeks: problem.num_weeks,
             atom_uses,
-            pair_telemetry: None,
+            pair_telemetry: Some(pair_telemetry),
         },
     })
 }
@@ -365,5 +442,26 @@ mod tests {
             seed.diagnostics.atom_uses[1].relabeling,
             SeedRelabelingSummary::identity()
         );
+
+        let telemetry = seed
+            .diagnostics
+            .pair_telemetry
+            .as_ref()
+            .expect("identity-composed seed should include pre-search pair telemetry");
+        assert_eq!(telemetry.active_penalty_score, 480);
+        assert_eq!(telemetry.linear_repeat_excess, 480);
+        assert_eq!(telemetry.max_pair_frequency, 2);
+        assert_eq!(telemetry.linear_repeat_lower_bound, 464);
+        assert_eq!(telemetry.linear_repeat_lower_bound_gap, 16);
+        assert_eq!(telemetry.multiplicity_histogram.get(0), Some(&16));
+        assert_eq!(telemetry.multiplicity_histogram.get(2), Some(&480));
+    }
+
+    #[test]
+    fn identity_exact_block_seed_reports_non_divisible_remainder_explicitly() {
+        let err = build_identity_exact_block_seed(&pure_input(8, 4, 21)).unwrap_err();
+        assert!(err
+            .to_string()
+            .contains("currently supports only k * w0 tilings"));
     }
 }
