@@ -203,6 +203,18 @@ impl PairFrequencyState {
             .saturating_sub(self.linear_repeat_excess_lower_bound())
     }
 
+    pub fn squared_repeat_excess_lower_bound(&self) -> u64 {
+        squared_repeat_excess_lower_bound(
+            self.universe.total_distinct_pairs(),
+            self.linear_repeat_excess(),
+        )
+    }
+
+    pub fn squared_repeat_excess_lower_bound_gap(&self) -> u64 {
+        self.squared_repeat_excess()
+            .saturating_sub(self.squared_repeat_excess_lower_bound())
+    }
+
     pub fn score_delta_for_pair_change(
         &self,
         pair_idx: usize,
@@ -453,6 +465,30 @@ impl PairFrequencySummary {
         self.linear_repeat_excess()
             .saturating_sub(self.linear_repeat_excess_lower_bound())
     }
+
+    pub fn squared_repeat_excess_lower_bound(&self) -> u64 {
+        squared_repeat_excess_lower_bound(
+            self.universe.total_distinct_pairs(),
+            self.linear_repeat_excess(),
+        )
+    }
+
+    pub fn squared_repeat_excess_lower_bound_gap(&self) -> u64 {
+        self.squared_repeat_excess()
+            .saturating_sub(self.squared_repeat_excess_lower_bound())
+    }
+}
+
+fn squared_repeat_excess_lower_bound(total_distinct_pairs: usize, repeat_excess: u64) -> u64 {
+    if total_distinct_pairs == 0 || repeat_excess == 0 {
+        return 0;
+    }
+
+    let universe = total_distinct_pairs as u64;
+    let balanced_floor = repeat_excess / universe;
+    let remainder = repeat_excess % universe;
+    (universe - remainder) * balanced_floor * balanced_floor
+        + remainder * (balanced_floor + 1) * (balanced_floor + 1)
 }
 
 #[cfg(test)]
@@ -507,6 +543,8 @@ mod tests {
         assert_eq!(summary.squared_repeat_excess(), 6);
         assert_eq!(summary.linear_repeat_excess_lower_bound(), 6);
         assert_eq!(summary.linear_repeat_excess_lower_bound_gap(), 0);
+        assert_eq!(summary.squared_repeat_excess_lower_bound(), 6);
+        assert_eq!(summary.squared_repeat_excess_lower_bound_gap(), 0);
         assert_eq!(summary.multiplicity_histogram().count_at_frequency(2), 6);
     }
 
@@ -517,6 +555,8 @@ mod tests {
         assert_eq!(summary.linear_repeat_excess(), 4);
         assert_eq!(summary.triangular_repeat_excess(), 6);
         assert_eq!(summary.squared_repeat_excess(), 8);
+        assert_eq!(summary.squared_repeat_excess_lower_bound(), 4);
+        assert_eq!(summary.squared_repeat_excess_lower_bound_gap(), 4);
         assert_eq!(
             summary.score_for_model(Solver6PairRepeatPenaltyModel::LinearRepeatExcess),
             4
@@ -568,5 +608,8 @@ mod tests {
         assert_eq!(state.to_summary(), recomputed);
         assert_eq!(state.linear_repeat_excess(), 2);
         assert_eq!(state.linear_repeat_excess_lower_bound_gap(), 2);
+        assert_eq!(state.squared_repeat_excess(), 2);
+        assert_eq!(state.squared_repeat_excess_lower_bound(), 2);
+        assert_eq!(state.squared_repeat_excess_lower_bound_gap(), 0);
     }
 }
