@@ -350,7 +350,7 @@ impl CellResolver<'_> {
             return self.resolve_visual_only_cell(groups, group_size);
         }
 
-        let upper_bound = counting_bound(groups, group_size);
+        let upper_bound = global_upper_bound(groups, group_size);
         let target = self
             .knowledge
             .resolve_target_info(groups, group_size, upper_bound);
@@ -415,10 +415,7 @@ impl CellResolver<'_> {
             target.kind,
             target.basis,
             target.reference_keys,
-            Some(format!(
-                "Counting upper bound: floor(({}*{} - 1)/({} - 1)) = {}",
-                groups, group_size, group_size, upper_bound
-            )),
+            Some(upper_bound_basis(groups, group_size, upper_bound)),
             heuristic_target_weeks,
             optimality_lower_bound_weeks,
             family_label,
@@ -646,6 +643,28 @@ fn accumulate_benchmark_metrics(
 
 fn counting_bound(groups: usize, group_size: usize) -> usize {
     ((groups * group_size) - 1) / (group_size - 1)
+}
+
+fn global_upper_bound(groups: usize, group_size: usize) -> usize {
+    if is_pigeonhole_one_week_exact(groups, group_size) {
+        1
+    } else {
+        counting_bound(groups, group_size)
+    }
+}
+
+fn upper_bound_basis(groups: usize, group_size: usize, upper_bound: usize) -> String {
+    if is_pigeonhole_one_week_exact(groups, group_size) {
+        format!(
+            "Global upper bound: pigeonhole barrier for p>g forces W<=1 (g={}, p={})",
+            groups, group_size
+        )
+    } else {
+        format!(
+            "Counting upper bound: floor(({}*{} - 1)/({} - 1)) = {}",
+            groups, group_size, group_size, upper_bound
+        )
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
