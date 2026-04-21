@@ -463,10 +463,9 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('button', { name: /generate groups/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /generate groups/i })).toHaveClass('btn-primary');
     
-    // Core capability bullets remain visible above the fold
-    expect(screen.getByText('Keep together or apart')).toBeInTheDocument();
-    expect(screen.getAllByText('Multiple rounds').length).toBeGreaterThan(0);
-    expect(screen.getByText('Balance by attribute')).toBeInTheDocument();
+    expect(screen.getByText(
+      'Keep certain people together or apart. Balance people by gender or other attributes. Generate multiple rounds with minimal repeats.',
+    )).toBeInTheDocument();
 
     // Optimizer CTA fills the desktop dead-space under the hero copy
     expect(screen.getByText(/want to do better than random/i)).toBeInTheDocument();

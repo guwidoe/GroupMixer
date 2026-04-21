@@ -6,6 +6,9 @@ const TRUST_BULLETS = [
   'Balance by attribute',
 ];
 
+const HOME_FEATURE_SUMMARY =
+  'Keep certain people together or apart. Balance people by gender or other attributes. Generate multiple rounds with minimal repeats.';
+
 const OPTIMIZER_FEATURES = [
   'Keep together',
   'Avoid pairings',
@@ -119,6 +122,7 @@ function createContent({
   heroTitle,
   subhead,
   audienceSummary,
+  trustBullets = TRUST_BULLETS,
   faqEntries,
 }: {
   title: string;
@@ -127,6 +131,7 @@ function createContent({
   heroTitle: string;
   subhead: string;
   audienceSummary: string;
+  trustBullets?: string[];
   faqEntries: ToolPageLocalizedContent['faqEntries'];
 }): ToolPageLocalizedContent {
   return {
@@ -136,7 +141,7 @@ function createContent({
       title: heroTitle,
       subhead,
       audienceSummary,
-      trustBullets: TRUST_BULLETS,
+      trustBullets,
     },
     optimizerCta: {
       eyebrow: 'Want to do better than random?',
@@ -155,13 +160,12 @@ function createContent({
 export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent> = {
   home: createContent({
     title: 'Random Group Generator - Split Names into Teams Instantly',
-    description:
-      'Split a list of names into groups. Balance gender or skills. Avoid pairings. Keep friends together. Multiple rounds with minimal repeats.',
+    description: HOME_FEATURE_SUMMARY,
     eyebrow: 'For classrooms, workshops, and events',
     heroTitle: 'Random Group Generator',
-    subhead:
-      'Paste names, choose the number of groups, and generate instantly.',
+    subhead: HOME_FEATURE_SUMMARY,
     audienceSummary: '',
+    trustBullets: [],
     faqEntries: [
       {
         question: 'How do I split a list of names into random groups?',

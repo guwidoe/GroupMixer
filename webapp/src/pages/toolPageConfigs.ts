@@ -50,9 +50,9 @@ function assertString(value: unknown, path: string): string {
   return value;
 }
 
-function assertStringArray(value: unknown, path: string): string[] {
-  if (!Array.isArray(value) || value.length === 0) {
-    failConfig(`${path} must be a non-empty string array.`);
+function assertStringArray(value: unknown, path: string, options: { allowEmpty?: boolean } = {}): string[] {
+  if (!Array.isArray(value) || (!options.allowEmpty && value.length === 0)) {
+    failConfig(`${path} must be a ${options.allowEmpty ? '' : 'non-empty '}string array.`);
   }
 
   return value.map((entry, index) => assertNonEmptyString(entry, `${path}[${index}]`));
@@ -163,7 +163,7 @@ function assertHeroContent(value: unknown, path: string): ToolPageHeroContent {
     title: assertNonEmptyString((value as { title?: unknown }).title, `${path}.title`),
     subhead: assertNonEmptyString((value as { subhead?: unknown }).subhead, `${path}.subhead`),
     audienceSummary: assertString((value as { audienceSummary?: unknown }).audienceSummary, `${path}.audienceSummary`),
-    trustBullets: assertStringArray((value as { trustBullets?: unknown }).trustBullets, `${path}.trustBullets`),
+    trustBullets: assertStringArray((value as { trustBullets?: unknown }).trustBullets, `${path}.trustBullets`, { allowEmpty: true }),
   };
 }
 

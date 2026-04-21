@@ -508,14 +508,23 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 </p>
               )}
 
-              <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {config.hero.trustBullets.map((bullet) => (
-                  <span key={bullet} className="flex items-center gap-1.5">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
-                    {bullet}
-                  </span>
-                ))}
-              </div>
+              {config.hero.trustBullets.length > 0 && (
+                <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  {config.hero.trustBullets.map((bullet, index) => (
+                    <span key={bullet} className="contents">
+                      {index > 0 && (
+                        <span aria-hidden="true" className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
+                          {' | '}
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1.5">
+                        <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
+                        {bullet}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <div
                 className="mt-8 rounded-2xl border p-5 sm:p-6"
