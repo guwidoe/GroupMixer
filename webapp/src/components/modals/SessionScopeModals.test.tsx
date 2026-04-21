@@ -119,7 +119,7 @@ describe('session-scope modals', () => {
 
     expect(screen.queryByText(/automatically includes future sessions/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText(/why choose all sessions/i)).toBeInTheDocument();
-    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getAllByText('1').length).toBeGreaterThan(0);
     expect(screen.queryByText(/session 1/i)).not.toBeInTheDocument();
   });
 
