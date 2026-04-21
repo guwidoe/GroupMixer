@@ -5,7 +5,6 @@ import { GeneratedDemoDataModal } from '../modals/GeneratedDemoDataModal';
 import { ReduceSessionsReviewModal } from '../modals/ReduceSessionsReviewModal';
 import { ConstraintFormModal } from './ConstraintFormModal';
 import { ScenarioSetupLayout } from './layout/ScenarioSetupLayout';
-import { ScenarioDocumentHistoryBar } from './ScenarioDocumentHistoryBar';
 import { ScenarioEditorConstraintModals } from './ScenarioEditorConstraintModals';
 import { ScenarioEditorForms } from './ScenarioEditorForms';
 import { ScenarioSetupSectionRenderer } from './ScenarioSetupSectionRenderer';
@@ -167,14 +166,6 @@ function ScenarioEditorLoaded() {
         objectiveCount={deferredSummary.summaryObjectiveCount}
         activeSection={controller.navigationSection}
         onNavigate={handleNavigateToSection}
-        headerContent={(
-          <ScenarioDocumentHistoryBar
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onUndo={undoScenarioDocument}
-            onRedo={redoScenarioDocument}
-          />
-        )}
       >
         {showSectionLoadingState ? (
           <ScenarioEditorLoadingState label={sectionLoadingLabel} message={sectionLoadingMessage} />

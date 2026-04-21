@@ -3,7 +3,8 @@ import { useMemo, useState, type MouseEvent } from 'react';
 import { LoaderCircle, Play } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ScrollArea } from './ScrollArea';
-import { useAppStore } from '../store';
+import { useAppStore, useScenarioDocumentHistory } from '../store';
+import { ScenarioDocumentHistoryBar } from './ScenarioEditor/ScenarioDocumentHistoryBar';
 import { getScenarioSetupPath } from './ScenarioEditor/navigation/scenarioSetupNav';
 import { useSolverWorkspaceRunController } from './SolverWorkspace/useSolverWorkspaceRunController';
 
@@ -240,6 +241,10 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
   const leaveHook = useAppStore((s) => s.manualEditorLeaveHook);
   const lastScenarioSetupSection = useAppStore((s) => s.ui.lastScenarioSetupSection);
   const advancedModeEnabled = useAppStore((s) => s.ui.advancedModeEnabled ?? false);
+  const undoScenarioDocument = useAppStore((state) => state.undoScenarioDocument);
+  const redoScenarioDocument = useAppStore((state) => state.redoScenarioDocument);
+  const scenarioHistoryPastCount = useScenarioDocumentHistory((state) => state.pastStates.length);
+  const scenarioHistoryFutureCount = useScenarioDocumentHistory((state) => state.futureStates.length);
   const [hoveredTabId, setHoveredTabId] = useState<string | null>(null);
 
   const workflowItems = useMemo(
@@ -252,6 +257,7 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
   );
   const activeTabId = resolveActiveWorkflowTabId(location.pathname, advancedModeEnabled);
   const activeTabOrder = activeTabId ? workflowTabs.findIndex((tab) => tab.id === activeTabId) : -1;
+  const showScenarioHistoryControls = activeTabId === 'scenario' && variant !== 'standalone';
 
   const getTabPath = (tabId: WorkflowTab['id'], path: string) => (tabId === 'scenario'
     ? getScenarioSetupPath(lastScenarioSetupSection)
@@ -291,6 +297,22 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
       <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
         Workflow
       </div>
+      {showScenarioHistoryControls ? (
+        <div className="px-1 pb-1">
+          <ScenarioDocumentHistoryBar
+            canUndo={scenarioHistoryPastCount > 0}
+            canRedo={scenarioHistoryFutureCount > 0}
+            onUndo={() => {
+              undoScenarioDocument();
+              closeMobileMenu?.();
+            }}
+            onRedo={() => {
+              redoScenarioDocument();
+              closeMobileMenu?.();
+            }}
+          />
+        </div>
+      ) : null}
       {workflowItems.map((item) => {
         if (item.kind === 'action') {
           return <GenerateGroupsWorkflowAction key={item.id} variant={variant} closeMobileMenu={closeMobileMenu} />;
@@ -346,16 +368,17 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
       })}
     </div>
   ) : (
-    <ScrollArea orientation="horizontal" className={variant === 'embedded' ? 'w-full' : 'px-4 py-2'}>
-      <div className={variant === 'embedded' ? 'flex min-w-max items-center justify-center' : 'mx-auto flex min-w-max items-center justify-center'}>
-        <div
-          className="inline-flex items-center rounded-[1.1rem] border px-1.5 py-1"
-          style={{
-            backgroundColor: 'var(--header-rail-surface)',
-            borderColor: 'var(--border-primary)',
-            boxShadow: variant === 'embedded' ? 'none' : 'var(--shadow)',
-          }}
-        >
+    <div className={variant === 'embedded' ? 'flex min-w-0 items-center justify-center gap-2' : ''}>
+      <ScrollArea orientation="horizontal" className={variant === 'embedded' ? 'min-w-0 flex-1' : 'px-4 py-2'}>
+        <div className={variant === 'embedded' ? 'flex min-w-max items-center justify-center' : 'mx-auto flex min-w-max items-center justify-center'}>
+          <div
+            className="inline-flex items-center rounded-[1.1rem] border px-1.5 py-1"
+            style={{
+              backgroundColor: 'var(--header-rail-surface)',
+              borderColor: 'var(--border-primary)',
+              boxShadow: variant === 'embedded' ? 'none' : 'var(--shadow)',
+            }}
+          >
           {workflowItems.map((item, index) => {
             const nextItemExists = index < workflowItems.length - 1;
 
@@ -437,9 +460,20 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
               </div>
             );
           })}
+          </div>
         </div>
-      </div>
-    </ScrollArea>
+      </ScrollArea>
+      {showScenarioHistoryControls && variant === 'embedded' ? (
+        <div className="flex-shrink-0">
+          <ScenarioDocumentHistoryBar
+            canUndo={scenarioHistoryPastCount > 0}
+            canRedo={scenarioHistoryFutureCount > 0}
+            onUndo={undoScenarioDocument}
+            onRedo={redoScenarioDocument}
+          />
+        </div>
+      ) : null}
+    </div>
   );
 
   if (variant === 'standalone') {
