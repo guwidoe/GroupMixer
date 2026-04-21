@@ -1,3 +1,4 @@
+use super::delta::EvaluatedSameWeekSwapMove;
 use crate::models::Solver6PairRepeatPenaltyModel;
 use crate::solver6::problem::PureSgpProblem;
 use crate::solver6::score::PairFrequencyState;
@@ -101,9 +102,6 @@ impl LocalSearchState {
         adjustments: &[PairCountAdjustment],
     ) -> Result<(), SolverError> {
         self.ensure_swap_is_in_bounds(swap)?;
-        self.schedule[swap.week_idx][swap.left_group_idx].swap(swap.left_pos_idx, swap.left_pos_idx);
-        self.schedule[swap.week_idx][swap.right_group_idx].swap(swap.right_pos_idx, swap.right_pos_idx);
-
         let left_person = self.schedule[swap.week_idx][swap.left_group_idx][swap.left_pos_idx];
         let right_person = self.schedule[swap.week_idx][swap.right_group_idx][swap.right_pos_idx];
         self.schedule[swap.week_idx][swap.left_group_idx][swap.left_pos_idx] = right_person;
@@ -125,6 +123,13 @@ impl LocalSearchState {
 
         self.debug_assert_matches_recompute();
         Ok(())
+    }
+
+    pub(crate) fn apply_evaluated_swap(
+        &mut self,
+        evaluated: &EvaluatedSameWeekSwapMove,
+    ) -> Result<(), SolverError> {
+        self.apply_swap_with_adjustments(evaluated.swap.application(), &evaluated.pair_adjustments)
     }
 
     pub(crate) fn assert_matches_recompute(&self) -> Result<(), SolverError> {
