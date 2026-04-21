@@ -64,6 +64,7 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
             }
           : initialSolverState,
       }));
+      get().clearScenarioDocumentHistory();
 
       set((state) => ({
         ui: { ...state.ui, isLoading: false },
@@ -134,6 +135,7 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
         selectedResultIds: [],
         solverState: initialSolverState,
       }));
+      get().clearScenarioDocumentHistory();
 
       get().addNotification({
         type: 'success',
@@ -375,6 +377,7 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
             },
             ...getScenarioDocumentState(getSavedScenarioDocument(importedScenario), state.attributeDefinitions),
           }));
+          get().clearScenarioDocumentHistory();
 
           get().addNotification({
             type: 'success',

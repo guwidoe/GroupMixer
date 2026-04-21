@@ -24,6 +24,7 @@ function applyResolvedDemoScenario(
     ...getScenarioDocumentState(nextDocument, state.attributeDefinitions),
     solution: null,
   }));
+  get().clearScenarioDocumentHistory();
 
   get().addNotification({
     type: 'success',
@@ -93,6 +94,7 @@ function loadScenarioIntoNewWorkspace(
     savedScenarios: updatedSavedScenarios,
     solution: null,
   }));
+  get().clearScenarioDocumentHistory();
 
   let message = `${baseMessage} ${nextScenario.people.length} people, ${nextScenario.groups.length} groups, and ${attributeDefinitions.length} attributes`;
   if (
@@ -289,6 +291,7 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         ...getScenarioDocumentState(demoDocument, state.attributeDefinitions),
         solution: null,
       }));
+      get().clearScenarioDocumentHistory();
 
       get().addNotification({
         type: 'success',

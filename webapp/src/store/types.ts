@@ -188,6 +188,14 @@ export interface WorkspaceActions {
   applySessionReductionScenario: (scenario: Scenario) => void;
 }
 
+export interface ScenarioHistoryActions {
+  undoScenarioDocument: () => void;
+  redoScenarioDocument: () => void;
+  clearScenarioDocumentHistory: () => void;
+  canUndoScenarioDocument: () => boolean;
+  canRedoScenarioDocument: () => boolean;
+}
+
 export interface UtilityActions {
   reset: () => void;
   initializeApp: () => void;
@@ -215,6 +223,7 @@ export interface AppStore
     DemoDataActions,
     EditorActions,
     WorkspaceActions,
+    ScenarioHistoryActions,
     UtilityActions {}
 
 // Type for slice creators

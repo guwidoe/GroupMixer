@@ -12,8 +12,10 @@
  * - editorSlice: Manual editor state
  */
 
-import { create } from 'zustand';
+import { create, useStore } from 'zustand';
+import type { StoreApi } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { temporal, type TemporalState } from 'zundo';
 import type { AppStore } from './types';
 import type { AttributeDefinition, Scenario, Solution } from '../types';
 import { buildScenarioContentHash, scenarioStorage } from '../services/scenarioStorage';
@@ -49,6 +51,22 @@ export type {
 } from '../types';
 
 export type { AppStore } from './types';
+
+type ScenarioDocumentHistorySnapshot = Pick<AppStore, 'scenarioDocument' | 'scenario' | 'attributeDefinitions'>;
+
+let scenarioDocumentTemporalStore: StoreApi<TemporalState<ScenarioDocumentHistorySnapshot>> | null = null;
+
+function getScenarioDocumentHistorySnapshot(state: AppStore): ScenarioDocumentHistorySnapshot {
+  return {
+    scenarioDocument: state.scenarioDocument,
+    scenario: state.scenario,
+    attributeDefinitions: state.attributeDefinitions,
+  };
+}
+
+function serializeScenarioDocumentHistorySnapshot(snapshot: ScenarioDocumentHistorySnapshot): string {
+  return JSON.stringify(snapshot.scenarioDocument);
+}
 
 const getInitialState = () => ({
   scenarioDocument: null,
@@ -121,8 +139,9 @@ function createRecoveredWorkspaceName() {
 }
 
 export const useAppStore = create<AppStore>()(
-  devtools(
-    (set, get) => ({
+  temporal(
+    devtools(
+      (set, get) => ({
       ...createScenarioSlice(set, get),
       ...createSolutionSlice(set, get),
       ...createSolverSlice(set, get),
@@ -133,7 +152,22 @@ export const useAppStore = create<AppStore>()(
       ...createDemoDataSlice(set, get),
       ...createEditorSlice(set, get),
 
-      reset: () => set(getInitialState()),
+      undoScenarioDocument: () => {
+        scenarioDocumentTemporalStore?.getState().undo();
+      },
+      redoScenarioDocument: () => {
+        scenarioDocumentTemporalStore?.getState().redo();
+      },
+      clearScenarioDocumentHistory: () => {
+        scenarioDocumentTemporalStore?.getState().clear();
+      },
+      canUndoScenarioDocument: () => Boolean(scenarioDocumentTemporalStore?.getState().pastStates.length),
+      canRedoScenarioDocument: () => Boolean(scenarioDocumentTemporalStore?.getState().futureStates.length),
+
+      reset: () => {
+        set(getInitialState());
+        get().clearScenarioDocumentHistory();
+      },
 
       replaceWorkspace: ({
         scenario,
@@ -145,7 +179,7 @@ export const useAppStore = create<AppStore>()(
         solution?: Solution | null;
         attributeDefinitions?: AttributeDefinition[];
         currentScenarioId?: string | null;
-      }) =>
+      }) => {
         set((state) => {
           const nextDocument = createScenarioDocument(scenario, attributeDefinitions ?? state.attributeDefinitions);
           return {
@@ -168,7 +202,9 @@ export const useAppStore = create<AppStore>()(
             setupGridUnsaved: false,
             setupGridLeaveHook: null,
           };
-        }),
+        });
+        get().clearScenarioDocumentHistory();
+      },
 
       syncWorkspaceDraft: ({
         scenario,
@@ -233,6 +269,7 @@ export const useAppStore = create<AppStore>()(
           setupGridUnsaved: false,
           setupGridLeaveHook: null,
         }));
+        get().clearScenarioDocumentHistory();
 
         return savedScenario.id;
       },
@@ -268,6 +305,7 @@ export const useAppStore = create<AppStore>()(
             setupGridUnsaved: false,
             setupGridLeaveHook: null,
           }));
+          get().clearScenarioDocumentHistory();
 
           return state.currentScenarioId ?? null;
         }
@@ -323,6 +361,7 @@ export const useAppStore = create<AppStore>()(
           setupGridUnsaved: false,
           setupGridLeaveHook: null,
         }));
+        get().clearScenarioDocumentHistory();
 
         get().addNotification({
           type: 'success',
@@ -374,6 +413,7 @@ export const useAppStore = create<AppStore>()(
           manualEditorUnsaved: false,
           manualEditorLeaveHook: null,
         }));
+        get().clearScenarioDocumentHistory();
       },
 
       initializeApp: () => {
@@ -381,9 +421,24 @@ export const useAppStore = create<AppStore>()(
           get().loadSavedScenarios();
         }, 0);
       },
-    }),
+      }),
+      {
+        name: 'people-distributor-store',
+      },
+    ),
     {
-      name: 'people-distributor-store',
+      partialize: getScenarioDocumentHistorySnapshot,
+      equality: (left, right) => (
+        serializeScenarioDocumentHistorySnapshot(left) === serializeScenarioDocumentHistorySnapshot(right)
+      ),
     },
   ),
 );
+
+scenarioDocumentTemporalStore = useAppStore.temporal;
+
+export function useScenarioDocumentHistory<T>(
+  selector: (state: TemporalState<ScenarioDocumentHistorySnapshot>) => T,
+) {
+  return useStore(useAppStore.temporal, selector);
+}
