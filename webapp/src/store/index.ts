@@ -16,7 +16,6 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { AppStore } from './types';
 import type { AttributeDefinition, Scenario, Solution } from '../types';
-import { resolveScenarioWorkspaceState } from '../services/scenarioAttributes';
 import { buildScenarioContentHash, scenarioStorage } from '../services/scenarioStorage';
 import { createDefaultSolverSettings } from '../services/solverUi';
 
@@ -35,6 +34,7 @@ import {
   initialRuntimeCatalogState,
   DEFAULT_ATTRIBUTE_DEFINITIONS,
 } from './slices';
+import { createScenarioDocument, getSavedScenarioDocument, getScenarioDocumentState } from './scenarioDocument';
 
 export type {
   AppState,
@@ -51,6 +51,7 @@ export type {
 export type { AppStore } from './types';
 
 const getInitialState = () => ({
+  scenarioDocument: null,
   scenario: null,
   solution: null,
   solverState: initialSolverState,
@@ -146,15 +147,14 @@ export const useAppStore = create<AppStore>()(
         currentScenarioId?: string | null;
       }) =>
         set((state) => {
-          const nextWorkspace = resolveScenarioWorkspaceState(scenario, attributeDefinitions ?? state.attributeDefinitions);
+          const nextDocument = createScenarioDocument(scenario, attributeDefinitions ?? state.attributeDefinitions);
           return {
-            scenario: nextWorkspace.scenario,
+            ...getScenarioDocumentState(nextDocument, state.attributeDefinitions),
             solution,
             currentScenarioId,
             currentResultId: null,
             selectedResultIds: [],
             solverState: solverStateFromWorkspaceSolution(solution),
-            attributeDefinitions: nextWorkspace.attributeDefinitions,
             ui: {
               ...state.ui,
               activeTab: solution ? 'results' : 'scenario',
@@ -183,26 +183,26 @@ export const useAppStore = create<AppStore>()(
         if (matchingScenario) {
           savedScenario = matchingScenario;
         } else if (savedScenario) {
-          const nextWorkspace = resolveScenarioWorkspaceState(
+          const nextDocument = createScenarioDocument(
             scenario,
             attributeDefinitions ?? savedScenario.attributeDefinitions,
           );
           savedScenario = {
             ...savedScenario,
             name: scenarioName,
-            scenario: nextWorkspace.scenario,
-            attributeDefinitions: nextWorkspace.attributeDefinitions,
+            scenario: nextDocument.scenario,
+            attributeDefinitions: nextDocument.attributeDefinitions,
           };
           scenarioStorage.saveScenario(savedScenario);
         } else {
-          const nextWorkspace = resolveScenarioWorkspaceState(
+          const nextDocument = createScenarioDocument(
             scenario,
             attributeDefinitions ?? DEFAULT_ATTRIBUTE_DEFINITIONS,
           );
           savedScenario = scenarioStorage.createScenario(
             scenarioName,
-            nextWorkspace.scenario,
-            nextWorkspace.attributeDefinitions,
+            nextDocument.scenario,
+            nextDocument.attributeDefinitions,
           );
           currentScenarioId = savedScenario.id;
         }
@@ -210,7 +210,7 @@ export const useAppStore = create<AppStore>()(
         scenarioStorage.setCurrentScenarioId(savedScenario.id);
 
         set((state) => ({
-          scenario: savedScenario.scenario,
+          ...getScenarioDocumentState(getSavedScenarioDocument(savedScenario), state.attributeDefinitions),
           solution,
           currentScenarioId: savedScenario.id,
           currentResultId: null,
@@ -220,7 +220,6 @@ export const useAppStore = create<AppStore>()(
           },
           selectedResultIds: [],
           solverState: solverStateFromWorkspaceSolution(solution),
-          attributeDefinitions: savedScenario.attributeDefinitions,
           ui: {
             ...state.ui,
             activeTab: solution ? 'results' : 'scenario',
@@ -247,16 +246,15 @@ export const useAppStore = create<AppStore>()(
         const state = get();
         const hadPreviousWorkspace = hasScenarioSetupContent(state.scenario);
         const previousWorkspaceWasPreserved = Boolean(state.currentScenarioId) || hadPreviousWorkspace;
-        const nextWorkspace = resolveScenarioWorkspaceState(scenario, attributeDefinitions ?? state.attributeDefinitions);
+        const nextDocument = createScenarioDocument(scenario, attributeDefinitions ?? state.attributeDefinitions);
 
-        if (state.scenario && buildScenarioContentHash(state.scenario) === buildScenarioContentHash(nextWorkspace.scenario)) {
+        if (state.scenario && buildScenarioContentHash(state.scenario) === buildScenarioContentHash(nextDocument.scenario)) {
           set((current) => ({
-            scenario: nextWorkspace.scenario,
+            ...getScenarioDocumentState(nextDocument, current.attributeDefinitions),
             solution,
             currentResultId: null,
             selectedResultIds: [],
             solverState: solverStateFromWorkspaceSolution(solution),
-            attributeDefinitions: nextWorkspace.attributeDefinitions,
             ui: {
               ...current.ui,
               activeTab: solution ? 'results' : 'scenario',
@@ -275,14 +273,14 @@ export const useAppStore = create<AppStore>()(
         }
 
         if (!state.currentScenarioId && hadPreviousWorkspace) {
-          const recoveredWorkspace = resolveScenarioWorkspaceState(
-            state.scenario,
+          const recoveredDocument = createScenarioDocument(
+            state.scenario!,
             state.attributeDefinitions,
           );
           const recoveredScenario = scenarioStorage.createScenario(
             createRecoveredWorkspaceName(),
-            recoveredWorkspace.scenario,
-            recoveredWorkspace.attributeDefinitions,
+            recoveredDocument.scenario,
+            recoveredDocument.attributeDefinitions,
           );
 
           set((current) => ({
@@ -295,14 +293,14 @@ export const useAppStore = create<AppStore>()(
 
         const savedScenario = scenarioStorage.createScenario(
           scenarioName,
-          nextWorkspace.scenario,
-          nextWorkspace.attributeDefinitions,
+          nextDocument.scenario,
+          nextDocument.attributeDefinitions,
         );
 
         scenarioStorage.setCurrentScenarioId(savedScenario.id);
 
         set((current) => ({
-          scenario: savedScenario.scenario,
+          ...getScenarioDocumentState(getSavedScenarioDocument(savedScenario), current.attributeDefinitions),
           solution,
           currentScenarioId: savedScenario.id,
           currentResultId: null,
@@ -312,7 +310,6 @@ export const useAppStore = create<AppStore>()(
           },
           selectedResultIds: [],
           solverState: solverStateFromWorkspaceSolution(solution),
-          attributeDefinitions: savedScenario.attributeDefinitions,
           ui: {
             ...current.ui,
             activeTab: solution ? 'results' : 'scenario',
@@ -340,31 +337,30 @@ export const useAppStore = create<AppStore>()(
 
       applySessionReductionScenario: (scenario) => {
         const state = get();
-        const nextWorkspace = resolveScenarioWorkspaceState(scenario, state.attributeDefinitions);
+        const nextDocument = createScenarioDocument(scenario, state.attributeDefinitions);
 
         if (state.currentScenarioId) {
           scenarioStorage.updateScenario(
             state.currentScenarioId,
-            nextWorkspace.scenario,
-            nextWorkspace.attributeDefinitions,
+            nextDocument.scenario,
+            nextDocument.attributeDefinitions,
           );
         }
 
         set((current) => ({
-          scenario: nextWorkspace.scenario,
+          ...getScenarioDocumentState(nextDocument, current.attributeDefinitions),
           solution: null,
           currentResultId: null,
           selectedResultIds: [],
           solverState: initialSolverState,
-          attributeDefinitions: nextWorkspace.attributeDefinitions,
           savedScenarios:
             current.currentScenarioId && current.savedScenarios[current.currentScenarioId]
               ? {
                   ...current.savedScenarios,
                   [current.currentScenarioId]: {
                     ...current.savedScenarios[current.currentScenarioId],
-                    scenario: nextWorkspace.scenario,
-                    attributeDefinitions: nextWorkspace.attributeDefinitions,
+                    scenario: nextDocument.scenario,
+                    attributeDefinitions: nextDocument.attributeDefinitions,
                     updatedAt: Date.now(),
                   },
                 }

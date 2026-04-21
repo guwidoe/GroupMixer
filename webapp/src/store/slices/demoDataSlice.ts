@@ -4,6 +4,7 @@
 
 import type { Scenario, Person, Group } from '../../types';
 import { reconcileScenarioAttributeDefinitions, resolveScenarioWorkspaceState } from '../../services/scenarioAttributes';
+import { createScenarioDocument, getSavedScenarioDocument, getScenarioDocumentState } from '../scenarioDocument';
 import { createDefaultSolverSettings } from '../../services/solverUi';
 import type { DemoDataState, DemoDataActions, StoreSlice } from '../types';
 import { scenarioStorage } from '../../services/scenarioStorage';
@@ -17,13 +18,12 @@ function applyResolvedDemoScenario(
   successTitle: string,
   successMessage: string,
 ) {
-  const resolvedWorkspace = resolveScenarioWorkspaceState(scenario);
+  const nextDocument = createScenarioDocument(scenario);
 
-  set({
-    scenario: resolvedWorkspace.scenario,
-    attributeDefinitions: resolvedWorkspace.attributeDefinitions,
+  set((state: { attributeDefinitions: never[] }) => ({
+    ...getScenarioDocumentState(nextDocument, state.attributeDefinitions),
     solution: null,
-  });
+  }));
 
   get().addNotification({
     type: 'success',
@@ -45,9 +45,9 @@ function loadScenarioIntoNewWorkspace(
   successTitle: string,
   baseMessage: string,
 ) {
-  const resolvedWorkspace = resolveScenarioWorkspaceState(scenario);
-  const nextScenario = resolvedWorkspace.scenario;
-  const attributeDefinitions = resolvedWorkspace.attributeDefinitions;
+  const nextDocument = createScenarioDocument(scenario);
+  const nextScenario = nextDocument.scenario;
+  const attributeDefinitions = nextDocument.attributeDefinitions;
 
   const currentScenario = get().scenario;
   const currentScenarioId = get().currentScenarioId;
@@ -87,13 +87,12 @@ function loadScenarioIntoNewWorkspace(
     [newSavedScenario.id]: newSavedScenario,
   };
 
-  set({
-    scenario: nextScenario,
+  set((state: { attributeDefinitions: never[] }) => ({
+    ...getScenarioDocumentState(getSavedScenarioDocument(newSavedScenario), state.attributeDefinitions),
     currentScenarioId: newSavedScenario.id,
-    attributeDefinitions,
     savedScenarios: updatedSavedScenarios,
     solution: null,
-  });
+  }));
 
   let message = `${baseMessage} ${nextScenario.people.length} people, ${nextScenario.groups.length} groups, and ${attributeDefinitions.length} attributes`;
   if (
@@ -282,11 +281,14 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         },
       };
 
-      set({
-        scenario: demoScenario,
-        attributeDefinitions: reconcileScenarioAttributeDefinitions(demoScenario),
+      const demoDocument = createScenarioDocument(
+        demoScenario,
+        reconcileScenarioAttributeDefinitions(demoScenario),
+      );
+      set((state) => ({
+        ...getScenarioDocumentState(demoDocument, state.attributeDefinitions),
         solution: null,
-      });
+      }));
 
       get().addNotification({
         type: 'success',

@@ -1,5 +1,6 @@
 import { scenarioStorage } from '../../../services/scenarioStorage';
 import type { ScenarioManagerActions, ScenarioManagerState, StoreSlice } from '../../types';
+import { getSavedScenarioDocument, getScenarioDocumentFromState, getScenarioDocumentState } from '../../scenarioDocument';
 import { initialSolverState } from '../solverSlice';
 
 type SliceTools = Parameters<StoreSlice<ScenarioManagerState & ScenarioManagerActions>>;
@@ -43,15 +44,14 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
       if (currentScenarioId) {
         scenarioStorage.setCurrentScenarioId(currentScenarioId);
       }
-      set({
+      set((state) => ({
+        ...(currentScenarioId && savedScenarios[currentScenarioId]
+          ? getScenarioDocumentState(getSavedScenarioDocument(savedScenarios[currentScenarioId]), state.attributeDefinitions)
+          : {}),
         savedScenarios,
         currentScenarioId,
         currentResultId: validCurrentResultId,
         solution: currentResult?.solution ?? null,
-        attributeDefinitions:
-          currentScenarioId && savedScenarios[currentScenarioId]
-            ? savedScenarios[currentScenarioId].attributeDefinitions
-            : get().attributeDefinitions,
         solverState: currentResult
           ? {
               ...initialSolverState,
@@ -63,14 +63,7 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
               noImprovementCount: currentResult.solution.benchmark_telemetry?.no_improvement_count ?? 0,
             }
           : initialSolverState,
-      });
-
-      if (currentScenarioId && savedScenarios[currentScenarioId]) {
-        set({
-          scenario: savedScenarios[currentScenarioId].scenario,
-          attributeDefinitions: savedScenarios[currentScenarioId].attributeDefinitions,
-        });
-      }
+      }));
 
       set((state) => ({
         ui: { ...state.ui, isLoading: false },
@@ -78,8 +71,8 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
     },
 
     createNewScenario: (name, isTemplate = false) => {
-      const currentScenario = get().scenario;
-      if (!currentScenario) {
+      const currentDocument = getScenarioDocumentFromState(get());
+      if (!currentDocument) {
         get().addNotification({
           type: 'error',
           title: 'No Scenario to Save',
@@ -91,8 +84,8 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
       try {
         const savedScenario = scenarioStorage.createScenario(
           name,
-          currentScenario,
-          get().attributeDefinitions,
+          currentDocument.scenario,
+          currentDocument.attributeDefinitions,
           isTemplate,
         );
         scenarioStorage.setCurrentScenarioId(savedScenario.id);
@@ -133,15 +126,14 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
       }
 
       scenarioStorage.setCurrentScenarioId(id);
-      set({
-        scenario: savedScenario.scenario,
-        attributeDefinitions: savedScenario.attributeDefinitions,
+      set((state) => ({
+        ...getScenarioDocumentState(getSavedScenarioDocument(savedScenario), state.attributeDefinitions),
         currentScenarioId: id,
         currentResultId: null,
         solution: null,
         selectedResultIds: [],
         solverState: initialSolverState,
-      });
+      }));
 
       get().addNotification({
         type: 'success',
@@ -151,8 +143,9 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
     },
 
     saveScenario: (name) => {
-      const { currentScenarioId, scenario } = get();
-      if (!scenario) {
+      const { currentScenarioId } = get();
+      const currentDocument = getScenarioDocumentFromState(get());
+      if (!currentDocument) {
         get().addNotification({
           type: 'error',
           title: 'No Scenario to Save',
@@ -163,12 +156,12 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
 
       try {
         if (currentScenarioId) {
-          scenarioStorage.updateScenario(currentScenarioId, scenario, get().attributeDefinitions);
+          scenarioStorage.updateScenario(currentScenarioId, currentDocument.scenario, currentDocument.attributeDefinitions);
           if (name) {
             scenarioStorage.renameScenario(currentScenarioId, name);
           }
         } else {
-          const savedScenario = scenarioStorage.createScenario(name, scenario, get().attributeDefinitions);
+          const savedScenario = scenarioStorage.createScenario(name, currentDocument.scenario, currentDocument.attributeDefinitions);
           scenarioStorage.setCurrentScenarioId(savedScenario.id);
           set((state) => ({
             savedScenarios: {
@@ -208,6 +201,7 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
             savedScenarios: newSavedScenarios,
             currentScenarioId: state.currentScenarioId === id ? null : state.currentScenarioId,
             currentResultId: state.currentScenarioId === id ? null : state.currentResultId,
+            scenarioDocument: state.currentScenarioId === id ? null : state.scenarioDocument,
             scenario: state.currentScenarioId === id ? null : state.scenario,
             solution: state.currentScenarioId === id ? null : state.solution,
             selectedResultIds: state.currentScenarioId === id ? [] : state.selectedResultIds,
@@ -379,7 +373,7 @@ export function createScenarioActions(set: SetState, get: GetState): Pick<Scenar
               ...state.savedScenarios,
               [importedScenario.id]: importedScenario,
             },
-            attributeDefinitions: importedScenario.attributeDefinitions,
+            ...getScenarioDocumentState(getSavedScenarioDocument(importedScenario), state.attributeDefinitions),
           }));
 
           get().addNotification({

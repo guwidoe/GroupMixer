@@ -5,6 +5,7 @@
 
 import type {
   Scenario,
+  ScenarioDocument,
   ScenarioResult,
   Solution,
   SolverState,
@@ -18,6 +19,7 @@ import type { RuntimeSolverDescriptor } from "../services/runtime";
 // === Slice State Types ===
 
 export interface ScenarioState {
+  scenarioDocument: ScenarioDocument | null;
   scenario: Scenario | null;
 }
 
@@ -74,6 +76,11 @@ export interface EditorState {
 // === Slice Action Types ===
 
 export interface ScenarioActions {
+  setScenarioDocument: (document: ScenarioDocument, options?: { persist?: boolean }) => void;
+  updateScenarioDocument: (
+    updater: (document: ScenarioDocument) => ScenarioDocument,
+    options?: { persist?: boolean },
+  ) => void;
   setScenario: (scenario: Scenario) => void;
   updateScenario: (updates: Partial<Scenario>) => void;
   updateCurrentScenario: (scenarioId: string, scenario: Scenario) => void;
