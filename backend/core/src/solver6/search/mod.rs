@@ -1,21 +1,27 @@
+pub(crate) mod breakout;
 pub(crate) mod delta;
 pub(crate) mod state;
 pub(crate) mod tabu;
 
+use self::breakout::{BreakoutConfig, BreakoutRng};
 use self::delta::{
     enumerate_same_week_swap_moves, evaluate_same_week_swap, same_week_swap_is_better,
     EvaluatedSameWeekSwapMove,
 };
 use self::state::LocalSearchState;
 use self::tabu::{RepeatAwareTabuMemory, RepeatAwareTabuPolicy};
-use crate::models::StopReason;
+use crate::models::{StopConditions, StopReason};
+use crate::solver6::problem::PureSgpProblem;
 use crate::solver_support::SolverError;
+use std::time::Instant;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RepeatAwareLocalSearchConfig {
     pub max_iterations: u64,
     pub no_improvement_limit: u64,
+    pub time_limit_seconds: Option<u64>,
     pub tabu_policy: RepeatAwareTabuPolicy,
+    pub breakout: BreakoutConfig,
 }
 
 impl Default for RepeatAwareLocalSearchConfig {
@@ -23,9 +29,65 @@ impl Default for RepeatAwareLocalSearchConfig {
         Self {
             max_iterations: 250,
             no_improvement_limit: 50,
+            time_limit_seconds: None,
             tabu_policy: RepeatAwareTabuPolicy::default(),
+            breakout: BreakoutConfig {
+                stagnation_threshold: 12,
+                swaps_per_breakout: 2,
+                rng_seed: 42,
+            },
         }
     }
+}
+
+impl RepeatAwareLocalSearchConfig {
+    pub(crate) fn for_solver_configuration(
+        stop_conditions: &StopConditions,
+        problem: &PureSgpProblem,
+        effective_seed: u64,
+    ) -> Self {
+        let max_iterations = stop_conditions.max_iterations.unwrap_or(5_000);
+        let no_improvement_limit = stop_conditions
+            .no_improvement_iterations
+            .unwrap_or(max_iterations.min(500));
+        let breakout_threshold = no_improvement_limit.clamp(2, 64) / 2;
+        Self {
+            max_iterations,
+            no_improvement_limit,
+            time_limit_seconds: stop_conditions.time_limit_seconds,
+            tabu_policy: RepeatAwareTabuPolicy {
+                base_tenure: problem.group_size.max(3) as u64,
+                deterministic_jitter_span: problem.num_groups.min(3) as u64,
+            },
+            breakout: BreakoutConfig {
+                stagnation_threshold: breakout_threshold.max(1),
+                swaps_per_breakout: problem.group_size.min(3).max(1),
+                rng_seed: effective_seed,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct RepeatAwareSearchTelemetry {
+    pub initial_active_score: u64,
+    pub final_active_score: u64,
+    pub best_active_score: u64,
+    pub initial_linear_repeat_excess: u64,
+    pub final_linear_repeat_excess: u64,
+    pub best_linear_repeat_excess: u64,
+    pub initial_max_pair_frequency: usize,
+    pub final_max_pair_frequency: usize,
+    pub best_max_pair_frequency: usize,
+    pub initial_multiplicity_histogram: Vec<usize>,
+    pub final_multiplicity_histogram: Vec<usize>,
+    pub best_multiplicity_histogram: Vec<usize>,
+    pub improving_moves_accepted: u64,
+    pub non_improving_moves_accepted: u64,
+    pub breakout_count: u64,
+    pub breakout_swaps_applied: u64,
+    pub tabu_pruned_candidates: u64,
+    pub max_stagnation_streak: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -34,29 +96,85 @@ pub(crate) struct RepeatAwareLocalSearchOutcome {
     pub best_active_score: u64,
     pub best_iteration: u64,
     pub iterations_completed: u64,
-    pub improving_moves_accepted: u64,
-    pub non_improving_moves_accepted: u64,
     pub stop_reason: StopReason,
+    pub telemetry: RepeatAwareSearchTelemetry,
 }
 
 pub(crate) fn run_repeat_aware_local_search(
     state: &mut LocalSearchState,
     config: RepeatAwareLocalSearchConfig,
 ) -> Result<RepeatAwareLocalSearchOutcome, SolverError> {
+    let initial_active_score = state.current_active_score();
+    let initial_linear_repeat_excess = state.pair_state().linear_repeat_excess();
+    let initial_max_pair_frequency = state.pair_state().max_pair_frequency();
+    let initial_multiplicity_histogram = state.pair_state().multiplicity_histogram().to_vec();
+
+    if search_has_reached_known_optimum(state) {
+        return Ok(RepeatAwareLocalSearchOutcome {
+            best_schedule: state.best_schedule().to_vec(),
+            best_active_score: state.best_active_score(),
+            best_iteration: state.best().iteration,
+            iterations_completed: state.current_iteration(),
+            stop_reason: StopReason::OptimalScoreReached,
+            telemetry: RepeatAwareSearchTelemetry {
+                initial_active_score,
+                final_active_score: state.current_active_score(),
+                best_active_score: state.best_active_score(),
+                initial_linear_repeat_excess,
+                final_linear_repeat_excess: state.pair_state().linear_repeat_excess(),
+                best_linear_repeat_excess: state.best().pair_state.linear_repeat_excess(),
+                initial_max_pair_frequency,
+                final_max_pair_frequency: state.pair_state().max_pair_frequency(),
+                best_max_pair_frequency: state.best().pair_state.max_pair_frequency(),
+                initial_multiplicity_histogram: initial_multiplicity_histogram.clone(),
+                final_multiplicity_histogram: state.pair_state().multiplicity_histogram().to_vec(),
+                best_multiplicity_histogram: state.best().pair_state.multiplicity_histogram().to_vec(),
+                improving_moves_accepted: 0,
+                non_improving_moves_accepted: 0,
+                breakout_count: 0,
+                breakout_swaps_applied: 0,
+                tabu_pruned_candidates: 0,
+                max_stagnation_streak: 0,
+            },
+        });
+    }
+
+    let start = Instant::now();
     let mut tabu_memory = RepeatAwareTabuMemory::new(config.tabu_policy);
+    let mut breakout_rng = BreakoutRng::from_seed(config.breakout.rng_seed);
     let mut improving_moves_accepted = 0u64;
     let mut non_improving_moves_accepted = 0u64;
+    let mut breakout_count = 0u64;
+    let mut breakout_swaps_applied = 0u64;
+    let mut tabu_pruned_candidates = 0u64;
     let mut no_improvement_streak = 0u64;
+    let mut max_stagnation_streak = 0u64;
 
     let stop_reason = loop {
         if state.current_iteration() >= config.max_iterations {
             break StopReason::MaxIterationsReached;
         }
+        if config.time_limit_seconds.is_some_and(|seconds| start.elapsed().as_secs() >= seconds) {
+            break StopReason::TimeLimitReached;
+        }
         if state.current_iteration() > 0 && no_improvement_streak >= config.no_improvement_limit {
             break StopReason::NoImprovementLimitReached;
         }
+        if no_improvement_streak >= config.breakout.stagnation_threshold {
+            let breakout = breakout_rng.apply_breakout(
+                state,
+                &mut tabu_memory,
+                config.breakout.swaps_per_breakout,
+            )?;
+            breakout_count += 1;
+            breakout_swaps_applied += breakout.applied_swaps as u64;
+            no_improvement_streak = 0;
+            continue;
+        }
 
-        let Some(selected_move) = select_best_admissible_same_week_swap(state, &tabu_memory)? else {
+        let selection = select_best_admissible_same_week_swap(state, &tabu_memory)?;
+        tabu_pruned_candidates += selection.tabu_pruned_candidates;
+        let Some(selected_move) = selection.best_move else {
             break StopReason::NoImprovementLimitReached;
         };
         let improved_best = selected_move.active_score_after < state.best_active_score();
@@ -74,6 +192,11 @@ pub(crate) fn run_repeat_aware_local_search(
             no_improvement_streak = 0;
         } else {
             no_improvement_streak += 1;
+            max_stagnation_streak = max_stagnation_streak.max(no_improvement_streak);
+        }
+
+        if search_has_reached_known_optimum(state) {
+            break StopReason::OptimalScoreReached;
         }
     };
 
@@ -82,23 +205,49 @@ pub(crate) fn run_repeat_aware_local_search(
         best_active_score: state.best_active_score(),
         best_iteration: state.best().iteration,
         iterations_completed: state.current_iteration(),
-        improving_moves_accepted,
-        non_improving_moves_accepted,
         stop_reason,
+        telemetry: RepeatAwareSearchTelemetry {
+            initial_active_score,
+            final_active_score: state.current_active_score(),
+            best_active_score: state.best_active_score(),
+            initial_linear_repeat_excess,
+            final_linear_repeat_excess: state.pair_state().linear_repeat_excess(),
+            best_linear_repeat_excess: state.best().pair_state.linear_repeat_excess(),
+            initial_max_pair_frequency,
+            final_max_pair_frequency: state.pair_state().max_pair_frequency(),
+            best_max_pair_frequency: state.best().pair_state.max_pair_frequency(),
+            initial_multiplicity_histogram,
+            final_multiplicity_histogram: state.pair_state().multiplicity_histogram().to_vec(),
+            best_multiplicity_histogram: state.best().pair_state.multiplicity_histogram().to_vec(),
+            improving_moves_accepted,
+            non_improving_moves_accepted,
+            breakout_count,
+            breakout_swaps_applied,
+            tabu_pruned_candidates,
+            max_stagnation_streak,
+        },
     })
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CandidateSelection {
+    pub best_move: Option<EvaluatedSameWeekSwapMove>,
+    pub tabu_pruned_candidates: u64,
 }
 
 pub(crate) fn select_best_admissible_same_week_swap(
     state: &LocalSearchState,
     tabu_memory: &RepeatAwareTabuMemory,
-) -> Result<Option<EvaluatedSameWeekSwapMove>, SolverError> {
+) -> Result<CandidateSelection, SolverError> {
     let mut best: Option<EvaluatedSameWeekSwapMove> = None;
+    let mut tabu_pruned_candidates = 0u64;
     let evaluation_iteration = state.current_iteration() + 1;
     for candidate in enumerate_same_week_swap_moves(state) {
         let evaluated = evaluate_same_week_swap(state, candidate)?;
         if tabu_memory.is_tabu(candidate, evaluation_iteration)
             && evaluated.active_score_after >= state.best_active_score()
         {
+            tabu_pruned_candidates += 1;
             continue;
         }
         if best
@@ -108,24 +257,47 @@ pub(crate) fn select_best_admissible_same_week_swap(
             best = Some(evaluated);
         }
     }
-    Ok(best)
+    Ok(CandidateSelection {
+        best_move: best,
+        tabu_pruned_candidates,
+    })
+}
+
+fn search_has_reached_known_optimum(state: &LocalSearchState) -> bool {
+    state.current_active_score() == 0
+        || (state.active_penalty_model() == crate::models::Solver6PairRepeatPenaltyModel::LinearRepeatExcess
+            && state.current_active_score() == state.pair_state().linear_repeat_excess_lower_bound())
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        run_repeat_aware_local_search, select_best_admissible_same_week_swap,
-        RepeatAwareLocalSearchConfig,
+        breakout::BreakoutConfig, run_repeat_aware_local_search,
+        select_best_admissible_same_week_swap, RepeatAwareLocalSearchConfig,
     };
-    use crate::models::{Solver6PairRepeatPenaltyModel, StopReason};
+    use crate::models::{
+        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
+        RepeatEncounterParams, Solver6PairRepeatPenaltyModel, Solver6Params,
+        SolverConfiguration, SolverKind, SolverParams, StopConditions, StopReason,
+    };
     use crate::solver6::problem::PureSgpProblem;
+    use crate::solver6::seed::relabeling::build_greedy_exact_block_seed;
     use crate::solver6::search::delta::find_best_same_week_swap;
     use crate::solver6::search::state::LocalSearchState;
     use crate::solver6::search::tabu::{RepeatAwareTabuMemory, RepeatAwareTabuPolicy};
+    use std::collections::HashMap;
 
     fn worsened_2_2_3() -> Vec<Vec<Vec<usize>>> {
         vec![
             vec![vec![0, 2], vec![1, 3]],
+            vec![vec![0, 2], vec![1, 3]],
+            vec![vec![0, 3], vec![1, 2]],
+        ]
+    }
+
+    fn exact_2_2_3() -> Vec<Vec<Vec<usize>>> {
+        vec![
+            vec![vec![0, 1], vec![2, 3]],
             vec![vec![0, 2], vec![1, 3]],
             vec![vec![0, 3], vec![1, 2]],
         ]
@@ -136,6 +308,58 @@ mod tests {
             num_groups: 2,
             group_size: 2,
             num_weeks: 3,
+        }
+    }
+
+    fn solver6_config() -> SolverConfiguration {
+        SolverConfiguration {
+            solver_type: SolverKind::Solver6.canonical_id().into(),
+            stop_conditions: StopConditions {
+                max_iterations: Some(10),
+                time_limit_seconds: Some(30),
+                no_improvement_iterations: Some(4),
+                stop_on_optimal_score: true,
+            },
+            solver_params: SolverParams::Solver6(Solver6Params::default()),
+            logging: Default::default(),
+            telemetry: Default::default(),
+            seed: Some(7),
+            move_policy: None,
+            allowed_sessions: None,
+        }
+    }
+
+    fn pure_input(groups: usize, group_size: usize, weeks: usize) -> ApiInput {
+        ApiInput {
+            problem: ProblemDefinition {
+                people: (0..(groups * group_size))
+                    .map(|idx| Person {
+                        id: format!("p{idx}"),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    })
+                    .collect(),
+                groups: (0..groups)
+                    .map(|idx| Group {
+                        id: format!("g{idx}"),
+                        size: group_size as u32,
+                        session_sizes: None,
+                    })
+                    .collect(),
+                num_sessions: weeks as u32,
+            },
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".into(),
+                weight: 1.0,
+            }],
+            constraints: vec![Constraint::RepeatEncounter(RepeatEncounterParams {
+                max_allowed_encounters: 1,
+                penalty_function: "squared".into(),
+                penalty_weight: 100.0,
+            })],
+            solver: solver6_config(),
         }
     }
 
@@ -158,6 +382,7 @@ mod tests {
 
         let selected = select_best_admissible_same_week_swap(&state, &tabu)
             .unwrap()
+            .best_move
             .expect("aspiration should keep the best-improving move admissible");
         assert_eq!(selected.swap, improving.swap);
         assert_eq!(selected.active_score_after, 0);
@@ -177,9 +402,15 @@ mod tests {
             RepeatAwareLocalSearchConfig {
                 max_iterations: 10,
                 no_improvement_limit: 3,
+                time_limit_seconds: None,
                 tabu_policy: RepeatAwareTabuPolicy {
                     base_tenure: 2,
                     deterministic_jitter_span: 0,
+                },
+                breakout: BreakoutConfig {
+                    stagnation_threshold: 10,
+                    swaps_per_breakout: 1,
+                    rng_seed: 17,
                 },
             },
         )
@@ -187,9 +418,46 @@ mod tests {
 
         assert_eq!(outcome.best_active_score, 0);
         assert_eq!(outcome.best_iteration, 1);
-        assert!(outcome.improving_moves_accepted >= 1);
-        assert_eq!(outcome.stop_reason, StopReason::NoImprovementLimitReached);
+        assert!(outcome.telemetry.improving_moves_accepted >= 1);
+        assert_eq!(outcome.stop_reason, StopReason::OptimalScoreReached);
         assert_eq!(state.best_active_score(), 0);
+        state.assert_matches_recompute().unwrap();
+    }
+
+    #[test]
+    fn breakout_updates_telemetry_and_keeps_schedule_valid() {
+        let input = pure_input(8, 4, 20);
+        let problem = PureSgpProblem::from_input(&input).unwrap();
+        let seed = build_greedy_exact_block_seed(&input).unwrap();
+        let mut state = LocalSearchState::new(
+            problem,
+            seed.schedule,
+            Solver6PairRepeatPenaltyModel::TriangularRepeatExcess,
+        )
+        .unwrap();
+
+        let outcome = run_repeat_aware_local_search(
+            &mut state,
+            RepeatAwareLocalSearchConfig {
+                max_iterations: 3,
+                no_improvement_limit: 3,
+                time_limit_seconds: None,
+                tabu_policy: RepeatAwareTabuPolicy {
+                    base_tenure: 2,
+                    deterministic_jitter_span: 0,
+                },
+                breakout: BreakoutConfig {
+                    stagnation_threshold: 1,
+                    swaps_per_breakout: 1,
+                    rng_seed: 23,
+                },
+            },
+        )
+        .unwrap();
+
+        assert!(outcome.telemetry.breakout_count >= 1);
+        assert!(outcome.telemetry.breakout_swaps_applied >= 1);
+        assert_eq!(outcome.telemetry.initial_active_score, 464);
         state.assert_matches_recompute().unwrap();
     }
 }

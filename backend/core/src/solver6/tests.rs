@@ -82,7 +82,26 @@ fn solver6_reports_reserved_pipeline_for_non_exact_cells() {
 }
 
 #[test]
-fn solver6_scaffold_surfaces_configured_objective_labels() {
+fn solver6_exact_block_search_returns_an_impossible_case_result() {
+    let mut input = pure_input(8, 4, 20);
+    input.solver.solver_params = SolverParams::Solver6(Solver6Params {
+        exact_construction_handoff_enabled: false,
+        seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
+        pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
+        search_strategy: Solver6SearchStrategy::ReservedRepeatAwareLocalSearch,
+    });
+
+    let result = SearchEngine::new(&input.solver)
+        .solve(&input)
+        .expect("solver6 should now return a searched exact-block result");
+    assert_eq!(result.schedule.len(), 20);
+    assert_eq!(result.unique_contacts, 496);
+    assert!(result.repetition_penalty > 0);
+    assert!(result.final_score > 0.0);
+}
+
+#[test]
+fn solver6_exact_block_search_supports_non_linear_objective_modes() {
     let mut input = pure_input(8, 4, 20);
     input.solver.solver_params = SolverParams::Solver6(Solver6Params {
         exact_construction_handoff_enabled: false,
@@ -91,12 +110,9 @@ fn solver6_scaffold_surfaces_configured_objective_labels() {
         search_strategy: Solver6SearchStrategy::ReservedRepeatAwareLocalSearch,
     });
 
-    let err = SearchEngine::new(&input.solver).solve(&input).unwrap_err();
-    let message = err.to_string();
-    assert!(message.contains("triangular_repeat_excess"));
-    assert!(message.contains("solver5_exact_block_composition"));
-    assert!(message.contains("built a deterministic exact-block seed"));
-    assert!(message.contains("atom_copies=2"));
-    assert!(message.contains("active_score=464"));
-    assert!(message.contains("lower_bound_gap=0"));
+    let result = SearchEngine::new(&input.solver)
+        .solve(&input)
+        .expect("solver6 should solve through the triangular repeat-aware search path");
+    assert_eq!(result.schedule.len(), 20);
+    assert!(result.repetition_penalty > 0);
 }

@@ -9,6 +9,7 @@ use crate::solver_support::SolverError;
 
 mod problem;
 pub mod score;
+mod result;
 mod scaffolding;
 mod search;
 mod seed;
@@ -16,13 +17,15 @@ mod seed;
 #[cfg(test)]
 mod tests;
 
-use problem::PureSgpProblem;
-use scaffolding::ReservedExecutionPlan;
 use crate::models::Solver6SeedStrategy;
+use problem::PureSgpProblem;
+use result::build_solver_result;
+use scaffolding::ReservedExecutionPlan;
+use search::{run_repeat_aware_local_search, state::LocalSearchState, RepeatAwareLocalSearchConfig};
 use seed::relabeling::build_greedy_exact_block_seed;
 
 pub const SOLVER6_NOTES: &str =
-    "Hybrid pure-SGP repeat-minimization solver family. Solver6 is intended to combine solver5 exact constructions with seeded overfull-horizon optimization for impossible pure-SGP cases. The current implementation validates solver6 selection, hands exact requests through solver5, can synthesize deterministic greedy exact-block relabeling seeds for divisible overfull pure-SGP cases, and still reserves repeat-aware local search explicitly.";
+    "Hybrid pure-SGP repeat-minimization solver family. Solver6 combines solver5 exact constructions with deterministic greedy exact-block relabeling seeds and repeat-aware same-week local search for divisible overfull pure-SGP cases, while still failing explicitly for unsupported seed families and non-divisible tails.";
 
 #[derive(Clone)]
 pub struct SearchEngine {
@@ -56,14 +59,27 @@ impl SearchEngine {
         let plan = ReservedExecutionPlan::from_params(params);
         if params.seed_strategy == Solver6SeedStrategy::Solver5ExactBlockComposition {
             let seed = build_greedy_exact_block_seed(input)?;
-            return Err(SolverError::ValidationError(
-                plan.reserved_message_after_seed(
-                    problem.num_groups,
-                    problem.group_size,
-                    problem.num_weeks,
-                    &seed.diagnostics.concise_summary(),
+            let effective_seed = input.solver.seed.unwrap_or(42);
+            let mut state = LocalSearchState::new(
+                problem.clone(),
+                seed.schedule,
+                params.pair_repeat_penalty_model,
+            )?;
+            let outcome = run_repeat_aware_local_search(
+                &mut state,
+                RepeatAwareLocalSearchConfig::for_solver_configuration(
+                    &self.configuration.stop_conditions,
+                    &problem,
+                    effective_seed,
                 ),
-            ));
+            )?;
+            return build_solver_result(
+                input,
+                &problem,
+                &outcome.best_schedule,
+                effective_seed,
+                outcome.stop_reason,
+            );
         }
 
         Err(SolverError::ValidationError(plan.reserved_message(
