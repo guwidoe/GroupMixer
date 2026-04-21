@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAttributeDefinition } from '../../../services/scenarioAttributes';
@@ -311,16 +311,18 @@ describe('ConstraintFamilySections', () => {
     const femaleInput = screen.getByLabelText('female count');
     fireEvent.change(femaleInput, { target: { value: '3' } });
 
-    expect(setScenario).toHaveBeenCalledWith(
-      expect.objectContaining({
-        constraints: expect.arrayContaining([
-          expect.objectContaining({
-            type: 'AttributeBalance',
-            desired_values: { female: 3, male: 1 },
-          }),
-        ]),
-      }),
-    );
+    await waitFor(() => {
+      expect(setScenario).toHaveBeenCalledWith(
+        expect.objectContaining({
+          constraints: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'AttributeBalance',
+              desired_values: { female: 3, male: 1 },
+            }),
+          ]),
+        }),
+      );
+    });
   });
 
   it('keeps background card clicks opening the attribute-balance modal', async () => {

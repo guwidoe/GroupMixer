@@ -1075,6 +1075,20 @@
     height: 0.55rem;
     border-radius: 999px;
     flex: 0 0 auto;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 12%, transparent);
+  }
+
+  .attribute-distribution__support-swatch:disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
+
+  .attribute-distribution__support-swatch:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
   }
 
   .attribute-distribution__support-label {

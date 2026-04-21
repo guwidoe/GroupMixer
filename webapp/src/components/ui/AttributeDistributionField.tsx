@@ -14,6 +14,17 @@ export type AttributeDistributionFieldVariant = 'default' | 'compact';
 
 const INLINE_LABEL_PERCENT_THRESHOLD = 24;
 
+function areDistributionValuesEqual(left: AttributeDistributionValue, right: AttributeDistributionValue) {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+
+  return leftKeys.every((key) => (left[key] ?? 0) === (right[key] ?? 0));
+}
+
 interface ActiveDistributionDrag {
   source: 'line' | 'dot';
   dividerIndex: number;
@@ -109,23 +120,28 @@ export function AttributeDistributionField({
   showSummary,
   showChips,
 }: AttributeDistributionFieldProps) {
-  const normalizedValue = useMemo(() => normalizeAttributeDistributionValue(value, buckets), [value, buckets]);
+  const externalValue = useMemo(() => normalizeAttributeDistributionValue(value, buckets), [value, buckets]);
+  const [localValue, setLocalValue] = useState(externalValue);
+  const localValueRef = useRef(localValue);
+  const pendingChangeFrameRef = useRef<number | null>(null);
+  const queuedExternalValueRef = useRef<AttributeDistributionValue | null>(null);
+  const lastSentValueRef = useRef<AttributeDistributionValue | null>(null);
   const attributeBuckets = useMemo(() => buckets.filter((bucket) => bucket.kind === 'attribute'), [buckets]);
   const activeBarBuckets = useMemo(
-    () => buckets.filter((bucket) => bucket.kind === 'unallocated' || Object.prototype.hasOwnProperty.call(normalizedValue, bucket.key)),
-    [buckets, normalizedValue],
+    () => buckets.filter((bucket) => bucket.kind === 'unallocated' || Object.prototype.hasOwnProperty.call(localValue, bucket.key)),
+    [buckets, localValue],
   );
   const summary = useMemo(
-    () => summarizeAttributeDistribution(normalizedValue, buckets, capacity),
-    [normalizedValue, buckets, capacity],
+    () => summarizeAttributeDistribution(localValue, buckets, capacity),
+    [localValue, buckets, capacity],
   );
   const allBucketCounts = useMemo(
-    () => getBarBucketCounts(buckets, normalizedValue, summary.capacity),
-    [buckets, normalizedValue, summary.capacity],
+    () => getBarBucketCounts(buckets, localValue, summary.capacity),
+    [buckets, localValue, summary.capacity],
   );
   const barBucketCounts = useMemo(
-    () => getBarBucketCounts(activeBarBuckets, normalizedValue, summary.capacity),
-    [activeBarBuckets, normalizedValue, summary.capacity],
+    () => getBarBucketCounts(activeBarBuckets, localValue, summary.capacity),
+    [activeBarBuckets, localValue, summary.capacity],
   );
   const dividerPositions = useMemo(() => getDividerPositions(barBucketCounts), [barBucketCounts]);
   const togglePositions = useMemo(() => getDividerPositions(allBucketCounts).slice(0, attributeBuckets.length), [allBucketCounts, attributeBuckets.length]);
@@ -138,8 +154,8 @@ export function AttributeDistributionField({
   const resolvedShowSummary = showSummary ?? variant === 'default';
   const resolvedShowChips = showChips ?? variant === 'default';
   const bucketStates = useMemo(() => attributeBuckets.map((bucket, index) => {
-    const count = normalizedValue[bucket.key] ?? 0;
-    const isActive = Object.prototype.hasOwnProperty.call(normalizedValue, bucket.key);
+    const count = localValue[bucket.key] ?? 0;
+    const isActive = Object.prototype.hasOwnProperty.call(localValue, bucket.key);
     const widthPercent = summary.capacity > 0 ? (count / summary.capacity) * 100 : 0;
     const canInlineEdit = variant === 'default' && isActive && count > 0 && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD;
 
@@ -155,7 +171,7 @@ export function AttributeDistributionField({
       showInlineLabel: canInlineEdit && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD,
       needsLegend: !canInlineEdit || !isActive || count === 0,
     };
-  }), [attributeBuckets, normalizedValue, summary.capacity, variant]);
+  }), [attributeBuckets, localValue, summary.capacity, variant]);
   const bucketStateByKey = useMemo(
     () => new Map(bucketStates.map((state) => [state.bucket.key, state])),
     [bucketStates],
@@ -172,19 +188,80 @@ export function AttributeDistributionField({
   const handleClusterOffsets = useMemo(() => buildCenteredClusterOffsets(dividerPositions), [dividerPositions]);
   const toggleClusterOffsets = useMemo(() => buildCenteredClusterOffsets(togglePositions), [togglePositions]);
 
+  useEffect(() => {
+    localValueRef.current = localValue;
+  }, [localValue]);
+
+  const flushQueuedExternalChange = React.useCallback(() => {
+    if (pendingChangeFrameRef.current != null) {
+      cancelAnimationFrame(pendingChangeFrameRef.current);
+      pendingChangeFrameRef.current = null;
+    }
+
+    const queuedValue = queuedExternalValueRef.current;
+    if (!queuedValue) {
+      return;
+    }
+
+    queuedExternalValueRef.current = null;
+    lastSentValueRef.current = queuedValue;
+    onChange(queuedValue);
+  }, [onChange]);
+
+  const queueValueChange = React.useCallback((nextValue: AttributeDistributionValue, immediate = false) => {
+    const normalizedNextValue = normalizeAttributeDistributionValue(nextValue, buckets);
+    localValueRef.current = normalizedNextValue;
+    setLocalValue(normalizedNextValue);
+    queuedExternalValueRef.current = normalizedNextValue;
+
+    if (immediate) {
+      flushQueuedExternalChange();
+      return;
+    }
+
+    if (pendingChangeFrameRef.current != null) {
+      return;
+    }
+
+    pendingChangeFrameRef.current = requestAnimationFrame(() => {
+      pendingChangeFrameRef.current = null;
+      flushQueuedExternalChange();
+    });
+  }, [buckets, flushQueuedExternalChange]);
+
   const toggleBucketActive = React.useCallback((bucket: DistributionBucket) => {
     if (bucket.kind !== 'attribute' || disabled) {
       return;
     }
 
-    const nextValue = { ...normalizedValue };
-    if (Object.prototype.hasOwnProperty.call(normalizedValue, bucket.key)) {
+    const currentValue = localValueRef.current;
+    const nextValue = { ...currentValue };
+    if (Object.prototype.hasOwnProperty.call(currentValue, bucket.key)) {
       delete nextValue[bucket.key];
     } else {
       nextValue[bucket.key] = 0;
     }
-    onChange(nextValue);
-  }, [disabled, normalizedValue, onChange]);
+    queueValueChange(nextValue, true);
+  }, [disabled, queueValueChange]);
+
+  useEffect(() => {
+    const lastSentValue = lastSentValueRef.current;
+    if (lastSentValue && areDistributionValuesEqual(externalValue, lastSentValue)) {
+      lastSentValueRef.current = null;
+    }
+
+    const hasPendingExternalSync = queuedExternalValueRef.current != null || lastSentValueRef.current != null;
+    if (activeDrag || hasPendingExternalSync || areDistributionValuesEqual(localValueRef.current, externalValue)) {
+      return undefined;
+    }
+
+    const syncFrame = requestAnimationFrame(() => {
+      localValueRef.current = externalValue;
+      setLocalValue(externalValue);
+    });
+
+    return () => cancelAnimationFrame(syncFrame);
+  }, [activeDrag, externalValue]);
 
   useEffect(() => {
     if (activeDrag == null || !dragEnabled) {
@@ -206,10 +283,20 @@ export function AttributeDistributionField({
         dragMovedRef.current = true;
       }
 
-      onChange(moveDistributionDivider(normalizedValue, activeDrag.buckets, activeDrag.dividerIndex, resolvePosition(event.clientX), summary.capacity));
+      queueValueChange(
+        moveDistributionDivider(
+          localValueRef.current,
+          activeDrag.buckets,
+          activeDrag.dividerIndex,
+          resolvePosition(event.clientX),
+          summary.capacity,
+        ),
+      );
     };
 
     const stopDragging = () => {
+      flushQueuedExternalChange();
+
       if (activeDrag.source === 'dot' && !dragMovedRef.current && activeDrag.toggleBucketKey) {
         const bucket = attributeBuckets.find((candidate) => candidate.key === activeDrag.toggleBucketKey);
         if (bucket) {
@@ -229,7 +316,13 @@ export function AttributeDistributionField({
       window.removeEventListener('pointerup', stopDragging);
       window.removeEventListener('pointercancel', stopDragging);
     };
-  }, [activeDrag, attributeBuckets, dragEnabled, normalizedValue, onChange, summary.capacity, toggleBucketActive]);
+  }, [activeDrag, attributeBuckets, dragEnabled, flushQueuedExternalChange, queueValueChange, summary.capacity, toggleBucketActive]);
+
+  useEffect(() => () => {
+    if (pendingChangeFrameRef.current != null) {
+      cancelAnimationFrame(pendingChangeFrameRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     const pendingFocusKey = pendingFocusKeyRef.current;
@@ -327,7 +420,7 @@ export function AttributeDistributionField({
                                 if (!nextWillInlineEdit) {
                                   pendingFocusKeyRef.current = bucket.key;
                                 }
-                                onChange(setAttributeBucketCount(normalizedValue, buckets, bucket.key, rounded));
+                                queueValueChange(setAttributeBucketCount(localValueRef.current, buckets, bucket.key, rounded), true);
                               }}
                               onPointerDown={(event) => event.stopPropagation()}
                               onClick={(event) => event.stopPropagation()}
@@ -348,7 +441,7 @@ export function AttributeDistributionField({
               {attributeBuckets.map((bucket, index) => {
                 const position = togglePositions[index] ?? 0;
                 const leftPercent = summary.capacity > 0 ? (position / summary.capacity) * 100 : 0;
-                const isActive = Object.prototype.hasOwnProperty.call(normalizedValue, bucket.key);
+                const isActive = Object.prototype.hasOwnProperty.call(localValue, bucket.key);
                 return (
                   <button
                     key={`toggle-${bucket.key}`}
@@ -440,14 +533,15 @@ export function AttributeDistributionField({
                       event.preventDefault();
                       const delta = event.key === 'ArrowRight' ? 1 : -1;
                       const step = event.shiftKey ? 5 : 1;
-                      onChange(
+                      queueValueChange(
                         moveDistributionDivider(
-                          normalizedValue,
+                          localValueRef.current,
                           activeBarBuckets,
                           index,
                           position + delta * step,
                           summary.capacity,
                         ),
+                        true,
                       );
                     }}
                   >
@@ -475,10 +569,14 @@ export function AttributeDistributionField({
                 state.isActive ? 'attribute-distribution__support-item--active' : 'attribute-distribution__support-item--inactive',
               ].filter(Boolean).join(' ')}
             >
-              <span
+              <button
+                type="button"
                 className="attribute-distribution__support-swatch"
                 style={{ background: state.color }}
-                aria-hidden="true"
+                aria-label={`${state.isActive ? 'Disable' : 'Enable'} target for ${state.bucket.label} from legend`}
+                aria-pressed={state.isActive}
+                disabled={disabled}
+                onClick={() => toggleBucketActive(state.bucket)}
               />
               <span className="attribute-distribution__support-label">{state.bucket.label}</span>
               {state.isActive ? (
@@ -504,7 +602,7 @@ export function AttributeDistributionField({
                     if (nextWillInlineEdit) {
                       pendingFocusKeyRef.current = state.bucket.key;
                     }
-                    onChange(setAttributeBucketCount(normalizedValue, buckets, state.bucket.key, rounded));
+                    queueValueChange(setAttributeBucketCount(localValueRef.current, buckets, state.bucket.key, rounded), true);
                   }}
                 />
               ) : null}

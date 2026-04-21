@@ -62,7 +62,7 @@ describe('AttributeDistributionField', () => {
     render(<ControlledField initialValue={{ A: 2, C: 1 }} capacity={5} />);
 
     expect(screen.queryByRole('button', { name: /adjust boundary between a and b/i })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /enable target for b/i }));
+    await user.click(screen.getByRole('button', { name: /^enable target for b$/i }));
 
     expect(screen.getByLabelText('B count')).toHaveValue('0');
     expect(screen.getByRole('button', { name: /adjust boundary between a and b/i })).toBeInTheDocument();
@@ -108,13 +108,27 @@ describe('AttributeDistributionField', () => {
       value: () => ({ left: 0, width: 100, top: 0, right: 100, bottom: 40, height: 40, x: 0, y: 0, toJSON: () => ({}) }),
     });
 
-    const dot = screen.getByRole('button', { name: /disable target for a/i });
+    const dot = screen.getByRole('button', { name: /^disable target for a$/i });
     fireEvent.pointerDown(dot, { clientX: 40, pointerId: 1 });
     fireEvent.pointerMove(window, { clientX: 20 });
     fireEvent.pointerUp(window, { clientX: 20 });
 
     expect(screen.getByLabelText('A count')).toHaveValue('1');
     expect(screen.getByLabelText('B count')).toHaveValue('1');
-    expect(screen.getByRole('button', { name: /disable target for a/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^disable target for a$/i })).toBeInTheDocument();
+  });
+
+  it('lets legend dots toggle attributes that do not fit inline', async () => {
+    const user = userEvent.setup();
+
+    render(<ControlledField initialValue={{ A: 2 }} capacity={11} />);
+
+    await user.click(screen.getByRole('button', { name: /enable target for b from legend/i }));
+
+    expect(screen.getByLabelText('B count')).toHaveValue('0');
+
+    await user.click(screen.getByRole('button', { name: /disable target for b from legend/i }));
+
+    expect(screen.queryByLabelText('B count')).not.toBeInTheDocument();
   });
 });
