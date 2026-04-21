@@ -602,6 +602,8 @@ pub enum SolverKind {
     /// Construction-first pure-SGP solver family that routes instances through explicit
     /// design-theoretic construction families.
     Solver5,
+    /// Hybrid pure-SGP repeat-minimization family seeded by solver5 constructions.
+    Solver6,
 }
 
 /// Default solver family used by current public callers.
@@ -614,6 +616,7 @@ impl SolverKind {
             Self::Solver3 => "solver3",
             Self::Solver4 => "solver4",
             Self::Solver5 => "solver5",
+            Self::Solver6 => "solver6",
         }
     }
 
@@ -623,6 +626,7 @@ impl SolverKind {
             Self::Solver3 => "Solver 3",
             Self::Solver4 => "Solver 4",
             Self::Solver5 => "Solver 5",
+            Self::Solver6 => "Solver 6",
         }
     }
 
@@ -637,6 +641,7 @@ impl SolverKind {
             Self::Solver3 => &["solver3"],
             Self::Solver4 => &["solver4"],
             Self::Solver5 => &["solver5"],
+            Self::Solver6 => &["solver6"],
         }
     }
 
@@ -649,9 +654,16 @@ impl SolverKind {
             "solver3" => Ok(Self::Solver3),
             "solver4" => Ok(Self::Solver4),
             "solver5" => Ok(Self::Solver5),
+            "solver6" => Ok(Self::Solver6),
             other => Err(format!(
                 "Unknown solver type '{other}'. Supported solver IDs: {}",
-                [Self::Solver1, Self::Solver3, Self::Solver4, Self::Solver5]
+                [
+                    Self::Solver1,
+                    Self::Solver3,
+                    Self::Solver4,
+                    Self::Solver5,
+                    Self::Solver6,
+                ]
                     .iter()
                     .map(|kind| kind.canonical_id())
                     .collect::<Vec<_>>()
@@ -974,6 +986,9 @@ pub enum SolverParams {
     /// Parameters for the internal `solver5` family.
     #[serde(rename = "solver5")]
     Solver5(Solver5Params),
+    /// Parameters for the internal `solver6` family.
+    #[serde(rename = "solver6")]
+    Solver6(Solver6Params),
 }
 
 impl SolverParams {
@@ -983,20 +998,21 @@ impl SolverParams {
             Self::Solver3(_) => SolverKind::Solver3,
             Self::Solver4(_) => SolverKind::Solver4,
             Self::Solver5(_) => SolverKind::Solver5,
+            Self::Solver6(_) => SolverKind::Solver6,
         }
     }
 
     pub fn simulated_annealing_params(&self) -> Option<&SimulatedAnnealingParams> {
         match self {
             Self::SimulatedAnnealing(params) => Some(params),
-            Self::Solver3(_) | Self::Solver4(_) | Self::Solver5(_) => None,
+            Self::Solver3(_) | Self::Solver4(_) | Self::Solver5(_) | Self::Solver6(_) => None,
         }
     }
 
     pub fn solver3_params(&self) -> Option<&Solver3Params> {
         match self {
             Self::Solver3(params) => Some(params),
-            Self::SimulatedAnnealing(_) | Self::Solver4(_) | Self::Solver5(_) => None,
+            Self::SimulatedAnnealing(_) | Self::Solver4(_) | Self::Solver5(_) | Self::Solver6(_) => None,
         }
     }
 }
@@ -1007,6 +1023,77 @@ impl SolverParams {
 /// small and grows by adding explicit construction families plus routing/orchestration logic.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
 pub struct Solver5Params {}
+
+/// Seed-family selection for the internal `solver6` family.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver6SeedStrategy {
+    /// Hand exact pure-SGP requests to solver5, then reserve the remaining hybrid pipeline.
+    #[default]
+    Solver5ExactThenReservedHybrid,
+    /// Reserved seed family for composing multiple relabeled exact solver5 blocks.
+    Solver5ExactBlockComposition,
+}
+
+/// Pair-repeat penalty model for `solver6`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver6PairRepeatPenaltyModel {
+    /// Sum `max(0, pair_count - 1)` over all pairs.
+    #[default]
+    LinearRepeatExcess,
+    /// Sum triangular repeat excess so concentrated repeats are penalized harder.
+    TriangularRepeatExcess,
+    /// Sum squared repeat excess so concentrated repeats are penalized hardest.
+    SquaredRepeatExcess,
+}
+
+/// Search-driver selection for the current `solver6` scaffold.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver6SearchStrategy {
+    /// Reserved repeat-aware local-search phase used by the future seeded hybrid pipeline.
+    #[default]
+    ReservedRepeatAwareLocalSearch,
+}
+
+/// Parameters for the internal `solver6` family.
+///
+/// `solver6` is intended to become the hybrid pure-SGP repeat-minimization family:
+/// solver5 provides exact construction atoms, and solver6 composes / relabels / polishes them
+/// for larger impossible horizons where repeated pairings are unavoidable. The current scaffold
+/// only performs exact solver5 handoff and then fails honestly for the reserved hybrid phases.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver6Params {
+    /// Whether exact pure-SGP requests should first be handed to solver5.
+    #[serde(default = "default_solver6_exact_construction_handoff_enabled")]
+    pub exact_construction_handoff_enabled: bool,
+    /// Seed-family selection for the reserved hybrid pipeline.
+    #[serde(default)]
+    pub seed_strategy: Solver6SeedStrategy,
+    /// Repeat-penalty model for the reserved hybrid pipeline.
+    #[serde(default)]
+    pub pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel,
+    /// Search-driver selection for the reserved hybrid pipeline.
+    #[serde(default)]
+    pub search_strategy: Solver6SearchStrategy,
+}
+
+pub const fn default_solver6_exact_construction_handoff_enabled() -> bool {
+    true
+}
+
+impl Default for Solver6Params {
+    fn default() -> Self {
+        Self {
+            exact_construction_handoff_enabled:
+                default_solver6_exact_construction_handoff_enabled(),
+            seed_strategy: Solver6SeedStrategy::default(),
+            pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::default(),
+            search_strategy: Solver6SearchStrategy::default(),
+        }
+    }
+}
 
 /// Parameters for the internal `solver3` family.
 ///

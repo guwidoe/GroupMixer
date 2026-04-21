@@ -94,6 +94,7 @@ pub mod solver1;
 pub mod solver3;
 pub mod solver4;
 pub mod solver5;
+pub mod solver6;
 pub mod solver_support;
 
 /// Runs the optimization solver with the given input configuration.

@@ -1,7 +1,7 @@
 use crate::models::{
     ApiInput, BenchmarkObserver, Constraint, LoggingOptions, Objective, ProblemDefinition,
     ProgressCallback, SimulatedAnnealingParams, Solver3Params, Solver4Params, Solver5Params,
-    SolverConfiguration, SolverKind, SolverParams, SolverResult, StopConditions,
+    Solver6Params, SolverConfiguration, SolverKind, SolverParams, SolverResult, StopConditions,
     DEFAULT_SOLVER_KIND,
 };
 use crate::runtime_target::runtime_target_iteration_cap;
@@ -11,6 +11,7 @@ use crate::solver1::State;
 use crate::solver3::{SearchEngine as Solver3SearchEngine, SOLVER3_BOOTSTRAP_NOTES};
 use crate::solver4::{SearchEngine as Solver4SearchEngine, SOLVER4_NOTES};
 use crate::solver5::{SearchEngine as Solver5SearchEngine, SOLVER5_NOTES};
+use crate::solver6::{SearchEngine as Solver6SearchEngine, SOLVER6_NOTES};
 use crate::solver_support::SolverError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -107,17 +108,32 @@ const SOLVER5_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
     notes: SOLVER5_NOTES,
 };
 
-const SOLVER_DESCRIPTORS: [SolverDescriptor; 4] = [
+const SOLVER6_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
+    kind: SolverKind::Solver6,
+    display_name: "Solver 6",
+    capabilities: SolverEngineCapabilities {
+        supports_initial_schedule: false,
+        supports_progress_callback: false,
+        supports_benchmark_observer: false,
+        supports_recommended_settings: true,
+        supports_deterministic_seed: true,
+    },
+    notes: SOLVER6_NOTES,
+};
+
+const SOLVER_DESCRIPTORS: [SolverDescriptor; 5] = [
     SOLVER1_DESCRIPTOR,
     SOLVER3_DESCRIPTOR,
     SOLVER4_DESCRIPTOR,
     SOLVER5_DESCRIPTOR,
+    SOLVER6_DESCRIPTOR,
 ];
 
 struct Solver1Engine;
 struct Solver3Engine;
 struct Solver4Engine;
 struct Solver5Engine;
+struct Solver6Engine;
 
 impl SolverEngine for Solver1Engine {
     fn descriptor(&self) -> &'static SolverDescriptor {
@@ -298,6 +314,45 @@ impl SolverEngine for Solver5Engine {
     }
 }
 
+impl SolverEngine for Solver6Engine {
+    fn descriptor(&self) -> &'static SolverDescriptor {
+        &SOLVER6_DESCRIPTOR
+    }
+
+    fn solve(&self, request: SolveRequest<'_>) -> Result<SolverResult, SolverError> {
+        let solver = Solver6SearchEngine::new(&request.input.solver);
+        solver.solve(request.input)
+    }
+
+    fn default_configuration(&self) -> SolverConfiguration {
+        SolverConfiguration {
+            solver_type: SolverKind::Solver6.canonical_id().into(),
+            stop_conditions: StopConditions {
+                max_iterations: Some(1_000_000),
+                time_limit_seconds: Some(30),
+                no_improvement_iterations: Some(100_000),
+                stop_on_optimal_score: true,
+            },
+            solver_params: SolverParams::Solver6(Solver6Params::default()),
+            logging: LoggingOptions::default(),
+            telemetry: Default::default(),
+            seed: None,
+            move_policy: None,
+            allowed_sessions: None,
+        }
+    }
+
+    fn recommend_configuration(
+        &self,
+        request: RecommendationRequest<'_>,
+    ) -> Result<SolverConfiguration, SolverError> {
+        Ok(runtime_target_configuration(
+            self.default_configuration(),
+            request.desired_runtime_seconds,
+        ))
+    }
+}
+
 pub fn default_solver_kind() -> SolverKind {
     DEFAULT_SOLVER_KIND
 }
@@ -312,6 +367,7 @@ pub fn solver_descriptor(kind: SolverKind) -> &'static SolverDescriptor {
         SolverKind::Solver3 => &SOLVER3_DESCRIPTOR,
         SolverKind::Solver4 => &SOLVER4_DESCRIPTOR,
         SolverKind::Solver5 => &SOLVER5_DESCRIPTOR,
+        SolverKind::Solver6 => &SOLVER6_DESCRIPTOR,
     }
 }
 
@@ -341,6 +397,7 @@ fn create_solver_engine(kind: SolverKind) -> Box<dyn SolverEngine> {
         SolverKind::Solver3 => Box::new(Solver3Engine),
         SolverKind::Solver4 => Box::new(Solver4Engine),
         SolverKind::Solver5 => Box::new(Solver5Engine),
+        SolverKind::Solver6 => Box::new(Solver6Engine),
     }
 }
 
@@ -731,16 +788,113 @@ mod tests {
     }
 
     #[test]
+    fn solver6_default_configuration_round_trips_through_typed_solver_selection() {
+        let config = default_solver_configuration_for(SolverKind::Solver6);
+        assert_eq!(
+            config.validate_solver_selection().unwrap(),
+            SolverKind::Solver6
+        );
+        assert!(matches!(config.solver_params, SolverParams::Solver6(_)));
+    }
+
+    #[test]
+    fn solver6_recommendation_returns_runtime_target_configuration() {
+        let config = calculate_recommended_settings_for(
+            SolverKind::Solver6,
+            RecommendationRequest {
+                problem: &simple_problem(),
+                objectives: &[],
+                constraints: &[],
+                desired_runtime_seconds: 4,
+            },
+        )
+        .unwrap();
+
+        assert_eq!(
+            config.validate_solver_selection().unwrap(),
+            SolverKind::Solver6
+        );
+        assert_eq!(config.stop_conditions.time_limit_seconds, Some(4));
+        assert!(matches!(config.solver_params, SolverParams::Solver6(_)));
+    }
+
+    #[test]
+    fn solver6_run_executes_through_engine_registry_for_exact_cells() {
+        let input = ApiInput {
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            problem: ProblemDefinition {
+                people: vec![
+                    Person {
+                        id: "p0".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                    Person {
+                        id: "p1".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                    Person {
+                        id: "p2".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                    Person {
+                        id: "p3".to_string(),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    },
+                ],
+                groups: vec![
+                    Group {
+                        id: "g0".to_string(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                    Group {
+                        id: "g1".to_string(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                ],
+                num_sessions: 3,
+            },
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".to_string(),
+                weight: 1.0,
+            }],
+            constraints: vec![solver4_repeat_constraint()],
+            solver: default_solver_configuration_for(SolverKind::Solver6),
+        };
+
+        let result = run_solver_with_engine(SolveRequest {
+            input: &input,
+            progress_callback: None,
+            benchmark_observer: None,
+        })
+        .expect("solver6 scaffold should execute through the engine registry for exact cells");
+
+        assert_eq!(result.final_score, 0.0);
+        assert_eq!(result.schedule.len(), 3);
+        assert_eq!(
+            result.stop_reason,
+            Some(crate::models::StopReason::OptimalScoreReached)
+        );
+    }
+
+    #[test]
     fn all_solver_families_can_stop_on_optimal_zero_score() {
         for kind in [
             SolverKind::Solver1,
             SolverKind::Solver3,
             SolverKind::Solver4,
             SolverKind::Solver5,
+            SolverKind::Solver6,
         ] {
             let (problem, constraints) = if matches!(kind, SolverKind::Solver4) {
                 (pure_solver4_problem(), vec![solver4_repeat_constraint()])
-            } else if matches!(kind, SolverKind::Solver5) {
+            } else if matches!(kind, SolverKind::Solver5 | SolverKind::Solver6) {
                 (pure_solver4_problem(), vec![solver4_repeat_constraint()])
             } else {
                 (simple_problem(), vec![])
@@ -814,6 +968,10 @@ mod tests {
             descriptors.iter().any(|d| d.kind == SolverKind::Solver5),
             "solver5 should appear in available_solver_descriptors"
         );
-        assert_eq!(descriptors.len(), 4);
+        assert!(
+            descriptors.iter().any(|d| d.kind == SolverKind::Solver6),
+            "solver6 should appear in available_solver_descriptors"
+        );
+        assert_eq!(descriptors.len(), 5);
     }
 }
