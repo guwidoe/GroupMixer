@@ -4,11 +4,13 @@ use crate::models::Solver6PairRepeatPenaltyModel;
 use crate::solver5::atoms::Solver5ConstructionAtom;
 use crate::solver_support::SolverError;
 
+pub(crate) mod mixed;
 pub(crate) mod relabeling;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SeedSourceKind {
     Solver5ConstructionAtom,
+    HeuristicTail,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,6 +28,15 @@ impl SeedAtomId {
             family_label: atom.family_label.clone(),
             max_supported_weeks: atom.max_supported_weeks,
             quality_label: atom.quality_label.clone(),
+        }
+    }
+
+    pub(crate) fn heuristic_tail(family_label: &str, weeks_used: usize) -> Self {
+        Self {
+            source_kind: SeedSourceKind::HeuristicTail,
+            family_label: family_label.into(),
+            max_supported_weeks: weeks_used,
+            quality_label: "heuristic_tail".into(),
         }
     }
 

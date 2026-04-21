@@ -1,6 +1,8 @@
 use super::problem::PureSgpProblem;
 use super::result::build_solver_result;
-use super::router::{attempt_construction, best_available_construction};
+use super::router::{
+    attempt_construction, best_available_construction, closest_supporting_construction,
+};
 use super::types::{ConstructionResult, Schedule};
 use crate::models::{
     ApiInput, Solver5Params, SolverConfiguration, SolverKind, SolverParams, SolverResult,
@@ -11,6 +13,7 @@ use crate::solver_support::SolverError;
 pub enum Solver5AtomSpanRequest {
     RequestedSpan,
     BestAvailableFullSpan,
+    ClosestSupportingSpan,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -101,6 +104,11 @@ fn query_atom_for_problem(
             .map_err(|failure| {
                 SolverError::ValidationError(failure.to_solver_error_message(problem))
             })?,
+        Solver5AtomSpanRequest::ClosestSupportingSpan => {
+            closest_supporting_construction(problem).map_err(|failure| {
+                SolverError::ValidationError(failure.to_solver_error_message(problem))
+            })?
+        }
     };
 
     Ok(construction_to_atom(input, construction))

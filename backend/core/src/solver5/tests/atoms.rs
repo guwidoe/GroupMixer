@@ -20,6 +20,18 @@ fn requested_span_atom_returns_exact_requested_schedule() {
 }
 
 #[test]
+fn closest_supporting_span_prefers_the_smallest_supporting_atom() {
+    let input = pure_input(8, 3, 10);
+    let atom = query_construction_atom(&input, Solver5AtomSpanRequest::ClosestSupportingSpan)
+        .expect("8-3-10 should yield a closest-supporting atom");
+
+    assert_eq!(atom.requested_weeks, 10);
+    assert_eq!(atom.max_supported_weeks, 10);
+    assert_eq!(atom.returned_weeks(), 10);
+    assert_eq!(atom.span, Solver5ConstructionAtomSpan::Full);
+}
+
+#[test]
 fn best_available_full_span_atom_can_bridge_from_solver6_input() {
     let mut input = pure_input(8, 4, 20);
     input.solver = crate::engines::default_solver_configuration_for(crate::models::SolverKind::Solver6);

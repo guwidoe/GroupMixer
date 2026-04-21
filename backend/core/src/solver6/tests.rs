@@ -116,3 +116,24 @@ fn solver6_exact_block_search_supports_non_linear_objective_modes() {
     assert_eq!(result.schedule.len(), 20);
     assert!(result.repetition_penalty > 0);
 }
+
+#[test]
+fn solver6_exact_block_search_handles_non_multiple_horizons_via_mixed_seeds() {
+    let mut input = pure_input(8, 3, 21);
+    input.solver.stop_conditions.max_iterations = Some(60);
+    input.solver.stop_conditions.no_improvement_iterations = Some(20);
+    input.solver.solver_params = SolverParams::Solver6(Solver6Params {
+        exact_construction_handoff_enabled: false,
+        seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
+        pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
+        search_strategy: Solver6SearchStrategy::ReservedRepeatAwareLocalSearch,
+    });
+
+    let result = SearchEngine::new(&input.solver)
+        .solve(&input)
+        .expect("solver6 should support non-multiple horizons through mixed-tail seed selection");
+
+    assert_eq!(result.schedule.len(), 21);
+    assert!(result.repetition_penalty > 0);
+    assert!(result.final_score > 0.0);
+}
