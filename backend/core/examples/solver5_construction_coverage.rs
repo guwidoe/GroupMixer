@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 
-const SUPPLEMENTARY_LITERATURE_TARGETS_JSON: &str =
+const EXTENDED_LITERATURE_TARGETS_JSON: &str =
     include_str!("../src/solver5/targets/solver5_supplementary_literature_targets.v1.json");
 
 #[derive(Debug, Clone, Serialize)]
@@ -91,7 +91,7 @@ struct LiteratureReferenceArtifact {
 }
 
 #[derive(Debug, Deserialize)]
-struct SupplementaryLiteratureTargetFile {
+struct ExtendedLiteratureTargetFile {
     version: u32,
     name: String,
     bounds: MatrixBounds,
@@ -100,13 +100,13 @@ struct SupplementaryLiteratureTargetFile {
 }
 
 #[derive(Debug)]
-struct SupplementaryLiteratureTargets {
+struct ExtendedLiteratureTargets {
     bounds: MatrixBounds,
     target_rows: Vec<Vec<Option<usize>>>,
     basis_rows: Vec<Vec<String>>,
 }
 
-impl SupplementaryLiteratureTargets {
+impl ExtendedLiteratureTargets {
     fn target_for(&self, g: usize, p: usize) -> Option<usize> {
         let (row_idx, col_idx) = self.cell_indices(g, p)?;
         *self.target_rows.get(row_idx)?.get(col_idx)?
@@ -141,8 +141,8 @@ fn main() {
     }
 
     let target_matrix = load_default_target_matrix().expect("default target matrix should load");
-    let supplementary_targets = load_supplementary_literature_targets()
-        .expect("supplementary literature targets should load");
+    let extended_targets =
+        load_extended_literature_targets().expect("extended literature targets should load");
     let literature_references = supplementary_literature_references();
     let benchmark_regions = vec![
         BenchmarkRegionArtifact {
@@ -181,9 +181,12 @@ fn main() {
     let mut benchmark_cell_count = 0usize;
     let mut per_p_totals: BTreeMap<usize, usize> = BTreeMap::new();
 
-    let resolver = CellResolver {
+    let knowledge = CellKnowledgeLayer {
         target_matrix: &target_matrix,
-        literature_targets: &supplementary_targets,
+        extended_targets: &extended_targets,
+    };
+    let resolver = CellResolver {
+        knowledge: &knowledge,
     };
 
     for groups in target_matrix.visual_bounds.g_min..=target_matrix.visual_bounds.g_max {
@@ -299,9 +302,77 @@ fn main() {
     }
 }
 
-struct CellResolver<'a> {
+struct CellKnowledgeLayer<'a> {
     target_matrix: &'a gm_core::solver5::reporting::Solver5TargetMatrix,
-    literature_targets: &'a SupplementaryLiteratureTargets,
+    extended_targets: &'a ExtendedLiteratureTargets,
+}
+
+impl CellKnowledgeLayer<'_> {
+    fn resolve_target_info(
+        &self,
+        groups: usize,
+        group_size: usize,
+        upper_bound: usize,
+    ) -> TargetInfo {
+        if let Some(cell) = self.target_matrix.target_for(groups, group_size) {
+            let weeks = Some(match cell {
+                MatrixCellTarget::Finite(value) => *value,
+                MatrixCellTarget::Infinite => upper_bound,
+            });
+            let target_method_label = self.target_matrix.target_method_for(groups, group_size);
+            let desired_method_abbreviation = target_method_label
+                .and_then(|label| self.target_matrix.abbreviation_for(label))
+                .map(str::to_string);
+            let basis = target_method_label.map(|label| {
+                let abbreviation = self.target_matrix.abbreviation_for(label).unwrap_or(label);
+                format!("Target family: {abbreviation}")
+            });
+            return TargetInfo {
+                weeks,
+                desired_method_abbreviation,
+                kind: Some("roadmap".into()),
+                basis,
+                reference_keys: canonical_reference_keys_for_label(target_method_label),
+            };
+        }
+
+        let weeks = self.extended_targets.target_for(groups, group_size);
+        let basis = self
+            .extended_targets
+            .basis_for(groups, group_size)
+            .map(str::to_string);
+        let reference_keys = if weeks.is_some() {
+            vec!["mva2026".to_string()]
+        } else {
+            Vec::new()
+        };
+        TargetInfo {
+            weeks,
+            desired_method_abbreviation: None,
+            kind: Some("literature".into()),
+            basis,
+            reference_keys,
+        }
+    }
+
+    fn heuristic_target_weeks(&self, groups: usize, group_size: usize) -> Option<usize> {
+        self.target_matrix
+            .heuristic_target_weeks_for(groups, group_size)
+    }
+
+    fn proven_optimal_weeks(&self, groups: usize, group_size: usize) -> Option<usize> {
+        self.target_matrix
+            .proven_optimal_weeks_for(groups, group_size)
+    }
+
+    fn optimality_lower_bound_weeks(&self, groups: usize, group_size: usize) -> Option<usize> {
+        self.target_matrix
+            .optimality_lower_bound_weeks_for(groups, group_size)
+    }
+}
+
+struct CellResolver<'a> {
+    knowledge: &'a CellKnowledgeLayer<'a>,
 }
 
 impl CellResolver<'_> {
@@ -311,18 +382,20 @@ impl CellResolver<'_> {
         }
 
         let upper_bound = counting_bound(groups, group_size);
-        let target = self.resolve_target_info(groups, group_size, upper_bound);
-        let heuristic_target_weeks = self
-            .target_matrix
-            .heuristic_target_weeks_for(groups, group_size);
-        let proven_optimal_weeks = self
-            .target_matrix
-            .proven_optimal_weeks_for(groups, group_size);
+        let target = self
+            .knowledge
+            .resolve_target_info(groups, group_size, upper_bound);
+        let heuristic_target_weeks = self.knowledge.heuristic_target_weeks(groups, group_size);
+        let proven_optimal_weeks = self.knowledge.proven_optimal_weeks(groups, group_size);
         let optimality_lower_bound_weeks = self
-            .target_matrix
-            .optimality_lower_bound_weeks_for(groups, group_size);
-        let (constructed_weeks, method_abbreviation, inspection) =
-            best_constructed_summary(groups, group_size, upper_bound, self.target_matrix);
+            .knowledge
+            .optimality_lower_bound_weeks(groups, group_size);
+        let (constructed_weeks, method_abbreviation, inspection) = best_constructed_summary(
+            groups,
+            group_size,
+            upper_bound,
+            self.knowledge.target_matrix,
+        );
         let (family_label, operator_labels, quality_label) = inspection
             .map(|inspection| {
                 (
@@ -336,7 +409,9 @@ impl CellResolver<'_> {
         build_cell_summary(
             groups,
             group_size,
-            self.target_matrix.is_scored_cell(groups, group_size),
+            self.knowledge
+                .target_matrix
+                .is_scored_cell(groups, group_size),
             false,
             Some(constructed_weeks),
             target.weeks,
@@ -361,53 +436,6 @@ impl CellResolver<'_> {
         )
     }
 
-    fn resolve_target_info(
-        &self,
-        groups: usize,
-        group_size: usize,
-        upper_bound: usize,
-    ) -> TargetInfo {
-        if let Some(cell) = self.target_matrix.target_for(groups, group_size) {
-            let weeks = Some(match cell {
-                MatrixCellTarget::Finite(value) => *value,
-                MatrixCellTarget::Infinite => upper_bound,
-            });
-            let target_method_label = self.target_matrix.target_method_for(groups, group_size);
-            let desired_method_abbreviation = target_method_label
-                .and_then(|label| self.target_matrix.abbreviation_for(label))
-                .map(str::to_string);
-            let basis = target_method_label.map(|label| {
-                let abbreviation = self.target_matrix.abbreviation_for(label).unwrap_or(label);
-                format!("Roadmap target family: {abbreviation}")
-            });
-            return TargetInfo {
-                weeks,
-                desired_method_abbreviation,
-                kind: Some("roadmap".into()),
-                basis,
-                reference_keys: canonical_reference_keys_for_label(target_method_label),
-            };
-        }
-
-        let weeks = self.literature_targets.target_for(groups, group_size);
-        let basis = self
-            .literature_targets
-            .basis_for(groups, group_size)
-            .map(str::to_string);
-        let reference_keys = if weeks.is_some() {
-            vec!["mva2026".to_string()]
-        } else {
-            Vec::new()
-        };
-        TargetInfo {
-            weeks,
-            desired_method_abbreviation: None,
-            kind: Some("literature".into()),
-            basis,
-            reference_keys,
-        }
-    }
-
     fn resolve_visual_only_cell(&self, groups: usize, group_size: usize) -> CellSummary {
         let display = if groups == 1 && group_size == 1 {
             MatrixCellTarget::Infinite.display_text()
@@ -424,7 +452,8 @@ impl CellResolver<'_> {
             None,
             None,
             Some(
-                self.target_matrix
+                self.knowledge
+                    .target_matrix
                     .abbreviation_for("visual_only")
                     .unwrap_or("VIS")
                     .to_string(),
@@ -628,7 +657,7 @@ fn supplementary_literature_references() -> Vec<LiteratureReferenceArtifact> {
         short_label: "[1]".into(),
         citation: "Miller, A.; Valkov, I.; Abel, R.J.R. (2026). Combinatorial solutions to the Social Golfer Problem and Social Golfer Problem with adjacent group sizes. arXiv:2507.23376.".into(),
         url: "https://arxiv.org/abs/2507.23376".into(),
-        notes: "Used for the supplementary literature targets via Appendix B tables (including the additional v>150 examples), for canonical matrix family-backed roadmap targets, for Algorithm 1/2 family-selection rules, and for the paper's MOLS summary table.".into(),
+        notes: "Used for the extended literature-backed target coverage via Appendix B tables (including the additional v>150 examples), for roadmap family-backed targets, for Algorithm 1/2 family-selection rules, and for the paper's MOLS summary table.".into(),
     }]
 }
 
@@ -650,19 +679,17 @@ fn canonical_reference_keys_for_label(label: Option<&str>) -> Vec<String> {
     }
 }
 
-fn load_supplementary_literature_targets() -> Result<SupplementaryLiteratureTargets, String> {
-    let file: SupplementaryLiteratureTargetFile =
-        serde_json::from_str(SUPPLEMENTARY_LITERATURE_TARGETS_JSON).map_err(|error| {
-            format!("failed to parse supplementary literature targets: {error}")
-        })?;
+fn load_extended_literature_targets() -> Result<ExtendedLiteratureTargets, String> {
+    let file: ExtendedLiteratureTargetFile = serde_json::from_str(EXTENDED_LITERATURE_TARGETS_JSON)
+        .map_err(|error| format!("failed to parse extended literature targets: {error}"))?;
     if file.version == 0 {
-        return Err("supplementary literature target version must be positive".into());
+        return Err("extended literature target version must be positive".into());
     }
     let expected_height = file.bounds.height();
     let expected_width = file.bounds.width();
     if file.target_rows.len() != expected_height {
         return Err(format!(
-            "supplementary literature target_rows height {} does not match bounds height {} for {}",
+            "extended literature target_rows height {} does not match bounds height {} for {}",
             file.target_rows.len(),
             expected_height,
             file.name
@@ -670,7 +697,7 @@ fn load_supplementary_literature_targets() -> Result<SupplementaryLiteratureTarg
     }
     if file.basis_rows.len() != expected_height {
         return Err(format!(
-            "supplementary literature basis_rows height {} does not match bounds height {} for {}",
+            "extended literature basis_rows height {} does not match bounds height {} for {}",
             file.basis_rows.len(),
             expected_height,
             file.name
@@ -679,7 +706,7 @@ fn load_supplementary_literature_targets() -> Result<SupplementaryLiteratureTarg
     for (row_idx, row) in file.target_rows.iter().enumerate() {
         if row.len() != expected_width {
             return Err(format!(
-                "supplementary literature target row {} width {} does not match bounds width {} for {}",
+                "extended literature target row {} width {} does not match bounds width {} for {}",
                 row_idx + file.bounds.g_min,
                 row.len(),
                 expected_width,
@@ -690,7 +717,7 @@ fn load_supplementary_literature_targets() -> Result<SupplementaryLiteratureTarg
     for (row_idx, row) in file.basis_rows.iter().enumerate() {
         if row.len() != expected_width {
             return Err(format!(
-                "supplementary literature basis row {} width {} does not match bounds width {} for {}",
+                "extended literature basis row {} width {} does not match bounds width {} for {}",
                 row_idx + file.bounds.g_min,
                 row.len(),
                 expected_width,
@@ -699,7 +726,7 @@ fn load_supplementary_literature_targets() -> Result<SupplementaryLiteratureTarg
         }
     }
 
-    Ok(SupplementaryLiteratureTargets {
+    Ok(ExtendedLiteratureTargets {
         bounds: file.bounds,
         target_rows: file.target_rows,
         basis_rows: file.basis_rows,
