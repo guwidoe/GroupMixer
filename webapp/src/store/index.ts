@@ -2,7 +2,7 @@
  * Main application store using Zustand slices pattern.
  *
  * The store is composed of multiple slices, each managing a specific domain:
- * - scenarioSlice: Current scenario state and CRUD operations
+ * - scenarioSlice: Current scenario-document state and CRUD operations
  * - solutionSlice: Current solution state
  * - solverSlice: Solver execution state and progress
  * - uiSlice: UI state, notifications, modal visibility
@@ -39,6 +39,7 @@ import {
 export type {
   AppState,
   Scenario,
+  ScenarioDocument,
   Solution,
   SolverState,
   Notification,

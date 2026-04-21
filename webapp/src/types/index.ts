@@ -104,6 +104,18 @@ export interface Scenario {
   settings: SolverSettings;
 }
 
+/**
+ * Frontend editor aggregate for the scenario workspace.
+ *
+ * `Scenario` above is the solver-facing DTO that matches gm-core.
+ * `ScenarioDocument` is the real GUI editing surface and is the
+ * intended source of truth for Scenario Setup state.
+ */
+export interface ScenarioDocument {
+  scenario: Scenario;
+  attributeDefinitions: AttributeDefinition[];
+}
+
 export interface SolverSettings {
   solver_type: string;
   stop_conditions: StopConditions;
@@ -361,6 +373,12 @@ export interface ScenarioSummary {
 
 // UI State types
 export interface AppState {
+  /**
+   * Canonical editor document for the active Scenario Setup workspace.
+   * The legacy `scenario` and `attributeDefinitions` fields below are kept
+   * for compatibility while the UI migrates to the explicit document model.
+   */
+  scenarioDocument: ScenarioDocument | null;
   scenario: Scenario | null;
   solution: Solution | null;
   solverState: SolverState;
