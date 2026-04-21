@@ -134,10 +134,20 @@ def main():
     args = parser.parse_args()
 
     artifact = json.loads(Path(args.artifact).read_text())
+    if "cells" in artifact or "supplementary_matrices" in artifact:
+        raise AssertionError(
+            "artifact must not use legacy top-level canonical/supplementary matrix fields"
+        )
     matrices = artifact.get("matrices", [])
     if not matrices:
         raise AssertionError("artifact must expose non-empty matrices views")
+    required_matrix_fields = {"title", "subtitle", "bounds", "cells"}
     for matrix in matrices:
+        missing_matrix_fields = required_matrix_fields - set(matrix.keys())
+        if missing_matrix_fields:
+            raise AssertionError(
+                f"matrix view {matrix.get('title', '<untitled>')} missing fields: {sorted(missing_matrix_fields)}"
+            )
         for cell in matrix.get("cells", []):
             validate_cell(cell, f"{matrix['title']} ({cell['g']},{cell['p']})")
 

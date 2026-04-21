@@ -6,10 +6,14 @@ It complements the main architecture docs by describing how constructive
 coverage, implemented-family roadmap targets, literature-backed reference
 values, method attribution, and visual gap reporting are represented.
 
-## Core matrices
+## Global cell universe and matrix views
 
-Solver5 matrix reporting is built around three primary named matrices, plus
-auxiliary literature-backed reference matrices.
+Solver5 reporting is built around **one global `(g,p)` cell universe** plus a
+set of matrix views that window over different `(g,p)` ranges.
+
+There is no semantic distinction between a "main" matrix and any other matrix
+view. Every matrix in the report is a peer view over the same resolved cell
+schema.
 
 ### `W_g,p`
 The **current achieved matrix**.
@@ -86,9 +90,9 @@ The matrix report can be richer than the optimization objective.
 
 ### Scored benchmark regions
 The current objective-counting regions are:
-- canonical matrix: `2 <= g <= 10`, `2 <= p <= 10`
-- additional matrix: `11 <= g <= 20`, `2 <= p <= 10`
-- additional matrix: `11 <= g <= 20`, `11 <= p <= 20`
+- `2 <= g <= 10`, `2 <= p <= 10`
+- `11 <= g <= 20`, `2 <= p <= 10`
+- `11 <= g <= 20`, `11 <= p <= 20`
 
 Only those cells contribute to:
 - `total_constructed_weeks`
@@ -144,15 +148,15 @@ Every rendered matrix cell now uses the **same glyph semantics**.
   still more special-case than the intended generalized family, show `M→D`
   where `D` is the desired family target
 
-This grammar does **not** change between the canonical matrix and the
-supplementary matrices.
+This grammar does **not** change between matrix views.
 
-What may vary by matrix region is only the **data source** behind `T`, `O`, or
+What may vary by matrix view is only the **data source** behind `T`, `O`, or
 the attached references:
 
-- canonical matrix: `T` comes from the roadmap target matrix `TW_g,p`
-- supplementary matrices: `T` comes from curated literature-backed targets when
-  available
+- some views contain cells whose `T` comes from the roadmap target matrix
+  `TW_g,p`
+- some views contain cells whose `T` comes from curated literature-backed
+  targets when available
 - all matrices: `U` is the counting upper bound shown explicitly in the same
   bottom-left slot
 - all matrices: `O` is shown only when an exact optimum is actually encoded
@@ -213,8 +217,7 @@ The solver5 coverage benchmark now emits:
   - `autoresearch.last_run_report.html`
 
 The JSON artifact contains the structured matrix data.
-The HTML report renders the same universal glyph grammar for the canonical
-matrix and the supplementary matrices.
+The HTML report renders the same universal glyph grammar for every matrix view.
 
 Current HTML cell semantics for **every** matrix:
 
@@ -230,6 +233,15 @@ literature source is available for that target.
 
 The JSON artifact now carries fully resolved glyph fields so the Python HTML
 renderer can stay thin and truthful instead of reinterpreting cell semantics.
+
+The artifact is range-view based:
+
+- top-level `matrices[]`
+- each entry has only presentation metadata plus bounds
+- each cell in each matrix is resolved from the same global cell universe
+
+The reporting pipeline must not reintroduce legacy concepts like a dedicated
+canonical matrix path or a special supplementary matrix path.
 
 The HTML also includes:
 
