@@ -11,7 +11,7 @@ export const NUMBER_FIELD_PRESETS = {
   groupCount: { min: 1, softMax: 12, step: 1, kind: 'int' },
   runtimeSeconds: { min: 1, softMax: 30, step: 1, kind: 'int' },
   objectiveWeight: { min: 0, softMax: 10, step: 0.1, kind: 'float' },
-  penaltyWeight: { min: 0, softMax: 100, step: 1, kind: 'float' },
+  penaltyWeight: { min: 0, softMax: 100, step: 0.1, kind: 'float' },
   meetingTarget: { min: 0, softMax: 10, step: 1, kind: 'int' },
   groupCapacity: { min: 0, softMax: 20, step: 1, kind: 'int' },
   attributeTargetCount: { min: 0, softMax: 12, step: 1, kind: 'int' },

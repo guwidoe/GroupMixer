@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Constraint } from '../../types';
 import { getConstraintAddLabel, getConstraintEditLabel } from '../../utils/constraintDisplay';
-import { ModalWrapper, ModalHeader, ModalFooter, FormValidationError } from '../ui';
+import { ModalWrapper, ModalHeader, ModalFooter, FormValidationError, NumberField, NUMBER_FIELD_PRESETS } from '../ui';
 
 interface Props {
   initial?: Constraint | null; // if editing existing
@@ -90,15 +90,12 @@ export function RepeatEncounterModal({ initial, onCancel, onSave }: Props) {
 
       <div className="space-y-6">
         <div>
-          <label htmlFor="max_allowed_encounters" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Max Allowed Encounters</label>
-          <input
-            id="max_allowed_encounters"
-            name="max_allowed_encounters"
-            type="number"
-            value={formState.max_allowed_encounters ?? ''}
-            onChange={handleChange}
-            className={`input w-full text-base py-3 ${!isMaxEncountersValid(formState.max_allowed_encounters) ? 'border-red-500 focus:border-red-500' : ''}`}
-            min="0"
+          <NumberField
+            label="Max Allowed Encounters"
+            value={formState.max_allowed_encounters}
+            onChange={(value) => setFormState((prev) => ({ ...prev, max_allowed_encounters: value }))}
+            error={!isMaxEncountersValid(formState.max_allowed_encounters) ? 'Enter 0 or greater.' : undefined}
+            {...NUMBER_FIELD_PRESETS.meetingTarget}
           />
           <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>The number of times any two people can be in the same group before penalties apply.</p>
         </div>
@@ -119,16 +116,12 @@ export function RepeatEncounterModal({ initial, onCancel, onSave }: Props) {
         </div>
 
         <div>
-          <label htmlFor="penalty_weight" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Penalty Weight</label>
-          <input
-            id="penalty_weight"
-            name="penalty_weight"
-            type="number"
-            value={formState.penalty_weight ?? ''}
-            onChange={handleChange}
-            className={`input w-full text-base py-3 ${!isPenaltyWeightValid(formState.penalty_weight) ? 'border-red-500 focus:border-red-500' : ''}`}
-            min="0"
-            step="0.1"
+          <NumberField
+            label="Penalty Weight"
+            value={formState.penalty_weight}
+            onChange={(value) => setFormState((prev) => ({ ...prev, penalty_weight: value }))}
+            error={!isPenaltyWeightValid(formState.penalty_weight) ? 'Enter a positive weight.' : undefined}
+            {...NUMBER_FIELD_PRESETS.penaltyWeight}
           />
           <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>Multiplier for the penalty score. Higher values make the solver prioritize this constraint more.</p>
         </div>

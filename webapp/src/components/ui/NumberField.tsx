@@ -26,6 +26,7 @@ export interface NumberFieldProps {
   showInput?: boolean;
   className?: string;
   inputClassName?: string;
+  inputAriaLabel?: string;
   sliderAriaLabel?: string;
 }
 
@@ -112,6 +113,7 @@ export function NumberField({
   showInput = true,
   className,
   inputClassName,
+  inputAriaLabel,
   sliderAriaLabel,
 }: NumberFieldProps) {
   const generatedId = useId();
@@ -220,6 +222,7 @@ export function NumberField({
             inputMode={kind === 'int' ? 'numeric' : 'decimal'}
             value={displayValue}
             disabled={disabled}
+            aria-label={inputAriaLabel}
             aria-invalid={isInvalid || undefined}
             aria-describedby={describedBy}
             className={['input number-field__input', inputClassName, isInvalid ? 'number-field__input--invalid border-red-500 focus:border-red-500' : null].filter(Boolean).join(' ')}

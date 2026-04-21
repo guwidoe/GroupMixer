@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { Person } from '../../types';
 import { getConstraintDisplayName } from '../../utils/constraintDisplay';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
 
 type Mode = 'at_least' | 'exact' | 'at_most';
 
@@ -137,8 +138,14 @@ const PairMeetingCountBulkConvertModal: React.FC<Props> = ({ selectedCount, tota
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Target meetings</label>
-              <input type="number" className="input w-full" min={0} value={target} onChange={(e) => setTarget(parseInt(e.target.value || '0', 10))} />
+              <NumberField
+                label="Target meetings"
+                value={target}
+                onChange={(value) => setTarget(Math.max(0, Math.round(value ?? 0)))}
+                variant="compact"
+                showSlider={false}
+                {...NUMBER_FIELD_PRESETS.meetingTarget}
+              />
             </div>
             <div>
               <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Mode</label>
@@ -157,7 +164,17 @@ const PairMeetingCountBulkConvertModal: React.FC<Props> = ({ selectedCount, tota
             </label>
             <label className="text-sm inline-flex items-center gap-2">
               <input type="radio" name="weight" checked={!useSourceWeight} onChange={() => setUseSourceWeight(false)} /> Override with
-              <input type="number" className="input w-28" min={0} step={0.1} disabled={useSourceWeight} value={overrideWeight} onChange={(e) => setOverrideWeight(parseFloat(e.target.value || '0'))} />
+              <span className="w-40">
+                <NumberField
+                  label={undefined}
+                  value={overrideWeight}
+                  onChange={(value) => setOverrideWeight(value ?? 0)}
+                  disabled={useSourceWeight}
+                  variant="compact"
+                  showSlider={false}
+                  {...NUMBER_FIELD_PRESETS.penaltyWeight}
+                />
+              </span>
             </label>
           </div>
         </div>

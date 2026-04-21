@@ -1,4 +1,5 @@
 import React from 'react';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../../../ui';
 
 interface AttributeBalanceTargetsEditorProps {
   options: string[];
@@ -33,26 +34,25 @@ export function AttributeBalanceTargetsEditor({
           <span className="truncate" title={option} style={{ color: 'var(--text-secondary)' }}>
             {option}
           </span>
-          <input
-            type="number"
+          <NumberField
+            label={undefined}
+            inputAriaLabel={`Target for ${option}`}
             disabled={disabled}
-            value={targets[option] ?? ''}
-            onChange={(event) => {
+            value={targets[option] ?? null}
+            onChange={(nextValue) => {
               const nextTargets = { ...targets };
-              const nextValue = event.target.value.trim();
-              if (!nextValue) {
+              if (nextValue == null) {
                 delete nextTargets[option];
               } else {
-                const parsed = Number(nextValue);
-                if (!Number.isFinite(parsed)) {
-                  return;
-                }
-                nextTargets[option] = parsed;
+                nextTargets[option] = nextValue;
               }
               onCommit(nextTargets);
             }}
-            className="input h-9 w-full"
-            aria-label={`Target for ${option}`}
+            variant="compact"
+            showSlider={false}
+            {...NUMBER_FIELD_PRESETS.attributeTargetCount}
+            inputClassName="h-9"
+            className="w-full"
           />
         </label>
       ))}

@@ -5,6 +5,7 @@ import { findAttributeDefinition } from '../../services/scenarioAttributes';
 import { useAppStore } from '../../store';
 import { getConstraintAddLabel, getConstraintEditLabel } from '../../utils/constraintDisplay';
 import { SessionScopeField } from '../ScenarioEditor/shared/SessionScopeField';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
 import {
   createAllSessionScopeDraft,
   optionalSessionsToDraft,
@@ -198,13 +199,15 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
                 {selectedAttribute.values.map(val => (
                   <div key={val} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{val}</span>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formState.desired_values[val] ?? ''}
-                      onChange={e => handleDesiredValueChange(val, e.target.value)}
-                      className="input w-full sm:w-32 text-center text-base py-2"
-                      placeholder="Count"
+                    <NumberField
+                      label={undefined}
+                      inputAriaLabel={`Target for ${val}`}
+                      value={formState.desired_values[val] ?? null}
+                      onChange={(value) => handleDesiredValueChange(val, value == null ? '' : String(value))}
+                      variant="compact"
+                      showSlider={false}
+                      {...NUMBER_FIELD_PRESETS.attributeTargetCount}
+                      className="w-full sm:w-32"
                     />
                   </div>
                 ))}
@@ -235,18 +238,12 @@ export function AttributeBalanceModal({ initial, onCancel, onSave }: Props) {
           />
           
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Penalty Weight</label>
-            <input 
-              type="number" 
-              name="penalty_weight" 
-              value={formState.penalty_weight ?? ''} 
-              onChange={e => {
-                const numValue = e.target.value === '' ? null : parseFloat(e.target.value);
-                setFormState(p => ({...p, penalty_weight: numValue}));
-              }} 
-              className={`input w-full text-base py-3 ${!isPenaltyWeightValid(formState.penalty_weight) ? 'border-red-500 focus:border-red-500' : ''}`} 
-              min="0"
-              step="0.1"
+            <NumberField
+              label="Penalty Weight"
+              value={formState.penalty_weight}
+              onChange={(value) => setFormState((prev) => ({ ...prev, penalty_weight: value }))}
+              error={!isPenaltyWeightValid(formState.penalty_weight) ? 'Enter a positive weight.' : undefined}
+              {...NUMBER_FIELD_PRESETS.penaltyWeight}
             />
             <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>Higher values make the solver prioritize this constraint more.</p>
           </div>

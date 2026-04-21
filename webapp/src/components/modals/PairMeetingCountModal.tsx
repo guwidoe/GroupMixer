@@ -4,6 +4,7 @@ import type { Constraint, Person } from '../../types';
 import { getConstraintAddLabel, getConstraintEditLabel } from '../../utils/constraintDisplay';
 import ConstraintPersonChip from '../ConstraintPersonChip';
 import PersonCard from '../PersonCard';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
 
 interface Props {
   people: Person[];
@@ -160,16 +161,13 @@ export function PairMeetingCountModal({ people, totalSessions, initial, onCancel
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Target meetings</label>
-              <input
-                type="number"
-                className="input w-full"
-                min={0}
-                value={form.target === '' ? '' : form.target}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setForm({ ...form, target: v === '' ? '' : parseInt(v, 10) });
-                }}
+              <NumberField
+                label="Target meetings"
+                value={form.target === '' ? null : form.target}
+                onChange={(value) => setForm({ ...form, target: value == null ? '' : Math.max(0, Math.round(value)) })}
+                variant="compact"
+                showSlider={false}
+                {...NUMBER_FIELD_PRESETS.meetingTarget}
               />
             </div>
             <div>
@@ -183,18 +181,12 @@ export function PairMeetingCountModal({ people, totalSessions, initial, onCancel
           </div>
 
           <div>
-            <label className="block text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>Penalty weight</label>
-            <input
-              type="number"
-              className="input w-full"
-              min={0}
-              step={0.1}
-                value={form.weight === null ? '' : form.weight}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setForm({ ...form, weight: v === '' ? null : parseFloat(v) });
-                }}
-              />
+            <NumberField
+              label="Penalty weight"
+              value={form.weight}
+              onChange={(value) => setForm({ ...form, weight: value })}
+              {...NUMBER_FIELD_PRESETS.penaltyWeight}
+            />
           </div>
         </div>
 

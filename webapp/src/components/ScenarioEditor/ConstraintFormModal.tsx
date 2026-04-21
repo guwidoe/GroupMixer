@@ -2,6 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import type { AttributeDefinition, Constraint, Scenario } from '../../types';
 import { getConstraintDisplayName } from '../../utils/constraintDisplay';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
 import { SessionScopeField } from './shared/SessionScopeField';
 import { createAllSessionScopeDraft, type SessionScopeDraft } from './shared/sessionScope';
 
@@ -97,25 +98,12 @@ export function ConstraintFormModal({
           {constraintForm.type === 'RepeatEncounter' && (
             <>
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                  Maximum Allowed Encounters *
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="10"
-                  value={constraintForm.max_allowed_encounters ?? ''}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '' || /^\d*$/.test(value)) {
-                      setConstraintForm(prev => ({
-                        ...prev,
-                        max_allowed_encounters: value === '' ? undefined : parseInt(value),
-                      }));
-                    }
-                  }}
-                  className={`input ${(constraintForm.max_allowed_encounters === undefined || constraintForm.max_allowed_encounters < 0) ? 'border-red-500 focus:border-red-500' : ''}`}
-                  placeholder="e.g., 1"
+                <NumberField
+                  label="Maximum Allowed Encounters *"
+                  value={constraintForm.max_allowed_encounters ?? null}
+                  onChange={(value) => setConstraintForm((prev) => ({ ...prev, max_allowed_encounters: value ?? undefined }))}
+                  error={constraintForm.max_allowed_encounters === undefined || constraintForm.max_allowed_encounters < 0 ? 'Enter 0 or greater.' : undefined}
+                  {...NUMBER_FIELD_PRESETS.meetingTarget}
                 />
                 <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
                   Maximum number of times any two people can be in the same group across all sessions
@@ -197,30 +185,28 @@ export function ConstraintFormModal({
                       ?.values.map(value => (
                         <div key={value} className="flex items-center gap-2">
                           <span className="w-20 text-sm capitalize" style={{ color: 'var(--text-secondary)' }}>{value}:</span>
-                          <input
-                            type="number"
-                            min="0"
-                            max="20"
-                            value={constraintForm.desired_values?.[value] ?? ''}
-                            onChange={(e) => {
-                              const inputValue = e.target.value;
-                              if (inputValue === '' || /^\d*$/.test(inputValue)) {
-                                setConstraintForm(prev => {
-                                  const newDesiredValues = { ...prev.desired_values };
-                                  if (inputValue === '') {
-                                    delete newDesiredValues[value];
-                                  } else {
-                                    newDesiredValues[value] = parseInt(inputValue);
-                                  }
-                                  return {
-                                    ...prev,
-                                    desired_values: newDesiredValues,
-                                  };
-                                });
-                              }
+                          <NumberField
+                            label={undefined}
+                            inputAriaLabel={`Target for ${value}`}
+                            value={constraintForm.desired_values?.[value] ?? null}
+                            onChange={(nextValue) => {
+                              setConstraintForm((prev) => {
+                                const newDesiredValues = { ...prev.desired_values };
+                                if (nextValue == null) {
+                                  delete newDesiredValues[value];
+                                } else {
+                                  newDesiredValues[value] = Math.max(0, Math.round(nextValue));
+                                }
+                                return {
+                                  ...prev,
+                                  desired_values: newDesiredValues,
+                                };
+                              });
                             }}
-                            className="input flex-1"
-                            placeholder="0"
+                            variant="compact"
+                            showSlider={false}
+                            {...NUMBER_FIELD_PRESETS.attributeTargetCount}
+                            className="flex-1"
                           />
                         </div>
                       ))}
@@ -380,22 +366,12 @@ export function ConstraintFormModal({
             && constraintForm.type !== 'MustStayTogether'
             && constraintForm.type !== 'MustStayApart' && (
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>
-                Penalty Weight
-              </label>
-              <input
-                type="number"
-                min="1"
-                max="10000"
-                value={constraintForm.penalty_weight ?? ''}
-                onChange={(e) => {
-                  const numValue = e.target.value === '' ? undefined : parseFloat(e.target.value);
-                  setConstraintForm(prev => ({
-                    ...prev,
-                    penalty_weight: numValue,
-                  }));
-                }}
-                className={`input ${(constraintForm.penalty_weight === undefined || constraintForm.penalty_weight <= 0) ? 'border-red-500 focus:border-red-500' : ''}`}
+              <NumberField
+                label="Penalty Weight"
+                value={constraintForm.penalty_weight ?? null}
+                onChange={(value) => setConstraintForm((prev) => ({ ...prev, penalty_weight: value ?? undefined }))}
+                error={constraintForm.penalty_weight === undefined || constraintForm.penalty_weight <= 0 ? 'Enter a positive weight.' : undefined}
+                {...NUMBER_FIELD_PRESETS.penaltyWeight}
               />
               <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
                 Higher values make this constraint more important (1-10000).

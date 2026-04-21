@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 import type { Constraint } from '../../../../types';
-import { Button } from '../../../ui';
+import { Button, NumberField, NUMBER_FIELD_PRESETS } from '../../../ui';
 import { replaceConstraintsAtIndices } from '../../../constraints/constraintMutations';
 import { SetupActionsMenu } from '../../shared/SetupActionsMenu';
 import { SetupCardSearchToolbar } from '../../shared/SetupCardSearchToolbar';
@@ -226,13 +226,16 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
               extra={supportsBulkConvert ? (
                 <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                   <span>Min members</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={minMembers}
-                    onChange={(event) => setMinMembers(event.target.value === '' ? '' : Math.max(0, parseInt(event.target.value, 10) || 0))}
-                    className="input w-24"
-                  />
+                  <span className="w-24">
+                    <NumberField
+                      label={undefined}
+                      value={minMembers === '' ? null : minMembers}
+                      onChange={(value) => setMinMembers(value == null ? '' : Math.max(0, Math.round(value)))}
+                      variant="compact"
+                      showSlider={false}
+                      {...NUMBER_FIELD_PRESETS.meetingTarget}
+                    />
+                  </span>
                 </label>
               ) : null}
             />
@@ -390,7 +393,14 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
             <label className="mt-4 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
               Penalty weight
             </label>
-            <input type="number" value={bulkWeight} onChange={(event) => setBulkWeight(event.target.value === '' ? '' : parseFloat(event.target.value))} className="input mt-2 w-full" />
+            <div className="mt-2">
+              <NumberField
+                label={undefined}
+                value={bulkWeight === '' ? null : bulkWeight}
+                onChange={(value) => setBulkWeight(value == null ? '' : value)}
+                {...NUMBER_FIELD_PRESETS.penaltyWeight}
+              />
+            </div>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setShowBulkConvert(false)}>Cancel</Button>
               <Button

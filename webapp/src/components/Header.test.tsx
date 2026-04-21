@@ -130,12 +130,12 @@ describe('Header', () => {
     );
 
     await user.click(screen.getByRole('button', { name: /random demo/i }));
-    await user.clear(screen.getByRole('spinbutton', { name: /groups \(g\)/i }));
-    await user.type(screen.getByRole('spinbutton', { name: /groups \(g\)/i }), '5');
-    await user.clear(screen.getByRole('spinbutton', { name: /people per group \(p\)/i }));
-    await user.type(screen.getByRole('spinbutton', { name: /people per group \(p\)/i }), '3');
-    await user.clear(screen.getByRole('spinbutton', { name: /sessions \(w\)/i }));
-    await user.type(screen.getByRole('spinbutton', { name: /sessions \(w\)/i }), '4');
+    await user.clear(screen.getByRole('textbox', { name: /groups \(g\)/i }));
+    await user.type(screen.getByRole('textbox', { name: /groups \(g\)/i }), '5');
+    await user.clear(screen.getByRole('textbox', { name: /people per group \(p\)/i }));
+    await user.type(screen.getByRole('textbox', { name: /people per group \(p\)/i }), '3');
+    await user.clear(screen.getByRole('textbox', { name: /sessions \(w\)/i }));
+    await user.type(screen.getByRole('textbox', { name: /sessions \(w\)/i }), '4');
     await user.click(screen.getByRole('button', { name: /generate scenario/i }));
     await user.click(screen.getByRole('button', { name: /overwrite/i }));
 
