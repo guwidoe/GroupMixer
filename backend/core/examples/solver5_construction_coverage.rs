@@ -20,20 +20,25 @@ struct CellSummary {
     g: usize,
     p: usize,
     scored: bool,
-    upper_bound: Option<usize>,
+    visual_only: bool,
     constructed_weeks: Option<usize>,
     target_weeks: Option<usize>,
-    gap_to_target: usize,
-    current_display: String,
-    target_display: String,
+    upper_bound_weeks: Option<usize>,
+    proven_optimal_weeks: Option<usize>,
+    glyph_center_text: String,
+    glyph_top_left_text: Option<String>,
+    glyph_top_right_text: Option<String>,
+    glyph_bottom_left_text: Option<String>,
+    glyph_bottom_right_text: Option<String>,
+    fill_basis_weeks: Option<usize>,
+    fill_basis_kind: Option<String>,
+    border_kind: String,
+    target_kind: Option<String>,
     method_abbreviation: Option<String>,
-    target_method_abbreviation: Option<String>,
     target_basis: Option<String>,
     target_reference_keys: Vec<String>,
+    upper_bound_basis: Option<String>,
     heuristic_target_weeks: Option<usize>,
-    heuristic_gap_to_target: Option<usize>,
-    proven_optimal_weeks: Option<usize>,
-    proven_optimal_gap: Option<usize>,
     optimality_lower_bound_weeks: Option<usize>,
     family_label: Option<String>,
     operator_labels: Vec<String>,
@@ -72,26 +77,7 @@ struct SupplementaryMatrixArtifact {
     title: String,
     subtitle: String,
     bounds: BoundsArtifact,
-    cells: Vec<SupplementaryCellSummary>,
-}
-
-#[derive(Debug, Serialize)]
-struct SupplementaryCellSummary {
-    g: usize,
-    p: usize,
-    upper_bound: Option<usize>,
-    constructed_weeks: Option<usize>,
-    literature_target_weeks: Option<usize>,
-    current_display: String,
-    upper_display: String,
-    literature_target_display: Option<String>,
-    method_abbreviation: Option<String>,
-    family_label: Option<String>,
-    operator_labels: Vec<String>,
-    quality_label: Option<String>,
-    literature_target_basis: Option<String>,
-    literature_reference_keys: Vec<String>,
-    visual_note: Option<String>,
+    cells: Vec<CellSummary>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -235,7 +221,7 @@ fn main() {
     let supplementary_matrices = vec![
         build_supplementary_matrix(
             "Supplementary coverage: g=11..20, p=1..10",
-            "Additional benchmark region. Center = current constructed weeks, top-right = conservative literature target T when curated from the 2026 paper, bottom-left = counting upper bound U when a curated target exists, and bottom-right = achieving family. Fill grades against T when present, otherwise against U. Only the trivial p=1 column stays excluded from the objective.",
+            "Universal glyph grammar: center=W, top-left=O, top-right=T, bottom-left=U, bottom-right=M. In this region T comes from curated literature when available, U is always the counting upper bound, and the trivial p=1 column stays visual-only.",
             11,
             20,
             1,
@@ -245,7 +231,7 @@ fn main() {
         ),
         build_supplementary_matrix(
             "Supplementary coverage: g=11..20, p=11..20",
-            "Additional benchmark diagonal/high-p region. Center = current constructed weeks, top-right = conservative literature target T when curated from the 2026 paper, bottom-left = counting upper bound U when a curated target exists, and bottom-right = achieving family. Fill grades against T when present, otherwise against U. Blank T means no clean paper-derived target is curated yet for that cell, but the cell still counts in the benchmark via its current constructed weeks and counting upper bound.",
+            "Universal glyph grammar: center=W, top-left=O, top-right=T, bottom-left=U, bottom-right=M. In this region T comes from curated literature when available, U is always the counting upper bound, and blank T means no clean literature target has been curated yet.",
             11,
             20,
             11,
@@ -258,7 +244,7 @@ fn main() {
     for matrix in &supplementary_matrices {
         for cell in &matrix.cells {
             if let (Some(upper_bound), Some(constructed_weeks)) =
-                (cell.upper_bound, cell.constructed_weeks)
+                (cell.upper_bound_weeks, cell.constructed_weeks)
             {
                 accumulate_benchmark_metrics(
                     cell.p,
@@ -279,7 +265,10 @@ fn main() {
     println!("METRIC frontier_gap_sum={frontier_gap_sum}");
     println!("METRIC solved_cells={solved_cells}");
     println!("METRIC exact_frontier_cells={exact_frontier_cells}");
-    println!("METRIC unsolved_cells={}", benchmark_cell_count - solved_cells);
+    println!(
+        "METRIC unsolved_cells={}",
+        benchmark_cell_count - solved_cells
+    );
     for (group_size, total) in per_p_totals {
         println!("METRIC p{}_constructed_weeks={}", group_size, total);
     }
@@ -351,6 +340,104 @@ fn counting_bound(groups: usize, group_size: usize) -> usize {
     ((groups * group_size) - 1) / (group_size - 1)
 }
 
+#[allow(clippy::too_many_arguments)]
+fn build_cell_summary(
+    groups: usize,
+    group_size: usize,
+    scored: bool,
+    visual_only: bool,
+    constructed_weeks: Option<usize>,
+    target_weeks: Option<usize>,
+    upper_bound_weeks: Option<usize>,
+    proven_optimal_weeks: Option<usize>,
+    method_abbreviation: Option<String>,
+    target_kind: Option<String>,
+    target_basis: Option<String>,
+    target_reference_keys: Vec<String>,
+    upper_bound_basis: Option<String>,
+    heuristic_target_weeks: Option<usize>,
+    optimality_lower_bound_weeks: Option<usize>,
+    family_label: Option<String>,
+    operator_labels: Vec<String>,
+    quality_label: Option<String>,
+    visual_note: Option<String>,
+    center_override: Option<String>,
+) -> CellSummary {
+    let effective_constructed_weeks = constructed_weeks.unwrap_or(0);
+    let glyph_center_text = center_override.unwrap_or_else(|| {
+        if effective_constructed_weeks == 0 {
+            "·".into()
+        } else {
+            effective_constructed_weeks.to_string()
+        }
+    });
+    let glyph_top_left_text = if visual_only {
+        None
+    } else {
+        proven_optimal_weeks.map(|value| format!("O{value}"))
+    };
+    let glyph_top_right_text = if visual_only {
+        None
+    } else {
+        target_weeks.map(|value| format!("T{value}"))
+    };
+    let glyph_bottom_left_text = if visual_only {
+        None
+    } else {
+        upper_bound_weeks.map(|value| format!("U{value}"))
+    };
+    let fill_basis = if visual_only {
+        (None, None)
+    } else if let Some(target_weeks) = target_weeks {
+        (Some(target_weeks), Some("target".to_string()))
+    } else if let Some(upper_bound_weeks) = upper_bound_weeks {
+        (Some(upper_bound_weeks), Some("upper_bound".to_string()))
+    } else {
+        (None, None)
+    };
+    let border_kind = if visual_only {
+        "visual_only".to_string()
+    } else if let Some(optimal_weeks) = proven_optimal_weeks {
+        if effective_constructed_weeks >= optimal_weeks {
+            "optimal_reached".to_string()
+        } else {
+            "optimal_known_unreached".to_string()
+        }
+    } else {
+        "optimal_unknown".to_string()
+    };
+
+    CellSummary {
+        g: groups,
+        p: group_size,
+        scored,
+        visual_only,
+        constructed_weeks,
+        target_weeks,
+        upper_bound_weeks,
+        proven_optimal_weeks,
+        glyph_center_text,
+        glyph_top_left_text,
+        glyph_top_right_text,
+        glyph_bottom_left_text,
+        glyph_bottom_right_text: method_abbreviation.clone(),
+        fill_basis_weeks: fill_basis.0,
+        fill_basis_kind: fill_basis.1,
+        border_kind,
+        target_kind,
+        method_abbreviation,
+        target_basis,
+        target_reference_keys,
+        upper_bound_basis,
+        heuristic_target_weeks,
+        optimality_lower_bound_weeks,
+        family_label,
+        operator_labels,
+        quality_label,
+        visual_note,
+    }
+}
+
 fn best_constructed_scored_cell(
     groups: usize,
     group_size: usize,
@@ -403,23 +490,14 @@ fn summarize_scored_cell(
     target_matrix: &gm_core::solver5::reporting::Solver5TargetMatrix,
     inspection: Option<Solver5ConstructionInspection>,
 ) -> CellSummary {
-    let gap_to_target = target_weeks.saturating_sub(constructed_weeks);
     let roadmap_target_method_label = target_matrix.target_method_for(groups, group_size);
-    let target_method_abbreviation = target_matrix
-        .heuristic_target_method_for(groups, group_size)
-        .and_then(|label| target_matrix.abbreviation_for(label))
-        .map(str::to_string);
     let target_basis = roadmap_target_method_label.map(|label| {
         let abbreviation = target_matrix.abbreviation_for(label).unwrap_or(label);
         format!("Roadmap target family: {abbreviation}")
     });
     let target_reference_keys = canonical_reference_keys_for_label(roadmap_target_method_label);
     let heuristic_target_weeks = target_matrix.heuristic_target_weeks_for(groups, group_size);
-    let heuristic_gap_to_target =
-        heuristic_target_weeks.map(|best_known| best_known.saturating_sub(target_weeks));
     let proven_optimal_weeks = target_matrix.proven_optimal_weeks_for(groups, group_size);
-    let proven_optimal_gap =
-        proven_optimal_weeks.map(|proven_optimal| proven_optimal.saturating_sub(target_weeks));
     let optimality_lower_bound_weeks =
         target_matrix.optimality_lower_bound_weeks_for(groups, group_size);
     let (family_label, operator_labels, quality_label) = inspection
@@ -432,30 +510,31 @@ fn summarize_scored_cell(
         })
         .unwrap_or((None, Vec::new(), None));
 
-    CellSummary {
-        g: groups,
-        p: group_size,
-        scored: true,
-        upper_bound: Some(upper_bound),
-        constructed_weeks: Some(constructed_weeks),
-        target_weeks: Some(target_weeks),
-        gap_to_target,
-        current_display: constructed_weeks.to_string(),
-        target_display: target_weeks.to_string(),
+    build_cell_summary(
+        groups,
+        group_size,
+        true,
+        false,
+        Some(constructed_weeks),
+        Some(target_weeks),
+        Some(upper_bound),
+        proven_optimal_weeks,
         method_abbreviation,
-        target_method_abbreviation,
+        Some("roadmap".into()),
         target_basis,
         target_reference_keys,
+        Some(format!(
+            "Counting upper bound: floor(({}*{} - 1)/({} - 1)) = {}",
+            groups, group_size, group_size, upper_bound
+        )),
         heuristic_target_weeks,
-        heuristic_gap_to_target,
-        proven_optimal_weeks,
-        proven_optimal_gap,
         optimality_lower_bound_weeks,
         family_label,
         operator_labels,
         quality_label,
-        visual_note: None,
-    }
+        None,
+        None,
+    )
 }
 
 fn build_supplementary_matrix(
@@ -498,7 +577,7 @@ fn build_supplementary_cell(
     group_size: usize,
     supplementary_targets: &SupplementaryLiteratureTargets,
     target_matrix: &gm_core::solver5::reporting::Solver5TargetMatrix,
-) -> SupplementaryCellSummary {
+) -> CellSummary {
     let literature_target_weeks = supplementary_targets.target_for(groups, group_size);
     let literature_target_basis = supplementary_targets
         .basis_for(groups, group_size)
@@ -509,28 +588,33 @@ fn build_supplementary_cell(
         Vec::new()
     };
     if group_size == 1 {
-        return SupplementaryCellSummary {
-            g: groups,
-            p: group_size,
-            upper_bound: None,
-            constructed_weeks: None,
-            literature_target_weeks,
-            current_display: "∞".into(),
-            upper_display: "∞".into(),
-            literature_target_display: None,
-            method_abbreviation: Some(
+        return build_cell_summary(
+            groups,
+            group_size,
+            false,
+            true,
+            None,
+            None,
+            None,
+            None,
+            Some(
                 target_matrix
                     .abbreviation_for("visual_only")
                     .unwrap_or("VIS")
                     .to_string(),
             ),
-            family_label: Some("visual_only".into()),
-            operator_labels: Vec::new(),
-            quality_label: Some("visual_only".into()),
+            None,
             literature_target_basis,
             literature_reference_keys,
-            visual_note: Some("trivial single-player groups; excluded from objective".into()),
-        };
+            None,
+            None,
+            None,
+            Some("visual_only".into()),
+            Vec::new(),
+            Some("visual_only".into()),
+            Some("trivial single-player groups; excluded from objective".into()),
+            Some("∞".into()),
+        );
     }
 
     let upper_bound = counting_bound(groups, group_size);
@@ -546,23 +630,31 @@ fn build_supplementary_cell(
         })
         .unwrap_or((None, Vec::new(), None));
 
-    SupplementaryCellSummary {
-        g: groups,
-        p: group_size,
-        upper_bound: Some(upper_bound),
-        constructed_weeks: Some(constructed_weeks),
+    build_cell_summary(
+        groups,
+        group_size,
+        false,
+        false,
+        Some(constructed_weeks),
         literature_target_weeks,
-        current_display: constructed_weeks.to_string(),
-        upper_display: upper_bound.to_string(),
-        literature_target_display: literature_target_weeks.map(|value| value.to_string()),
+        Some(upper_bound),
+        None,
         method_abbreviation,
+        Some("literature".into()),
+        literature_target_basis,
+        literature_reference_keys,
+        Some(format!(
+            "Counting upper bound: floor(({}*{} - 1)/({} - 1)) = {}",
+            groups, group_size, group_size, upper_bound
+        )),
+        None,
+        None,
         family_label,
         operator_labels,
         quality_label,
-        literature_target_basis,
-        literature_reference_keys,
-        visual_note: Some("report-only exploratory cell; excluded from objective".into()),
-    }
+        Some("report-only exploratory cell; excluded from objective".into()),
+        None,
+    )
 }
 
 fn supplementary_literature_references() -> Vec<LiteratureReferenceArtifact> {
@@ -679,35 +771,33 @@ fn visual_only_cell(
     target_matrix: &gm_core::solver5::reporting::Solver5TargetMatrix,
 ) -> CellSummary {
     let display = target.display_text();
-    CellSummary {
-        g: groups,
-        p: group_size,
-        scored: false,
-        upper_bound: None,
-        constructed_weeks: None,
-        target_weeks: None,
-        gap_to_target: 0,
-        current_display: display.clone(),
-        target_display: display,
-        method_abbreviation: Some(
+    build_cell_summary(
+        groups,
+        group_size,
+        false,
+        true,
+        None,
+        None,
+        None,
+        None,
+        Some(
             target_matrix
                 .abbreviation_for("visual_only")
                 .unwrap_or("VIS")
                 .to_string(),
         ),
-        target_method_abbreviation: None,
-        target_basis: None,
-        target_reference_keys: Vec::new(),
-        heuristic_target_weeks: None,
-        heuristic_gap_to_target: None,
-        proven_optimal_weeks: None,
-        proven_optimal_gap: None,
-        optimality_lower_bound_weeks: None,
-        family_label: Some("visual_only".into()),
-        operator_labels: Vec::new(),
-        quality_label: Some("visual_only".into()),
-        visual_note: Some("visual-only cell; excluded from objective".into()),
-    }
+        None,
+        None,
+        Vec::new(),
+        None,
+        None,
+        None,
+        Some("visual_only".into()),
+        Vec::new(),
+        Some("visual_only".into()),
+        Some("visual-only cell; excluded from objective".into()),
+        Some(display),
+    )
 }
 
 fn pure_sgp_input(groups: usize, group_size: usize, weeks: usize) -> ApiInput {

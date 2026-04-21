@@ -108,146 +108,6 @@ def build_matrix(cells):
     return {(cell["g"], cell["p"]): cell for cell in cells}
 
 
-def progress_fill_color(current: int, target: int | None, scored: bool) -> str:
-    if not scored:
-        return "repeating-linear-gradient(135deg,#f8fafc 0,#f8fafc 8px,#e5e7eb 8px,#e5e7eb 16px)"
-    if not target or target <= 0:
-        return "#f8fafc"
-    progress = min(1.0, max(0.0, current / target))
-    if progress >= 1.0:
-        hue = 120.0
-    else:
-        hue = 70.0 * progress
-    lightness = 96.0 - (progress * 10.0)
-    return f"hsl({hue:.1f} 65% {lightness:.1f}%)"
-
-
-def border_style(cell) -> str:
-    if not cell.get("scored"):
-        return "border:2px dashed #94a3b8;"
-    proven_optimal = cell.get("proven_optimal_weeks")
-    current = cell.get("constructed_weeks") or 0
-    if proven_optimal is None:
-        return "border:2px dashed #94a3b8;"
-    if current >= proven_optimal:
-        return "border:2px solid #16a34a;"
-    return "border:2px solid #d97706;"
-
-
-def literature_constructive_value(cell):
-    candidates = [
-        value
-        for value in [
-            cell.get("optimality_lower_bound_weeks"),
-            cell.get("heuristic_target_weeks"),
-        ]
-        if value is not None
-    ]
-    return max(candidates) if candidates else None
-
-
-def exact_redundant_cell(cell) -> bool:
-    if not cell.get("scored"):
-        return False
-    current = cell.get("constructed_weeks") or 0
-    target = cell.get("target_weeks")
-    literature = literature_constructive_value(cell)
-    optimum = cell.get("proven_optimal_weeks")
-    return (
-        current > 0
-        and target is not None
-        and literature is not None
-        and optimum is not None
-        and current == target == literature == optimum
-    )
-
-
-def trivial_unsolved_cell(cell) -> bool:
-    if not cell.get("scored"):
-        return False
-    current = cell.get("constructed_weeks") or 0
-    target = cell.get("target_weeks")
-    literature = literature_constructive_value(cell)
-    optimum = cell.get("proven_optimal_weeks")
-    return current == 0 and target == 1 and literature == 1 and optimum == 1
-
-
-def top_left_label(cell):
-    if not cell.get("scored"):
-        return "v"
-    if trivial_unsolved_cell(cell):
-        return None
-    if exact_redundant_cell(cell):
-        return "✓"
-    optimum = cell.get("proven_optimal_weeks")
-    current = cell.get("constructed_weeks") or 0
-    if optimum is not None and current < optimum:
-        return f"O{optimum}"
-    return None
-
-
-def top_right_label(cell):
-    if not cell.get("scored") or trivial_unsolved_cell(cell):
-        return None
-    current = cell.get("constructed_weeks") or 0
-    target = cell.get("target_weeks")
-    optimum = cell.get("proven_optimal_weeks")
-    if target is not None and current < target and not (optimum is not None and optimum == target):
-        return f"T{target}"
-    return None
-
-
-def bottom_left_label(cell):
-    if not cell.get("scored") or trivial_unsolved_cell(cell):
-        return None
-    current = cell.get("constructed_weeks") or 0
-    target = cell.get("target_weeks")
-    literature = literature_constructive_value(cell)
-    if literature is not None and literature > current and literature != target:
-        return f"L{literature}"
-    return None
-
-
-def method_chip_text(cell):
-    if not cell.get("scored") or trivial_unsolved_cell(cell):
-        return None, None
-    current_method = cell.get("method_abbreviation")
-    if not current_method:
-        return None, None
-    reference_method = cell.get("target_method_abbreviation")
-    if reference_method and reference_method != current_method:
-        return current_method, reference_method
-    return current_method, None
-
-
-def center_text(cell):
-    if not cell.get("scored"):
-        return cell["current_display"]
-    current = cell.get("constructed_weeks") or 0
-    return "·" if current == 0 else str(current)
-
-
-def center_classes(cell):
-    classes = ["center-value"]
-    if not cell.get("scored") or (cell.get("constructed_weeks") or 0) == 0:
-        classes.append("faded")
-    return " ".join(classes)
-
-
-def render_corner(position, text, extra_class=""):
-    if not text:
-        return ""
-    class_attr = f"cell-corner {position} {extra_class}".strip()
-    return f"<div class='{class_attr}'>{html.escape(str(text))}</div>"
-
-
-def render_corner_html(position, inner_html, extra_class=""):
-    if not inner_html:
-        return ""
-    class_attr = f"cell-corner {position} {extra_class}".strip()
-    return f"<div class='{class_attr}'>{inner_html}</div>"
-
-
 def build_literature_reference_index(artifact):
     references = artifact.get("literature_references", [])
     index = {}
@@ -268,169 +128,117 @@ def render_reference_sup(reference_keys, reference_index):
     return "".join(parts)
 
 
-def build_cell_title(parts):
-    filtered = [part for part in parts if part]
-    return " • ".join(filtered) if filtered else None
-
-
-def render_static_cell(
-    *,
-    center,
-    background,
-    border,
-    top_left=None,
-    top_right=None,
-    bottom_left=None,
-    method=None,
-    reference_method=None,
-    faded=False,
-    visual_only=False,
-    title=None,
-    top_right_html=None,
-    bottom_left_html=None,
-):
-    cell_classes = ["matrix-cell"]
+def progress_fill_color(current: int, denominator: int | None, visual_only: bool) -> str:
     if visual_only:
-        cell_classes.append("visual-only-cell")
-    center_class = "center-value faded" if faded else "center-value"
-    title_attr = f" title='{html.escape(title)}'" if title else ""
-    html_parts = [
-        f"<div class='{' '.join(cell_classes)}' style='background:{background};{border}'{title_attr}>",
-        render_corner("top-left", top_left, "success-marker" if top_left == "✓" else "muted-marker" if top_left == "v" else ""),
-        render_corner_html("top-right", top_right_html) if top_right_html else render_corner("top-right", top_right),
-        render_corner_html("bottom-left", bottom_left_html) if bottom_left_html else render_corner("bottom-left", bottom_left),
-        f"<div class='{center_class}'>{html.escape(str(center))}</div>",
-    ]
-    if method:
-        chip_html = ["<div class='method-cluster'>", f"<span class='method-chip'>{html.escape(str(method))}</span>"]
-        if reference_method:
-            chip_html.append("<span class='method-arrow'>→</span>")
-            chip_html.append(f"<span class='method-chip reference-chip'>{html.escape(str(reference_method))}</span>")
-        chip_html.append("</div>")
-        html_parts.append("".join(chip_html))
-    html_parts.append("</div>")
-    return "".join(html_parts)
-
-
-def render_cell_glyph(cell, reference_index):
-    current = cell.get("constructed_weeks") or 0
-    target = cell.get("target_weeks")
-    method, reference_method = method_chip_text(cell)
-    target_html = None
-    if cell.get("target_weeks") is not None and not trivial_unsolved_cell(cell):
-        if cell.get("target_reference_keys"):
-            target_html = (
-                f"T{html.escape(str(cell['target_weeks']))}"
-                f"{render_reference_sup(cell.get('target_reference_keys'), reference_index)}"
-            )
-        elif top_right_label(cell):
-            target_html = html.escape(top_right_label(cell))
-    return render_static_cell(
-        center=center_text(cell),
-        background=progress_fill_color(current, target, cell.get("scored", False)),
-        border=border_style(cell),
-        top_left=top_left_label(cell),
-        top_right_html=target_html,
-        bottom_left=bottom_left_label(cell),
-        method=method,
-        reference_method=reference_method,
-        faded=(not cell.get("scored")) or current == 0,
-        visual_only=not cell.get("scored"),
-        title=build_cell_title([cell.get("target_basis")]),
-    )
-
-
-def render_combined_table(title, rows, cols, cell_map, reference_index):
-    html_parts = [f"<section><h2>{html.escape(title)}</h2><table><thead><tr><th>g\\p</th>"]
-    for p in cols:
-        html_parts.append(f"<th>{p}</th>")
-    html_parts.append("</tr></thead><tbody>")
-    for g in rows:
-        html_parts.append(f"<tr><th>{g}</th>")
-        for p in cols:
-            cell = cell_map[(g, p)]
-            classes = ["dashboard-grid-cell"]
-            if not cell["scored"]:
-                classes.append("visual-only")
-            html_parts.append(
-                f"<td class='{' '.join(classes)}'>{render_cell_glyph(cell, reference_index)}</td>"
-            )
-        html_parts.append("</tr>")
-    html_parts.append("</tbody></table></section>")
-    return "".join(html_parts)
-
-
-def supplementary_fill_color(current: int, upper: int | None, target: int | None) -> str:
-    denominator = target if target is not None and target > 0 else upper
-    if denominator is None or denominator <= 0:
         return "repeating-linear-gradient(135deg,#f8fafc 0,#f8fafc 8px,#e5e7eb 8px,#e5e7eb 16px)"
+    if denominator is None or denominator <= 0:
+        return "#f8fafc"
     progress = min(1.0, max(0.0, current / denominator))
     if progress >= 1.0:
         hue = 120.0
     else:
         hue = 70.0 * progress
-    lightness = 97.0 - (progress * 11.0)
-    return f"hsl({hue:.1f} 60% {lightness:.1f}%)"
+    lightness = 96.0 - (progress * 10.0)
+    return f"hsl({hue:.1f} 65% {lightness:.1f}%)"
 
 
-def supplementary_border_style(cell) -> str:
-    upper = cell.get("upper_bound")
-    current = cell.get("constructed_weeks")
-    if upper is None or current is None:
-        return "border:2px dashed #94a3b8;"
-    if current >= upper:
-        return "border:2px solid #16a34a;"
-    return "border:2px dashed #94a3b8;"
+def border_style(border_kind: str) -> str:
+    return {
+        "optimal_reached": "border:2px solid #16a34a;",
+        "optimal_known_unreached": "border:2px solid #d97706;",
+        "optimal_unknown": "border:2px dashed #94a3b8;",
+        "visual_only": "border:2px dashed #94a3b8;",
+    }.get(border_kind, "border:2px dashed #94a3b8;")
 
 
-def render_supplementary_target_html(cell, reference_index):
-    target = cell.get("literature_target_weeks")
-    if target is None:
-        return None
-    return f"T{html.escape(str(cell['literature_target_display']))}{render_reference_sup(cell.get('literature_reference_keys'), reference_index)}"
+def render_corner(position, text, extra_class=""):
+    if not text:
+        return ""
+    class_attr = f"cell-corner {position} {extra_class}".strip()
+    return f"<div class='{class_attr}'>{html.escape(str(text))}</div>"
 
 
-def render_supplementary_cell(cell, reference_index):
-    upper = cell.get("upper_bound")
-    current = cell.get("constructed_weeks")
-    target = cell.get("literature_target_weeks")
+def render_corner_html(position, inner_html, extra_class=""):
+    if not inner_html:
+        return ""
+    class_attr = f"cell-corner {position} {extra_class}".strip()
+    return f"<div class='{class_attr}'>{inner_html}</div>"
+
+
+def build_cell_title(cell):
+    parts = []
+    target_weeks = cell.get("target_weeks")
+    if target_weeks is not None:
+        target_kind = cell.get("target_kind") or "target"
+        basis = cell.get("target_basis")
+        if basis:
+            parts.append(f"T={target_weeks} ({target_kind}): {basis}")
+        else:
+            parts.append(f"T={target_weeks} ({target_kind})")
+    upper_bound_weeks = cell.get("upper_bound_weeks")
+    if upper_bound_weeks is not None:
+        basis = cell.get("upper_bound_basis")
+        if basis:
+            parts.append(f"U={upper_bound_weeks}: {basis}")
+        else:
+            parts.append(f"U={upper_bound_weeks}")
+    optimal_weeks = cell.get("proven_optimal_weeks")
+    if optimal_weeks is not None:
+        parts.append(f"O={optimal_weeks} (known exact optimum)")
+    heuristic_target_weeks = cell.get("heuristic_target_weeks")
+    if heuristic_target_weeks is not None:
+        parts.append(f"best encoded constructive reference={heuristic_target_weeks}")
+    optimality_lower_bound_weeks = cell.get("optimality_lower_bound_weeks")
+    if optimality_lower_bound_weeks is not None:
+        parts.append(f"literature-backed constructive lower bound={optimality_lower_bound_weeks}")
     method = cell.get("method_abbreviation")
-    is_visual = upper is None
-    title = build_cell_title(
-        [
-            cell.get("visual_note"),
-            (
-                f"Literature target basis: {cell['literature_target_basis']}"
-                if cell.get("literature_target_basis")
-                else None
-            ),
-        ]
-    )
-    return render_static_cell(
-        center=cell.get("current_display", "·"),
-        background=supplementary_fill_color(current or 0, upper, target),
-        border=supplementary_border_style(cell),
-        top_left="✓" if (upper is not None and current == upper) else None,
-        top_right_html=(render_supplementary_target_html(cell, reference_index) if target is not None else (html.escape(f"U{cell['upper_display']}") if upper is not None else None)),
-        bottom_left=(f"U{cell['upper_display']}" if upper is not None and target is not None else None),
-        method=method,
-        faded=current in (None, 0),
-        visual_only=is_visual,
-        title=title,
-    )
+    if method:
+        parts.append(f"M={method}")
+    quality = cell.get("quality_label")
+    if quality:
+        parts.append(f"quality={quality}")
+    visual_note = cell.get("visual_note")
+    if visual_note:
+        parts.append(visual_note)
+    return " • ".join(parts) if parts else None
 
 
-def render_supplementary_table(matrix, reference_index):
-    bounds = matrix["bounds"]
-    rows = range(bounds["g_min"], bounds["g_max"] + 1)
-    cols = range(bounds["p_min"], bounds["p_max"] + 1)
-    cell_map = build_matrix(matrix["cells"])
-    html_parts = [
-        "<section>",
-        f"<h2>{html.escape(matrix['title'])}</h2>",
-        f"<p class='meta'>{html.escape(matrix['subtitle'])}</p>",
-        "<table><thead><tr><th>g\\p</th>",
+def render_cell_glyph(cell, reference_index):
+    current = cell.get("constructed_weeks") or 0
+    title = build_cell_title(cell)
+    title_attr = f" title='{html.escape(title)}'" if title else ""
+    visual_only = cell.get("visual_only", False)
+    top_right_html = None
+    if cell.get("glyph_top_right_text"):
+        top_right_html = (
+            f"{html.escape(cell['glyph_top_right_text'])}"
+            f"{render_reference_sup(cell.get('target_reference_keys'), reference_index)}"
+        )
+    center_classes = ["center-value"]
+    if current == 0 or visual_only:
+        center_classes.append("faded")
+    glyph_parts = [
+        f"<div class='matrix-cell{' visual-only-cell' if visual_only else ''}' style='background:{progress_fill_color(current, cell.get('fill_basis_weeks'), visual_only)};{border_style(cell.get('border_kind', 'optimal_unknown'))}'{title_attr}>",
+        render_corner("top-left", cell.get("glyph_top_left_text")),
+        render_corner_html("top-right", top_right_html) if top_right_html else render_corner("top-right", cell.get("glyph_top_right_text")),
+        render_corner("bottom-left", cell.get("glyph_bottom_left_text")),
+        f"<div class='{' '.join(center_classes)}'>{html.escape(cell.get('glyph_center_text', '·'))}</div>",
     ]
+    if cell.get("glyph_bottom_right_text"):
+        glyph_parts.append(
+            "<div class='method-cluster'>"
+            f"<span class='method-chip'>{html.escape(str(cell['glyph_bottom_right_text']))}</span>"
+            "</div>"
+        )
+    glyph_parts.append("</div>")
+    return "".join(glyph_parts)
+
+
+def render_matrix_table(title, rows, cols, cell_map, reference_index, subtitle=None):
+    html_parts = ["<section>", f"<h2>{html.escape(title)}</h2>"]
+    if subtitle:
+        html_parts.append(f"<p class='meta'>{html.escape(subtitle)}</p>")
+    html_parts.append("<table><thead><tr><th>g\\p</th>")
     for p in cols:
         html_parts.append(f"<th>{p}</th>")
     html_parts.append("</tr></thead><tbody>")
@@ -439,10 +247,10 @@ def render_supplementary_table(matrix, reference_index):
         for p in cols:
             cell = cell_map[(g, p)]
             classes = ["dashboard-grid-cell"]
-            if cell.get("upper_bound") is None:
+            if cell.get("visual_only"):
                 classes.append("visual-only")
             html_parts.append(
-                f"<td class='{' '.join(classes)}'>{render_supplementary_cell(cell, reference_index)}</td>"
+                f"<td class='{' '.join(classes)}'>{render_cell_glyph(cell, reference_index)}</td>"
             )
         html_parts.append("</tr>")
     html_parts.append("</tbody></table></section>")
@@ -560,10 +368,6 @@ def main():
         ".center-value.faded{color:#94a3b8;font-weight:600;}"
         ".method-cluster{position:absolute;right:6px;bottom:6px;display:flex;align-items:center;justify-content:flex-end;gap:2px;}"
         ".method-chip{padding:1px 4px;border-radius:999px;font-size:8px;line-height:1.0;font-weight:700;color:#0f172a;background:rgba(255,255,255,0.82);border:1px solid rgba(15,23,42,0.12);white-space:nowrap;}"
-        ".reference-chip{background:rgba(248,250,252,0.92);}"
-        ".method-arrow{font-size:10px;font-weight:700;color:#475569;flex:0 0 auto;}"
-        ".success-marker{color:#15803d;}"
-        ".muted-marker{color:#64748b;}"
         ".lit-ref{font-size:9px;line-height:1;vertical-align:super;margin-left:1px;}"
         ".lit-ref a{color:#1d4ed8;text-decoration:none;}"
         ".lit-ref a:hover{text-decoration:underline;}"
@@ -572,73 +376,113 @@ def main():
         f"<h1>{html.escape(artifact['matrix_name'])}</h1>",
         f"<p class='meta'>version {artifact['matrix_version']} · visual region g={artifact['visual_bounds']['g_min']}..{artifact['visual_bounds']['g_max']}, p={artifact['visual_bounds']['p_min']}..{artifact['visual_bounds']['p_max']} · benchmark regions {html.escape(render_benchmark_regions(benchmark_regions))}</p>",
         "<div class='legend-block'>",
+        "<div class='legend-row'><span class='legend-key'>Universal glyph grammar</span><span><code>W</code> center = current achieved weeks</span><span><code>O</code> top-left = exact optimum when known</span><span><code>T</code> top-right = primary target</span><span><code>U</code> bottom-left = upper bound</span><span><code>M</code> bottom-right = achieving method</span></div>",
+        "<div class='legend-row'><span class='legend-key'>Target sources</span><span>Canonical matrix uses roadmap <code>T</code> values.</span><span>Supplementary matrices use curated literature <code>T</code> values when available.</span><span><code>U</code> always means the counting upper bound.</span></div>",
         "<div class='legend-row'><span class='legend-key'>Fill</span>",
-        render_scale_swatch("far from target", progress_fill_color(0, 10, True)),
-        render_scale_swatch("close to target", progress_fill_color(8, 10, True)),
-        render_scale_swatch("target reached", progress_fill_color(10, 10, True)),
-        render_scale_swatch("visual-only", progress_fill_color(0, None, False)),
+        render_scale_swatch("far from basis", progress_fill_color(0, 10, False)),
+        render_scale_swatch("close to basis", progress_fill_color(8, 10, False)),
+        render_scale_swatch("basis reached", progress_fill_color(10, 10, False)),
+        render_scale_swatch("visual-only", progress_fill_color(0, None, True)),
         "</div>",
         "<div class='legend-row'><span class='legend-key'>Border</span>",
-        render_border_swatch("optimum reached", "border:2px solid #16a34a;"),
-        render_border_swatch("optimum known, not reached", "border:2px solid #d97706;"),
-        render_border_swatch("optimum unknown", "border:2px dashed #94a3b8;"),
+        render_border_swatch("exact optimum reached", border_style("optimal_reached")),
+        render_border_swatch("exact optimum known, not reached", border_style("optimal_known_unreached")),
+        render_border_swatch("exact optimum unknown", border_style("optimal_unknown")),
         "</div>",
-        "<div class='legend-row legend-corners'><span class='legend-key'>Corners</span> <span><code>O</code> top-left optimum</span> <span><code>T</code> top-right roadmap target</span> <span><code>L</code> bottom-left literature lower bound</span> <span>tiny blue superscripts on target labels link into the literature reference table below when a source is curated</span></div>",
-        "<div class='legend-row legend-corners'><span class='legend-key'>Method badges</span> <span><code>RR</code> round robin</span> <span><code>NKTS</code> nearly Kirkman triple system</span> <span><code>MOLR</code> Latin-rectangle lower bound from explicit MOLS</span> <span><code>ownSG</code> starter-block own-social-golfer construction</span> <span><code>RITD</code> resolvable incomplete transversal design</span> <span><code>PSB</code> published schedule bank</span></div>",
-        "<div class='legend-row legend-corners'><span class='legend-key'>Additional benchmark matrices</span> <span><code>T</code> top-right conservative literature target when curated from the 2026 paper</span> <span><code>U</code> bottom-left counting upper bound when a curated target exists</span> <span>tiny blue superscripts next to additional-matrix <code>T</code> labels link into the literature reference table below</span></div>",
+        "<div class='legend-row legend-corners'><span class='legend-key'>References</span><span>Tiny blue superscripts on <code>T</code> labels link into the literature reference table below when a source is attached.</span></div>",
         "<div class='sample-grid'>",
         render_sample(
-            "Solved and optimal",
-            render_static_cell(
-                center="19",
-                background=progress_fill_color(19, 19, True),
-                border="border:2px solid #16a34a;",
-                top_left="✓",
-                method="RR",
+            "Roadmap cell below frontier",
+            render_cell_glyph(
+                {
+                    "constructed_weeks": 8,
+                    "fill_basis_weeks": 10,
+                    "border_kind": "optimal_known_unreached",
+                    "visual_only": False,
+                    "glyph_center_text": "8",
+                    "glyph_top_left_text": "O11",
+                    "glyph_top_right_text": "T10",
+                    "glyph_bottom_left_text": "U13",
+                    "glyph_bottom_right_text": "RTD",
+                    "target_reference_keys": [],
+                },
+                literature_reference_index,
             ),
-            "only the big current value plus method chip remain",
+            "same slots and same meanings everywhere",
         ),
         render_sample(
-            "Below target",
-            render_static_cell(
-                center="8",
-                background=progress_fill_color(8, 10, True),
-                border="border:2px dashed #94a3b8;",
-                top_right="T10",
-                method="RTD",
+            "Solved exact cell",
+            render_cell_glyph(
+                {
+                    "constructed_weeks": 19,
+                    "fill_basis_weeks": 19,
+                    "border_kind": "optimal_reached",
+                    "visual_only": False,
+                    "glyph_center_text": "19",
+                    "glyph_top_left_text": "O19",
+                    "glyph_top_right_text": "T19",
+                    "glyph_bottom_left_text": "U19",
+                    "glyph_bottom_right_text": "RR",
+                    "target_reference_keys": [],
+                },
+                literature_reference_index,
             ),
-            "target shown only when current is still below it",
+            "coherent even when values coincide; no smart hiding",
         ),
         render_sample(
-            "Literature and optimum ahead",
-            render_static_cell(
-                center="8",
-                background=progress_fill_color(8, 10, True),
-                border="border:2px solid #d97706;",
-                top_left="O11",
-                top_right="T10",
-                bottom_left="L11",
-                method="RTD",
-                reference_method="P4",
+            "Supplementary literature cell",
+            render_cell_glyph(
+                {
+                    "constructed_weeks": 5,
+                    "fill_basis_weeks": 13,
+                    "border_kind": "optimal_unknown",
+                    "visual_only": False,
+                    "glyph_center_text": "5",
+                    "glyph_top_left_text": None,
+                    "glyph_top_right_text": "T13",
+                    "glyph_bottom_left_text": "U16",
+                    "glyph_bottom_right_text": "ownSG",
+                    "target_reference_keys": ["mva2026"],
+                },
+                {"mva2026": {"index": 1, "citation": "example"}},
             ),
-            "corner numerals appear only when they add non-redundant information",
+            "same glyph grammar; only the data source behind T differs",
         ),
         render_sample(
-            "No implementation yet",
-            render_static_cell(
-                center="·",
-                background=progress_fill_color(0, 1, True),
-                border="border:2px solid #d97706;",
-                faded=True,
+            "No construction yet",
+            render_cell_glyph(
+                {
+                    "constructed_weeks": 0,
+                    "fill_basis_weeks": 7,
+                    "border_kind": "optimal_unknown",
+                    "visual_only": False,
+                    "glyph_center_text": "·",
+                    "glyph_top_left_text": None,
+                    "glyph_top_right_text": "T7",
+                    "glyph_bottom_left_text": "U9",
+                    "glyph_bottom_right_text": None,
+                    "target_reference_keys": [],
+                },
+                literature_reference_index,
             ),
-            "empty-looking cells stay quiet; the fill already tells the story",
+            "still uses the same slots; no alternative grammar",
         ),
         "</div></div>",
     ]
 
-    page.append(render_combined_table("Coverage dashboard", rows, cols, cell_map, literature_reference_index))
+    page.append(render_matrix_table("Coverage dashboard", rows, cols, cell_map, literature_reference_index))
     for matrix in supplementary_matrices:
-        page.append(render_supplementary_table(matrix, literature_reference_index))
+        bounds = matrix["bounds"]
+        page.append(
+            render_matrix_table(
+                matrix["title"],
+                range(bounds["g_min"], bounds["g_max"] + 1),
+                range(bounds["p_min"], bounds["p_max"] + 1),
+                build_matrix(matrix["cells"]),
+                literature_reference_index,
+                subtitle=matrix.get("subtitle"),
+            )
+        )
     page.append(render_method_reference_table())
     page.append(render_literature_reference_table(literature_references))
     page.append("</body></html>")

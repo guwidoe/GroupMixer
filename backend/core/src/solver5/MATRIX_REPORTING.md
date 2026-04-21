@@ -39,7 +39,8 @@ The canonical target definition also carries literature-backed companion data:
   encoded for reporting/debugging
 - `proven_optimal_rows` — exact optima where the project has encoded them
 - `solver5_optimality_lower_bounds.v1.json` — literature-backed constructive
-  lower bounds used for the optimality badge
+  lower bounds carried into the JSON/report details so the dashboard stays
+  honest about known constructive coverage beyond the current roadmap target
 
 These reference matrices exist to keep the dashboard honest about what the
 literature already supports even when the implemented-family roadmap target is
@@ -131,30 +132,55 @@ When adding a new family or operator:
 2. add/update the abbreviation convention in the target definition
 3. make sure the report output stays concise and readable
 
-## Gap semantics
+## Universal cell grammar
 
-Gap is defined as:
+Every rendered matrix cell now uses the **same glyph semantics**.
 
-- `gap_g,p = max(0, TW_g,p - W_g,p)`
+- center = current achieved weeks `W`
+- top-left = exact optimum `O` when known
+- top-right = primary comparison target `T`
+- bottom-left = upper bound `U`
+- bottom-right = achieving method `M`
 
-Interpretation:
-- `gap = 0` means the current implemented-family roadmap target is reached
-- `gap = 1` means the cell is close and should appear yellow-ish
-- larger gaps move toward orange/red
+This grammar does **not** change between the canonical matrix and the
+supplementary matrices.
 
-## Color gradient semantics
+What may vary by matrix region is only the **data source** behind `T`, `O`, or
+the attached references:
 
-The matrix report uses computed gradient logic, not a tiny hardcoded bucket
-lookup table.
+- canonical matrix: `T` comes from the roadmap target matrix `TW_g,p`
+- supplementary matrices: `T` comes from curated literature-backed targets when
+  available
+- all matrices: `U` is the counting upper bound shown explicitly in the same
+  bottom-left slot
+- all matrices: `O` is shown only when an exact optimum is actually encoded
 
-Current rendering policy:
-- `gap = 0` => green
-- `gap = 1` => yellow
-- larger gaps interpolate continuously toward red based on the observed maximum
-  scored-cell gap in the rendered report
+The report must not switch corner meanings by matrix type.
 
-Visual-only cells are styled distinctly so they are not mistaken for scored
-benchmark results.
+## Fill and border semantics
+
+The renderer uses one coherent visual policy everywhere.
+
+### Fill
+
+Fill grades progress against:
+
+- `T` when `T` is present
+- otherwise `U` when `U` is present
+- otherwise a neutral / hatched visual-only style
+
+The gradient is computed continuously from current progress toward that basis.
+
+### Border
+
+Border shows exact-optimality status only:
+
+- green = exact optimum known and reached
+- amber = exact optimum known and not yet reached
+- dashed = exact optimum unknown
+
+Visual-only cells remain hatched/dashed so they are not mistaken for scored
+benchmark cells.
 
 ## Relationship to the primary autoresearch metric
 
@@ -170,7 +196,8 @@ Why:
 
 The matrices are a **complement**, not a replacement:
 - `total_constructed_weeks` is the keep/discard gate
-- `W`, `TW`, and `M` explain where progress happened and what still needs work
+- `W`, `T`, `U`, `O`, and `M` explain where progress happened and what still
+  needs work
 - the auxiliary literature-backed rows keep conservative roadmap targets from
   being mistaken for the current best-known constructive frontier
 
@@ -183,43 +210,30 @@ The solver5 coverage benchmark now emits:
   - `autoresearch.last_run_report.html`
 
 The JSON artifact contains the structured matrix data.
-The HTML report renders a single combined dashboard glyph per cell for the
-canonical target matrix, and also includes the additional benchmark matrices for
-the `11..20` regions.
+The HTML report renders the same universal glyph grammar for the canonical
+matrix and the supplementary matrices.
 
-Current HTML cell semantics for the canonical target matrix:
+Current HTML cell semantics for **every** matrix:
+
 - center = current implemented guarantee `W_g,p`
-- top-right = roadmap target `TW_g,p`; when a curated literature source is
-  attached, the HTML keeps the `T` visible and adds a tiny superscript link into
-  the report's literature-reference table even if the target is already reached
-- bottom-left = literature-backed constructive lower bound when it adds
-  information beyond the roadmap target
-- top-left = known optimum when useful, or a checkmark when the cell is already
-  solved at a known exact optimum
-- bottom-right = current method badge; when the encoded reference method differs,
-  the HTML shows separate current/reference badges with an arrow between them
+- top-left = exact optimum `O_g,p` when encoded
+- top-right = primary target `T_g,p`
+- bottom-left = counting upper bound `U_g,p`
+- bottom-right = current method badge `M_g,p`
 
-Current HTML cell semantics for the additional benchmark matrices:
-- center = current implemented guarantee `W_g,p`
-- top-right = conservative literature-backed target `T_g,p` when curated from
-  the 2026 Miller–Valkov–Abel survey or a narrowly-scoped theorem fallback
-- bottom-left = counting upper bound `U_g,p` when a curated target is present
-- top-left = exact-frontier checkmark when `W_g,p = U_g,p`
-- bottom-right = current method badge
-- fill grades against `T_g,p` when present, otherwise against `U_g,p`
-- tiny superscript reference indices on additional-region `T` labels link into the
-  report's literature-reference table
-- blank `T` means no clean paper-derived target has been curated yet for that
-  cell, typically because the appendix tables stop at `v <= 150` and the case
-  lies in the `p > g` high-player regime
+Tiny superscript reference indices may be attached to `T` labels when a curated
+literature source is available for that target.
 
-Visual channels are intentionally separated:
-- cell fill = progress against the roadmap target only
-- border = optimality status only
-- gray hatched styling = visual-only cells outside the scored objective
+The JSON artifact now carries fully resolved glyph fields so the Python HTML
+renderer can stay thin and truthful instead of reinterpreting cell semantics.
 
-The HTML also includes a method-reference table mapping each abbreviation to its
-expanded name and the family/cell patterns it covers.
+The HTML also includes:
+
+- a method-reference table mapping each abbreviation to its expanded name and
+  covered family/cell patterns
+- a literature-reference table for superscripted target citations
+- tooltip/detail text carrying target basis, upper-bound basis, and known
+  constructive lower-bound context when available
 
 ## Editing workflow
 
@@ -229,7 +243,8 @@ When changing targets or abbreviations:
    lower-bound/reference story changes
 3. rerun the solver5 coverage benchmark
 4. inspect the generated HTML report
-5. verify that scored-vs-visual-only boundaries still match the intended
+5. verify that the universal glyph grammar still holds across all matrices and
+   that scored-vs-visual-only boundaries still match the intended
    optimization question
 6. document any important target-policy change in autoresearch notes/docs
 
@@ -238,4 +253,5 @@ When changing targets or abbreviations:
 - using visual-only cells to inflate `total_constructed_weeks`
 - hardcoding report colors per discrete bucket list
 - divorcing the report from the canonical target file
+- letting different matrices reuse the same visual corner for different meanings
 - replacing the primary benchmark objective with a purely visual dashboard
