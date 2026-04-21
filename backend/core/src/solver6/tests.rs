@@ -97,6 +97,6 @@ fn solver6_scaffold_surfaces_configured_objective_labels() {
     assert!(message.contains("solver5_exact_block_composition"));
     assert!(message.contains("built a deterministic exact-block seed"));
     assert!(message.contains("atom_copies=2"));
-    assert!(message.contains("active_score=480"));
-    assert!(message.contains("lower_bound_gap=16"));
+    assert!(message.contains("active_score=464"));
+    assert!(message.contains("lower_bound_gap=0"));
 }

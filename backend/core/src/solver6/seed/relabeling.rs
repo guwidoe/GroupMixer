@@ -29,6 +29,19 @@ impl ExactBlockRelabelingBaseline {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ExactBlockRelabelingSearch {
+    GreedyIncremental,
+}
+
+impl ExactBlockRelabelingSearch {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::GreedyIncremental => "greedy_incremental",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SeedPermutation {
     image_by_person: Vec<usize>,
@@ -153,11 +166,72 @@ pub(crate) fn build_random_exact_block_seed(
     build_exact_block_seed_from_plan(input, &plan)
 }
 
+pub(crate) fn build_greedy_exact_block_seed(
+    input: &ApiInput,
+) -> Result<ExactBlockSeed, SolverError> {
+    let plan = build_greedy_relabeling_plan(input)?;
+    build_exact_block_seed_from_plan(input, &plan)
+}
+
 pub(crate) fn build_exact_block_seed_from_plan(
     input: &ApiInput,
     plan: &ExactBlockRelabelingPlan,
 ) -> Result<ExactBlockSeed, SolverError> {
     let context = ExactBlockCompositionContext::for_input(input)?;
+    build_exact_block_seed_from_plan_with_context(&context, plan)
+}
+
+pub(crate) fn evaluate_exact_block_relabeling_objective(
+    input: &ApiInput,
+    plan: &ExactBlockRelabelingPlan,
+) -> Result<ExactBlockRelabelingObjective, SolverError> {
+    let context = ExactBlockCompositionContext::for_input(input)?;
+    evaluate_exact_block_relabeling_objective_with_context(&context, plan)
+}
+
+pub(crate) fn evaluate_relabeling_baseline_objective(
+    input: &ApiInput,
+    baseline: ExactBlockRelabelingBaseline,
+) -> Result<ExactBlockRelabelingObjective, SolverError> {
+    let plan = build_relabeling_baseline_plan(input, baseline)?;
+    evaluate_exact_block_relabeling_objective(input, &plan)
+}
+
+pub(crate) fn build_greedy_relabeling_plan(
+    input: &ApiInput,
+) -> Result<ExactBlockRelabelingPlan, SolverError> {
+    let context = ExactBlockCompositionContext::for_input(input)?;
+    let mut plan = ExactBlockRelabelingPlan::identity(context.full_copies, context.num_people());
+
+    loop {
+        let mut improved_any_copy = false;
+        for copy_index in 1..context.full_copies {
+            let improved_plan = greedily_improve_copy_permutation(&context, &plan, copy_index)?;
+            if improved_plan != plan {
+                improved_any_copy = true;
+                plan = improved_plan;
+            }
+        }
+
+        if !improved_any_copy {
+            break;
+        }
+    }
+
+    Ok(plan)
+}
+
+pub(crate) fn evaluate_greedy_relabeling_objective(
+    input: &ApiInput,
+) -> Result<ExactBlockRelabelingObjective, SolverError> {
+    let plan = build_greedy_relabeling_plan(input)?;
+    evaluate_exact_block_relabeling_objective(input, &plan)
+}
+
+fn build_exact_block_seed_from_plan_with_context(
+    context: &ExactBlockCompositionContext,
+    plan: &ExactBlockRelabelingPlan,
+) -> Result<ExactBlockSeed, SolverError> {
     context.validate_plan(plan)?;
 
     let atom_id = SeedAtomId::from_solver5_atom(&context.atom);
@@ -166,15 +240,22 @@ pub(crate) fn build_exact_block_seed_from_plan(
 
     for (copy_index, permutation) in plan.copy_permutations.iter().enumerate() {
         let week_range_start = schedule.len();
-        schedule.extend(context.atom.schedule.iter().map(|week| {
-            week.iter()
-                .map(|block| {
-                    block.iter()
-                        .map(|person_idx| permutation.apply(*person_idx))
+        schedule.extend(
+            context
+                .atom
+                .schedule
+                .iter()
+                .map(|week| {
+                    week.iter()
+                        .map(|block| {
+                            block.iter()
+                                .map(|person_idx| permutation.apply(*person_idx))
+                                .collect::<Result<Vec<_>, _>>()
+                        })
                         .collect::<Result<Vec<_>, _>>()
                 })
-                .collect::<Result<Vec<_>, _>>()
-        }).collect::<Result<Vec<_>, _>>()?);
+                .collect::<Result<Vec<_>, _>>()?,
+        );
 
         let relabeling = if permutation.changed_people() == 0 {
             SeedRelabelingSummary::identity()
@@ -208,12 +289,11 @@ pub(crate) fn build_exact_block_seed_from_plan(
     })
 }
 
-pub(crate) fn evaluate_exact_block_relabeling_objective(
-    input: &ApiInput,
+fn evaluate_exact_block_relabeling_objective_with_context(
+    context: &ExactBlockCompositionContext,
     plan: &ExactBlockRelabelingPlan,
 ) -> Result<ExactBlockRelabelingObjective, SolverError> {
-    let context = ExactBlockCompositionContext::for_input(input)?;
-    let seed = build_exact_block_seed_from_plan(input, plan)?;
+    let seed = build_exact_block_seed_from_plan_with_context(context, plan)?;
     let pair_telemetry = seed.diagnostics.pair_telemetry.clone().ok_or_else(|| {
         SolverError::ValidationError(
             "solver6 exact-block relabeling objective expected pair telemetry on composed seed"
@@ -229,12 +309,50 @@ pub(crate) fn evaluate_exact_block_relabeling_objective(
     })
 }
 
-pub(crate) fn evaluate_relabeling_baseline_objective(
-    input: &ApiInput,
-    baseline: ExactBlockRelabelingBaseline,
-) -> Result<ExactBlockRelabelingObjective, SolverError> {
-    let plan = build_relabeling_baseline_plan(input, baseline)?;
-    evaluate_exact_block_relabeling_objective(input, &plan)
+fn greedily_improve_copy_permutation(
+    context: &ExactBlockCompositionContext,
+    plan: &ExactBlockRelabelingPlan,
+    copy_index: usize,
+) -> Result<ExactBlockRelabelingPlan, SolverError> {
+    let mut current_plan = plan.clone();
+    let mut current_objective =
+        evaluate_exact_block_relabeling_objective_with_context(context, &current_plan)?;
+
+    loop {
+        let mut best_improvement: Option<(ExactBlockRelabelingPlan, ExactBlockRelabelingObjective)> =
+            None;
+        for left in 0..context.num_people() {
+            for right in (left + 1)..context.num_people() {
+                let mut candidate_plan = current_plan.clone();
+                candidate_plan.copy_permutations[copy_index]
+                    .image_by_person
+                    .swap(left, right);
+                let candidate_objective =
+                    evaluate_exact_block_relabeling_objective_with_context(context, &candidate_plan)?;
+                if relabeling_objective_is_better(&candidate_objective, &current_objective)
+                    && best_improvement.as_ref().is_none_or(|(_, incumbent_best)| {
+                        relabeling_objective_is_better(&candidate_objective, incumbent_best)
+                    })
+                {
+                    best_improvement = Some((candidate_plan, candidate_objective));
+                }
+            }
+        }
+
+        let Some((improved_plan, improved_objective)) = best_improvement else {
+            return Ok(current_plan);
+        };
+        current_plan = improved_plan;
+        current_objective = improved_objective;
+    }
+}
+
+fn relabeling_objective_is_better(
+    candidate: &ExactBlockRelabelingObjective,
+    incumbent: &ExactBlockRelabelingObjective,
+) -> bool {
+    (candidate.active_penalty_score(), candidate.linear_repeat_lower_bound_gap())
+        < (incumbent.active_penalty_score(), incumbent.linear_repeat_lower_bound_gap())
 }
 
 fn build_random_relabeling_plan_from_context(
@@ -361,9 +479,11 @@ impl ExactBlockCompositionContext {
 mod tests {
     use super::{
         build_exact_block_seed_from_plan, build_random_exact_block_seed,
+        build_greedy_exact_block_seed, build_greedy_relabeling_plan,
         build_relabeling_baseline_plan, evaluate_exact_block_relabeling_objective,
-        evaluate_relabeling_baseline_objective, ExactBlockRelabelingBaseline,
-        ExactBlockRelabelingPlan, SeedPermutation,
+        evaluate_greedy_relabeling_objective, evaluate_relabeling_baseline_objective,
+        ExactBlockRelabelingBaseline, ExactBlockRelabelingPlan,
+        ExactBlockRelabelingSearch, SeedPermutation,
     };
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
@@ -586,5 +706,57 @@ mod tests {
         assert_eq!(seed.diagnostics.atom_uses[0].relabeling.kind.label(), "identity");
         assert_eq!(seed.diagnostics.atom_uses[1].relabeling.kind.label(), "explicit_permutation");
         assert!(seed.diagnostics.atom_uses[1].relabeling.changed_people > 0);
+    }
+
+    #[test]
+    fn greedy_relabeling_search_has_stable_label() {
+        assert_eq!(
+            ExactBlockRelabelingSearch::GreedyIncremental.label(),
+            "greedy_incremental"
+        );
+    }
+
+    #[test]
+    fn greedy_relabeling_plan_is_deterministic_for_fixed_seed() {
+        let input = pure_input(8, 4, 20);
+        let first = build_greedy_relabeling_plan(&input)
+            .expect("greedy relabeling plan should build");
+        let second = build_greedy_relabeling_plan(&input)
+            .expect("greedy relabeling plan should be reproducible");
+
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn greedy_relabeling_beats_identity_on_8_4_20() {
+        let input = pure_input(8, 4, 20);
+        let identity = evaluate_relabeling_baseline_objective(
+            &input,
+            ExactBlockRelabelingBaseline::Identity,
+        )
+        .expect("identity baseline should evaluate");
+        let greedy = evaluate_greedy_relabeling_objective(&input)
+            .expect("greedy relabeling objective should evaluate");
+
+        assert_eq!(identity.active_penalty_score(), 480);
+        assert_eq!(greedy.active_penalty_score(), 464);
+        assert!(greedy.active_penalty_score() < identity.active_penalty_score());
+        assert_eq!(greedy.linear_repeat_lower_bound_gap(), 0);
+        assert!(greedy.reaches_linear_lower_bound());
+    }
+
+    #[test]
+    fn greedy_relabeling_seed_reaches_linear_lower_bound_on_8_4_20() {
+        let seed = build_greedy_exact_block_seed(&pure_input(8, 4, 20))
+            .expect("greedy relabeling seed should build");
+
+        let telemetry = seed
+            .diagnostics
+            .pair_telemetry
+            .as_ref()
+            .expect("greedy relabeling seed should include telemetry");
+        assert_eq!(telemetry.active_penalty_score, 464);
+        assert_eq!(telemetry.linear_repeat_lower_bound_gap, 0);
+        assert_eq!(telemetry.max_pair_frequency, 2);
     }
 }

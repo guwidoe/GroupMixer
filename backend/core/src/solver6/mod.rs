@@ -17,11 +17,11 @@ mod tests;
 
 use problem::PureSgpProblem;
 use scaffolding::ReservedExecutionPlan;
-use seed::build_identity_exact_block_seed;
 use crate::models::Solver6SeedStrategy;
+use seed::relabeling::build_greedy_exact_block_seed;
 
 pub const SOLVER6_NOTES: &str =
-    "Hybrid pure-SGP repeat-minimization solver family. Solver6 is intended to combine solver5 exact constructions with seeded overfull-horizon optimization for impossible pure-SGP cases. The current implementation validates solver6 selection, hands exact requests through solver5, can synthesize deterministic identity exact-block seeds for divisible overfull pure-SGP cases, and still reserves relabeling / repeat-aware local search explicitly.";
+    "Hybrid pure-SGP repeat-minimization solver family. Solver6 is intended to combine solver5 exact constructions with seeded overfull-horizon optimization for impossible pure-SGP cases. The current implementation validates solver6 selection, hands exact requests through solver5, can synthesize deterministic greedy exact-block relabeling seeds for divisible overfull pure-SGP cases, and still reserves repeat-aware local search explicitly.";
 
 #[derive(Clone)]
 pub struct SearchEngine {
@@ -54,7 +54,7 @@ impl SearchEngine {
 
         let plan = ReservedExecutionPlan::from_params(params);
         if params.seed_strategy == Solver6SeedStrategy::Solver5ExactBlockComposition {
-            let seed = build_identity_exact_block_seed(input)?;
+            let seed = build_greedy_exact_block_seed(input)?;
             return Err(SolverError::ValidationError(
                 plan.reserved_message_after_seed(
                     problem.num_groups,

@@ -6,8 +6,6 @@ use crate::solver_support::SolverError;
 
 pub(crate) mod relabeling;
 
-pub(crate) use relabeling::build_identity_exact_block_seed;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum SeedSourceKind {
     Solver5ConstructionAtom,
@@ -257,10 +255,10 @@ pub(super) fn validate_full_schedule_shape(
 #[cfg(test)]
 mod tests {
     use super::{
-        build_identity_exact_block_seed, ExactBlockSeed, ExactBlockSeedDiagnostics, SeedAtomId,
-        SeedAtomUsage,
+        ExactBlockSeed, ExactBlockSeedDiagnostics, SeedAtomId, SeedAtomUsage,
         SeedRelabelingSummary,
     };
+    use super::relabeling::build_identity_exact_block_seed;
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
         RepeatEncounterParams, Solver6Params, SolverConfiguration, SolverKind, SolverParams,
