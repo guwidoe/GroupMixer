@@ -266,6 +266,24 @@ describe('ConstraintFamilySections', () => {
     ]);
   });
 
+  it('shows the attribute-balance mode on cards', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <SoftConstraintFamilySection
+        family="AttributeBalance"
+        onAdd={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+
+    expect(screen.getByText('Mode')).toBeInTheDocument();
+    expect(screen.getByText('exact')).toBeInTheDocument();
+  });
+
   it('validates attribute-balance target JSON keys against the selected attribute options', async () => {
     const user = userEvent.setup();
     const onApplyAttributeBalanceRows = vi.fn();

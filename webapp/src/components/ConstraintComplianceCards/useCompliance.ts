@@ -179,8 +179,7 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             type: constraint.type,
             title: `${getConstraintDisplayName('AttributeBalance')} – ${constraint.group_id} (${constraint.attribute_key})`,
             subtitle:
-              `${formatSessions(constraint.sessions, scenario.num_sessions)} • Weight: ${constraint.penalty_weight}` +
-              (mode === 'at_least' ? ' • Mode: At least' : ''),
+              `${formatSessions(constraint.sessions, scenario.num_sessions)} • Weight: ${constraint.penalty_weight} • Mode: ${mode === 'at_least' ? 'At least' : 'Exact'}`,
             adheres: violations === 0,
             violationsCount: violations,
             details,

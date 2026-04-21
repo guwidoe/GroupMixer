@@ -26,7 +26,7 @@ function ControlledField({
 
 describe('AttributeDistributionField', () => {
   it('revives a collapsed middle bucket when its divider is moved', () => {
-    render(<ControlledField initialValue={{ A: 2, C: 1 }} capacity={5} />);
+    render(<ControlledField initialValue={{ A: 2, B: 0, C: 1 }} capacity={5} />);
 
     const handle = screen.getByRole('button', { name: /adjust boundary between a and b/i });
     handle.focus();
@@ -48,6 +48,18 @@ describe('AttributeDistributionField', () => {
     fireEvent.blur(input);
 
     expect(screen.getByLabelText('B count')).toHaveValue('4');
+  });
+
+  it('lets inactive chips be activated without a checkbox and then appear in the bar', async () => {
+    const user = userEvent.setup();
+
+    render(<ControlledField initialValue={{ A: 2, C: 1 }} capacity={5} />);
+
+    expect(screen.queryByRole('button', { name: /adjust boundary between a and b/i })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /b not targeted/i }));
+
+    expect(screen.getByLabelText('B count')).toHaveValue('0');
+    expect(screen.getByRole('button', { name: /adjust boundary between a and b/i })).toBeInTheDocument();
   });
 
   it('allows manual over-allocation and disables drag affordance while over capacity', async () => {

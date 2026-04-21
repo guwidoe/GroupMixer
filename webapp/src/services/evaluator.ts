@@ -259,8 +259,7 @@ export function evaluateCompliance(
             `${formatSessions(
               (c as unknown as { sessions?: number[] }).sessions,
               scenario.num_sessions
-            )} • Weight: ${c.penalty_weight}` +
-            (mode === "at_least" ? " • Mode: At least" : ""),
+            )} • Weight: ${c.penalty_weight} • Mode: ${mode === "at_least" ? "At least" : "Exact"}`,
           adheres: violations === 0,
           violationsCount: violations,
           details,

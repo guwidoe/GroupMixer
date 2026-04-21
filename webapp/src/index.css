@@ -957,6 +957,30 @@
     background: color-mix(in srgb, var(--bg-primary) 94%, var(--bg-secondary) 6%);
   }
 
+  .attribute-distribution__chip--toggleable {
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+  }
+
+  .attribute-distribution__chip--active {
+    border-color: color-mix(in srgb, var(--color-accent) 30%, var(--border-primary) 70%);
+    background: color-mix(in srgb, var(--bg-primary) 88%, var(--color-accent) 12%);
+  }
+
+  .attribute-distribution__chip--inactive {
+    opacity: 0.72;
+    background: color-mix(in srgb, var(--bg-primary) 97%, var(--bg-secondary) 3%);
+  }
+
+  .attribute-distribution__chip--toggleable:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 38%, var(--border-primary) 62%);
+  }
+
+  .attribute-distribution__chip--toggleable:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.14);
+  }
+
   .attribute-distribution__chip-heading {
     display: flex;
     align-items: center;
@@ -986,6 +1010,11 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
+  }
+
+  .attribute-distribution__chip-inactive-note {
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
   }
 
   .attribute-distribution__chip-static {

@@ -134,6 +134,7 @@ export function renderAttributeBalanceContent(constraint: AttributeBalanceConstr
         items={[
           { label: 'Group', value: constraint.group_id },
           { label: 'Attribute', value: constraint.attribute_key },
+          { label: 'Mode', value: constraint.mode ?? 'exact' },
         ]}
       />
       <SetupTagList
