@@ -506,6 +506,36 @@ fn runtime_state_freedom_aware_mode_respects_seed_and_constraints() {
 }
 
 #[test]
+fn runtime_state_handles_partially_anchored_clique_without_normalization_failure() {
+    let mut input = minimal_input();
+    input.constraints = vec![
+        Constraint::MustStayTogether {
+            people: vec!["p0".into(), "p1".into()],
+            sessions: Some(vec![0]),
+        },
+        Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p0".into(),
+            group_id: "g1".into(),
+            sessions: Some(vec![0]),
+        }),
+    ];
+    input.solver.seed = Some(5);
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::FreedomAwareRandomized;
+        params.construction.freedom_aware.gamma = 0.0;
+    }
+
+    let state = RuntimeState::from_input(&input).expect("solver3 state should initialize");
+    let cp = &state.compiled;
+    let p0 = cp.person_id_to_idx["p0"];
+    let p1 = cp.person_id_to_idx["p1"];
+    let g1 = cp.group_id_to_idx["g1"];
+
+    assert_eq!(state.person_location[state.people_slot(0, p0)], Some(g1));
+    assert_eq!(state.person_location[state.people_slot(0, p1)], Some(g1));
+}
+
+#[test]
 fn runtime_state_all_participating_people_are_placed() {
     let input = representative_input();
     let state = RuntimeState::from_input(&input).unwrap();

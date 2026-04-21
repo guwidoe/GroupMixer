@@ -129,48 +129,69 @@ pub(crate) fn apply_baseline_construction_heuristic(
         }
 
         // --- Step 2: Place cliques as units ---
-        for (clique_idx, clique) in context.cliques.iter().enumerate() {
-            if clique.iter().any(|&member| assigned_in_day[member]) {
+        for clique_idx in 0..context.cliques.len() {
+            let Some(active_members) = active_clique_members_for_day(
+                context.cliques,
+                context.clique_sessions,
+                context.person_participation,
+                clique_idx,
+                day,
+            ) else {
                 continue;
-            }
+            };
 
-            let all_participating = clique
+            let missing_members = active_members
                 .iter()
-                .all(|&member| context.person_participation[member][day]);
-            if !all_participating {
+                .filter(|&&member| !assigned_in_day[member])
+                .count();
+            if missing_members == 0 {
                 continue;
             }
 
-            if let Some(ref sessions) = context.clique_sessions[clique_idx] {
-                if !sessions.contains(&day) {
-                    continue;
-                }
-            }
+            let anchor_group =
+                resolve_clique_anchor_group(day_schedule, clique_idx, day, &active_members)?;
 
             let mut placed = false;
-            let mut potential_groups: Vec<usize> = (0..group_count).collect();
-            potential_groups.shuffle(&mut rng);
+            let potential_groups: Vec<usize> = if let Some(group_idx) = anchor_group {
+                vec![group_idx]
+            } else {
+                let mut groups: Vec<usize> = (0..group_count).collect();
+                groups.shuffle(&mut rng);
+                groups
+            };
 
             for group_idx in potential_groups {
                 let group_size = context.effective_group_capacities[day * group_count + group_idx];
-                let available_space = group_size - group_cursors[group_idx];
+                let available_space = group_size.saturating_sub(group_cursors[group_idx]);
 
-                if available_space >= clique.len() {
-                    for &member in clique {
+                if available_space >= missing_members {
+                    for &member in &active_members {
+                        if assigned_in_day[member] {
+                            continue;
+                        }
                         day_schedule[group_idx].push(member);
+                        group_cursors[group_idx] += 1;
                         assigned_in_day[member] = true;
                     }
-                    group_cursors[group_idx] += clique.len();
                     placed = true;
                     break;
                 }
             }
 
             if !placed {
+                if let Some(group_idx) = anchor_group {
+                    return Err(SolverError::ValidationError(format!(
+                        "Could not place clique {} (size {}) in required group {} for day {}",
+                        clique_idx,
+                        active_members.len(),
+                        context.group_idx_to_id[group_idx],
+                        day
+                    )));
+                }
                 return Err(SolverError::ValidationError(format!(
                     "Could not place clique {} (size {}) in any group for day {}",
                     clique_idx,
-                    clique.len(),
+                    active_members.len(),
                     day
                 )));
             }
@@ -346,6 +367,69 @@ fn initialize_assigned_in_day(
     assigned_in_day
 }
 
+fn active_clique_members_for_day(
+    cliques: &[Vec<usize>],
+    clique_sessions: &[Option<Vec<usize>>],
+    person_participation: &[Vec<bool>],
+    clique_idx: usize,
+    day: usize,
+) -> Option<Vec<usize>> {
+    if let Some(sessions) = &clique_sessions[clique_idx] {
+        if !sessions.contains(&day) {
+            return None;
+        }
+    }
+
+    let active_members = cliques[clique_idx]
+        .iter()
+        .copied()
+        .filter(|&member| person_participation[member][day])
+        .collect::<Vec<_>>();
+    if active_members.len() < 2 {
+        return None;
+    }
+
+    Some(active_members)
+}
+
+fn assigned_group_for_person_in_day(
+    day_schedule: &[Vec<usize>],
+    person_idx: usize,
+) -> Option<usize> {
+    day_schedule
+        .iter()
+        .enumerate()
+        .find_map(|(group_idx, members)| members.contains(&person_idx).then_some(group_idx))
+}
+
+fn resolve_clique_anchor_group(
+    day_schedule: &[Vec<usize>],
+    clique_idx: usize,
+    day: usize,
+    active_members: &[usize],
+) -> Result<Option<usize>, SolverError> {
+    let mut anchor_group = None;
+
+    for &member in active_members {
+        if let Some(group_idx) = assigned_group_for_person_in_day(day_schedule, member) {
+            match anchor_group {
+                Some(existing) if existing != group_idx => {
+                    return Err(SolverError::ValidationError(format!(
+                        "Could not place clique {} (size {}) for day {} because seeded/immovable members are already split across groups",
+                        clique_idx,
+                        active_members.len(),
+                        day
+                    )));
+                }
+                Some(_) => {}
+                None => anchor_group = Some(group_idx),
+            }
+        }
+    }
+
+    Ok(anchor_group)
+}
+
 fn place_immovables_for_day(
     context: &mut BaselineConstructionContext<'_>,
     day: usize,
@@ -390,33 +474,62 @@ fn place_active_cliques_for_day(
     rng: &mut ChaCha12Rng,
 ) -> Result<(), SolverError> {
     let group_count = context.group_count();
-    for (clique_idx, clique) in context.cliques.iter().enumerate() {
-        if clique.iter().any(|&member| assigned_in_day[member]) {
+    for clique_idx in 0..context.cliques.len() {
+        let Some(active_members) = active_clique_members_for_day(
+            context.cliques,
+            context.clique_sessions,
+            context.person_participation,
+            clique_idx,
+            day,
+        ) else {
             continue;
-        }
-        if !clique
+        };
+
+        let missing_members = active_members
             .iter()
-            .all(|&member| context.person_participation[member][day])
-        {
+            .filter(|&&member| !assigned_in_day[member])
+            .count();
+        if missing_members == 0 {
             continue;
         }
-        if let Some(sessions) = &context.clique_sessions[clique_idx] {
-            if !sessions.contains(&day) {
-                continue;
+
+        let anchor_group =
+            resolve_clique_anchor_group(&context.schedule[day], clique_idx, day, &active_members)?;
+
+        if let Some(group_idx) = anchor_group {
+            let group_size = context.effective_group_capacities[day * group_count + group_idx];
+            if group_cursors[group_idx] + missing_members > group_size {
+                return Err(SolverError::ValidationError(format!(
+                    "Could not place clique {} (size {}) in required group {} for day {}",
+                    clique_idx,
+                    active_members.len(),
+                    context.group_idx_to_id[group_idx],
+                    day
+                )));
             }
+
+            for &member in &active_members {
+                if assigned_in_day[member] {
+                    continue;
+                }
+                context.schedule[day][group_idx].push(member);
+                assigned_in_day[member] = true;
+                group_cursors[group_idx] += 1;
+            }
+            continue;
         }
 
         let feasible_groups: Vec<usize> = (0..group_count)
             .filter(|&group_idx| {
                 let group_size = context.effective_group_capacities[day * group_count + group_idx];
-                group_cursors[group_idx] + clique.len() <= group_size
+                group_cursors[group_idx] + active_members.len() <= group_size
             })
             .collect();
 
         let Some(selected_group_idx) = choose_best_group_for_block(
             &feasible_groups,
             &context.schedule[day],
-            clique,
+            &active_members,
             day,
             future_overlap,
             met_before,
@@ -426,16 +539,16 @@ fn place_active_cliques_for_day(
             return Err(SolverError::ValidationError(format!(
                 "Could not place clique {} (size {}) in any group for day {}",
                 clique_idx,
-                clique.len(),
+                active_members.len(),
                 day
             )));
         };
 
-        for &member in clique {
+        for &member in &active_members {
             context.schedule[day][selected_group_idx].push(member);
             assigned_in_day[member] = true;
         }
-        group_cursors[selected_group_idx] += clique.len();
+        group_cursors[selected_group_idx] += active_members.len();
     }
 
     Ok(())
@@ -886,10 +999,13 @@ fn update_met_before_from_session(
 mod tests {
     use super::*;
 
-    fn context_with_schedule(
+    fn context_with_constraints(
         schedule: Vec<Vec<Vec<usize>>>,
         person_participation: Vec<Vec<bool>>,
         group_sizes: Vec<usize>,
+        immovable_people: HashMap<(usize, usize), usize>,
+        cliques: Vec<Vec<usize>>,
+        clique_sessions: Vec<Option<Vec<usize>>>,
     ) -> BaselineConstructionContext<'static> {
         let num_sessions = schedule.len();
         let group_count = schedule.first().map_or(0, |groups| groups.len());
@@ -907,9 +1023,9 @@ mod tests {
         assert_eq!(group_sizes.len(), expected_capacity_len);
         let effective_group_capacities = Box::leak(Box::new(group_sizes));
         let person_participation = Box::leak(Box::new(person_participation));
-        let immovable_people = Box::leak(Box::new(HashMap::new()));
-        let cliques = Box::leak(Box::new(Vec::new()));
-        let clique_sessions = Box::leak(Box::new(Vec::new()));
+        let immovable_people = Box::leak(Box::new(immovable_people));
+        let cliques = Box::leak(Box::new(cliques));
+        let clique_sessions = Box::leak(Box::new(clique_sessions));
         let schedule = Box::leak(Box::new(schedule));
         BaselineConstructionContext {
             effective_seed: 7,
@@ -922,6 +1038,21 @@ mod tests {
             clique_sessions,
             schedule,
         }
+    }
+
+    fn context_with_schedule(
+        schedule: Vec<Vec<Vec<usize>>>,
+        person_participation: Vec<Vec<bool>>,
+        group_sizes: Vec<usize>,
+    ) -> BaselineConstructionContext<'static> {
+        context_with_constraints(
+            schedule,
+            person_participation,
+            group_sizes,
+            HashMap::new(),
+            Vec::new(),
+            Vec::new(),
+        )
     }
 
     #[test]
@@ -1155,6 +1286,47 @@ mod tests {
         apply_freedom_aware_construction_heuristic(&mut right_context, &params).unwrap();
 
         assert_eq!(left_context.schedule, right_context.schedule);
+    }
+
+    #[test]
+    fn baseline_constructor_anchors_partial_clique_to_immovable_group() {
+        let mut context = context_with_constraints(
+            vec![vec![vec![], vec![]]],
+            vec![vec![true], vec![true], vec![true], vec![true]],
+            vec![2, 2],
+            HashMap::from([((0usize, 0usize), 1usize)]),
+            vec![vec![0, 1]],
+            vec![None],
+        );
+
+        apply_baseline_construction_heuristic(&mut context)
+            .expect("baseline construction succeeds");
+
+        assert_eq!(context.schedule[0][1].len(), 2);
+        assert!(context.schedule[0][1].contains(&0));
+        assert!(context.schedule[0][1].contains(&1));
+    }
+
+    #[test]
+    fn freedom_aware_constructor_anchors_partial_clique_to_immovable_group() {
+        let mut context = context_with_constraints(
+            vec![vec![vec![], vec![]]],
+            vec![vec![true], vec![true], vec![true], vec![true]],
+            vec![2, 2],
+            HashMap::from([((0usize, 0usize), 1usize)]),
+            vec![vec![0, 1]],
+            vec![None],
+        );
+
+        apply_freedom_aware_construction_heuristic(
+            &mut context,
+            &FreedomAwareConstructionParams { gamma: 0.0 },
+        )
+        .expect("freedom-aware construction succeeds");
+
+        assert_eq!(context.schedule[0][1].len(), 2);
+        assert!(context.schedule[0][1].contains(&0));
+        assert!(context.schedule[0][1].contains(&1));
     }
 
     #[test]
