@@ -8,6 +8,26 @@ use crate::solver5::atoms::{
 };
 use crate::solver6::problem::PureSgpProblem;
 use crate::solver_support::SolverError;
+use rand::seq::SliceRandom;
+use rand::SeedableRng;
+use rand_chacha::ChaCha12Rng;
+
+const RANDOM_RELABELING_BASELINE_SEED_SALT: u64 = 0x6f4d_6d21_4c2b_f973;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ExactBlockRelabelingBaseline {
+    Identity,
+    Random,
+}
+
+impl ExactBlockRelabelingBaseline {
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Identity => "identity",
+            Self::Random => "random",
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct SeedPermutation {
@@ -82,6 +102,21 @@ impl ExactBlockRelabelingPlan {
     }
 }
 
+pub(crate) fn build_relabeling_baseline_plan(
+    input: &ApiInput,
+    baseline: ExactBlockRelabelingBaseline,
+) -> Result<ExactBlockRelabelingPlan, SolverError> {
+    let context = ExactBlockCompositionContext::for_input(input)?;
+    Ok(match baseline {
+        ExactBlockRelabelingBaseline::Identity => {
+            ExactBlockRelabelingPlan::identity(context.full_copies, context.num_people())
+        }
+        ExactBlockRelabelingBaseline::Random => {
+            build_random_relabeling_plan_from_context(&context, input.solver.seed.unwrap_or(42))
+        }
+    })
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ExactBlockRelabelingObjective {
     pub copy_count: usize,
@@ -107,8 +142,14 @@ impl ExactBlockRelabelingObjective {
 pub(crate) fn build_identity_exact_block_seed(
     input: &ApiInput,
 ) -> Result<ExactBlockSeed, SolverError> {
-    let context = ExactBlockCompositionContext::for_input(input)?;
-    let plan = ExactBlockRelabelingPlan::identity(context.full_copies, context.num_people());
+    let plan = build_relabeling_baseline_plan(input, ExactBlockRelabelingBaseline::Identity)?;
+    build_exact_block_seed_from_plan(input, &plan)
+}
+
+pub(crate) fn build_random_exact_block_seed(
+    input: &ApiInput,
+) -> Result<ExactBlockSeed, SolverError> {
+    let plan = build_relabeling_baseline_plan(input, ExactBlockRelabelingBaseline::Random)?;
     build_exact_block_seed_from_plan(input, &plan)
 }
 
@@ -186,6 +227,52 @@ pub(crate) fn evaluate_exact_block_relabeling_objective(
         active_penalty_model: context.active_penalty_model,
         pair_telemetry,
     })
+}
+
+pub(crate) fn evaluate_relabeling_baseline_objective(
+    input: &ApiInput,
+    baseline: ExactBlockRelabelingBaseline,
+) -> Result<ExactBlockRelabelingObjective, SolverError> {
+    let plan = build_relabeling_baseline_plan(input, baseline)?;
+    evaluate_exact_block_relabeling_objective(input, &plan)
+}
+
+fn build_random_relabeling_plan_from_context(
+    context: &ExactBlockCompositionContext,
+    base_seed: u64,
+) -> ExactBlockRelabelingPlan {
+    let mut copy_permutations = Vec::with_capacity(context.full_copies);
+    copy_permutations.push(SeedPermutation::identity(context.num_people()));
+
+    let mut rng = ChaCha12Rng::seed_from_u64(derive_random_relabeling_seed(
+        base_seed,
+        context.full_copies,
+        context.atom_weeks,
+        context.num_people(),
+    ));
+    for _copy_index in 1..context.full_copies {
+        let mut image_by_person: Vec<usize> = (0..context.num_people()).collect();
+        image_by_person.shuffle(&mut rng);
+        copy_permutations.push(
+            SeedPermutation::from_image(image_by_person)
+                .expect("shuffled permutation should remain bijective"),
+        );
+    }
+
+    ExactBlockRelabelingPlan { copy_permutations }
+}
+
+fn derive_random_relabeling_seed(
+    base_seed: u64,
+    full_copies: usize,
+    atom_weeks: usize,
+    num_people: usize,
+) -> u64 {
+    base_seed
+        ^ RANDOM_RELABELING_BASELINE_SEED_SALT
+        ^ ((full_copies as u64) << 32)
+        ^ ((atom_weeks as u64) << 16)
+        ^ (num_people as u64)
 }
 
 struct ExactBlockCompositionContext {
@@ -273,7 +360,9 @@ impl ExactBlockCompositionContext {
 #[cfg(test)]
 mod tests {
     use super::{
-        build_exact_block_seed_from_plan, evaluate_exact_block_relabeling_objective,
+        build_exact_block_seed_from_plan, build_random_exact_block_seed,
+        build_relabeling_baseline_plan, evaluate_exact_block_relabeling_objective,
+        evaluate_relabeling_baseline_objective, ExactBlockRelabelingBaseline,
         ExactBlockRelabelingPlan, SeedPermutation,
     };
     use crate::models::{
@@ -394,6 +483,75 @@ mod tests {
     }
 
     #[test]
+    fn identity_baseline_uses_same_objective_path_as_manual_identity_plan() {
+        let input = pure_input(8, 4, 20);
+        let baseline = evaluate_relabeling_baseline_objective(
+            &input,
+            ExactBlockRelabelingBaseline::Identity,
+        )
+        .expect("identity baseline should evaluate");
+        let manual = evaluate_exact_block_relabeling_objective(
+            &input,
+            &ExactBlockRelabelingPlan {
+                copy_permutations: vec![
+                    SeedPermutation::identity(32),
+                    SeedPermutation::identity(32),
+                ],
+            },
+        )
+        .expect("manual identity plan should evaluate");
+
+        assert_eq!(baseline, manual);
+    }
+
+    #[test]
+    fn random_baseline_plan_is_deterministic_for_fixed_seed() {
+        let input = pure_input(8, 4, 20);
+        let first = build_relabeling_baseline_plan(&input, ExactBlockRelabelingBaseline::Random)
+            .expect("random baseline plan should build");
+        let second = build_relabeling_baseline_plan(&input, ExactBlockRelabelingBaseline::Random)
+            .expect("random baseline plan should be reproducible");
+
+        assert_eq!(first, second);
+        assert_eq!(first.copy_permutations[0], SeedPermutation::identity(32));
+        assert_ne!(first.copy_permutations[1], SeedPermutation::identity(32));
+    }
+
+    #[test]
+    fn random_baseline_changes_when_effective_seed_changes() {
+        let first = build_relabeling_baseline_plan(
+            &pure_input(8, 4, 20),
+            ExactBlockRelabelingBaseline::Random,
+        )
+        .expect("first random baseline plan should build");
+        let mut second_input = pure_input(8, 4, 20);
+        second_input.solver.seed = Some(19);
+        let second = build_relabeling_baseline_plan(
+            &second_input,
+            ExactBlockRelabelingBaseline::Random,
+        )
+        .expect("second random baseline plan should build");
+
+        assert_ne!(first, second);
+    }
+
+    #[test]
+    fn random_baseline_uses_same_objective_path_as_explicit_plan() {
+        let input = pure_input(8, 4, 20);
+        let plan = build_relabeling_baseline_plan(&input, ExactBlockRelabelingBaseline::Random)
+            .expect("random baseline plan should build");
+        let baseline = evaluate_relabeling_baseline_objective(
+            &input,
+            ExactBlockRelabelingBaseline::Random,
+        )
+        .expect("random baseline objective should evaluate");
+        let manual = evaluate_exact_block_relabeling_objective(&input, &plan)
+            .expect("manual random plan objective should evaluate");
+
+        assert_eq!(baseline, manual);
+    }
+
+    #[test]
     fn explicit_relabeling_seed_marks_non_identity_copy_in_diagnostics() {
         let input = pure_input(8, 4, 20);
         let seed = build_exact_block_seed_from_plan(
@@ -418,5 +576,15 @@ mod tests {
                 .linear_repeat_lower_bound_gap,
             0
         );
+    }
+
+    #[test]
+    fn random_baseline_seed_records_non_identity_copy_diagnostics() {
+        let seed = build_random_exact_block_seed(&pure_input(8, 4, 20))
+            .expect("random baseline seed should build");
+
+        assert_eq!(seed.diagnostics.atom_uses[0].relabeling.kind.label(), "identity");
+        assert_eq!(seed.diagnostics.atom_uses[1].relabeling.kind.label(), "explicit_permutation");
+        assert!(seed.diagnostics.atom_uses[1].relabeling.changed_people > 0);
     }
 }
