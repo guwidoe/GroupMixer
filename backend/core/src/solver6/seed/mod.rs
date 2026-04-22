@@ -1,5 +1,7 @@
 use super::problem::PureSgpProblem;
-use super::score::{pure_sgp_linear_repeat_excess_lower_bound, PairFrequencySummary};
+use super::score::{
+    pure_sgp_linear_repeat_excess_lower_bound, PairFrequencyState, PairFrequencySummary,
+};
 use crate::models::Solver6PairRepeatPenaltyModel;
 use crate::solver5::atoms::Solver5ConstructionAtom;
 use crate::solver_support::SolverError;
@@ -131,6 +133,36 @@ pub(crate) struct SeedPairTelemetry {
 }
 
 impl SeedPairTelemetry {
+    pub(super) fn from_pair_state(
+        problem: &PureSgpProblem,
+        pair_state: &PairFrequencyState,
+        represented_weeks: usize,
+        active_penalty_model: Solver6PairRepeatPenaltyModel,
+    ) -> Self {
+        let linear_repeat_lower_bound = pure_sgp_linear_repeat_excess_lower_bound(
+            problem.num_groups,
+            problem.group_size,
+            represented_weeks,
+            pair_state.universe().total_distinct_pairs(),
+            pair_state.total_pair_incidences(),
+        );
+        Self {
+            active_penalty_model,
+            active_penalty_score: pair_state.score_for_model(active_penalty_model),
+            linear_repeat_excess: pair_state.linear_repeat_excess(),
+            triangular_repeat_excess: pair_state.triangular_repeat_excess(),
+            squared_repeat_excess: pair_state.squared_repeat_excess(),
+            distinct_pairs_covered: pair_state.distinct_pairs_covered(),
+            max_pair_frequency: pair_state.max_pair_frequency(),
+            total_pair_incidences: pair_state.total_pair_incidences(),
+            linear_repeat_lower_bound,
+            linear_repeat_lower_bound_gap: pair_state
+                .linear_repeat_excess()
+                .saturating_sub(linear_repeat_lower_bound),
+            multiplicity_histogram: pair_state.multiplicity_histogram().to_vec(),
+        }
+    }
+
     pub(super) fn from_schedule(
         problem: &PureSgpProblem,
         schedule: &[Vec<Vec<usize>>],
@@ -138,28 +170,12 @@ impl SeedPairTelemetry {
     ) -> Result<Self, SolverError> {
         let num_people = problem.num_groups * problem.group_size;
         let summary = PairFrequencySummary::from_raw_schedule(num_people, schedule)?;
-        let linear_repeat_lower_bound = pure_sgp_linear_repeat_excess_lower_bound(
-            problem.num_groups,
-            problem.group_size,
+        Ok(Self::from_pair_state(
+            problem,
+            &PairFrequencyState::from_summary(summary),
             schedule.len(),
-            summary.universe().total_distinct_pairs(),
-            summary.total_pair_incidences(),
-        );
-        Ok(Self {
             active_penalty_model,
-            active_penalty_score: summary.score_for_model(active_penalty_model),
-            linear_repeat_excess: summary.linear_repeat_excess(),
-            triangular_repeat_excess: summary.triangular_repeat_excess(),
-            squared_repeat_excess: summary.squared_repeat_excess(),
-            distinct_pairs_covered: summary.distinct_pairs_covered(),
-            max_pair_frequency: summary.max_pair_frequency(),
-            total_pair_incidences: summary.total_pair_incidences(),
-            linear_repeat_lower_bound,
-            linear_repeat_lower_bound_gap: summary
-                .linear_repeat_excess()
-                .saturating_sub(linear_repeat_lower_bound),
-            multiplicity_histogram: summary.multiplicity_histogram().counts_by_frequency().to_vec(),
-        })
+        ))
     }
 }
 

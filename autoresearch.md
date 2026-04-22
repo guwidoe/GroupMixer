@@ -112,3 +112,27 @@ Lower is better. This means runtime wins are good, but not if they degrade bench
 - If a change only improves runtime while worsening `linear_hit_count`, `linear_gap_sum`, or timeout behavior, it is probably a discard.
 - If a change improves runtime while preserving quality exactly, that is a strong keep.
 - If a change improves quality materially with a modest runtime cost, it may still be a keep because the primary metric is lexicographic.
+
+### Landed improvements in this solver6 autoresearch loop
+- Baseline for this target (`week_cap=20`, `max_people=50`) started at:
+  - `objective_cost = 192188052267`
+  - `total_runtime_ms = 5881867`
+  - `linear_hit_count = 1452 / 1600`
+  - `linear_gap_sum = 4392`
+- Kept improvements so far:
+  1. incremental exact-block relabeling evaluation instead of full seed rebuild/rescore per swap candidate
+  2. early exit once greedy relabeling reaches the known linear optimum
+  3. mixed-tail seed selection now breaks linear-score ties with explicit `squared_repeat_excess`
+  4. requested-tail and heuristic-tail candidates reuse a shared greedy exact-block prefix seed
+  5. reporting reuses existing seed/local-search telemetry instead of recomputing schedule summaries from scratch
+- Current best kept state (after the wins above):
+  - `objective_cost = 192182086549`
+  - `total_runtime_ms = 114749`
+  - `linear_hit_count = 1452 / 1600`
+  - `linear_gap_sum = 4392`
+  - `squared_gap_sum = 1943718`
+
+### Recent negative results to avoid repeating blindly
+- closed-form heuristic-tail candidate delta math was too small/noisy to beat the current best reliably
+- collect-then-sort relabeling adjustment aggregation was materially worse than the prior small-vector merge path
+- squared-aware tie-breaking inside local-search move selection improved squared metrics but lost one linear hit, so it is not acceptable under the current objective

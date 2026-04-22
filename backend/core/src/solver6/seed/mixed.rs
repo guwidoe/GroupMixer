@@ -253,7 +253,12 @@ fn build_heuristic_tail_seed(
         problem.num_weeks,
         SeedRelabelingSummary::identity(),
     ));
-    let pair_telemetry = SeedPairTelemetry::from_schedule(&problem, &schedule, active_penalty_model)?;
+    let pair_telemetry = SeedPairTelemetry::from_pair_state(
+        &problem,
+        &pair_state,
+        schedule.len(),
+        active_penalty_model,
+    );
 
     Ok(ExactBlockSeed {
         schedule,
@@ -297,9 +302,14 @@ fn compose_seed_with_solver5_tail(
 ) -> Result<ExactBlockSeed, SolverError> {
     let problem = PureSgpProblem::from_input(input)?;
     let active_penalty_model = active_penalty_model(input)?;
+    let num_people = problem.num_groups * problem.group_size;
     let mut schedule = prefix_seed.schedule.clone();
+    let mut pair_state = PairFrequencyState::from_raw_schedule(num_people, &schedule)?;
     let week_range_start = schedule.len();
-    schedule.extend(tail_atom.schedule.clone());
+    for week in tail_atom.schedule.iter().cloned() {
+        apply_week_to_pair_state(&mut pair_state, &week)?;
+        schedule.push(week);
+    }
 
     let mut atom_uses = prefix_seed.diagnostics.atom_uses.clone();
     atom_uses.push(SeedAtomUsage::new(
@@ -312,7 +322,12 @@ fn compose_seed_with_solver5_tail(
     ));
 
     validate_full_schedule_shape(&problem, &schedule)?;
-    let pair_telemetry = SeedPairTelemetry::from_schedule(&problem, &schedule, active_penalty_model)?;
+    let pair_telemetry = SeedPairTelemetry::from_pair_state(
+        &problem,
+        &pair_state,
+        schedule.len(),
+        active_penalty_model,
+    );
 
     Ok(ExactBlockSeed {
         schedule,
