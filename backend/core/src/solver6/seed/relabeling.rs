@@ -318,11 +318,19 @@ pub(crate) fn build_greedy_relabeling_plan(
         ExactBlockRelabelingPlan::identity(context.full_copies, context.num_people()),
     )?;
 
+    if greedy_relabeling_has_reached_known_optimum(&state, context.active_penalty_model) {
+        return Ok(state.plan);
+    }
+
     loop {
         let mut improved_any_copy = false;
         for copy_index in 1..context.full_copies {
             if greedily_improve_copy_permutation(&context, &mut state, copy_index)? {
                 improved_any_copy = true;
+                if greedy_relabeling_has_reached_known_optimum(&state, context.active_penalty_model)
+                {
+                    return Ok(state.plan);
+                }
             }
         }
 
@@ -332,6 +340,15 @@ pub(crate) fn build_greedy_relabeling_plan(
     }
 
     Ok(state.plan)
+}
+
+fn greedy_relabeling_has_reached_known_optimum(
+    state: &GreedyRelabelingState,
+    active_penalty_model: Solver6PairRepeatPenaltyModel,
+) -> bool {
+    state.current_active_score(active_penalty_model) == 0
+        || (active_penalty_model == Solver6PairRepeatPenaltyModel::LinearRepeatExcess
+            && state.current_linear_repeat_lower_bound_gap() == 0)
 }
 
 pub(crate) fn evaluate_greedy_relabeling_objective(
