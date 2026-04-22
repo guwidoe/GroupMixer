@@ -1,5 +1,5 @@
 use super::problem::PureSgpProblem;
-use super::score::PairFrequencySummary;
+use super::score::{pure_sgp_linear_repeat_excess_lower_bound, PairFrequencySummary};
 use crate::models::Solver6PairRepeatPenaltyModel;
 use crate::solver5::atoms::Solver5ConstructionAtom;
 use crate::solver_support::SolverError;
@@ -132,11 +132,19 @@ pub(crate) struct SeedPairTelemetry {
 
 impl SeedPairTelemetry {
     pub(super) fn from_schedule(
-        num_people: usize,
+        problem: &PureSgpProblem,
         schedule: &[Vec<Vec<usize>>],
         active_penalty_model: Solver6PairRepeatPenaltyModel,
     ) -> Result<Self, SolverError> {
+        let num_people = problem.num_groups * problem.group_size;
         let summary = PairFrequencySummary::from_raw_schedule(num_people, schedule)?;
+        let linear_repeat_lower_bound = pure_sgp_linear_repeat_excess_lower_bound(
+            problem.num_groups,
+            problem.group_size,
+            schedule.len(),
+            summary.universe().total_distinct_pairs(),
+            summary.total_pair_incidences(),
+        );
         Ok(Self {
             active_penalty_model,
             active_penalty_score: summary.score_for_model(active_penalty_model),
@@ -146,8 +154,10 @@ impl SeedPairTelemetry {
             distinct_pairs_covered: summary.distinct_pairs_covered(),
             max_pair_frequency: summary.max_pair_frequency(),
             total_pair_incidences: summary.total_pair_incidences(),
-            linear_repeat_lower_bound: summary.linear_repeat_excess_lower_bound(),
-            linear_repeat_lower_bound_gap: summary.linear_repeat_excess_lower_bound_gap(),
+            linear_repeat_lower_bound,
+            linear_repeat_lower_bound_gap: summary
+                .linear_repeat_excess()
+                .saturating_sub(linear_repeat_lower_bound),
             multiplicity_histogram: summary.multiplicity_histogram().counts_by_frequency().to_vec(),
         })
     }

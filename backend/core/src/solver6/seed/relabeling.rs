@@ -274,7 +274,7 @@ fn build_exact_block_seed_from_plan_with_context(
 
     validate_full_schedule_shape(&context.problem, &schedule)?;
     let pair_telemetry = SeedPairTelemetry::from_schedule(
-        context.num_people(),
+        &context.problem,
         &schedule,
         context.active_penalty_model,
     )?;

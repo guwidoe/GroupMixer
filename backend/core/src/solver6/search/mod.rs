@@ -12,6 +12,7 @@ use self::state::LocalSearchState;
 use self::tabu::{RepeatAwareTabuMemory, RepeatAwareTabuPolicy};
 use crate::models::{Solver6SearchStrategy, StopConditions, StopReason};
 use crate::solver6::problem::PureSgpProblem;
+use crate::solver6::score::pure_sgp_linear_repeat_excess_lower_bound;
 use crate::solver_support::SolverError;
 use std::time::Instant;
 
@@ -448,7 +449,14 @@ pub(crate) fn select_best_admissible_same_week_swap(
 fn search_has_reached_known_optimum(state: &LocalSearchState) -> bool {
     state.current_active_score() == 0
         || (state.active_penalty_model() == crate::models::Solver6PairRepeatPenaltyModel::LinearRepeatExcess
-            && state.current_active_score() == state.pair_state().linear_repeat_excess_lower_bound())
+            && state.current_active_score()
+                == pure_sgp_linear_repeat_excess_lower_bound(
+                    state.problem().num_groups,
+                    state.problem().group_size,
+                    state.schedule().len(),
+                    state.pair_state().universe().total_distinct_pairs(),
+                    state.pair_state().total_pair_incidences(),
+                ))
 }
 
 #[cfg(test)]

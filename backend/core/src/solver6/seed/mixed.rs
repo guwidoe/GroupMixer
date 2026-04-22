@@ -242,7 +242,7 @@ fn build_heuristic_tail_seed(
         problem.num_weeks,
         SeedRelabelingSummary::identity(),
     ));
-    let pair_telemetry = SeedPairTelemetry::from_schedule(num_people, &schedule, active_penalty_model)?;
+    let pair_telemetry = SeedPairTelemetry::from_schedule(&problem, &schedule, active_penalty_model)?;
 
     Ok(ExactBlockSeed {
         schedule,
@@ -267,7 +267,7 @@ fn build_prefix_seed(
                 total_weeks: 0,
                 atom_uses: Vec::new(),
                 pair_telemetry: Some(SeedPairTelemetry::from_schedule(
-                    input.problem.people.len(),
+                    &PureSgpProblem::from_input(input)?,
                     &[],
                     active_penalty_model,
                 )?),
@@ -286,7 +286,6 @@ fn compose_seed_with_solver5_tail(
 ) -> Result<ExactBlockSeed, SolverError> {
     let problem = PureSgpProblem::from_input(input)?;
     let active_penalty_model = active_penalty_model(input)?;
-    let num_people = problem.num_groups * problem.group_size;
     let mut schedule = prefix_seed.schedule.clone();
     let week_range_start = schedule.len();
     schedule.extend(tail_atom.schedule.clone());
@@ -302,7 +301,7 @@ fn compose_seed_with_solver5_tail(
     ));
 
     validate_full_schedule_shape(&problem, &schedule)?;
-    let pair_telemetry = SeedPairTelemetry::from_schedule(num_people, &schedule, active_penalty_model)?;
+    let pair_telemetry = SeedPairTelemetry::from_schedule(&problem, &schedule, active_penalty_model)?;
 
     Ok(ExactBlockSeed {
         schedule,
@@ -321,7 +320,6 @@ fn truncate_seed_to_weeks(
 ) -> Result<ExactBlockSeed, SolverError> {
     let problem = PureSgpProblem::from_input(input)?;
     let active_penalty_model = active_penalty_model(input)?;
-    let num_people = problem.num_groups * problem.group_size;
     seed.schedule.truncate(requested_weeks);
     seed.diagnostics.total_weeks = requested_weeks;
     seed.diagnostics
@@ -335,7 +333,7 @@ fn truncate_seed_to_weeks(
     }
     validate_full_schedule_shape(&problem, &seed.schedule)?;
     seed.diagnostics.pair_telemetry = Some(SeedPairTelemetry::from_schedule(
-        num_people,
+        &problem,
         &seed.schedule,
         active_penalty_model,
     )?);

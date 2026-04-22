@@ -1,5 +1,6 @@
 use super::execute_solver6_run;
-use super::score::PairFrequencySummary;
+use super::problem::PureSgpProblem;
+use super::score::{pure_sgp_linear_repeat_excess_lower_bound, PairFrequencySummary};
 use crate::models::{
     ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
     Solver6PairRepeatPenaltyModel, Solver6Params, SolverConfiguration, SolverKind, SolverParams,
@@ -129,24 +130,43 @@ pub struct ScoreMetrics {
 
 impl ScoreMetrics {
     fn from_schedule(
-        num_people: usize,
+        problem: &PureSgpProblem,
         schedule: &[Vec<Vec<usize>>],
         active_penalty_model: Solver6PairRepeatPenaltyModel,
     ) -> Result<Self, SolverError> {
+        let num_people = problem.num_groups * problem.group_size;
         let summary = PairFrequencySummary::from_raw_schedule(num_people, schedule)?;
-        Ok(Self::from_summary(summary, active_penalty_model))
+        Ok(Self::from_summary(
+            summary,
+            problem.num_groups,
+            problem.group_size,
+            schedule.len(),
+            active_penalty_model,
+        ))
     }
 
     fn from_summary(
         summary: PairFrequencySummary,
+        num_groups: usize,
+        group_size: usize,
+        represented_weeks: usize,
         active_penalty_model: Solver6PairRepeatPenaltyModel,
     ) -> Self {
+        let linear_repeat_lower_bound = pure_sgp_linear_repeat_excess_lower_bound(
+            num_groups,
+            group_size,
+            represented_weeks,
+            summary.universe().total_distinct_pairs(),
+            summary.total_pair_incidences(),
+        );
         Self {
             active_penalty_model: penalty_model_label(active_penalty_model).into(),
             active_penalty_score: summary.score_for_model(active_penalty_model),
             linear_repeat_excess: summary.linear_repeat_excess(),
-            linear_repeat_lower_bound: summary.linear_repeat_excess_lower_bound(),
-            linear_repeat_lower_bound_gap: summary.linear_repeat_excess_lower_bound_gap(),
+            linear_repeat_lower_bound,
+            linear_repeat_lower_bound_gap: summary
+                .linear_repeat_excess()
+                .saturating_sub(linear_repeat_lower_bound),
             squared_repeat_excess: summary.squared_repeat_excess(),
             squared_repeat_lower_bound: summary.squared_repeat_excess_lower_bound(),
             squared_repeat_lower_bound_gap: summary.squared_repeat_excess_lower_bound_gap(),
@@ -257,9 +277,8 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
     let start = Instant::now();
     let executed = execute_solver6_run(input, &input.solver)?;
     let runtime_seconds = start.elapsed().as_secs_f64();
-    let num_people = input.problem.people.len();
     let final_metrics = ScoreMetrics::from_schedule(
-        num_people,
+        &executed.problem,
         &executed.final_schedule,
         executed.active_penalty_model,
     )?;
@@ -269,7 +288,7 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
             (
                 selection.selected_family.label().to_string(),
                 ScoreMetrics::from_schedule(
-                    num_people,
+                    &executed.problem,
                     &selection.seed.schedule,
                     executed.active_penalty_model,
                 )?,
@@ -821,6 +840,26 @@ mod tests {
         assert_eq!(inspection.seed_family, "solver5_exact_handoff");
         assert_eq!(inspection.seed_metrics.linear_repeat_excess, 0);
         assert_eq!(inspection.final_metrics.linear_repeat_excess, 0);
+    }
+
+    #[test]
+    fn benchmark_inspection_uses_two_week_structural_linear_bound() {
+        let config = Solver6BenchmarkConfig {
+            week_cap: 2,
+            max_people_to_run: 6,
+            ..Solver6BenchmarkConfig::default()
+        };
+        let input = pure_input_for_benchmark(2, 3, 2, &config);
+        let inspection = inspect_benchmark_run(&input).unwrap();
+
+        assert_eq!(inspection.execution_status, ExecutionStatus::Success);
+        assert_eq!(inspection.linear_status, LayerWeekStatus::LowerBoundTight);
+        assert_eq!(inspection.seed_metrics.linear_repeat_excess, 2);
+        assert_eq!(inspection.seed_metrics.linear_repeat_lower_bound, 2);
+        assert_eq!(inspection.seed_metrics.linear_repeat_lower_bound_gap, 0);
+        assert_eq!(inspection.final_metrics.linear_repeat_excess, 2);
+        assert_eq!(inspection.final_metrics.linear_repeat_lower_bound, 2);
+        assert_eq!(inspection.final_metrics.linear_repeat_lower_bound_gap, 0);
     }
 
     #[test]

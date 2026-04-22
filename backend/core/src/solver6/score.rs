@@ -1,6 +1,48 @@
 use crate::models::Solver6PairRepeatPenaltyModel;
 use crate::solver_support::SolverError;
 
+pub fn pure_sgp_linear_repeat_excess_lower_bound(
+    num_groups: usize,
+    group_size: usize,
+    represented_weeks: usize,
+    total_distinct_pairs: usize,
+    total_pair_incidences: usize,
+) -> u64 {
+    counting_linear_repeat_excess_lower_bound(total_distinct_pairs, total_pair_incidences)
+        .max(two_week_structural_linear_repeat_excess_lower_bound(
+            num_groups,
+            group_size,
+            represented_weeks,
+        ))
+}
+
+pub fn two_week_structural_linear_repeat_excess_lower_bound(
+    num_groups: usize,
+    group_size: usize,
+    represented_weeks: usize,
+) -> u64 {
+    if represented_weeks < 2 || num_groups == 0 || group_size <= 1 {
+        return 0;
+    }
+
+    let quotient = group_size / num_groups;
+    let remainder = group_size % num_groups;
+    let per_group_repeat_floor = remainder * choose2(quotient + 1)
+        + (num_groups - remainder) * choose2(quotient);
+    (num_groups * per_group_repeat_floor) as u64
+}
+
+fn counting_linear_repeat_excess_lower_bound(
+    total_distinct_pairs: usize,
+    total_pair_incidences: usize,
+) -> u64 {
+    total_pair_incidences.saturating_sub(total_distinct_pairs) as u64
+}
+
+fn choose2(value: usize) -> usize {
+    value.saturating_mul(value.saturating_sub(1)) / 2
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PairUniverse {
     num_people: usize,
@@ -493,7 +535,10 @@ fn squared_repeat_excess_lower_bound(total_distinct_pairs: usize, repeat_excess:
 
 #[cfg(test)]
 mod tests {
-    use super::{PairFrequencyState, PairFrequencySummary, PairUniverse};
+    use super::{
+        pure_sgp_linear_repeat_excess_lower_bound, PairFrequencyState, PairFrequencySummary,
+        PairUniverse,
+    };
     use crate::models::Solver6PairRepeatPenaltyModel;
 
     fn exact_2_2_3() -> Vec<Vec<Vec<usize>>> {
@@ -611,5 +656,29 @@ mod tests {
         assert_eq!(state.squared_repeat_excess(), 2);
         assert_eq!(state.squared_repeat_excess_lower_bound(), 2);
         assert_eq!(state.squared_repeat_excess_lower_bound_gap(), 0);
+    }
+
+    #[test]
+    fn two_week_structural_bound_strengthens_the_coarse_counting_bound() {
+        let summary = PairFrequencySummary::from_raw_schedule(
+            6,
+            &[
+                vec![vec![0, 1, 2], vec![3, 4, 5]],
+                vec![vec![0, 3, 4], vec![1, 2, 5]],
+            ],
+        )
+        .unwrap();
+
+        let lower_bound = pure_sgp_linear_repeat_excess_lower_bound(
+            2,
+            3,
+            2,
+            summary.universe().total_distinct_pairs(),
+            summary.total_pair_incidences(),
+        );
+
+        assert_eq!(summary.linear_repeat_excess(), 2);
+        assert_eq!(summary.linear_repeat_excess_lower_bound(), 0);
+        assert_eq!(lower_bound, 2);
     }
 }
