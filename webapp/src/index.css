@@ -85,6 +85,7 @@
   --scrollbar-track: color-mix(in srgb, var(--bg-secondary) 92%, var(--border-primary) 8%);
   --scrollbar-thumb: color-mix(in srgb, var(--border-secondary) 88%, var(--text-tertiary) 12%);
   --scrollbar-thumb-hover: color-mix(in srgb, var(--text-tertiary) 30%, var(--border-secondary) 70%);
+  --landing-ghost-text: var(--text-tertiary);
   }
 
   /* Dark theme variables */
@@ -118,6 +119,7 @@
     --tooltip-text: var(--text-primary);
     --tooltip-border: color-mix(in srgb, var(--border-primary) 86%, transparent);
     --tooltip-shadow: 0 18px 36px rgba(0, 0, 0, 0.38);
+    --landing-ghost-text: var(--text-tertiary);
     --scrollbar-track: color-mix(in srgb, var(--bg-secondary) 88%, black 12%);
     --scrollbar-thumb: color-mix(in srgb, var(--bg-tertiary) 55%, var(--text-tertiary) 45%);
     --scrollbar-thumb-hover: color-mix(in srgb, var(--text-secondary) 58%, var(--bg-tertiary) 42%);
@@ -593,6 +595,8 @@
 
   .landing-resizable-textarea {
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
     border: 1px solid var(--border-primary);
     overflow: hidden;
     box-shadow: var(--shadow);
@@ -618,6 +622,11 @@
     outline: none;
   }
 
+  .landing-resizable-textarea__field::placeholder {
+    color: var(--landing-ghost-text);
+    opacity: 1;
+  }
+
   .landing-resizable-textarea__resize-handle {
     height: 0.625rem;
     cursor: ns-resize;
@@ -639,16 +648,20 @@
   }
 
   .landing-participant-columns {
+    min-width: 0;
+    max-width: 100%;
     overflow: auto;
   }
 
   .landing-participant-columns__surface {
     position: relative;
+    min-width: 0;
     padding: 0.6rem 0.75rem 0.25rem;
   }
 
   .landing-participant-columns__columns {
     display: flex;
+    min-width: 100%;
     align-items: stretch;
   }
 
@@ -675,7 +688,7 @@
 
   .landing-participant-columns__ghost-column {
     min-width: 0;
-    flex: 0 0 auto;
+    flex: 1 0 auto;
     cursor: pointer;
     outline: none;
   }
@@ -734,6 +747,9 @@
     font-weight: 600;
     line-height: 1.25;
     white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
   }
 
   .landing-participant-columns__remove-button {
@@ -768,11 +784,13 @@
     padding: 0.18rem 0.7rem 0.35rem;
     cursor: text;
     box-shadow: none !important;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     color: var(--text-primary);
     font-size: 0.875rem;
     line-height: 1.6;
-    white-space: pre-wrap;
+    white-space: pre;
+    scrollbar-width: thin;
   }
 
   .landing-participant-columns .landing-participant-columns__textarea:hover,
@@ -783,14 +801,14 @@
   .landing-participant-columns .landing-participant-columns__header-input[data-empty='true']::before,
   .landing-participant-columns .landing-participant-columns__textarea[data-empty='true']::before {
     content: attr(data-placeholder);
-    color: var(--text-tertiary);
+    color: var(--landing-ghost-text);
     pointer-events: none;
   }
 
   .landing-participant-columns__ghost-header-label,
   .landing-participant-columns__ghost-textarea {
     display: block;
-    color: var(--text-tertiary);
+    color: var(--landing-ghost-text);
     user-select: none;
   }
 
@@ -817,10 +835,6 @@
     align-items: stretch;
     justify-content: center;
     cursor: col-resize;
-  }
-
-  .landing-participant-columns__separator--static {
-    cursor: default;
   }
 
   .landing-participant-columns__separator-line {

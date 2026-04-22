@@ -549,7 +549,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
             >
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.9fr)] lg:gap-5">
-                <div>
+                <div className="min-w-0">
                   <label className="mb-2 block text-sm font-medium">
                     {ui.quickSetup.participantsLabel}
                   </label>
@@ -558,6 +558,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     nameColumnLabel={ui.quickSetup.nameColumnLabel}
                     nameColumnPlaceholder={ui.quickSetup.namesPlaceholder}
                     addAttributeLabel={ui.quickSetup.addAttributeLabel}
+                    ghostAttributeDisplayLabel={ui.quickSetup.ghostAttributeDisplayLabel}
                     ghostAttributeLabel={ui.quickSetup.ghostAttributeLabel}
                     ghostAttributeValuesPreview={ui.quickSetup.ghostAttributeValuesPreview}
                     removeAttributeLabel={ui.quickSetup.removeAttributeLabel}

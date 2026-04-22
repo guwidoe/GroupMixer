@@ -78,6 +78,7 @@ export interface ToolPageQuickSetupUiContent {
   participantsLabel: string;
   nameColumnLabel: string;
   addAttributeLabel: string;
+  ghostAttributeDisplayLabel: string;
   ghostAttributeLabel: string;
   ghostAttributeValuesPreview: string;
   removeAttributeLabel: string;

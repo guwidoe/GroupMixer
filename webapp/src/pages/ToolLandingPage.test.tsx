@@ -550,7 +550,7 @@ describe('ToolLandingPage SEO wiring', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Gender')).toBeInTheDocument();
+    expect(screen.getByText('Add attribute (e.g. Gender)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add attribute/i })).toHaveTextContent('Female');
     await user.click(screen.getByRole('button', { name: /add attribute/i }));
     await user.click(screen.getByRole('button', { name: /remove attribute: gender/i }));

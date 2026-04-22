@@ -8,6 +8,7 @@ interface LandingParticipantColumnsInputProps {
   nameColumnLabel: string;
   nameColumnPlaceholder: string;
   addAttributeLabel: string;
+  ghostAttributeDisplayLabel: string;
   ghostAttributeLabel: string;
   ghostAttributeValuesPreview: string;
   removeAttributeLabel: string;
@@ -31,10 +32,10 @@ interface EditableTextBlockProps {
   dataFocusTarget?: boolean;
 }
 
-const NAME_COLUMN_WIDTH = 300;
-const ATTRIBUTE_COLUMN_WIDTH = 170;
-const MIN_NAME_WIDTH = 180;
-const MIN_ATTRIBUTE_WIDTH = 120;
+const NAME_COLUMN_WIDTH = 120;
+const ATTRIBUTE_COLUMN_WIDTH = 80;
+const MIN_NAME_WIDTH = 96;
+const MIN_ATTRIBUTE_WIDTH = 64;
 const SEPARATOR_WIDTH = 12;
 const HEADER_HEIGHT = 32;
 const LINE_HEIGHT = 26;
@@ -91,6 +92,9 @@ function EditableTextBlock({
       data-empty={value.length === 0 ? 'true' : 'false'}
       data-ghost-focus-target={dataFocusTarget ? 'true' : undefined}
       onInput={(event) => onChange(readEditableValue(event.currentTarget))}
+      onBlur={(event) => {
+        event.currentTarget.scrollLeft = 0;
+      }}
       onKeyDown={onKeyDown}
       style={style}
     />
@@ -102,6 +106,7 @@ export function LandingParticipantColumnsInput({
   nameColumnLabel,
   nameColumnPlaceholder,
   addAttributeLabel,
+  ghostAttributeDisplayLabel,
   ghostAttributeLabel,
   ghostAttributeValuesPreview,
   removeAttributeLabel,
@@ -114,8 +119,15 @@ export function LandingParticipantColumnsInput({
 }: LandingParticipantColumnsInputProps) {
   const [height, setHeight] = useState(minHeight);
   const [columnWidths, setColumnWidths] = useState<number[]>(() => columns.map((_, index) => (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH)));
+  const [ghostColumnWidth, setGhostColumnWidth] = useState(ATTRIBUTE_COLUMN_WIDTH);
   const [pendingFocusColumnId, setPendingFocusColumnId] = useState<string | null>(null);
-  const dragStateRef = useRef<{ startX: number; leftWidth: number; rightWidth: number; index: number } | null>(null);
+  const dragStateRef = useRef<{
+    startX: number;
+    leftWidth: number;
+    rightWidth: number;
+    index: number;
+    rightIsGhost: boolean;
+  } | null>(null);
   const resizeDragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
   useEffect(() => {
@@ -127,7 +139,7 @@ export function LandingParticipantColumnsInput({
   ), [columns]);
 
   const contentHeight = Math.max(minHeight - HEADER_HEIGHT - 28, maxLineCount * LINE_HEIGHT + BODY_PADDING);
-  const surfaceMinWidth = columnWidths.reduce((sum, width) => sum + width, 0) + (Math.max(0, columns.length) * SEPARATOR_WIDTH) + ATTRIBUTE_COLUMN_WIDTH;
+  const surfaceMinWidth = columnWidths.reduce((sum, width) => sum + width, 0) + (Math.max(0, columns.length) * SEPARATOR_WIDTH) + ghostColumnWidth;
 
   const handleColumnPointerMove = useCallback((event: PointerEvent) => {
     const dragState = dragStateRef.current;
@@ -145,9 +157,15 @@ export function LandingParticipantColumnsInput({
     setColumnWidths((previous) => {
       const next = [...previous];
       next[dragState.index] = nextLeftWidth;
-      next[dragState.index + 1] = nextRightWidth;
+      if (!dragState.rightIsGhost) {
+        next[dragState.index + 1] = nextRightWidth;
+      }
       return next;
     });
+
+    if (dragState.rightIsGhost) {
+      setGhostColumnWidth(nextRightWidth);
+    }
   }, []);
 
   const stopColumnResize = useCallback(() => {
@@ -159,17 +177,19 @@ export function LandingParticipantColumnsInput({
 
   const startColumnResize = useCallback((index: number, event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
+    const rightIsGhost = index === columns.length - 1;
     dragStateRef.current = {
       index,
       startX: event.clientX,
       leftWidth: columnWidths[index],
-      rightWidth: columnWidths[index + 1],
+      rightWidth: rightIsGhost ? ghostColumnWidth : columnWidths[index + 1],
+      rightIsGhost,
     };
 
     window.addEventListener('pointermove', handleColumnPointerMove);
     window.addEventListener('pointerup', stopColumnResize);
     window.addEventListener('pointercancel', stopColumnResize);
-  }, [columnWidths, handleColumnPointerMove, stopColumnResize]);
+  }, [columnWidths, columns.length, ghostColumnWidth, handleColumnPointerMove, stopColumnResize]);
 
   const handleResizePointerMove = useCallback((event: PointerEvent) => {
     const dragState = resizeDragStateRef.current;
@@ -234,7 +254,7 @@ export function LandingParticipantColumnsInput({
     <div className="landing-resizable-textarea rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <div className="theme-scrollbar landing-participant-columns" style={{ height: `${height}px` }}>
         <div className="landing-participant-columns__surface">
-          <div className="landing-participant-columns__columns" style={{ minWidth: `${surfaceMinWidth}px` }}>
+          <div className="landing-participant-columns__columns" style={{ width: `max(100%, ${surfaceMinWidth}px)` }}>
             {columns.map((column, index) => (
               <React.Fragment key={column.id}>
                 <div className="landing-participant-columns__column" style={{ width: `${columnWidths[index]}px` }} data-column-id={column.id}>
@@ -298,13 +318,19 @@ export function LandingParticipantColumnsInput({
               </React.Fragment>
             ))}
 
-            <div className="landing-participant-columns__separator landing-participant-columns__separator--static" aria-hidden="true">
+            <div
+              className="landing-participant-columns__separator"
+              onPointerDown={(event) => startColumnResize(columns.length - 1, event)}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize ghost column"
+            >
               <div className="landing-participant-columns__separator-line" />
             </div>
 
             <div
               className="landing-participant-columns__ghost-column"
-              style={{ width: `${ATTRIBUTE_COLUMN_WIDTH}px` }}
+              style={{ width: `${ghostColumnWidth}px` }}
               role="button"
               tabIndex={0}
               aria-label={addAttributeLabel}
@@ -318,7 +344,7 @@ export function LandingParticipantColumnsInput({
             >
               <div className="landing-participant-columns__ghost-header-shell">
                 <div className="landing-participant-columns__column-header">
-                  <div className="landing-participant-columns__ghost-header-label">{ghostAttributeLabel}</div>
+                  <div className="landing-participant-columns__ghost-header-label">{ghostAttributeDisplayLabel}</div>
                 </div>
               </div>
               <div className="landing-participant-columns__ghost-body-shell">
