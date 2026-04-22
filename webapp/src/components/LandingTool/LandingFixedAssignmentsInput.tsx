@@ -193,7 +193,7 @@ export function LandingFixedAssignmentsInput({
   }, [handleResizePointerMove, height, stopResize]);
 
   return (
-    <div className="landing-resizable-textarea rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+    <div className="landing-resizable-textarea landing-resizable-textarea--structured rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <div className="theme-scrollbar landing-participant-columns" style={{ height: `${height}px` }}>
         <div className="landing-participant-columns__surface">
           <div className="landing-participant-columns__columns" style={{ width: `max(100%, ${surfaceMinWidth}px)` }}>

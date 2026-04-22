@@ -629,6 +629,7 @@
   }
 
   .landing-resizable-textarea__resize-handle {
+    position: relative;
     height: 0.625rem;
     cursor: ns-resize;
     background: transparent;
@@ -646,6 +647,16 @@
 
   .landing-resizable-textarea__resize-handle:hover::before {
     background: color-mix(in srgb, var(--text-secondary) 70%, transparent);
+  }
+
+  .landing-resizable-textarea--structured .landing-resizable-textarea__resize-handle::after {
+    content: '';
+    position: absolute;
+    left: 0rem;
+    right: 0rem;
+    top: -0.2rem;
+    height: 0.1px;
+    background: var(--border-primary);
   }
 
   .landing-participant-columns {
