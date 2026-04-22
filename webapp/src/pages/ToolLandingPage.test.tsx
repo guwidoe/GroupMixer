@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -506,8 +506,8 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.queryByRole('button', { name: /switch to names/i })).not.toBeInTheDocument();
     expect(screen.getByText(/balance groups by attribute/i)).toBeInTheDocument();
     expect(screen.getAllByText(/^role$/i).length).toBeGreaterThan(1);
-    expect(screen.getByRole('button', { name: /auto distribute attribute: team/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /auto distribute attribute: role/i })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /auto distribute attribute: team/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /auto distribute attribute: role/i })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /minimize repeat pairings/i })).toBeChecked();
     expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();
     expect(
@@ -531,6 +531,25 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(checkbox);
 
     expect(checkbox).not.toBeChecked();
+  });
+
+  it('switches attribute auto-distribution off after a manual balance edit', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="group-assignment-optimizer" locale="en" />
+      </MemoryRouter>,
+    );
+
+    const checkbox = screen.getByRole('checkbox', { name: /auto distribute attribute: team/i });
+    expect(checkbox).toBeChecked();
+
+    fireEvent.change(screen.getAllByLabelText(/blue count/i)[0], { target: { value: '2' } });
+    expect(checkbox).not.toBeChecked();
+
+    await user.click(checkbox);
+    expect(checkbox).toBeChecked();
   });
 
   it('loads landing-compatible demo data into the quick setup form', async () => {
@@ -597,6 +616,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(screen.getByRole('button', { name: /remove attribute: role/i }));
 
     expect(confirmSpy).toHaveBeenCalledWith('Remove "role" and all entered values?');
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
     expect(screen.queryByLabelText('Attribute column 2')).not.toBeInTheDocument();
     expect(screen.queryByText('role')).not.toBeInTheDocument();
 
@@ -649,6 +669,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(screen.getByRole('button', { name: /remove attribute: role/i }));
 
     expect(confirmSpy).toHaveBeenCalledWith('Remove "role" and all entered values?');
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
     expect(screen.getByLabelText('Attribute column 2')).toBeInTheDocument();
 
     confirmSpy.mockRestore();

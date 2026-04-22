@@ -2,6 +2,10 @@ import type { Group, Person } from '../../types';
 
 export type QuickSetupBalanceTargets = Record<string, Record<string, Record<string, number>>>;
 
+function normalizeAttributeKeys(keys: string[] | undefined): string[] {
+  return [...new Set((keys ?? []).map((key) => key.trim()).filter(Boolean))];
+}
+
 function normalizeCount(value: number) {
   return Math.max(0, Math.round(Number(value) || 0));
 }
@@ -129,6 +133,81 @@ export function normalizeBalanceTargets(balanceTargets: QuickSetupBalanceTargets
       })
       .filter(([, groups]) => Object.keys(groups).length > 0),
   );
+}
+
+export function normalizeManualBalanceAttributeKeys(
+  manualBalanceAttributeKeys: string[] | undefined,
+  availableAttributeKeys: string[] | undefined,
+  balanceTargets?: QuickSetupBalanceTargets,
+): string[] {
+  const availableKeys = normalizeAttributeKeys(availableAttributeKeys);
+  const fallbackKeys = Object.keys(normalizeBalanceTargets(balanceTargets));
+  const baseKeys = manualBalanceAttributeKeys ?? fallbackKeys;
+
+  return normalizeAttributeKeys(baseKeys).filter((key) => availableKeys.includes(key));
+}
+
+export function isBalanceAttributeAutoDistributed(
+  manualBalanceAttributeKeys: string[] | undefined,
+  attributeKey: string,
+): boolean {
+  const normalizedAttributeKey = attributeKey.trim();
+  if (normalizedAttributeKey.length === 0) {
+    return false;
+  }
+
+  return !normalizeAttributeKeys(manualBalanceAttributeKeys).includes(normalizedAttributeKey);
+}
+
+export function setBalanceAttributeAutoDistributionEnabled(
+  manualBalanceAttributeKeys: string[] | undefined,
+  attributeKey: string,
+  enabled: boolean,
+): string[] {
+  const normalizedAttributeKey = attributeKey.trim();
+  const nextManualKeys = normalizeAttributeKeys(manualBalanceAttributeKeys).filter((key) => key !== normalizedAttributeKey);
+
+  if (!enabled && normalizedAttributeKey.length > 0) {
+    nextManualKeys.push(normalizedAttributeKey);
+  }
+
+  return nextManualKeys;
+}
+
+export function syncAutoBalanceTargets(options: {
+  balanceTargets: QuickSetupBalanceTargets | undefined;
+  manualBalanceAttributeKeys: string[] | undefined;
+  people: Person[];
+  groups: Group[];
+  availableAttributeKeys: string[];
+}): {
+  balanceTargets: QuickSetupBalanceTargets;
+  manualBalanceAttributeKeys: string[];
+} {
+  const { balanceTargets, manualBalanceAttributeKeys, people, groups, availableAttributeKeys } = options;
+  const availableKeys = normalizeAttributeKeys(availableAttributeKeys);
+  const normalizedTargets = normalizeBalanceTargets(balanceTargets);
+  const nextManualKeys = normalizeManualBalanceAttributeKeys(manualBalanceAttributeKeys, availableKeys, normalizedTargets);
+  let nextTargets = Object.fromEntries(
+    Object.entries(normalizedTargets).filter(([attributeKey]) => availableKeys.includes(attributeKey)),
+  );
+
+  for (const attributeKey of availableKeys) {
+    if (!isBalanceAttributeAutoDistributed(nextManualKeys, attributeKey)) {
+      continue;
+    }
+
+    nextTargets = setBalanceAttributeTargets(
+      nextTargets,
+      attributeKey,
+      deriveBalancedTargetValues(people, groups, attributeKey),
+    );
+  }
+
+  return {
+    balanceTargets: nextTargets,
+    manualBalanceAttributeKeys: nextManualKeys,
+  };
 }
 
 export function setBalanceTargetValues(

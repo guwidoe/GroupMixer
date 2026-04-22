@@ -6,7 +6,13 @@ import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import { solveScenario } from '../../services/solver/solveScenario';
 import { buildGroups, buildScenarioFromDraft, parseParticipantInput } from '../../utils/quickSetup';
-import { deriveBalancedTargetValues, hasAnyBalanceTargets, normalizeBalanceTargets } from '../../utils/quickSetup/attributeBalanceTargets';
+import {
+  deriveBalancedTargetValues,
+  hasAnyBalanceTargets,
+  normalizeBalanceTargets,
+  normalizeManualBalanceAttributeKeys,
+  syncAutoBalanceTargets,
+} from '../../utils/quickSetup/attributeBalanceTargets';
 import { normalizeFixedAssignmentRows } from '../../utils/quickSetup/fixedAssignments';
 import { createQuickSetupDraftFromScenario } from '../../utils/quickSetup/landingDemo';
 import { normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
@@ -73,6 +79,7 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
     inputMode: defaults.inputMode,
     fixedAssignments: [],
     balanceAttributeKey: defaults.balanceAttributeKey,
+    manualBalanceAttributeKeys: [],
     advancedOpen: defaults.advancedOpen,
     workspaceScenarioId: null,
   };
@@ -88,22 +95,29 @@ function normalizeQuickSetupDraft(draft: QuickSetupDraft): QuickSetupDraft {
     ...draft,
     avoidRepeatPairings: draft.avoidRepeatPairings ?? true,
     fixedAssignments: normalizeFixedAssignmentRows(draft.fixedAssignments),
-    balanceTargets: normalizeBalanceTargets(draft.balanceTargets),
     participantColumns: normalizeParticipantColumns(draft),
+    balanceTargets: normalizeBalanceTargets(draft.balanceTargets),
+    manualBalanceAttributeKeys: normalizeManualBalanceAttributeKeys(
+      draft.manualBalanceAttributeKeys,
+      normalizeParticipantColumns(draft).slice(1).map((column) => column.name.trim()),
+      draft.balanceTargets,
+    ),
   };
+  const parsed = parseParticipantInput(nextDraft);
+  const groups = buildGroups(parsed.people.length, nextDraft);
+  const syncedBalanceTargets = syncAutoBalanceTargets({
+    balanceTargets: nextDraft.balanceTargets,
+    manualBalanceAttributeKeys: nextDraft.manualBalanceAttributeKeys,
+    people: parsed.people,
+    groups,
+    availableAttributeKeys: parsed.attributeKeys,
+  });
 
-  if (!hasAnyBalanceTargets(nextDraft.balanceTargets) && nextDraft.balanceAttributeKey) {
-    const parsed = parseParticipantInput(nextDraft);
-    const groups = buildGroups(parsed.people.length, nextDraft);
-    return {
-      ...nextDraft,
-      balanceTargets: {
-        [nextDraft.balanceAttributeKey]: deriveBalancedTargetValues(parsed.people, groups, nextDraft.balanceAttributeKey),
-      },
-    };
-  }
-
-  return nextDraft;
+  return {
+    ...nextDraft,
+    balanceTargets: syncedBalanceTargets.balanceTargets,
+    manualBalanceAttributeKeys: syncedBalanceTargets.manualBalanceAttributeKeys,
+  };
 }
 
 function normalizeName(value: string): string {

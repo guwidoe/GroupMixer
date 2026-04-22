@@ -753,22 +753,22 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                       });
                     }}
                     onRemoveAttribute={(index) => {
+                      const columnToRemove = participantColumns[index];
+                      const hasValues = Boolean(columnToRemove?.values.trim());
+
+                      if (hasValues) {
+                        const columnName = columnToRemove.name.trim() || `${ui.quickSetup.attributeColumnDefaultLabel} ${index}`;
+                        const confirmed = window.confirm(
+                          ui.quickSetup.removeAttributeConfirmMessage.replace('{name}', columnName),
+                        );
+
+                        if (!confirmed) {
+                          return;
+                        }
+                      }
+
                       controller.updateDraft((current) => {
                         const columns = normalizeParticipantColumns(current);
-                        const columnToRemove = columns[index];
-                        const hasValues = Boolean(columnToRemove?.values.trim());
-
-                        if (hasValues) {
-                          const columnName = columnToRemove.name.trim() || `${ui.quickSetup.attributeColumnDefaultLabel} ${index}`;
-                          const confirmed = window.confirm(
-                            ui.quickSetup.removeAttributeConfirmMessage.replace('{name}', columnName),
-                          );
-
-                          if (!confirmed) {
-                            return current;
-                          }
-                        }
-
                         return withParticipantColumns(
                           current,
                           columns.filter((_, columnIndex) => columnIndex !== index),

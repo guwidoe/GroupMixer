@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   deriveBalancedTargetValues,
+  setBalanceAttributeAutoDistributionEnabled,
   setBalanceAttributeTargets,
+  syncAutoBalanceTargets,
 } from './attributeBalanceTargets';
 
 describe('attributeBalanceTargets', () => {
@@ -109,5 +111,69 @@ describe('attributeBalanceTargets', () => {
       'Group 1': { Female: 2, Male: 2 },
       'Group 2': { Female: 1, Male: 3 },
     });
+  });
+
+  it('recomputes auto-distributed attributes while preserving manual ones', () => {
+    const synced = syncAutoBalanceTargets({
+      balanceTargets: {
+        role: {
+          'Group 1': { Engineer: 2, Designer: 0 },
+          'Group 2': { Engineer: 0, Designer: 2 },
+        },
+      },
+      manualBalanceAttributeKeys: ['role'],
+      people: [
+        { id: 'Ada', attributes: { team: 'Blue', role: 'Engineer' } },
+        { id: 'Grace', attributes: { team: 'Blue', role: 'Designer' } },
+        { id: 'Linus', attributes: { team: 'Red', role: 'Engineer' } },
+        { id: 'Margaret', attributes: { team: 'Red', role: 'Designer' } },
+      ],
+      groups: [
+        { id: 'Group 1', size: 2 },
+        { id: 'Group 2', size: 2 },
+      ],
+      availableAttributeKeys: ['team', 'role'],
+    });
+
+    expect(synced.manualBalanceAttributeKeys).toEqual(['role']);
+    expect(synced.balanceTargets).toEqual({
+      team: {
+        'Group 1': { Blue: 1, Red: 1 },
+        'Group 2': { Blue: 1, Red: 1 },
+      },
+      role: {
+        'Group 1': { Engineer: 2, Designer: 0 },
+        'Group 2': { Engineer: 0, Designer: 2 },
+      },
+    });
+  });
+
+  it('treats legacy saved balance targets as manual until re-enabled', () => {
+    const synced = syncAutoBalanceTargets({
+      balanceTargets: {
+        role: {
+          'Group 1': { Engineer: 2, Designer: 0 },
+        },
+      },
+      manualBalanceAttributeKeys: undefined,
+      people: [
+        { id: 'Ada', attributes: { role: 'Engineer' } },
+        { id: 'Grace', attributes: { role: 'Designer' } },
+      ],
+      groups: [{ id: 'Group 1', size: 2 }],
+      availableAttributeKeys: ['role'],
+    });
+
+    expect(synced.manualBalanceAttributeKeys).toEqual(['role']);
+    expect(synced.balanceTargets).toEqual({
+      role: {
+        'Group 1': { Engineer: 2, Designer: 0 },
+      },
+    });
+  });
+
+  it('toggles an attribute between auto and manual modes', () => {
+    expect(setBalanceAttributeAutoDistributionEnabled([], 'team', false)).toEqual(['team']);
+    expect(setBalanceAttributeAutoDistributionEnabled(['team', 'role'], 'team', true)).toEqual(['role']);
   });
 });

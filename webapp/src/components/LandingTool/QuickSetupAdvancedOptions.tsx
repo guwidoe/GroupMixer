@@ -4,6 +4,8 @@ import { LandingFixedAssignmentsInput } from './LandingFixedAssignmentsInput';
 import { buildGroups } from '../../utils/quickSetup';
 import {
   deriveBalancedTargetValues,
+  isBalanceAttributeAutoDistributed,
+  setBalanceAttributeAutoDistributionEnabled,
   setBalanceAttributeTargets,
   setBalanceTargetValues,
 } from '../../utils/quickSetup/attributeBalanceTargets';
@@ -105,27 +107,31 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
                   >
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div className="text-sm font-medium">{attribute.key}</div>
-                      <button
-                        type="button"
-                        className="rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm"
-                        style={{
-                          borderColor: 'var(--border-primary)',
-                          backgroundColor: 'var(--bg-primary)',
-                          color: 'var(--text-primary)',
-                        }}
-                        aria-label={`${labels.autoDistributeAttributeLabel}: ${attribute.key}`}
-                        onClick={() => controller.updateDraft((current) => ({
-                          ...current,
-                          balanceAttributeKey: null,
-                          balanceTargets: setBalanceAttributeTargets(
-                            current.balanceTargets,
-                            attribute.key,
-                            deriveBalancedTargetValues(analysis.participants, balanceGroups, attribute.key),
-                          ),
-                        }))}
-                      >
-                        {labels.autoDistributeAttributeLabel}
-                      </button>
+                      <label className="flex items-center gap-2 text-xs font-medium sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          aria-label={`${labels.autoDistributeAttributeLabel}: ${attribute.key}`}
+                          checked={isBalanceAttributeAutoDistributed(draft.manualBalanceAttributeKeys, attribute.key)}
+                          onChange={(event) => controller.updateDraft((current) => ({
+                            ...current,
+                            balanceAttributeKey: null,
+                            manualBalanceAttributeKeys: setBalanceAttributeAutoDistributionEnabled(
+                              current.manualBalanceAttributeKeys,
+                              attribute.key,
+                              event.target.checked,
+                            ),
+                            balanceTargets: event.target.checked
+                              ? setBalanceAttributeTargets(
+                                current.balanceTargets,
+                                attribute.key,
+                                deriveBalancedTargetValues(analysis.participants, balanceGroups, attribute.key),
+                              )
+                              : current.balanceTargets,
+                          }))}
+                        />
+                        <span>{labels.autoDistributeAttributeLabel}</span>
+                      </label>
                     </div>
                     <div className="grid gap-4 xl:grid-cols-2">
                       {balanceGroups.map((group) => (
@@ -140,6 +146,11 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
                             onChange={(nextValue) => controller.updateDraft((current) => ({
                               ...current,
                               balanceAttributeKey: null,
+                              manualBalanceAttributeKeys: setBalanceAttributeAutoDistributionEnabled(
+                                current.manualBalanceAttributeKeys,
+                                attribute.key,
+                                false,
+                              ),
                               balanceTargets: setBalanceTargetValues(current.balanceTargets, attribute.key, group.id, nextValue),
                             }))}
                             showSummary={false}

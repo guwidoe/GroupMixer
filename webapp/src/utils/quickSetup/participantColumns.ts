@@ -1,5 +1,5 @@
 import type { QuickSetupDraft, QuickSetupParticipantColumn } from '../../components/LandingTool/types';
-import { normalizeBalanceTargets } from './attributeBalanceTargets';
+import { normalizeBalanceTargets, normalizeManualBalanceAttributeKeys } from './attributeBalanceTargets';
 
 function splitCsvLine(line: string) {
   return line.split(',').map((entry) => entry.trim());
@@ -132,6 +132,15 @@ export function withParticipantColumns(draft: QuickSetupDraft, columns: QuickSet
       return nextAttributeKey ? [[nextAttributeKey, groupTargets] as const] : [];
     }),
   ));
+  const nextManualBalanceAttributeKeys = normalizeManualBalanceAttributeKeys(
+    (draft.manualBalanceAttributeKeys ?? []).flatMap((attributeKey) => {
+      const matchingColumn = normalizedColumns.slice(1).find((column) => previousNameById.get(column.id) === attributeKey || column.name.trim() === attributeKey);
+      const nextAttributeKey = matchingColumn?.name.trim();
+      return nextAttributeKey ? [nextAttributeKey] : [];
+    }),
+    normalizedColumns.slice(1).map((column) => column.name.trim()),
+    nextBalanceTargets,
+  );
 
   return {
     ...draft,
@@ -140,5 +149,6 @@ export function withParticipantColumns(draft: QuickSetupDraft, columns: QuickSet
     inputMode: normalizedColumns.length > 1 ? 'csv' : 'names',
     balanceAttributeKey: nextBalanceAttributeKey,
     balanceTargets: nextBalanceTargets,
+    manualBalanceAttributeKeys: nextManualBalanceAttributeKeys,
   };
 }

@@ -611,7 +611,8 @@
     width: 100%;
     min-height: 0;
     display: block;
-    border: none;
+    border: 0 !important;
+    box-shadow: none !important;
     resize: none;
     overflow-y: auto;
     background: transparent;
