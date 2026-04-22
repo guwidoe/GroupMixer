@@ -82,17 +82,26 @@ pub(crate) fn build_preferred_mixed_seed(
     let candidate_seeds = if remainder_weeks == 0 {
         vec![(MixedSeedFamily::ExactBlockOnly, build_greedy_exact_block_seed(input)?)]
     } else {
+        let prefix_seed = build_prefix_seed(
+            input,
+            problem.num_weeks / dominant_atom_weeks,
+            dominant_atom_weeks,
+        )?;
         let mut candidates = Vec::new();
         candidates.push((
             MixedSeedFamily::DominantPrefixTail,
             build_dominant_prefix_tail_seed(input, dominant_atom_weeks)?,
         ));
-        if let Ok(seed) = build_requested_tail_seed(input, dominant_atom_weeks) {
+        if let Ok(seed) = build_requested_tail_seed(
+            input,
+            dominant_atom_weeks,
+            prefix_seed.clone(),
+        ) {
             candidates.push((MixedSeedFamily::RequestedTailAtom, seed));
         }
         candidates.push((
             MixedSeedFamily::HeuristicTail,
-            build_heuristic_tail_seed(input, dominant_atom_weeks)?,
+            build_heuristic_tail_seed(input, dominant_atom_weeks, prefix_seed)?,
         ));
         candidates
     };
@@ -183,15 +192,14 @@ fn build_dominant_prefix_tail_seed(
 fn build_requested_tail_seed(
     input: &ApiInput,
     dominant_atom_weeks: usize,
+    prefix_seed: ExactBlockSeed,
 ) -> Result<ExactBlockSeed, SolverError> {
     let problem = PureSgpProblem::from_input(input)?;
-    let full_copies = problem.num_weeks / dominant_atom_weeks;
     let remainder_weeks = problem.num_weeks % dominant_atom_weeks;
     if remainder_weeks == 0 {
         return build_greedy_exact_block_seed(input);
     }
 
-    let prefix_seed = build_prefix_seed(input, full_copies, dominant_atom_weeks)?;
     let tail_input = clone_input_with_num_weeks(input, remainder_weeks)?;
     let tail_atom = query_construction_atom_from_solver6_input(
         &tail_input,
@@ -209,15 +217,14 @@ fn build_requested_tail_seed(
 fn build_heuristic_tail_seed(
     input: &ApiInput,
     dominant_atom_weeks: usize,
+    prefix_seed: ExactBlockSeed,
 ) -> Result<ExactBlockSeed, SolverError> {
     let problem = PureSgpProblem::from_input(input)?;
-    let full_copies = problem.num_weeks / dominant_atom_weeks;
     let remainder_weeks = problem.num_weeks % dominant_atom_weeks;
     if remainder_weeks == 0 {
         return build_greedy_exact_block_seed(input);
     }
 
-    let prefix_seed = build_prefix_seed(input, full_copies, dominant_atom_weeks)?;
     let active_penalty_model = active_penalty_model(input)?;
     let num_people = problem.num_groups * problem.group_size;
     let mut schedule = prefix_seed.schedule.clone();
@@ -450,8 +457,8 @@ fn active_penalty_model(input: &ApiInput) -> Result<Solver6PairRepeatPenaltyMode
 #[cfg(test)]
 mod tests {
     use super::{
-        build_dominant_prefix_tail_seed, build_heuristic_tail_seed, build_preferred_mixed_seed,
-        build_requested_tail_seed, MixedSeedFamily,
+        build_dominant_prefix_tail_seed, build_heuristic_tail_seed, build_prefix_seed,
+        build_preferred_mixed_seed, build_requested_tail_seed, MixedSeedFamily,
     };
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
@@ -519,7 +526,9 @@ mod tests {
 
     #[test]
     fn requested_tail_seed_attaches_smaller_solver5_tail_when_available() {
-        let seed = build_requested_tail_seed(&pure_input(8, 3, 21), 11)
+        let input = pure_input(8, 3, 21);
+        let prefix_seed = build_prefix_seed(&input, 1, 11).expect("prefix seed should build");
+        let seed = build_requested_tail_seed(&input, 11, prefix_seed)
             .expect("8-3-21 should support an exact requested tail atom");
 
         assert_eq!(seed.schedule.len(), 21);
@@ -531,7 +540,9 @@ mod tests {
 
     #[test]
     fn heuristic_tail_seed_builds_valid_non_multiple_schedule() {
-        let seed = build_heuristic_tail_seed(&pure_input(8, 3, 21), 11)
+        let input = pure_input(8, 3, 21);
+        let prefix_seed = build_prefix_seed(&input, 1, 11).expect("prefix seed should build");
+        let seed = build_heuristic_tail_seed(&input, 11, prefix_seed)
             .expect("heuristic tail seed should build for 8-3-21");
 
         assert_eq!(seed.schedule.len(), 21);
