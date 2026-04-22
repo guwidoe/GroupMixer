@@ -88,6 +88,18 @@ describe('NumberField', () => {
     expect(input).toHaveValue('15');
   });
 
+  it('lets focused sliders accept typed numeric values directly', async () => {
+    const user = userEvent.setup();
+    render(<NumberFieldHarness value={4} />);
+
+    const slider = screen.getByRole('slider', { name: /sessions slider/i });
+    slider.focus();
+
+    await user.keyboard('10');
+
+    expect(screen.getByLabelText('current-value')).toHaveTextContent('10');
+  });
+
   it('supports decimal fields and commits on blur', async () => {
     const user = userEvent.setup();
     const onCommit = vi.fn();

@@ -1,4 +1,4 @@
-import React, { useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 
 export type NumberFieldKind = 'int' | 'float';
 export type NumberFieldVariant = 'default' | 'compact';
@@ -137,6 +137,8 @@ export function NumberField({
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
   const [draft, setDraft] = useState(() => formatValue(value, kind, step));
   const [isFocused, setIsFocused] = useState(false);
+  const sliderTypingBufferRef = useRef('');
+  const sliderTypingResetTimeoutRef = useRef<number | null>(null);
   const displayValue = isFocused ? draft : formatValue(value, kind, step);
 
   const parsedDraft = useMemo(() => parseDraft(draft, kind), [draft, kind]);
@@ -157,6 +159,45 @@ export function NumberField({
     : 0;
   const sliderLabelOffsetRem = getSliderLabelOffsetRem(sliderPercent);
   const sliderDisplayValue = formatValue(value ?? sliderValue ?? null, kind, step);
+
+  const clearSliderTypingBuffer = () => {
+    sliderTypingBufferRef.current = '';
+    if (sliderTypingResetTimeoutRef.current != null) {
+      window.clearTimeout(sliderTypingResetTimeoutRef.current);
+      sliderTypingResetTimeoutRef.current = null;
+    }
+  };
+
+  const queueSliderTypingBufferReset = () => {
+    if (sliderTypingResetTimeoutRef.current != null) {
+      window.clearTimeout(sliderTypingResetTimeoutRef.current);
+    }
+
+    sliderTypingResetTimeoutRef.current = window.setTimeout(() => {
+      sliderTypingBufferRef.current = '';
+      sliderTypingResetTimeoutRef.current = null;
+    }, 1000);
+  };
+
+  const applySliderTypedValue = (nextRaw: string) => {
+    sliderTypingBufferRef.current = nextRaw;
+    queueSliderTypingBufferReset();
+
+    const parsed = parseDraft(nextRaw, kind);
+    if (parsed === null || Number.isNaN(parsed)) {
+      return;
+    }
+
+    const normalized = normalizeNumber(parsed, { kind, step, min, max });
+    onChange(normalized);
+    setDraft(formatValue(normalized, kind, step));
+  };
+
+  useEffect(() => () => {
+    if (sliderTypingResetTimeoutRef.current != null) {
+      window.clearTimeout(sliderTypingResetTimeoutRef.current);
+    }
+  }, []);
 
   const commitDraft = () => {
     if (disabled) return;
@@ -225,6 +266,36 @@ export function NumberField({
               onTouchEnd={(event) => {
                 const next = normalizeNumber(Number((event.currentTarget as HTMLInputElement).value), { kind, step, min: sliderMin, max: effectiveSoftMax });
                 onCommit?.(next);
+              }}
+              onBlur={() => {
+                clearSliderTypingBuffer();
+              }}
+              onKeyDown={(event) => {
+                const isDigit = /^\d$/.test(event.key);
+                const isDecimalPoint = kind === 'float' && event.key === '.';
+                const isLeadingMinus = event.key === '-' && (min == null || min < 0);
+
+                if (isDigit || isDecimalPoint || isLeadingMinus) {
+                  event.preventDefault();
+                  const nextRaw = `${sliderTypingBufferRef.current}${event.key}`;
+                  applySliderTypedValue(nextRaw);
+                  return;
+                }
+
+                if (event.key === 'Backspace') {
+                  event.preventDefault();
+                  const nextRaw = sliderTypingBufferRef.current.slice(0, -1);
+                  if (nextRaw === '') {
+                    clearSliderTypingBuffer();
+                    return;
+                  }
+                  applySliderTypedValue(nextRaw);
+                  return;
+                }
+
+                if (event.key === 'Escape') {
+                  clearSliderTypingBuffer();
+                }
               }}
             />
             {showInput ? (
