@@ -699,6 +699,24 @@ describe('ToolLandingPage SEO wiring', () => {
 
     expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-4');
     expect(screen.getByTestId('landing-hero')).toHaveClass('order-2', 'lg:order-1');
+    expect(screen.getByTestId('landing-secondary-copy')).toHaveClass('order-5');
+  });
+
+  it('renders the eyebrow and supporting copy below the results section', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+
+    const results = await screen.findByTestId('landing-results-panel');
+    const secondaryCopy = screen.getByTestId('landing-secondary-copy');
+
+    expect(results.compareDocumentPosition(secondaryCopy) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('uses consistent comma-separated helper text for advanced constraint inputs', () => {

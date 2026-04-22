@@ -820,7 +820,11 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               </div>
             </div>
 
-            <div className="order-3 max-w-4xl">
+            {optimizerCtaCard && <div className="order-4">{optimizerCtaCard}</div>}
+
+            {resultsSection}
+
+            <div data-testid="landing-secondary-copy" className="order-5 max-w-4xl">
               <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
                 {config.hero.eyebrow}
               </div>
@@ -860,10 +864,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 </div>
               )}
             </div>
-
-            {optimizerCtaCard && <div className="order-4">{optimizerCtaCard}</div>}
-
-            {resultsSection}
           </div>
         </section>
 
