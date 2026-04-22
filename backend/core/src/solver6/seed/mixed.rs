@@ -1,4 +1,8 @@
-use super::relabeling::build_greedy_exact_block_seed;
+use super::relabeling::{
+    build_exact_block_seed_from_plan, build_greedy_exact_block_seed,
+    build_greedy_relabeling_plan, build_greedy_relabeling_plan_from_initial_plan,
+    ExactBlockRelabelingPlan, SeedPermutation,
+};
 use super::{
     validate_full_schedule_shape, ExactBlockSeed, ExactBlockSeedDiagnostics, SeedAtomId,
     SeedAtomUsage, SeedPairTelemetry, SeedRelabelingSummary,
@@ -63,6 +67,12 @@ pub(crate) struct MixedSeedSelection {
     pub seed: ExactBlockSeed,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PrefixSeedContext {
+    seed: ExactBlockSeed,
+    plan: ExactBlockRelabelingPlan,
+}
+
 pub(crate) fn build_preferred_mixed_seed(
     input: &ApiInput,
 ) -> Result<MixedSeedSelection, SolverError> {
@@ -82,7 +92,7 @@ pub(crate) fn build_preferred_mixed_seed(
     let candidate_seeds = if remainder_weeks == 0 {
         vec![(MixedSeedFamily::ExactBlockOnly, build_greedy_exact_block_seed(input)?)]
     } else {
-        let prefix_seed = build_prefix_seed(
+        let prefix = build_prefix_seed(
             input,
             problem.num_weeks / dominant_atom_weeks,
             dominant_atom_weeks,
@@ -90,18 +100,18 @@ pub(crate) fn build_preferred_mixed_seed(
         let mut candidates = Vec::new();
         candidates.push((
             MixedSeedFamily::DominantPrefixTail,
-            build_dominant_prefix_tail_seed(input, dominant_atom_weeks)?,
+            build_dominant_prefix_tail_seed(input, dominant_atom_weeks, &prefix)?,
         ));
         if let Ok(seed) = build_requested_tail_seed(
             input,
             dominant_atom_weeks,
-            prefix_seed.clone(),
+            prefix.seed.clone(),
         ) {
             candidates.push((MixedSeedFamily::RequestedTailAtom, seed));
         }
         candidates.push((
             MixedSeedFamily::HeuristicTail,
-            build_heuristic_tail_seed(input, dominant_atom_weeks, prefix_seed)?,
+            build_heuristic_tail_seed(input, dominant_atom_weeks, prefix.seed)?,
         ));
         candidates
     };
@@ -181,11 +191,17 @@ fn candidate_outranks(
 fn build_dominant_prefix_tail_seed(
     input: &ApiInput,
     dominant_atom_weeks: usize,
+    prefix: &PrefixSeedContext,
 ) -> Result<ExactBlockSeed, SolverError> {
     let problem = PureSgpProblem::from_input(input)?;
     let full_copy_weeks = ((problem.num_weeks / dominant_atom_weeks) + 1) * dominant_atom_weeks;
     let full_copy_input = clone_input_with_num_weeks(input, full_copy_weeks)?;
-    let seed = build_greedy_exact_block_seed(&full_copy_input)?;
+    let mut initial_plan = prefix.plan.clone();
+    initial_plan.copy_permutations.push(SeedPermutation::identity(
+        problem.num_groups * problem.group_size,
+    ));
+    let plan = build_greedy_relabeling_plan_from_initial_plan(&full_copy_input, &initial_plan)?;
+    let seed = build_exact_block_seed_from_plan(&full_copy_input, &plan)?;
     truncate_seed_to_weeks(input, seed, problem.num_weeks)
 }
 
@@ -274,25 +290,31 @@ fn build_prefix_seed(
     input: &ApiInput,
     full_copies: usize,
     dominant_atom_weeks: usize,
-) -> Result<ExactBlockSeed, SolverError> {
+) -> Result<PrefixSeedContext, SolverError> {
+    let problem = PureSgpProblem::from_input(input)?;
     if full_copies == 0 {
         let active_penalty_model = active_penalty_model(input)?;
-        return Ok(ExactBlockSeed {
-            schedule: Vec::new(),
-            diagnostics: ExactBlockSeedDiagnostics {
-                total_weeks: 0,
-                atom_uses: Vec::new(),
-                pair_telemetry: Some(SeedPairTelemetry::from_schedule(
-                    &PureSgpProblem::from_input(input)?,
-                    &[],
-                    active_penalty_model,
-                )?),
+        return Ok(PrefixSeedContext {
+            seed: ExactBlockSeed {
+                schedule: Vec::new(),
+                diagnostics: ExactBlockSeedDiagnostics {
+                    total_weeks: 0,
+                    atom_uses: Vec::new(),
+                    pair_telemetry: Some(SeedPairTelemetry::from_schedule(
+                        &problem,
+                        &[],
+                        active_penalty_model,
+                    )?),
+                },
             },
+            plan: ExactBlockRelabelingPlan::identity(0, problem.num_groups * problem.group_size),
         });
     }
 
     let prefix_input = clone_input_with_num_weeks(input, full_copies * dominant_atom_weeks)?;
-    build_greedy_exact_block_seed(&prefix_input)
+    let plan = build_greedy_relabeling_plan(&prefix_input)?;
+    let seed = build_exact_block_seed_from_plan(&prefix_input, &plan)?;
+    Ok(PrefixSeedContext { seed, plan })
 }
 
 fn compose_seed_with_solver5_tail(
@@ -542,8 +564,8 @@ mod tests {
     #[test]
     fn requested_tail_seed_attaches_smaller_solver5_tail_when_available() {
         let input = pure_input(8, 3, 21);
-        let prefix_seed = build_prefix_seed(&input, 1, 11).expect("prefix seed should build");
-        let seed = build_requested_tail_seed(&input, 11, prefix_seed)
+        let prefix = build_prefix_seed(&input, 1, 11).expect("prefix seed should build");
+        let seed = build_requested_tail_seed(&input, 11, prefix.seed)
             .expect("8-3-21 should support an exact requested tail atom");
 
         assert_eq!(seed.schedule.len(), 21);
@@ -556,8 +578,8 @@ mod tests {
     #[test]
     fn heuristic_tail_seed_builds_valid_non_multiple_schedule() {
         let input = pure_input(8, 3, 21);
-        let prefix_seed = build_prefix_seed(&input, 1, 11).expect("prefix seed should build");
-        let seed = build_heuristic_tail_seed(&input, 11, prefix_seed)
+        let prefix = build_prefix_seed(&input, 1, 11).expect("prefix seed should build");
+        let seed = build_heuristic_tail_seed(&input, 11, prefix.seed)
             .expect("heuristic tail seed should build for 8-3-21");
 
         assert_eq!(seed.schedule.len(), 21);
@@ -612,7 +634,9 @@ mod tests {
 
     #[test]
     fn dominant_prefix_tail_seed_is_truncated_to_requested_horizon() {
-        let seed = build_dominant_prefix_tail_seed(&pure_input(8, 3, 21), 11)
+        let input = pure_input(8, 3, 21);
+        let prefix = build_prefix_seed(&input, 1, 11).expect("prefix seed should build");
+        let seed = build_dominant_prefix_tail_seed(&input, 11, &prefix)
             .expect("dominant prefix tail seed should build");
 
         assert_eq!(seed.schedule.len(), 21);

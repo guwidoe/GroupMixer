@@ -312,11 +312,22 @@ pub(crate) fn evaluate_relabeling_baseline_objective(
 pub(crate) fn build_greedy_relabeling_plan(
     input: &ApiInput,
 ) -> Result<ExactBlockRelabelingPlan, SolverError> {
+    let problem = PureSgpProblem::from_input(input)?;
+    build_greedy_relabeling_plan_from_initial_plan(
+        input,
+        &ExactBlockRelabelingPlan::identity(
+            ExactBlockCompositionContext::for_input(input)?.full_copies,
+            problem.num_groups * problem.group_size,
+        ),
+    )
+}
+
+pub(crate) fn build_greedy_relabeling_plan_from_initial_plan(
+    input: &ApiInput,
+    initial_plan: &ExactBlockRelabelingPlan,
+) -> Result<ExactBlockRelabelingPlan, SolverError> {
     let context = ExactBlockCompositionContext::for_input(input)?;
-    let mut state = GreedyRelabelingState::from_plan(
-        &context,
-        ExactBlockRelabelingPlan::identity(context.full_copies, context.num_people()),
-    )?;
+    let mut state = GreedyRelabelingState::from_plan(&context, initial_plan.clone())?;
 
     if greedy_relabeling_has_reached_known_optimum(&state, context.active_penalty_model) {
         return Ok(state.plan);
@@ -731,7 +742,8 @@ mod tests {
     use super::{
         build_exact_block_seed_from_plan, build_random_exact_block_seed,
         build_greedy_exact_block_seed, build_greedy_relabeling_plan,
-        build_relabeling_baseline_plan, evaluate_copy_permutation_swap,
+        build_greedy_relabeling_plan_from_initial_plan, build_relabeling_baseline_plan,
+        evaluate_copy_permutation_swap,
         evaluate_exact_block_relabeling_objective,
         evaluate_exact_block_relabeling_objective_with_context,
         evaluate_greedy_relabeling_objective, evaluate_relabeling_baseline_objective,
@@ -1036,5 +1048,17 @@ mod tests {
             evaluated.linear_repeat_lower_bound_gap_after,
             recomputed.linear_repeat_lower_bound_gap()
         );
+    }
+
+    #[test]
+    fn warm_started_greedy_relabeling_keeps_an_existing_local_optimum() {
+        let input = pure_input(8, 4, 20);
+        let greedy_plan = build_greedy_relabeling_plan(&input)
+            .expect("greedy relabeling plan should build");
+
+        let warm_started = build_greedy_relabeling_plan_from_initial_plan(&input, &greedy_plan)
+            .expect("warm-started greedy relabeling should build");
+
+        assert_eq!(warm_started, greedy_plan);
     }
 }
