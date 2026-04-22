@@ -68,6 +68,12 @@ struct DenseRelabelingPairAdjustmentScratch {
     current_generation: u32,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SwapMateSources {
+    left_only_mates: Vec<usize>,
+    right_only_mates: Vec<usize>,
+}
+
 impl DenseRelabelingPairAdjustmentScratch {
     fn new(total_pairs: usize, expected_adjustments: usize) -> Self {
         Self {
@@ -694,25 +700,18 @@ fn evaluate_copy_permutation_swap_summary(
     let left_target = image[left];
     let right_target = image[right];
     let universe = state.pair_state.universe();
+    let swap_mates = &context.swap_mate_sources_by_pair[pair_slot_fast(context.num_people(), left, right)];
     scratch.start_candidate();
 
-    for week_idx in 0..context.atom_weeks {
-        let left_mates = &context.groupmates_by_person_by_week[left][week_idx];
-        if context.groupmate_flags_by_person_by_week[left][week_idx][right] {
-            continue;
-        }
-        let right_mates = &context.groupmates_by_person_by_week[right][week_idx];
-
-        for &mate in left_mates {
-            let mate_target = image[mate];
-            scratch.apply(pair_index_fast(universe, left_target, mate_target), -1);
-            scratch.apply(pair_index_fast(universe, right_target, mate_target), 1);
-        }
-        for &mate in right_mates {
-            let mate_target = image[mate];
-            scratch.apply(pair_index_fast(universe, right_target, mate_target), -1);
-            scratch.apply(pair_index_fast(universe, left_target, mate_target), 1);
-        }
+    for &mate in &swap_mates.left_only_mates {
+        let mate_target = image[mate];
+        scratch.apply(pair_index_fast(universe, left_target, mate_target), -1);
+        scratch.apply(pair_index_fast(universe, right_target, mate_target), 1);
+    }
+    for &mate in &swap_mates.right_only_mates {
+        let mate_target = image[mate];
+        scratch.apply(pair_index_fast(universe, right_target, mate_target), -1);
+        scratch.apply(pair_index_fast(universe, left_target, mate_target), 1);
     }
 
     let linear_delta = scratch.score_delta_for_model(
@@ -766,7 +765,12 @@ fn pair_index_fast(
     } else {
         (right, left)
     };
-    let row_offset = left * (2 * universe.num_people() - left - 1) / 2;
+    pair_slot_fast(universe.num_people(), left, right)
+}
+
+fn pair_slot_fast(num_people: usize, left: usize, right: usize) -> usize {
+    debug_assert!(left < right);
+    let row_offset = left * (2 * num_people - left - 1) / 2;
     row_offset + (right - left - 1)
 }
 
@@ -815,8 +819,7 @@ struct ExactBlockCompositionContext {
     atom_weeks: usize,
     full_copies: usize,
     active_penalty_model: Solver6PairRepeatPenaltyModel,
-    groupmates_by_person_by_week: Vec<Vec<Vec<usize>>>,
-    groupmate_flags_by_person_by_week: Vec<Vec<Vec<bool>>>,
+    swap_mate_sources_by_pair: Vec<SwapMateSources>,
 }
 
 impl ExactBlockCompositionContext {
@@ -857,8 +860,8 @@ impl ExactBlockCompositionContext {
             }
         };
 
-        let (groupmates_by_person_by_week, groupmate_flags_by_person_by_week) =
-            groupmates_by_person_by_week(&atom, problem.num_groups * problem.group_size)?;
+        let swap_mate_sources_by_pair =
+            swap_mate_sources_by_pair(&atom, problem.num_groups * problem.group_size)?;
 
         Ok(Self {
             problem,
@@ -866,8 +869,7 @@ impl ExactBlockCompositionContext {
             atom_weeks,
             full_copies,
             active_penalty_model,
-            groupmates_by_person_by_week,
-            groupmate_flags_by_person_by_week,
+            swap_mate_sources_by_pair,
         })
     }
 
@@ -912,12 +914,11 @@ impl ExactBlockCompositionContext {
     }
 }
 
-fn groupmates_by_person_by_week(
+fn swap_mate_sources_by_pair(
     atom: &Solver5ConstructionAtom,
     num_people: usize,
-) -> Result<(Vec<Vec<Vec<usize>>>, Vec<Vec<Vec<bool>>>), SolverError> {
+) -> Result<Vec<SwapMateSources>, SolverError> {
     let mut groupmates = vec![vec![Vec::new(); atom.schedule.len()]; num_people];
-    let mut groupmate_flags = vec![vec![vec![false; num_people]; atom.schedule.len()]; num_people];
 
     for (week_idx, week) in atom.schedule.iter().enumerate() {
         for block in week {
@@ -932,16 +933,37 @@ fn groupmates_by_person_by_week(
                     .copied()
                     .filter(|other| *other != person)
                     .collect();
-                for &other in block {
-                    if other != person {
-                        groupmate_flags[person][week_idx][other] = true;
-                    }
-                }
             }
         }
     }
 
-    Ok((groupmates, groupmate_flags))
+    let total_pairs = num_people * (num_people.saturating_sub(1)) / 2;
+    let mut by_pair = vec![
+        SwapMateSources {
+            left_only_mates: Vec::new(),
+            right_only_mates: Vec::new(),
+        };
+        total_pairs
+    ];
+
+    for left in 0..num_people {
+        for right in (left + 1)..num_people {
+            let slot = pair_slot_fast(num_people, left, right);
+            let swap_mates = &mut by_pair[slot];
+            for week_idx in 0..atom.schedule.len() {
+                let left_mates = &groupmates[left][week_idx];
+                if left_mates.contains(&right) {
+                    continue;
+                }
+                swap_mates.left_only_mates.extend(left_mates.iter().copied());
+                swap_mates
+                    .right_only_mates
+                    .extend(groupmates[right][week_idx].iter().copied());
+            }
+        }
+    }
+
+    Ok(by_pair)
 }
 
 #[cfg(test)]
