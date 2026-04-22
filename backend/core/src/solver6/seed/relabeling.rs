@@ -64,7 +64,8 @@ impl RelabelingPairAdjustmentAccumulator {
 struct DenseRelabelingPairAdjustmentScratch {
     deltas_by_pair: Vec<i8>,
     touched_pairs: Vec<usize>,
-    touched_flags: Vec<bool>,
+    touched_generations: Vec<u32>,
+    current_generation: u32,
 }
 
 impl DenseRelabelingPairAdjustmentScratch {
@@ -72,22 +73,25 @@ impl DenseRelabelingPairAdjustmentScratch {
         Self {
             deltas_by_pair: vec![0; total_pairs],
             touched_pairs: Vec::with_capacity(expected_adjustments),
-            touched_flags: vec![false; total_pairs],
+            touched_generations: vec![0; total_pairs],
+            current_generation: 1,
         }
     }
 
-    fn clear(&mut self) {
-        for &pair_idx in &self.touched_pairs {
-            self.deltas_by_pair[pair_idx] = 0;
-            self.touched_flags[pair_idx] = false;
-        }
+    fn start_candidate(&mut self) {
         self.touched_pairs.clear();
+        self.current_generation = self.current_generation.wrapping_add(1);
+        if self.current_generation == 0 {
+            self.touched_generations.fill(0);
+            self.current_generation = 1;
+        }
     }
 
     fn apply(&mut self, pair_idx: usize, delta: i8) {
         debug_assert_ne!(delta, 0);
-        if !self.touched_flags[pair_idx] {
-            self.touched_flags[pair_idx] = true;
+        if self.touched_generations[pair_idx] != self.current_generation {
+            self.touched_generations[pair_idx] = self.current_generation;
+            self.deltas_by_pair[pair_idx] = 0;
             self.touched_pairs.push(pair_idx);
         }
         self.deltas_by_pair[pair_idx] += delta;
@@ -690,7 +694,7 @@ fn evaluate_copy_permutation_swap_summary(
     let left_target = image[left];
     let right_target = image[right];
     let universe = state.pair_state.universe();
-    scratch.clear();
+    scratch.start_candidate();
 
     for week_idx in 0..context.atom_weeks {
         let left_mates = &context.groupmates_by_person_by_week[left][week_idx];

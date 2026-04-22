@@ -13,4 +13,5 @@
 - Final exact-block seed-packaging micro-optimizations that update pair telemetry inline during schedule materialization: the direct pair-state maintenance experiment regressed runtime.
 - Two-path dominant-prefix-tail preparation (cheap telemetry first, materialize seed only if selected): this still duplicated enough work to lose time overall.
 - Trusted fast write-side pair-state mutation clones of `apply_pair_count_delta`: the big win was in read-only relabeling score-delta accumulation, not in duplicating the whole mutation path.
+- Incumbent-best adjustment-buffer reuse during relabeling scans: the simpler allocate-on-replacement approach still wins after dense scratch accumulation landed.
 - Repeating previously failed lanes: shared prefix `PairFrequencyState` wrappers across mixed-tail candidates, heuristic-tail closed-form increment math substitution, reusing final exact-block packaged pair-state, early-return prune after first optimum-reaching swap, full `PairUniverse` pair-index table caching, simple source-equivalence symmetry pruning, or dropping `dominant_prefix_tail` whenever requested-tail exists.
