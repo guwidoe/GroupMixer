@@ -33,24 +33,76 @@ export function deriveBalancedTargetValues(
 
   const entries = [...totals.entries()].sort(([left], [right]) => left.localeCompare(right));
   const assignments: Record<string, number>[] = groups.map(() => ({}));
+  const assignedGroupTotals = groups.map(() => 0);
 
   for (const [value, total] of entries) {
     const exactTargets = groups.map((group) => (total * group.size) / Math.max(1, people.length));
     const floors = exactTargets.map((target) => Math.floor(target));
     let remaining = total - floors.reduce((sum, current) => sum + current, 0);
     const order = exactTargets
-      .map((target, index) => ({ index, fraction: target - floors[index] }))
-      .sort((left, right) => right.fraction - left.fraction || left.index - right.index);
+      .map((target, index) => ({
+        index,
+        fraction: target - floors[index],
+        exactTarget: target,
+      }))
+      .sort((left, right) => {
+        const fractionDelta = right.fraction - left.fraction;
+        if (fractionDelta !== 0) {
+          return fractionDelta;
+        }
+
+        const remainingCapacityDelta = (groups[right.index].size - assignedGroupTotals[right.index])
+          - (groups[left.index].size - assignedGroupTotals[left.index]);
+        if (remainingCapacityDelta !== 0) {
+          return remainingCapacityDelta;
+        }
+
+        const exactTargetDelta = right.exactTarget - left.exactTarget;
+        if (exactTargetDelta !== 0) {
+          return exactTargetDelta;
+        }
+
+        return left.index - right.index;
+      });
 
     for (const group of assignments) {
       group[value] = 0;
     }
     floors.forEach((count, index) => {
       assignments[index][value] = count;
+      assignedGroupTotals[index] += count;
     });
-    for (let index = 0; index < order.length && remaining > 0; index += 1) {
-      assignments[order[index].index][value] += 1;
+
+    for (const candidate of order) {
+      if (remaining <= 0) {
+        break;
+      }
+
+      const groupIndex = candidate.index;
+      if (assignedGroupTotals[groupIndex] >= groups[groupIndex].size) {
+        continue;
+      }
+
+      assignments[groupIndex][value] += 1;
+      assignedGroupTotals[groupIndex] += 1;
       remaining -= 1;
+    }
+
+    if (remaining > 0) {
+      const fallbackOrder = groups
+        .map((group, index) => ({ index, remainingCapacity: group.size - assignedGroupTotals[index] }))
+        .filter((candidate) => candidate.remainingCapacity > 0)
+        .sort((left, right) => right.remainingCapacity - left.remainingCapacity || left.index - right.index);
+
+      for (const candidate of fallbackOrder) {
+        if (remaining <= 0) {
+          break;
+        }
+
+        assignments[candidate.index][value] += 1;
+        assignedGroupTotals[candidate.index] += 1;
+        remaining -= 1;
+      }
     }
   }
 
