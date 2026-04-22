@@ -90,14 +90,31 @@ describe('NumberField', () => {
 
   it('lets focused sliders accept typed numeric values directly', async () => {
     const user = userEvent.setup();
-    render(<NumberFieldHarness value={4} />);
+    const { container } = render(<NumberFieldHarness value={4} />);
 
     const slider = screen.getByRole('slider', { name: /sessions slider/i });
-    slider.focus();
+    await user.click(slider);
+
+    expect(container.querySelector('.number-field__slider-value--focused')).toBeTruthy();
+    expect(container.querySelector('.number-field__slider-value-caret')).toBeTruthy();
 
     await user.keyboard('10');
 
     expect(screen.getByLabelText('current-value')).toHaveTextContent('10');
+  });
+
+  it('keeps slider typing active across multiple digits and supports backspace', async () => {
+    const user = userEvent.setup();
+    render(<NumberFieldHarness value={12} />);
+
+    const slider = screen.getByRole('slider', { name: /sessions slider/i });
+    await user.click(slider);
+
+    await user.keyboard('25');
+    expect(screen.getByLabelText('current-value')).toHaveTextContent('25');
+
+    await user.keyboard('{Backspace}');
+    expect(screen.getByLabelText('current-value')).toHaveTextContent('2');
   });
 
   it('supports decimal fields and commits on blur', async () => {
