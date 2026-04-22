@@ -114,12 +114,12 @@ export function LandingFixedAssignmentsInput({
   const groupValues = useMemo(() => serializeFixedAssignmentColumnValues(assignments, 'groupId'), [assignments]);
   const maxLineCount = useMemo(() => (
     Math.max(
-      4,
+      1,
       splitParticipantColumnValues(participantValues).length,
       splitParticipantColumnValues(groupValues).length,
     )
   ), [groupValues, participantValues]);
-  const contentHeight = Math.max(height - HEADER_HEIGHT - 28, maxLineCount * LINE_HEIGHT + BODY_PADDING);
+  const contentHeight = Math.max(height - HEADER_HEIGHT - 18, maxLineCount * LINE_HEIGHT + BODY_PADDING);
 
   const handleColumnPointerMove = useCallback((event: PointerEvent) => {
     const dragState = dragStateRef.current;

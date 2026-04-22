@@ -134,10 +134,10 @@ export function LandingParticipantColumnsInput({
   }, [columns]);
 
   const maxLineCount = useMemo(() => (
-    Math.max(6, ...columns.map((column) => Math.max(1, splitParticipantColumnValues(column.values).length)))
+    Math.max(1, ...columns.map((column) => Math.max(1, splitParticipantColumnValues(column.values).length)))
   ), [columns]);
 
-  const contentHeight = Math.max(height - HEADER_HEIGHT - 28, maxLineCount * LINE_HEIGHT + BODY_PADDING);
+  const contentHeight = Math.max(height - HEADER_HEIGHT - 18, maxLineCount * LINE_HEIGHT + BODY_PADDING);
 
   const handleColumnPointerMove = useCallback((event: PointerEvent) => {
     const dragState = dragStateRef.current;
