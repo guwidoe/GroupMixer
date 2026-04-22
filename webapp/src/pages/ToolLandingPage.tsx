@@ -546,7 +546,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
             >
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.9fr)] lg:gap-5">
-                <div>
+                <div className="lg:-mt-2">
                   <div className="mb-2 flex items-center justify-between">
                     <label htmlFor="participantInput" className="text-sm font-medium">
                       {ui.quickSetup.participantsLabel}
