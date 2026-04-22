@@ -4,7 +4,7 @@ const EN_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: 'Participants',
     nameColumnLabel: 'Name',
-    addAttributeLabel: '+ Add attribute',
+    addAttributeLabel: 'Add attribute',
     removeAttributeLabel: 'Remove attribute',
     removeAttributeConfirmMessage: 'Remove "{name}" and all entered values?',
     attributeColumnDefaultLabel: 'Attribute',
@@ -77,7 +77,7 @@ const DE_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: 'Teilnehmende',
     nameColumnLabel: 'Name',
-    addAttributeLabel: '+ Attribut hinzufügen',
+    addAttributeLabel: 'Attribut hinzufügen',
     removeAttributeLabel: 'Attribut entfernen',
     removeAttributeConfirmMessage: '„{name}“ und alle eingegebenen Werte entfernen?',
     attributeColumnDefaultLabel: 'Attribut',
@@ -150,7 +150,7 @@ const ES_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: 'Participantes',
     nameColumnLabel: 'Nombre',
-    addAttributeLabel: '+ Añadir atributo',
+    addAttributeLabel: 'Añadir atributo',
     removeAttributeLabel: 'Eliminar atributo',
     removeAttributeConfirmMessage: '¿Eliminar "{name}" y todos los valores introducidos?',
     attributeColumnDefaultLabel: 'Atributo',
@@ -223,7 +223,7 @@ const FR_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: 'Participants',
     nameColumnLabel: 'Nom',
-    addAttributeLabel: '+ Ajouter un attribut',
+    addAttributeLabel: 'Ajouter un attribut',
     removeAttributeLabel: 'Supprimer l’attribut',
     removeAttributeConfirmMessage: 'Supprimer « {name} » et toutes les valeurs saisies ?',
     attributeColumnDefaultLabel: 'Attribut',
@@ -296,7 +296,7 @@ const JA_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: '参加者',
     nameColumnLabel: '名前',
-    addAttributeLabel: '+ 属性を追加',
+    addAttributeLabel: '属性を追加',
     removeAttributeLabel: '属性を削除',
     removeAttributeConfirmMessage: '「{name}」と入力済みの値をすべて削除しますか？',
     attributeColumnDefaultLabel: '属性',
@@ -369,7 +369,7 @@ const HI_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: 'प्रतिभागी',
     nameColumnLabel: 'नाम',
-    addAttributeLabel: '+ गुण जोड़ें',
+    addAttributeLabel: 'गुण जोड़ें',
     removeAttributeLabel: 'गुण हटाएँ',
     removeAttributeConfirmMessage: 'क्या "{name}" और उसमें भरे सभी मान हटाने हैं?',
     attributeColumnDefaultLabel: 'गुण',
@@ -442,7 +442,7 @@ const ZH_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: '参与者',
     nameColumnLabel: '姓名',
-    addAttributeLabel: '+ 添加属性',
+    addAttributeLabel: '添加属性',
     removeAttributeLabel: '移除属性',
     removeAttributeConfirmMessage: '要移除“{name}”以及其中所有已输入的值吗？',
     attributeColumnDefaultLabel: '属性',

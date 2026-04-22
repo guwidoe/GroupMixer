@@ -33,9 +33,9 @@ const ATTRIBUTE_COLUMN_WIDTH = 170;
 const MIN_NAME_WIDTH = 180;
 const MIN_ATTRIBUTE_WIDTH = 120;
 const SEPARATOR_WIDTH = 12;
-const HEADER_HEIGHT = 38;
-const LINE_HEIGHT = 38;
-const BODY_PADDING = 24;
+const HEADER_HEIGHT = 32;
+const LINE_HEIGHT = 26;
+const BODY_PADDING = 18;
 
 function readEditableValue(element: HTMLDivElement) {
   const rawValue = typeof element.innerText === 'string'
