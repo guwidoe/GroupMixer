@@ -31,7 +31,6 @@ const PARTICIPANT_COLUMN_WIDTH = 180;
 const GROUP_COLUMN_WIDTH = 140;
 const MIN_PARTICIPANT_WIDTH = 120;
 const MIN_GROUP_WIDTH = 96;
-const SEPARATOR_WIDTH = 12;
 const HEADER_HEIGHT = 32;
 const LINE_HEIGHT = 26;
 const BODY_PADDING = 18;
@@ -121,7 +120,6 @@ export function LandingFixedAssignmentsInput({
     )
   ), [groupValues, participantValues]);
   const contentHeight = Math.max(height - HEADER_HEIGHT - 28, maxLineCount * LINE_HEIGHT + BODY_PADDING);
-  const surfaceMinWidth = columnWidths[0] + columnWidths[1] + SEPARATOR_WIDTH;
 
   const handleColumnPointerMove = useCallback((event: PointerEvent) => {
     const dragState = dragStateRef.current;
@@ -196,8 +194,14 @@ export function LandingFixedAssignmentsInput({
     <div className="landing-resizable-textarea landing-resizable-textarea--structured rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <div className="theme-scrollbar landing-participant-columns" style={{ height: `${height}px` }}>
         <div className="landing-participant-columns__surface">
-          <div className="landing-participant-columns__columns" style={{ width: `max(100%, ${surfaceMinWidth}px)` }}>
-            <div className="landing-participant-columns__column" style={{ width: `${columnWidths[0]}px` }}>
+          <div className="landing-participant-columns__columns">
+            <div
+              className="landing-participant-columns__column"
+              style={{
+                minWidth: `${MIN_PARTICIPANT_WIDTH}px`,
+                flex: `0 1 ${columnWidths[0]}px`,
+              }}
+            >
               <div className="landing-participant-columns__header-shell landing-participant-columns__header-shell--static">
                 <div className="landing-participant-columns__column-header">
                   <div className="landing-participant-columns__header-label landing-participant-columns__header-text">{participantColumnLabel}</div>
@@ -228,7 +232,10 @@ export function LandingFixedAssignmentsInput({
 
             <div
               className="landing-participant-columns__column"
-              style={{ minWidth: `${columnWidths[1]}px`, flex: '1 0 auto' }}
+              style={{
+                minWidth: `${MIN_GROUP_WIDTH}px`,
+                flex: `1 1 ${columnWidths[1]}px`,
+              }}
             >
               <div className="landing-participant-columns__header-shell landing-participant-columns__header-shell--static">
                 <div className="landing-participant-columns__column-header">

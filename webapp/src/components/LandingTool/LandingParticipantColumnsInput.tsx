@@ -36,7 +36,6 @@ const NAME_COLUMN_WIDTH = 120;
 const ATTRIBUTE_COLUMN_WIDTH = 140;
 const MIN_NAME_WIDTH = 96;
 const MIN_ATTRIBUTE_WIDTH = 64;
-const SEPARATOR_WIDTH = 12;
 const HEADER_HEIGHT = 32;
 const LINE_HEIGHT = 26;
 const BODY_PADDING = 18;
@@ -139,7 +138,6 @@ export function LandingParticipantColumnsInput({
   ), [columns]);
 
   const contentHeight = Math.max(height - HEADER_HEIGHT - 28, maxLineCount * LINE_HEIGHT + BODY_PADDING);
-  const surfaceMinWidth = columnWidths.reduce((sum, width) => sum + width, 0) + (Math.max(0, columns.length) * SEPARATOR_WIDTH) + ghostColumnWidth;
 
   const handleColumnPointerMove = useCallback((event: PointerEvent) => {
     const dragState = dragStateRef.current;
@@ -259,10 +257,17 @@ export function LandingParticipantColumnsInput({
     <div className="landing-resizable-textarea landing-resizable-textarea--structured rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <div className="theme-scrollbar landing-participant-columns" style={{ height: `${height}px` }}>
         <div className="landing-participant-columns__surface">
-          <div className="landing-participant-columns__columns" style={{ width: `max(100%, ${surfaceMinWidth}px)` }}>
+          <div className="landing-participant-columns__columns">
             {columns.map((column, index) => (
               <React.Fragment key={column.id}>
-                <div className="landing-participant-columns__column" style={{ width: `${columnWidths[index]}px` }} data-column-id={column.id}>
+                <div
+                  className="landing-participant-columns__column"
+                  style={{
+                    minWidth: `${index === 0 ? MIN_NAME_WIDTH : MIN_ATTRIBUTE_WIDTH}px`,
+                    flex: `0 1 ${columnWidths[index]}px`,
+                  }}
+                  data-column-id={column.id}
+                >
                   <div className={index === 0
                     ? 'landing-participant-columns__header-shell landing-participant-columns__header-shell--static'
                     : 'landing-participant-columns__header-shell landing-participant-columns__header-shell--interactive'}>
@@ -336,7 +341,10 @@ export function LandingParticipantColumnsInput({
 
             <div
               className="landing-participant-columns__ghost-column"
-              style={{ width: `${ghostColumnWidth}px` }}
+              style={{
+                minWidth: `${MIN_ATTRIBUTE_WIDTH}px`,
+                flex: `1 1 ${ghostColumnWidth}px`,
+              }}
               role="button"
               tabIndex={0}
               aria-label={addAttributeLabel}
