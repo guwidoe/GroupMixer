@@ -50,6 +50,7 @@ pub(crate) struct MixedSeedCandidateSummary {
     pub active_penalty_score: u64,
     pub linear_repeat_excess: u64,
     pub linear_repeat_lower_bound_gap: u64,
+    pub squared_repeat_excess: u64,
     pub max_pair_frequency: usize,
 }
 
@@ -110,6 +111,7 @@ pub(crate) fn build_preferred_mixed_seed(
             active_penalty_score: telemetry.active_penalty_score,
             linear_repeat_excess: telemetry.linear_repeat_excess,
             linear_repeat_lower_bound_gap: telemetry.linear_repeat_lower_bound_gap,
+            squared_repeat_excess: telemetry.squared_repeat_excess,
             max_pair_frequency: telemetry.max_pair_frequency,
         });
 
@@ -155,11 +157,13 @@ fn candidate_outranks(
     (
         left.active_penalty_score,
         left.linear_repeat_excess,
+        left.squared_repeat_excess,
         left.max_pair_frequency,
         left_family.tie_break_rank(),
     ) < (
         right.active_penalty_score,
         right.linear_repeat_excess,
+        right.squared_repeat_excess,
         right.max_pair_frequency,
         right_family.tie_break_rank(),
     )
