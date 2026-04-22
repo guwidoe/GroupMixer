@@ -24,7 +24,7 @@ import {
   trackLandingEvent,
 } from '../services/landingInstrumentation';
 import { useAppStore } from '../store';
-import { nextAttributeColumnName, normalizeParticipantColumns, withParticipantColumns } from '../utils/quickSetup/participantColumns';
+import { nextAttributeColumnId, normalizeParticipantColumns, withParticipantColumns } from '../utils/quickSetup/participantColumns';
 import {
   buildToolPagePath,
   getLocaleDisplayName,
@@ -558,21 +558,29 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     nameColumnLabel={ui.quickSetup.nameColumnLabel}
                     nameColumnPlaceholder={ui.quickSetup.namesPlaceholder}
                     addAttributeLabel={ui.quickSetup.addAttributeLabel}
+                    ghostAttributeLabel={ui.quickSetup.ghostAttributeLabel}
+                    ghostAttributeValuesPreview={ui.quickSetup.ghostAttributeValuesPreview}
                     removeAttributeLabel={ui.quickSetup.removeAttributeLabel}
                     columns={participantColumns}
                     minHeight={130}
                     onAddAttribute={() => {
+                      let newColumnId: string | null = null;
+
                       controller.updateDraft((current) => {
                         const columns = normalizeParticipantColumns(current);
+                        newColumnId = nextAttributeColumnId(columns);
+
                         return withParticipantColumns(current, [
                           ...columns,
                           {
-                            id: `attribute-${columns.length}`,
-                            name: nextAttributeColumnName(columns, ui.quickSetup.attributeColumnDefaultLabel),
+                            id: newColumnId,
+                            name: ui.quickSetup.ghostAttributeLabel,
                             values: '',
                           },
                         ]);
                       });
+
+                      return newColumnId;
                     }}
                     onChangeColumnName={(index, value) => {
                       controller.updateDraft((current) => {

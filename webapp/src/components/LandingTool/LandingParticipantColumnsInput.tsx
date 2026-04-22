@@ -1,4 +1,4 @@
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { QuickSetupParticipantColumn } from './types';
 import { splitParticipantColumnValues } from '../../utils/quickSetup/participantColumns';
@@ -8,11 +8,13 @@ interface LandingParticipantColumnsInputProps {
   nameColumnLabel: string;
   nameColumnPlaceholder: string;
   addAttributeLabel: string;
+  ghostAttributeLabel: string;
+  ghostAttributeValuesPreview: string;
   removeAttributeLabel: string;
   columns: QuickSetupParticipantColumn[];
   onChangeColumnName: (index: number, value: string) => void;
   onChangeColumnValues: (index: number, value: string) => void;
-  onAddAttribute: () => void;
+  onAddAttribute: () => string | null;
   onRemoveAttribute: (index: number) => void;
   minHeight: number;
 }
@@ -26,6 +28,7 @@ interface EditableTextBlockProps {
   placeholder?: string;
   style?: React.CSSProperties;
   onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  dataFocusTarget?: boolean;
 }
 
 const NAME_COLUMN_WIDTH = 300;
@@ -54,6 +57,7 @@ function EditableTextBlock({
   placeholder,
   style,
   onKeyDown,
+  dataFocusTarget = false,
 }: EditableTextBlockProps) {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -85,6 +89,7 @@ function EditableTextBlock({
       className={className}
       data-placeholder={placeholder ?? ''}
       data-empty={value.length === 0 ? 'true' : 'false'}
+      data-ghost-focus-target={dataFocusTarget ? 'true' : undefined}
       onInput={(event) => onChange(readEditableValue(event.currentTarget))}
       onKeyDown={onKeyDown}
       style={style}
@@ -97,6 +102,8 @@ export function LandingParticipantColumnsInput({
   nameColumnLabel,
   nameColumnPlaceholder,
   addAttributeLabel,
+  ghostAttributeLabel,
+  ghostAttributeValuesPreview,
   removeAttributeLabel,
   columns,
   onChangeColumnName,
@@ -107,6 +114,7 @@ export function LandingParticipantColumnsInput({
 }: LandingParticipantColumnsInputProps) {
   const [height, setHeight] = useState(minHeight);
   const [columnWidths, setColumnWidths] = useState<number[]>(() => columns.map((_, index) => (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH)));
+  const [pendingFocusColumnId, setPendingFocusColumnId] = useState<string | null>(null);
   const dragStateRef = useRef<{ startX: number; leftWidth: number; rightWidth: number; index: number } | null>(null);
   const resizeDragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
 
@@ -119,7 +127,7 @@ export function LandingParticipantColumnsInput({
   ), [columns]);
 
   const contentHeight = Math.max(minHeight - HEADER_HEIGHT - 28, maxLineCount * LINE_HEIGHT + BODY_PADDING);
-  const surfaceMinWidth = columnWidths.reduce((sum, width) => sum + width, 0) + (Math.max(0, columns.length - 1) * SEPARATOR_WIDTH);
+  const surfaceMinWidth = columnWidths.reduce((sum, width) => sum + width, 0) + (Math.max(0, columns.length) * SEPARATOR_WIDTH) + ATTRIBUTE_COLUMN_WIDTH;
 
   const handleColumnPointerMove = useCallback((event: PointerEvent) => {
     const dragState = dragStateRef.current;
@@ -183,6 +191,26 @@ export function LandingParticipantColumnsInput({
   useEffect(() => stopColumnResize, [stopColumnResize]);
   useEffect(() => stopResize, [stopResize]);
 
+  useEffect(() => {
+    if (!pendingFocusColumnId) {
+      return;
+    }
+
+    const element = document.querySelector(`[data-column-id="${pendingFocusColumnId}"] [data-ghost-focus-target="true"]`) as HTMLDivElement | null;
+    if (!element) {
+      return;
+    }
+
+    element.focus();
+    const selection = window.getSelection();
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(false);
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+    setPendingFocusColumnId(null);
+  }, [columns, pendingFocusColumnId]);
+
   const handleResizePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     resizeDragStateRef.current = {
@@ -195,6 +223,13 @@ export function LandingParticipantColumnsInput({
     window.addEventListener('pointercancel', stopResize);
   }, [handleResizePointerMove, height, stopResize]);
 
+  const handleActivateGhostColumn = useCallback(() => {
+    const newColumnId = onAddAttribute();
+    if (newColumnId) {
+      setPendingFocusColumnId(newColumnId);
+    }
+  }, [onAddAttribute]);
+
   return (
     <div className="landing-resizable-textarea rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <div className="theme-scrollbar landing-participant-columns" style={{ height: `${height}px` }}>
@@ -202,7 +237,7 @@ export function LandingParticipantColumnsInput({
           <div className="landing-participant-columns__columns" style={{ minWidth: `${surfaceMinWidth}px` }}>
             {columns.map((column, index) => (
               <React.Fragment key={column.id}>
-                <div className="landing-participant-columns__column" style={{ width: `${columnWidths[index]}px` }}>
+                <div className="landing-participant-columns__column" style={{ width: `${columnWidths[index]}px` }} data-column-id={column.id}>
                   <div className={index === 0
                     ? 'landing-participant-columns__header-shell landing-participant-columns__header-shell--static'
                     : 'landing-participant-columns__header-shell landing-participant-columns__header-shell--interactive'}>
@@ -221,6 +256,7 @@ export function LandingParticipantColumnsInput({
                             }}
                             className="landing-participant-columns__header-input"
                             ariaLabel={`Attribute column ${index}`}
+                            dataFocusTarget
                           />
                           <button
                             type="button"
@@ -261,17 +297,35 @@ export function LandingParticipantColumnsInput({
                 )}
               </React.Fragment>
             ))}
-          </div>
 
-          <button
-            type="button"
-            onClick={onAddAttribute}
-            className="landing-action-button landing-participant-columns__add-button rounded-lg border px-3 py-1.5 text-sm font-medium"
-            style={{ borderColor: 'var(--border-primary)' }}
-          >
-            <Plus className="h-4 w-4" />
-            {addAttributeLabel}
-          </button>
+            <div className="landing-participant-columns__separator landing-participant-columns__separator--static" aria-hidden="true">
+              <div className="landing-participant-columns__separator-line" />
+            </div>
+
+            <div
+              className="landing-participant-columns__ghost-column"
+              style={{ width: `${ATTRIBUTE_COLUMN_WIDTH}px` }}
+              role="button"
+              tabIndex={0}
+              aria-label={addAttributeLabel}
+              onClick={handleActivateGhostColumn}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  handleActivateGhostColumn();
+                }
+              }}
+            >
+              <div className="landing-participant-columns__ghost-header-shell">
+                <div className="landing-participant-columns__column-header">
+                  <div className="landing-participant-columns__ghost-header-label">{ghostAttributeLabel}</div>
+                </div>
+              </div>
+              <div className="landing-participant-columns__ghost-body-shell">
+                <div className="landing-participant-columns__ghost-textarea" style={{ height: `${contentHeight}px` }}>{ghostAttributeValuesPreview}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <div

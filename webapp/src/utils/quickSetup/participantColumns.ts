@@ -97,6 +97,17 @@ export function nextAttributeColumnName(columns: QuickSetupParticipantColumn[], 
   return `${defaultLabel} ${Math.max(1, columns.length)}`;
 }
 
+export function nextAttributeColumnId(columns: QuickSetupParticipantColumn[]): string {
+  const usedIds = new Set(columns.map((column) => column.id));
+  let index = 1;
+
+  while (usedIds.has(`attribute-${index}`)) {
+    index += 1;
+  }
+
+  return `attribute-${index}`;
+}
+
 export function withParticipantColumns(draft: QuickSetupDraft, columns: QuickSetupParticipantColumn[]): QuickSetupDraft {
   const normalizedColumns = normalizeParticipantColumns({
     participantColumns: columns,
