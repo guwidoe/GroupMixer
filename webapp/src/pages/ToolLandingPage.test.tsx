@@ -469,6 +469,8 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.queryByRole('button', { name: /switch to csv/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /sample/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^reset$/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/^fixed people$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/balance groups by attribute/i).length).toBeGreaterThan(0);
     
     expect(screen.getByText(
       'Keep certain people together or apart. Balance people by gender or other attributes. Generate multiple rounds with minimal repeats.',
@@ -508,6 +510,10 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('button', { name: /auto distribute attribute: role/i })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /minimize repeat pairings/i })).toBeChecked();
     expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/fixed people/i).compareDocumentPosition(screen.getByText(/balance groups by attribute/i))
+        & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('lets users toggle repeat-pairing minimization from the sessions row', async () => {

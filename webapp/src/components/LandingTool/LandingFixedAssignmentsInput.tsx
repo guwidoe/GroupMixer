@@ -226,7 +226,10 @@ export function LandingFixedAssignmentsInput({
               <div className="landing-participant-columns__separator-line" />
             </div>
 
-            <div className="landing-participant-columns__column" style={{ width: `${columnWidths[1]}px` }}>
+            <div
+              className="landing-participant-columns__column"
+              style={{ minWidth: `${columnWidths[1]}px`, flex: '1 0 auto' }}
+            >
               <div className="landing-participant-columns__header-shell landing-participant-columns__header-shell--static">
                 <div className="landing-participant-columns__column-header">
                   <div className="landing-participant-columns__header-label landing-participant-columns__header-text">{groupColumnLabel}</div>
