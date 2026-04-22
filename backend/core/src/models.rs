@@ -664,10 +664,10 @@ impl SolverKind {
                     Self::Solver5,
                     Self::Solver6,
                 ]
-                    .iter()
-                    .map(|kind| kind.canonical_id())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                .iter()
+                .map(|kind| kind.canonical_id())
+                .collect::<Vec<_>>()
+                .join(", ")
             )),
         }
     }
@@ -1012,7 +1012,10 @@ impl SolverParams {
     pub fn solver3_params(&self) -> Option<&Solver3Params> {
         match self {
             Self::Solver3(params) => Some(params),
-            Self::SimulatedAnnealing(_) | Self::Solver4(_) | Self::Solver5(_) | Self::Solver6(_) => None,
+            Self::SimulatedAnnealing(_)
+            | Self::Solver4(_)
+            | Self::Solver5(_)
+            | Self::Solver6(_) => None,
         }
     }
 }
@@ -1059,6 +1062,27 @@ pub enum Solver6SearchStrategy {
     ReservedRepeatAwareLocalSearch,
 }
 
+/// Explicit miss policy for the optional offline `solver6` seed catalog.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver6SeedCatalogMissPolicy {
+    /// Fail explicitly when no compatible catalog entry exists.
+    #[default]
+    Error,
+    /// Fall back explicitly to live seed synthesis when no compatible catalog entry exists.
+    FallBackToLiveSeed,
+}
+
+/// Optional catalog-backed seed source for `solver6`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+pub struct Solver6SeedCatalogParams {
+    /// Path to the catalog manifest JSON file.
+    pub manifest_path: String,
+    /// Explicit miss behavior when a compatible entry is absent.
+    #[serde(default)]
+    pub miss_policy: Solver6SeedCatalogMissPolicy,
+}
+
 /// Parameters for the internal `solver6` family.
 ///
 /// `solver6` is intended to become the hybrid pure-SGP repeat-minimization family:
@@ -1079,6 +1103,9 @@ pub struct Solver6Params {
     /// Search-driver selection for the reserved hybrid pipeline.
     #[serde(default)]
     pub search_strategy: Solver6SearchStrategy,
+    /// Optional offline seed catalog used as an explicit seed source.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seed_catalog: Option<Solver6SeedCatalogParams>,
 }
 
 pub const fn default_solver6_exact_construction_handoff_enabled() -> bool {
@@ -1088,11 +1115,12 @@ pub const fn default_solver6_exact_construction_handoff_enabled() -> bool {
 impl Default for Solver6Params {
     fn default() -> Self {
         Self {
-            exact_construction_handoff_enabled:
-                default_solver6_exact_construction_handoff_enabled(),
+            exact_construction_handoff_enabled: default_solver6_exact_construction_handoff_enabled(
+            ),
             seed_strategy: Solver6SeedStrategy::default(),
             pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::default(),
             search_strategy: Solver6SearchStrategy::default(),
+            seed_catalog: None,
         }
     }
 }

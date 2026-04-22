@@ -62,6 +62,12 @@ Future seed families may include:
 - mixed block-size portfolios
 - multi-seed constructor portfolios
 
+Solver6 may also use an explicit offline **seed catalog** for expensive seed builds.
+
+- This is documented in `backend/core/src/solver6/SEED_CATALOG.md`.
+- Catalog use must remain explicit, versioned, and inspectable.
+- A missing catalog entry must never silently downgrade behavior.
+
 ### 4. Repeat-minimizing local search
 
 After seed synthesis, solver6 should improve the incumbent under an explicit

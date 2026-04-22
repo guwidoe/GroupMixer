@@ -1,3 +1,4 @@
+use super::catalog::Solver6SeedCatalogPairTelemetry;
 use super::execute_solver6_run;
 use super::problem::PureSgpProblem;
 use super::score::{
@@ -181,7 +182,10 @@ impl ScoreMetrics {
             distinct_pairs_covered: summary.distinct_pairs_covered(),
             total_pair_incidences: summary.total_pair_incidences(),
             max_pair_frequency: summary.max_pair_frequency(),
-            multiplicity_histogram: summary.multiplicity_histogram().counts_by_frequency().to_vec(),
+            multiplicity_histogram: summary
+                .multiplicity_histogram()
+                .counts_by_frequency()
+                .to_vec(),
         }
     }
 
@@ -217,7 +221,8 @@ impl ScoreMetrics {
 
     fn from_seed_telemetry(problem: &PureSgpProblem, telemetry: &SeedPairTelemetry) -> Self {
         let total_distinct_pairs = problem.num_groups * problem.group_size;
-        let universe_pairs = total_distinct_pairs.saturating_mul(total_distinct_pairs.saturating_sub(1)) / 2;
+        let universe_pairs =
+            total_distinct_pairs.saturating_mul(total_distinct_pairs.saturating_sub(1)) / 2;
         let squared_repeat_lower_bound = if universe_pairs == 0 {
             0
         } else {
@@ -228,6 +233,39 @@ impl ScoreMetrics {
         };
         Self {
             active_penalty_model: penalty_model_label(telemetry.active_penalty_model).into(),
+            active_penalty_score: telemetry.active_penalty_score,
+            linear_repeat_excess: telemetry.linear_repeat_excess,
+            linear_repeat_lower_bound: telemetry.linear_repeat_lower_bound,
+            linear_repeat_lower_bound_gap: telemetry.linear_repeat_lower_bound_gap,
+            squared_repeat_excess: telemetry.squared_repeat_excess,
+            squared_repeat_lower_bound,
+            squared_repeat_lower_bound_gap: telemetry
+                .squared_repeat_excess
+                .saturating_sub(squared_repeat_lower_bound),
+            distinct_pairs_covered: telemetry.distinct_pairs_covered,
+            total_pair_incidences: telemetry.total_pair_incidences,
+            max_pair_frequency: telemetry.max_pair_frequency,
+            multiplicity_histogram: telemetry.multiplicity_histogram.clone(),
+        }
+    }
+
+    fn from_catalog_seed_telemetry(
+        problem: &PureSgpProblem,
+        telemetry: &Solver6SeedCatalogPairTelemetry,
+    ) -> Self {
+        let total_distinct_pairs = problem.num_groups * problem.group_size;
+        let universe_pairs =
+            total_distinct_pairs.saturating_mul(total_distinct_pairs.saturating_sub(1)) / 2;
+        let squared_repeat_lower_bound = if universe_pairs == 0 {
+            0
+        } else {
+            let repeat_excess = telemetry.linear_repeat_excess;
+            let q = repeat_excess / universe_pairs as u64;
+            let r = repeat_excess % universe_pairs as u64;
+            (universe_pairs as u64 - r) * q * q + r * (q + 1) * (q + 1)
+        };
+        Self {
+            active_penalty_model: telemetry.active_penalty_model.clone(),
             active_penalty_score: telemetry.active_penalty_score,
             linear_repeat_excess: telemetry.linear_repeat_excess,
             linear_repeat_lower_bound: telemetry.linear_repeat_lower_bound,
@@ -277,6 +315,7 @@ pub struct Solver6BenchmarkInspection {
     pub linear_status: LayerWeekStatus,
     pub squared_status: LayerWeekStatus,
     pub seed_family: String,
+    pub seed_source_detail: Option<String>,
     pub seed_metrics: ScoreMetrics,
     pub final_metrics: ScoreMetrics,
     pub stop_reason: String,
@@ -294,6 +333,7 @@ pub struct WeekResultArtifact {
     pub squared_status: LayerWeekStatus,
     pub exact_zero_repeat: bool,
     pub seed_family: Option<String>,
+    pub seed_source_detail: Option<String>,
     pub seed_metrics: Option<ScoreMetrics>,
     pub final_metrics: Option<ScoreMetrics>,
     pub stop_reason: Option<String>,
@@ -358,10 +398,25 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
         )?
     };
     let exact_handoff = executed.exact_handoff_atom.is_some();
-    let (seed_family, seed_metrics, mixed_seed_candidates) =
-        if let Some(selection) = executed.seed_selection.as_ref() {
+    let (seed_family, seed_source_detail, seed_metrics, mixed_seed_candidates) =
+        if let Some(hit) = executed.catalog_seed_hit.as_ref() {
+            (
+                format!("catalog:{}", hit.selected_family),
+                Some(format!(
+                    "manifest={}, entry={}",
+                    hit.manifest_path.display(),
+                    hit.entry_path.display()
+                )),
+                ScoreMetrics::from_catalog_seed_telemetry(
+                    &executed.problem,
+                    &hit.diagnostics.pair_telemetry,
+                ),
+                Vec::new(),
+            )
+        } else if let Some(selection) = executed.seed_selection.as_ref() {
             (
                 selection.selected_family.label().to_string(),
+                None,
                 ScoreMetrics::from_seed_telemetry(
                     &executed.problem,
                     selection
@@ -386,6 +441,7 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
         } else {
             (
                 "solver5_exact_handoff".to_string(),
+                None,
                 final_metrics.clone(),
                 Vec::new(),
             )
@@ -415,26 +471,29 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
         linear_status,
         squared_status,
         seed_family,
+        seed_source_detail,
         seed_metrics,
         final_metrics,
         stop_reason: stop_reason_label(executed.stop_reason).into(),
         runtime_seconds,
         exact_handoff,
         mixed_seed_candidates,
-        search_telemetry: executed.local_search_outcome.as_ref().map(|outcome| SearchTelemetrySummary {
-            iterations_completed: outcome.iterations_completed,
-            best_iteration: outcome.best_iteration,
-            stop_reason: stop_reason_label(outcome.stop_reason).into(),
-            improving_moves_accepted: outcome.telemetry.improving_moves_accepted,
-            non_improving_moves_accepted: outcome.telemetry.non_improving_moves_accepted,
-            breakout_count: outcome.telemetry.breakout_count,
-            breakout_swaps_applied: outcome.telemetry.breakout_swaps_applied,
-            tabu_pruned_candidates: outcome.telemetry.tabu_pruned_candidates,
-            max_stagnation_streak: outcome.telemetry.max_stagnation_streak,
-            neighborhood_scans: outcome.telemetry.neighborhood_scans,
-            candidates_evaluated: outcome.telemetry.candidates_evaluated,
-            total_scan_micros: outcome.telemetry.total_scan_micros,
-            max_scan_micros: outcome.telemetry.max_scan_micros,
+        search_telemetry: executed.local_search_outcome.as_ref().map(|outcome| {
+            SearchTelemetrySummary {
+                iterations_completed: outcome.iterations_completed,
+                best_iteration: outcome.best_iteration,
+                stop_reason: stop_reason_label(outcome.stop_reason).into(),
+                improving_moves_accepted: outcome.telemetry.improving_moves_accepted,
+                non_improving_moves_accepted: outcome.telemetry.non_improving_moves_accepted,
+                breakout_count: outcome.telemetry.breakout_count,
+                breakout_swaps_applied: outcome.telemetry.breakout_swaps_applied,
+                tabu_pruned_candidates: outcome.telemetry.tabu_pruned_candidates,
+                max_stagnation_streak: outcome.telemetry.max_stagnation_streak,
+                neighborhood_scans: outcome.telemetry.neighborhood_scans,
+                candidates_evaluated: outcome.telemetry.candidates_evaluated,
+                total_scan_micros: outcome.telemetry.total_scan_micros,
+                max_scan_micros: outcome.telemetry.max_scan_micros,
+            }
         }),
     })
 }
@@ -549,7 +608,9 @@ pub fn pure_input_for_benchmark(
                 exact_construction_handoff_enabled: true,
                 seed_strategy: crate::models::Solver6SeedStrategy::Solver5ExactBlockComposition,
                 pair_repeat_penalty_model: benchmark.active_penalty_model,
-                search_strategy: crate::models::Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
+                search_strategy:
+                    crate::models::Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
+                seed_catalog: None,
             }),
             logging: Default::default(),
             telemetry: Default::default(),
@@ -586,6 +647,7 @@ fn build_cell_artifact(
                 squared_status: LayerWeekStatus::NotRun,
                 exact_zero_repeat: false,
                 seed_family: None,
+                seed_source_detail: None,
                 seed_metrics: None,
                 final_metrics: None,
                 stop_reason: None,
@@ -606,6 +668,7 @@ fn build_cell_artifact(
                 squared_status: inspection.squared_status,
                 exact_zero_repeat: inspection.final_metrics.linear_repeat_excess == 0,
                 seed_family: Some(inspection.seed_family),
+                seed_source_detail: inspection.seed_source_detail,
                 seed_metrics: Some(inspection.seed_metrics),
                 final_metrics: Some(inspection.final_metrics),
                 stop_reason: Some(inspection.stop_reason),
@@ -624,6 +687,7 @@ fn build_cell_artifact(
                     squared_status: layer_status_for_execution_failure(execution_status),
                     exact_zero_repeat: false,
                     seed_family: None,
+                    seed_source_detail: None,
                     seed_metrics: None,
                     final_metrics: None,
                     stop_reason: None,
@@ -745,7 +809,10 @@ fn classify_error_status(message: &str) -> ExecutionStatus {
         "requires",
         "rejects",
     ];
-    if unsupported_markers.iter().any(|marker| message.contains(marker)) {
+    if unsupported_markers
+        .iter()
+        .any(|marker| message.contains(marker))
+    {
         ExecutionStatus::Unsupported
     } else {
         ExecutionStatus::Error
@@ -834,6 +901,7 @@ mod tests {
                 squared_status: LayerWeekStatus::Exact,
                 exact_zero_repeat: true,
                 seed_family: None,
+                seed_source_detail: None,
                 seed_metrics: None,
                 final_metrics: None,
                 stop_reason: None,
@@ -849,6 +917,7 @@ mod tests {
                 squared_status: LayerWeekStatus::LowerBoundTight,
                 exact_zero_repeat: false,
                 seed_family: None,
+                seed_source_detail: None,
                 seed_metrics: None,
                 final_metrics: None,
                 stop_reason: None,
@@ -864,6 +933,7 @@ mod tests {
                 squared_status: LayerWeekStatus::Miss,
                 exact_zero_repeat: false,
                 seed_family: None,
+                seed_source_detail: None,
                 seed_metrics: None,
                 final_metrics: None,
                 stop_reason: None,
@@ -879,6 +949,7 @@ mod tests {
                 squared_status: LayerWeekStatus::LowerBoundTight,
                 exact_zero_repeat: false,
                 seed_family: None,
+                seed_source_detail: None,
                 seed_metrics: None,
                 final_metrics: None,
                 stop_reason: None,
@@ -1015,7 +1086,9 @@ mod tests {
     #[test]
     fn error_classifier_keeps_internal_shape_bugs_out_of_unsupported_bucket() {
         assert_eq!(
-            classify_error_status("Constraint violation: solver6 currently supports only k * w0 tilings"),
+            classify_error_status(
+                "Constraint violation: solver6 currently supports only k * w0 tilings"
+            ),
             ExecutionStatus::Unsupported
         );
         assert_eq!(

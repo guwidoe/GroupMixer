@@ -7,9 +7,7 @@ use crate::solver5::atoms::{
     query_construction_atom_from_solver6_input, Solver5AtomSpanRequest, Solver5ConstructionAtom,
 };
 use crate::solver6::problem::PureSgpProblem;
-use crate::solver6::score::{
-    pure_sgp_linear_repeat_excess_lower_bound, PairFrequencyState,
-};
+use crate::solver6::score::{pure_sgp_linear_repeat_excess_lower_bound, PairFrequencyState};
 use crate::solver_support::SolverError;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
@@ -110,27 +108,32 @@ impl DenseRelabelingPairAdjustmentScratch {
     ) -> i64 {
         match model {
             Solver6PairRepeatPenaltyModel::LinearRepeatExcess => {
-                self.touched_pairs.iter().fold(0i64, |delta_sum, &pair_idx| {
+                self.touched_pairs
+                    .iter()
+                    .fold(0i64, |delta_sum, &pair_idx| {
+                        let delta = self.deltas_by_pair[pair_idx];
+                        if delta == 0 {
+                            delta_sum
+                        } else {
+                            delta_sum
+                                + pair_state
+                                    .linear_score_delta_for_pair_change_known_valid(pair_idx, delta)
+                        }
+                    })
+            }
+            _ => self
+                .touched_pairs
+                .iter()
+                .fold(0i64, |delta_sum, &pair_idx| {
                     let delta = self.deltas_by_pair[pair_idx];
                     if delta == 0 {
                         delta_sum
                     } else {
                         delta_sum
-                            + pair_state.linear_score_delta_for_pair_change_known_valid(
-                                pair_idx, delta,
-                            )
+                            + pair_state
+                                .score_delta_for_pair_change_known_valid(pair_idx, delta, model)
                     }
-                })
-            }
-            _ => self.touched_pairs.iter().fold(0i64, |delta_sum, &pair_idx| {
-                let delta = self.deltas_by_pair[pair_idx];
-                if delta == 0 {
-                    delta_sum
-                } else {
-                    delta_sum
-                        + pair_state.score_delta_for_pair_change_known_valid(pair_idx, delta, model)
-                }
-            }),
+                }),
         }
     }
 
@@ -187,10 +190,7 @@ impl GreedyRelabelingState {
         })
     }
 
-    fn current_active_score(
-        &self,
-        active_penalty_model: Solver6PairRepeatPenaltyModel,
-    ) -> u64 {
+    fn current_active_score(&self, active_penalty_model: Solver6PairRepeatPenaltyModel) -> u64 {
         self.pair_state.score_for_model(active_penalty_model)
     }
 
@@ -308,11 +308,14 @@ impl SeedPermutation {
     }
 
     pub(crate) fn apply(&self, person_idx: usize) -> Result<usize, SolverError> {
-        self.image_by_person.get(person_idx).copied().ok_or_else(|| {
-            SolverError::ValidationError(format!(
-                "solver6 seed permutation received out-of-bounds person index {person_idx}"
-            ))
-        })
+        self.image_by_person
+            .get(person_idx)
+            .copied()
+            .ok_or_else(|| {
+                SolverError::ValidationError(format!(
+                    "solver6 seed permutation received out-of-bounds person index {person_idx}"
+                ))
+            })
     }
 
     pub(crate) fn len(&self) -> usize {
@@ -562,11 +565,8 @@ fn build_exact_block_seed_from_plan_prefix_with_context(
     let mut output_problem = context.problem.clone();
     output_problem.num_weeks = requested_weeks;
     validate_full_schedule_shape(&output_problem, &schedule)?;
-    let pair_telemetry = SeedPairTelemetry::from_schedule(
-        &output_problem,
-        &schedule,
-        context.active_penalty_model,
-    )?;
+    let pair_telemetry =
+        SeedPairTelemetry::from_schedule(&output_problem, &schedule, context.active_penalty_model)?;
 
     Ok(ExactBlockSeed {
         schedule,
@@ -613,12 +613,9 @@ fn greedily_improve_copy_permutation(
         2 * context.atom_weeks * context.problem.group_size.saturating_sub(1),
     );
     loop {
-        let Some(best_improvement) = find_best_copy_permutation_swap(
-            context,
-            state,
-            copy_index,
-            &mut scratch,
-        )? else {
+        let Some(best_improvement) =
+            find_best_copy_permutation_swap(context, state, copy_index, &mut scratch)?
+        else {
             return Ok(improved_any);
         };
         state.apply_swap(copy_index, &best_improvement)?;
@@ -634,8 +631,8 @@ fn find_best_copy_permutation_swap(
 ) -> Result<Option<EvaluatedCopyPermutationSwap>, SolverError> {
     let current_active_score = state.current_active_score(context.active_penalty_model);
     let current_linear_repeat_excess = state.pair_state.linear_repeat_excess();
-    let current_linear_repeat_lower_bound_gap = current_linear_repeat_excess
-        .saturating_sub(state.linear_repeat_lower_bound);
+    let current_linear_repeat_lower_bound_gap =
+        current_linear_repeat_excess.saturating_sub(state.linear_repeat_lower_bound);
     let mut best: Option<EvaluatedCopyPermutationSwap> = None;
     for left in 0..context.num_people() {
         for right in (left + 1)..context.num_people() {
@@ -649,8 +646,10 @@ fn find_best_copy_permutation_swap(
                 current_linear_repeat_excess,
                 scratch,
             );
-            if (evaluated.active_score_after, evaluated.linear_repeat_lower_bound_gap_after)
-                < (current_active_score, current_linear_repeat_lower_bound_gap)
+            if (
+                evaluated.active_score_after,
+                evaluated.linear_repeat_lower_bound_gap_after,
+            ) < (current_active_score, current_linear_repeat_lower_bound_gap)
                 && best.as_ref().is_none_or(|incumbent| {
                     copy_permutation_swap_summary_is_better(left, right, evaluated, incumbent)
                 })
@@ -660,7 +659,8 @@ fn find_best_copy_permutation_swap(
                     right,
                     pair_adjustments: scratch.materialize(),
                     active_score_after: evaluated.active_score_after,
-                    linear_repeat_lower_bound_gap_after: evaluated.linear_repeat_lower_bound_gap_after,
+                    linear_repeat_lower_bound_gap_after: evaluated
+                        .linear_repeat_lower_bound_gap_after,
                 });
             }
         }
@@ -715,7 +715,8 @@ fn evaluate_copy_permutation_swap_summary(
     let left_target = image[left];
     let right_target = image[right];
     let universe = state.pair_state.universe();
-    let swap_mates = &context.swap_mate_sources_by_pair[pair_slot_fast(context.num_people(), left, right)];
+    let swap_mates =
+        &context.swap_mate_sources_by_pair[pair_slot_fast(context.num_people(), left, right)];
     scratch.start_candidate();
 
     for &mate in &swap_mates.left_only_mates {
@@ -970,7 +971,9 @@ fn swap_mate_sources_by_pair(
                 if left_mates.contains(&right) {
                     continue;
                 }
-                swap_mates.left_only_mates.extend(left_mates.iter().copied());
+                swap_mates
+                    .left_only_mates
+                    .extend(left_mates.iter().copied());
                 swap_mates
                     .right_only_mates
                     .extend(groupmates[right][week_idx].iter().copied());
@@ -984,21 +987,20 @@ fn swap_mate_sources_by_pair(
 #[cfg(test)]
 mod tests {
     use super::{
-        build_exact_block_seed_from_plan, build_random_exact_block_seed,
-        build_greedy_exact_block_seed, build_greedy_relabeling_plan,
-        build_greedy_relabeling_plan_from_initial_plan, build_relabeling_baseline_plan,
-        evaluate_copy_permutation_swap, pair_state_for_plan,
-        evaluate_exact_block_relabeling_objective,
+        build_exact_block_seed_from_plan, build_greedy_exact_block_seed,
+        build_greedy_relabeling_plan, build_greedy_relabeling_plan_from_initial_plan,
+        build_random_exact_block_seed, build_relabeling_baseline_plan,
+        evaluate_copy_permutation_swap, evaluate_exact_block_relabeling_objective,
         evaluate_exact_block_relabeling_objective_with_context,
         evaluate_greedy_relabeling_objective, evaluate_relabeling_baseline_objective,
-        ExactBlockCompositionContext, ExactBlockRelabelingBaseline,
-        ExactBlockRelabelingPlan, ExactBlockRelabelingSearch,
-        GreedyRelabelingState, SeedPermutation,
+        pair_state_for_plan, ExactBlockCompositionContext, ExactBlockRelabelingBaseline,
+        ExactBlockRelabelingPlan, ExactBlockRelabelingSearch, GreedyRelabelingState,
+        SeedPermutation,
     };
     use crate::models::{
-        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
-        RepeatEncounterParams, Solver6PairRepeatPenaltyModel, Solver6Params,
-        SolverConfiguration, SolverKind, SolverParams, StopConditions,
+        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
+        Solver6PairRepeatPenaltyModel, Solver6Params, SolverConfiguration, SolverKind,
+        SolverParams, StopConditions,
     };
     use crate::solver6::score::PairFrequencyState;
     use std::collections::HashMap;
@@ -1017,6 +1019,7 @@ mod tests {
                 seed_strategy: Default::default(),
                 pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
                 search_strategy: Default::default(),
+                seed_catalog: None,
             }),
             logging: Default::default(),
             telemetry: Default::default(),
@@ -1116,11 +1119,9 @@ mod tests {
     #[test]
     fn identity_baseline_uses_same_objective_path_as_manual_identity_plan() {
         let input = pure_input(8, 4, 20);
-        let baseline = evaluate_relabeling_baseline_objective(
-            &input,
-            ExactBlockRelabelingBaseline::Identity,
-        )
-        .expect("identity baseline should evaluate");
+        let baseline =
+            evaluate_relabeling_baseline_objective(&input, ExactBlockRelabelingBaseline::Identity)
+                .expect("identity baseline should evaluate");
         let manual = evaluate_exact_block_relabeling_objective(
             &input,
             &ExactBlockRelabelingPlan {
@@ -1157,11 +1158,9 @@ mod tests {
         .expect("first random baseline plan should build");
         let mut second_input = pure_input(8, 4, 20);
         second_input.solver.seed = Some(19);
-        let second = build_relabeling_baseline_plan(
-            &second_input,
-            ExactBlockRelabelingBaseline::Random,
-        )
-        .expect("second random baseline plan should build");
+        let second =
+            build_relabeling_baseline_plan(&second_input, ExactBlockRelabelingBaseline::Random)
+                .expect("second random baseline plan should build");
 
         assert_ne!(first, second);
     }
@@ -1171,11 +1170,9 @@ mod tests {
         let input = pure_input(8, 4, 20);
         let plan = build_relabeling_baseline_plan(&input, ExactBlockRelabelingBaseline::Random)
             .expect("random baseline plan should build");
-        let baseline = evaluate_relabeling_baseline_objective(
-            &input,
-            ExactBlockRelabelingBaseline::Random,
-        )
-        .expect("random baseline objective should evaluate");
+        let baseline =
+            evaluate_relabeling_baseline_objective(&input, ExactBlockRelabelingBaseline::Random)
+                .expect("random baseline objective should evaluate");
         let manual = evaluate_exact_block_relabeling_objective(&input, &plan)
             .expect("manual random plan objective should evaluate");
 
@@ -1193,7 +1190,10 @@ mod tests {
         )
         .expect("explicit relabeling plan should compose a valid seed");
 
-        assert_eq!(seed.diagnostics.atom_uses[0].relabeling.kind.label(), "identity");
+        assert_eq!(
+            seed.diagnostics.atom_uses[0].relabeling.kind.label(),
+            "identity"
+        );
         assert_eq!(
             seed.diagnostics.atom_uses[1].relabeling.kind.label(),
             "explicit_permutation"
@@ -1214,8 +1214,14 @@ mod tests {
         let seed = build_random_exact_block_seed(&pure_input(8, 4, 20))
             .expect("random baseline seed should build");
 
-        assert_eq!(seed.diagnostics.atom_uses[0].relabeling.kind.label(), "identity");
-        assert_eq!(seed.diagnostics.atom_uses[1].relabeling.kind.label(), "explicit_permutation");
+        assert_eq!(
+            seed.diagnostics.atom_uses[0].relabeling.kind.label(),
+            "identity"
+        );
+        assert_eq!(
+            seed.diagnostics.atom_uses[1].relabeling.kind.label(),
+            "explicit_permutation"
+        );
         assert!(seed.diagnostics.atom_uses[1].relabeling.changed_people > 0);
     }
 
@@ -1230,8 +1236,8 @@ mod tests {
     #[test]
     fn greedy_relabeling_plan_is_deterministic_for_fixed_seed() {
         let input = pure_input(8, 4, 20);
-        let first = build_greedy_relabeling_plan(&input)
-            .expect("greedy relabeling plan should build");
+        let first =
+            build_greedy_relabeling_plan(&input).expect("greedy relabeling plan should build");
         let second = build_greedy_relabeling_plan(&input)
             .expect("greedy relabeling plan should be reproducible");
 
@@ -1241,11 +1247,9 @@ mod tests {
     #[test]
     fn greedy_relabeling_beats_identity_on_8_4_20() {
         let input = pure_input(8, 4, 20);
-        let identity = evaluate_relabeling_baseline_objective(
-            &input,
-            ExactBlockRelabelingBaseline::Identity,
-        )
-        .expect("identity baseline should evaluate");
+        let identity =
+            evaluate_relabeling_baseline_objective(&input, ExactBlockRelabelingBaseline::Identity)
+                .expect("identity baseline should evaluate");
         let greedy = evaluate_greedy_relabeling_objective(&input)
             .expect("greedy relabeling objective should evaluate");
 
@@ -1292,11 +1296,17 @@ mod tests {
         .expect("incremental swap evaluation should succeed");
 
         let mut candidate_plan = plan;
-        candidate_plan.copy_permutations[1].image_by_person.swap(0, 1);
-        let recomputed = evaluate_exact_block_relabeling_objective_with_context(&context, &candidate_plan)
-            .expect("full recompute objective should succeed");
+        candidate_plan.copy_permutations[1]
+            .image_by_person
+            .swap(0, 1);
+        let recomputed =
+            evaluate_exact_block_relabeling_objective_with_context(&context, &candidate_plan)
+                .expect("full recompute objective should succeed");
 
-        assert_eq!(evaluated.active_score_after, recomputed.active_penalty_score());
+        assert_eq!(
+            evaluated.active_score_after,
+            recomputed.active_penalty_score()
+        );
         assert_eq!(
             evaluated.linear_repeat_lower_bound_gap_after,
             recomputed.linear_repeat_lower_bound_gap()
@@ -1306,8 +1316,8 @@ mod tests {
     #[test]
     fn warm_started_greedy_relabeling_keeps_an_existing_local_optimum() {
         let input = pure_input(8, 4, 20);
-        let greedy_plan = build_greedy_relabeling_plan(&input)
-            .expect("greedy relabeling plan should build");
+        let greedy_plan =
+            build_greedy_relabeling_plan(&input).expect("greedy relabeling plan should build");
 
         let warm_started = build_greedy_relabeling_plan_from_initial_plan(&input, &greedy_plan)
             .expect("warm-started greedy relabeling should build");
@@ -1320,15 +1330,16 @@ mod tests {
         let input = pure_input(8, 4, 20);
         let context = ExactBlockCompositionContext::for_input(&input)
             .expect("exact-block context should build");
-        let plan = build_greedy_relabeling_plan(&input)
-            .expect("greedy relabeling plan should build");
+        let plan =
+            build_greedy_relabeling_plan(&input).expect("greedy relabeling plan should build");
 
         let direct = pair_state_for_plan(&context, &plan)
             .expect("direct pair state construction should succeed");
         let seed = build_exact_block_seed_from_plan(&input, &plan)
             .expect("seed construction should succeed");
-        let recomputed = PairFrequencyState::from_raw_schedule(context.num_people(), &seed.schedule)
-            .expect("schedule recompute should succeed");
+        let recomputed =
+            PairFrequencyState::from_raw_schedule(context.num_people(), &seed.schedule)
+                .expect("schedule recompute should succeed");
 
         assert_eq!(direct, recomputed);
     }

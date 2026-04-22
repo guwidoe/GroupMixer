@@ -1,8 +1,7 @@
 use super::relabeling::{
     build_exact_block_seed_from_plan, build_exact_block_seed_prefix_from_plan,
-    build_greedy_exact_block_seed,
-    build_greedy_relabeling_plan, build_greedy_relabeling_plan_from_initial_plan,
-    ExactBlockRelabelingPlan, SeedPermutation,
+    build_greedy_exact_block_seed, build_greedy_relabeling_plan,
+    build_greedy_relabeling_plan_from_initial_plan, ExactBlockRelabelingPlan, SeedPermutation,
 };
 use super::{
     validate_full_schedule_shape, ExactBlockSeed, ExactBlockSeedDiagnostics, SeedAtomId,
@@ -91,7 +90,10 @@ pub(crate) fn build_preferred_mixed_seed(
 
     let remainder_weeks = problem.num_weeks % dominant_atom_weeks;
     let candidate_seeds = if remainder_weeks == 0 {
-        vec![(MixedSeedFamily::ExactBlockOnly, build_greedy_exact_block_seed(input)?)]
+        vec![(
+            MixedSeedFamily::ExactBlockOnly,
+            build_greedy_exact_block_seed(input)?,
+        )]
     } else {
         let prefix = build_prefix_seed(
             input,
@@ -103,11 +105,8 @@ pub(crate) fn build_preferred_mixed_seed(
             MixedSeedFamily::DominantPrefixTail,
             build_dominant_prefix_tail_seed(input, dominant_atom_weeks, &prefix)?,
         ));
-        if let Ok(seed) = build_requested_tail_seed(
-            input,
-            dominant_atom_weeks,
-            prefix.seed.clone(),
-        ) {
+        if let Ok(seed) = build_requested_tail_seed(input, dominant_atom_weeks, prefix.seed.clone())
+        {
             candidates.push((MixedSeedFamily::RequestedTailAtom, seed));
         }
         candidates.push((
@@ -122,8 +121,7 @@ pub(crate) fn build_preferred_mixed_seed(
     for (idx, (family, seed)) in candidate_seeds.iter().enumerate() {
         let telemetry = seed.diagnostics.pair_telemetry.as_ref().ok_or_else(|| {
             SolverError::ValidationError(
-                "solver6 mixed seed selection expected pair telemetry for every candidate"
-                    .into(),
+                "solver6 mixed seed selection expected pair telemetry for every candidate".into(),
             )
         })?;
         candidate_summaries.push(MixedSeedCandidateSummary {
@@ -156,7 +154,8 @@ pub(crate) fn build_preferred_mixed_seed(
         }
     }
 
-    let selected_idx = selected_idx.expect("mixed seed selection should have at least one candidate");
+    let selected_idx =
+        selected_idx.expect("mixed seed selection should have at least one candidate");
     let (selected_family, seed) = candidate_seeds.into_iter().nth(selected_idx).unwrap();
 
     Ok(MixedSeedSelection {
@@ -198,9 +197,11 @@ fn build_dominant_prefix_tail_seed(
     let full_copy_weeks = ((problem.num_weeks / dominant_atom_weeks) + 1) * dominant_atom_weeks;
     let full_copy_input = clone_input_with_num_weeks(input, full_copy_weeks)?;
     let mut initial_plan = prefix.plan.clone();
-    initial_plan.copy_permutations.push(SeedPermutation::identity(
-        problem.num_groups * problem.group_size,
-    ));
+    initial_plan
+        .copy_permutations
+        .push(SeedPermutation::identity(
+            problem.num_groups * problem.group_size,
+        ));
     let plan = build_greedy_relabeling_plan_from_initial_plan(&full_copy_input, &initial_plan)?;
     build_exact_block_seed_prefix_from_plan(&full_copy_input, &plan, problem.num_weeks)
 }
@@ -224,7 +225,8 @@ fn build_requested_tail_seed(
     if tail_atom.returned_weeks() != remainder_weeks {
         return Err(SolverError::ValidationError(format!(
             "solver6 requested tail atom returned {} weeks, expected {}",
-            tail_atom.returned_weeks(), remainder_weeks
+            tail_atom.returned_weeks(),
+            remainder_weeks
         )));
     }
     compose_seed_with_solver5_tail(input, prefix_seed, tail_atom)
@@ -253,7 +255,8 @@ fn build_heuristic_tail_seed(
     );
 
     for _ in 0..remainder_weeks {
-        let week = build_heuristic_tail_week(&problem, &pair_state, active_penalty_model, &mut rng)?;
+        let week =
+            build_heuristic_tail_week(&problem, &pair_state, active_penalty_model, &mut rng)?;
         apply_week_to_pair_state(&mut pair_state, &week)?;
         schedule.push(week);
     }
@@ -379,15 +382,19 @@ fn build_heuristic_tail_week(
                 .iter()
                 .enumerate()
                 .min_by_key(|(candidate_idx, candidate)| {
-                    let (active_delta, linear_delta, existing_pair_sum) =
-                        candidate_addition_cost(
-                            pair_state,
-                            &block,
-                            **candidate,
-                            active_penalty_model,
-                        )
-                        .expect("heuristic tail candidate scoring should stay in bounds");
-                    (active_delta, linear_delta, existing_pair_sum, *candidate_idx)
+                    let (active_delta, linear_delta, existing_pair_sum) = candidate_addition_cost(
+                        pair_state,
+                        &block,
+                        **candidate,
+                        active_penalty_model,
+                    )
+                    .expect("heuristic tail candidate scoring should stay in bounds");
+                    (
+                        active_delta,
+                        linear_delta,
+                        existing_pair_sum,
+                        *candidate_idx,
+                    )
                 })
                 .map(|(idx, _)| idx)
                 .ok_or_else(|| {
@@ -467,13 +474,13 @@ fn active_penalty_model(input: &ApiInput) -> Result<Solver6PairRepeatPenaltyMode
 #[cfg(test)]
 mod tests {
     use super::{
-        build_dominant_prefix_tail_seed, build_heuristic_tail_seed, build_prefix_seed,
-        build_preferred_mixed_seed, build_requested_tail_seed, MixedSeedFamily,
+        build_dominant_prefix_tail_seed, build_heuristic_tail_seed, build_preferred_mixed_seed,
+        build_prefix_seed, build_requested_tail_seed, MixedSeedFamily,
     };
     use crate::models::{
-        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
-        RepeatEncounterParams, Solver6PairRepeatPenaltyModel, Solver6Params,
-        SolverConfiguration, SolverKind, SolverParams, StopConditions,
+        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
+        Solver6PairRepeatPenaltyModel, Solver6Params, SolverConfiguration, SolverKind,
+        SolverParams, StopConditions,
     };
     use std::collections::HashMap;
 
@@ -491,6 +498,7 @@ mod tests {
                 seed_strategy: Default::default(),
                 pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
                 search_strategy: Default::default(),
+                seed_catalog: None,
             }),
             logging: Default::default(),
             telemetry: Default::default(),
@@ -545,7 +553,10 @@ mod tests {
         assert_eq!(seed.diagnostics.atom_uses.len(), 2);
         assert_eq!(seed.diagnostics.atom_uses[0].weeks_used, 11);
         assert_eq!(seed.diagnostics.atom_uses[1].weeks_used, 10);
-        assert_eq!(seed.diagnostics.atom_uses[1].atom_id.max_supported_weeks, 10);
+        assert_eq!(
+            seed.diagnostics.atom_uses[1].atom_id.max_supported_weeks,
+            10
+        );
     }
 
     #[test]
@@ -562,13 +573,14 @@ mod tests {
             seed.diagnostics.atom_uses[1].atom_id.source_kind,
             super::super::SeedSourceKind::HeuristicTail
         );
-        assert!(seed
-            .diagnostics
-            .pair_telemetry
-            .as_ref()
-            .expect("heuristic tail seed should expose pair telemetry")
-            .active_penalty_score
-            > 0);
+        assert!(
+            seed.diagnostics
+                .pair_telemetry
+                .as_ref()
+                .expect("heuristic tail seed should expose pair telemetry")
+                .active_penalty_score
+                > 0
+        );
     }
 
     #[test]

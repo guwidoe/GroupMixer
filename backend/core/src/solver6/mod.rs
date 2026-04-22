@@ -1,17 +1,15 @@
-use crate::models::{
-    ApiInput, SolverConfiguration, SolverParams, SolverResult, StopReason,
-};
+use crate::models::{ApiInput, SolverConfiguration, SolverParams, SolverResult, StopReason};
 use crate::solver5::atoms::{
-    query_construction_atom_from_solver6_input, Solver5AtomSpanRequest,
-    Solver5ConstructionAtom,
+    query_construction_atom_from_solver6_input, Solver5AtomSpanRequest, Solver5ConstructionAtom,
 };
 use crate::solver_support::SolverError;
 
+pub mod catalog;
 mod problem;
 pub mod reporting;
-pub mod score;
 mod result;
 mod scaffolding;
+pub mod score;
 mod search;
 mod seed;
 
@@ -19,16 +17,17 @@ mod seed;
 mod tests;
 
 use crate::models::Solver6SeedStrategy;
+use catalog::{
+    catalog_miss_error, lookup_catalog_seed, Solver6CatalogLookup, Solver6CatalogSeedHit,
+};
 use problem::PureSgpProblem;
 use result::build_solver_result;
 use scaffolding::ReservedExecutionPlan;
-use search::{
-    run_configured_local_search, state::LocalSearchState, RepeatAwareLocalSearchOutcome,
-};
+use search::{run_configured_local_search, state::LocalSearchState, RepeatAwareLocalSearchOutcome};
 use seed::mixed::{build_preferred_mixed_seed, MixedSeedSelection};
 
 pub const SOLVER6_NOTES: &str =
-    "Hybrid pure-SGP repeat-minimization solver family. Solver6 combines solver5 exact constructions with deterministic exact-block relabeling, explicit mixed-tail seed selection (dominant-prefix, requested-tail atom, heuristic tail), and deterministic best-improving same-week hill climbing by default for impossible pure-SGP cases, while still failing explicitly for unsupported seed families.";
+    "Hybrid pure-SGP repeat-minimization solver family. Solver6 combines solver5 exact constructions with deterministic exact-block relabeling, explicit mixed-tail seed selection (dominant-prefix, requested-tail atom, heuristic tail), an optional explicit offline seed catalog for expensive seed builds, and deterministic best-improving same-week hill climbing by default for impossible pure-SGP cases, while still failing explicitly for unsupported seed families.";
 
 #[derive(Debug, Clone)]
 struct ExecutedSolver6Run {
@@ -38,6 +37,7 @@ struct ExecutedSolver6Run {
     final_schedule: Vec<Vec<Vec<usize>>>,
     stop_reason: StopReason,
     exact_handoff_atom: Option<Solver5ConstructionAtom>,
+    catalog_seed_hit: Option<Solver6CatalogSeedHit>,
     seed_selection: Option<MixedSeedSelection>,
     local_search_outcome: Option<RepeatAwareLocalSearchOutcome>,
 }
@@ -82,10 +82,9 @@ fn execute_solver6_run(
 
     let effective_seed = input.solver.seed.unwrap_or(42);
     if params.exact_construction_handoff_enabled {
-        if let Ok(atom) = query_construction_atom_from_solver6_input(
-            input,
-            Solver5AtomSpanRequest::RequestedSpan,
-        ) {
+        if let Ok(atom) =
+            query_construction_atom_from_solver6_input(input, Solver5AtomSpanRequest::RequestedSpan)
+        {
             return Ok(ExecutedSolver6Run {
                 problem,
                 effective_seed,
@@ -93,6 +92,7 @@ fn execute_solver6_run(
                 final_schedule: atom.schedule.clone(),
                 stop_reason: StopReason::OptimalScoreReached,
                 exact_handoff_atom: Some(atom),
+                catalog_seed_hit: None,
                 seed_selection: None,
                 local_search_outcome: None,
             });
@@ -108,10 +108,28 @@ fn execute_solver6_run(
         )));
     }
 
-    let selection = build_preferred_mixed_seed(input)?;
+    let (catalog_seed_hit, selection, seed_schedule) =
+        if let Some(catalog) = params.seed_catalog.as_ref() {
+            match lookup_catalog_seed(input, catalog)? {
+                Solver6CatalogLookup::Hit(hit) => {
+                    let schedule = hit.seed.schedule.clone();
+                    (Some(hit), None, schedule)
+                }
+                Solver6CatalogLookup::Miss { reason } => {
+                    catalog_miss_error(catalog, &reason)?;
+                    let selection = build_preferred_mixed_seed(input)?;
+                    let schedule = selection.seed.schedule.clone();
+                    (None, Some(selection), schedule)
+                }
+            }
+        } else {
+            let selection = build_preferred_mixed_seed(input)?;
+            let schedule = selection.seed.schedule.clone();
+            (None, Some(selection), schedule)
+        };
     let mut state = LocalSearchState::new(
         problem.clone(),
-        selection.seed.schedule.clone(),
+        seed_schedule,
         params.pair_repeat_penalty_model,
     )?;
     let outcome = run_configured_local_search(
@@ -129,7 +147,8 @@ fn execute_solver6_run(
         final_schedule: outcome.best_schedule.clone(),
         stop_reason: outcome.stop_reason,
         exact_handoff_atom: None,
-        seed_selection: Some(selection),
+        catalog_seed_hit,
+        seed_selection: selection,
         local_search_outcome: Some(outcome),
     })
 }
