@@ -692,12 +692,26 @@
     position: absolute;
     top: 0;
     left: calc(var(--number-field-slider-value-position) + var(--number-field-slider-value-offset, 0rem));
+    display: inline-flex;
+    align-items: center;
+    gap: 0.08rem;
     transform: translateX(-50%);
     font-size: 0.75rem;
     color: var(--text-tertiary);
     font-variant-numeric: tabular-nums;
     line-height: 1;
     white-space: nowrap;
+  }
+
+  .number-field__slider-value--focused {
+    color: var(--text-secondary);
+  }
+
+  .number-field__slider-value-caret {
+    width: 1px;
+    height: 0.8em;
+    background: currentColor;
+    animation: number-field-caret-blink 1s steps(1, end) infinite;
   }
 
   .number-field__slider {
@@ -788,6 +802,15 @@
 
   .number-field--disabled {
     opacity: 0.7;
+  }
+
+  @keyframes number-field-caret-blink {
+    0%, 49% {
+      opacity: 1;
+    }
+    50%, 100% {
+      opacity: 0;
+    }
   }
 
   @container (min-width: 22rem) {
