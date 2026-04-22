@@ -642,10 +642,14 @@ fn score_delta_for_adjustments(
     adjustments: &[RelabelingPairCountAdjustment],
     model: Solver6PairRepeatPenaltyModel,
 ) -> Result<i64, SolverError> {
-    adjustments.iter().try_fold(0i64, |delta_sum, adjustment| {
-        Ok(delta_sum
-            + pair_state.score_delta_for_pair_change(adjustment.pair_idx, adjustment.delta, model)?)
-    })
+    Ok(adjustments.iter().fold(0i64, |delta_sum, adjustment| {
+        delta_sum
+            + pair_state.score_delta_for_pair_change_known_valid(
+                adjustment.pair_idx,
+                adjustment.delta,
+                model,
+            )
+    }))
 }
 
 fn pair_index_fast(
