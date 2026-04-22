@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { ArrowRight, ChevronDown, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, ChevronDown, CircleHelp, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
@@ -109,6 +109,34 @@ async function copyText(value: string) {
   } catch {
     // Ignore clipboard failures in unsupported environments.
   }
+}
+
+function SectionLabelWithTooltip({
+  label,
+  help,
+  htmlFor,
+}: {
+  label: string;
+  help: string;
+  htmlFor?: string;
+}) {
+  return (
+    <div className="mb-2 flex items-center gap-1.5">
+      <label htmlFor={htmlFor} className="block text-sm font-medium">
+        {label}
+      </label>
+      <Tooltip content={help} offset={6} maxWidth={360}>
+        <button
+          type="button"
+          aria-label="Show section help"
+          className="inline-flex h-4 min-w-4 items-center justify-center rounded-full text-[0.7rem] font-medium leading-none"
+          style={{ color: 'var(--text-tertiary)' }}
+        >
+          <CircleHelp className="h-3.5 w-3.5" />
+        </button>
+      </Tooltip>
+    </div>
+  );
 }
 
 export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProps) {
@@ -685,9 +713,10 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 style={toolColumnsStyle}
               >
                 <div className="min-w-0">
-                  <label className="mb-2 block text-sm font-medium">
-                    {ui.quickSetup.participantsLabel}
-                  </label>
+                  <SectionLabelWithTooltip
+                    label={ui.quickSetup.participantsLabel}
+                    help={ui.quickSetup.participantsHelp}
+                  />
                   <LandingParticipantColumnsInput
                     label={ui.quickSetup.participantsLabel}
                     nameColumnLabel={ui.quickSetup.nameColumnLabel}

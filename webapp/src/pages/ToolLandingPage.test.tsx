@@ -760,11 +760,11 @@ describe('ToolLandingPage SEO wiring', () => {
 
     expect(screen.getByLabelText(/keep together/i)).toHaveAttribute(
       'placeholder',
-      'One group per line\nAlex, Sam\nPriya, Jordan, Mina',
+      'One group per line\nAlex, Sam\nElla, Jordan, Mina',
     );
     expect(screen.getByLabelText(/keep apart/i)).toHaveAttribute(
       'placeholder',
-      'One pair per line\nAlex, Sam\nPriya, Jordan',
+      'One pair per line\nAlex, Sam\nElla, Jordan',
     );
   });
 
