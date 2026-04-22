@@ -290,6 +290,25 @@ impl PairFrequencyState {
         pair_penalty_for_model(model, new_count) as i64 - pair_penalty_for_model(model, old_count) as i64
     }
 
+    pub(crate) fn linear_score_delta_for_pair_change_known_valid(
+        &self,
+        pair_idx: usize,
+        delta: i8,
+    ) -> i64 {
+        debug_assert!(pair_idx < self.pair_counts.len());
+        debug_assert!(delta == -1 || delta == 1);
+
+        let old_count = self.pair_counts[pair_idx];
+        match delta {
+            -1 => {
+                debug_assert!(old_count > 0);
+                (old_count > 1) as i64 * -1
+            }
+            1 => (old_count > 0) as i64,
+            _ => unreachable!("validated fast linear score-delta path only supports +/-1"),
+        }
+    }
+
     pub fn apply_pair_count_delta(&mut self, pair_idx: usize, delta: i8) -> Result<(), SolverError> {
         let old_count = self.pair_count_by_index(pair_idx)?;
         let new_count = adjusted_pair_count(old_count, delta)?;

@@ -108,15 +108,30 @@ impl DenseRelabelingPairAdjustmentScratch {
         pair_state: &PairFrequencyState,
         model: Solver6PairRepeatPenaltyModel,
     ) -> i64 {
-        self.touched_pairs.iter().fold(0i64, |delta_sum, &pair_idx| {
-            let delta = self.deltas_by_pair[pair_idx];
-            if delta == 0 {
-                delta_sum
-            } else {
-                delta_sum
-                    + pair_state.score_delta_for_pair_change_known_valid(pair_idx, delta, model)
+        match model {
+            Solver6PairRepeatPenaltyModel::LinearRepeatExcess => {
+                self.touched_pairs.iter().fold(0i64, |delta_sum, &pair_idx| {
+                    let delta = self.deltas_by_pair[pair_idx];
+                    if delta == 0 {
+                        delta_sum
+                    } else {
+                        delta_sum
+                            + pair_state.linear_score_delta_for_pair_change_known_valid(
+                                pair_idx, delta,
+                            )
+                    }
+                })
             }
-        })
+            _ => self.touched_pairs.iter().fold(0i64, |delta_sum, &pair_idx| {
+                let delta = self.deltas_by_pair[pair_idx];
+                if delta == 0 {
+                    delta_sum
+                } else {
+                    delta_sum
+                        + pair_state.score_delta_for_pair_change_known_valid(pair_idx, delta, model)
+                }
+            }),
+        }
     }
 
     fn materialize(&self) -> Vec<RelabelingPairCountAdjustment> {

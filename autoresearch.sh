@@ -10,6 +10,7 @@ MAX_PEOPLE=50
 TIME_LIMIT=2
 MAX_ITERATIONS=2000
 NO_IMPROVEMENT=300
+JOBS=4
 
 uv run python -m ast "$ROOT/tools/autoresearch/solver6-optimality/generate_matrix_report.py" >/dev/null
 cargo test -q -p gm-core solver6::reporting::tests::benchmark_input_builder_uses_solver6_with_repeat_bound -- --exact >/dev/null
@@ -18,6 +19,7 @@ cargo run -q -p gm-core --example solver6_optimality_frontier -- \
   --json-out "$JSON_OUT" \
   --week-cap "$WEEK_CAP" \
   --max-people "$MAX_PEOPLE" \
+  --jobs "$JOBS" \
   --time-limit "$TIME_LIMIT" \
   --max-iterations "$MAX_ITERATIONS" \
   --no-improvement "$NO_IMPROVEMENT"

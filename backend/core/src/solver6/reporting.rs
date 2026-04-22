@@ -10,6 +10,7 @@ use crate::models::{
     StopConditions, StopReason,
 };
 use crate::solver_support::SolverError;
+use rayon::prelude::*;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -43,6 +44,7 @@ pub struct MatrixViewDefinition {
 pub struct Solver6BenchmarkConfigArtifact {
     pub week_cap: usize,
     pub max_people_to_run: usize,
+    pub parallel_jobs: usize,
     pub effective_seed: u64,
     pub active_penalty_model: String,
     pub max_iterations: Option<u64>,
@@ -54,6 +56,7 @@ pub struct Solver6BenchmarkConfigArtifact {
 pub struct Solver6BenchmarkConfig {
     pub week_cap: usize,
     pub max_people_to_run: usize,
+    pub parallel_jobs: usize,
     pub effective_seed: u64,
     pub stop_conditions: StopConditions,
     pub active_penalty_model: Solver6PairRepeatPenaltyModel,
@@ -65,6 +68,7 @@ impl Default for Solver6BenchmarkConfig {
         Self {
             week_cap: 100,
             max_people_to_run: 36,
+            parallel_jobs: 1,
             effective_seed: 42,
             stop_conditions: StopConditions {
                 max_iterations: Some(1_000),
@@ -83,6 +87,7 @@ impl Solver6BenchmarkConfig {
         Solver6BenchmarkConfigArtifact {
             week_cap: self.week_cap,
             max_people_to_run: self.max_people_to_run,
+            parallel_jobs: self.parallel_jobs,
             effective_seed: self.effective_seed,
             active_penalty_model: penalty_model_label(self.active_penalty_model).into(),
             max_iterations: self.stop_conditions.max_iterations,
@@ -437,26 +442,68 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
 pub fn build_matrix_artifact(
     config: &Solver6BenchmarkConfig,
 ) -> Result<Solver6MatrixArtifact, SolverError> {
-    let mut matrices = Vec::with_capacity(config.matrices.len());
-    for matrix in &config.matrices {
-        let mut cells = Vec::with_capacity(matrix.bounds.width() * matrix.bounds.height());
-        for g in matrix.bounds.g_min..=matrix.bounds.g_max {
-            for p in matrix.bounds.p_min..=matrix.bounds.p_max {
-                cells.push(build_cell_artifact(config, g, p)?);
-            }
-        }
-        matrices.push(MatrixViewArtifact {
-            title: matrix.title.clone(),
-            subtitle: matrix.subtitle.clone(),
-            bounds: matrix.bounds,
-            cells,
-        });
+    if config.parallel_jobs == 0 {
+        return Err(SolverError::ValidationError(
+            "solver6 benchmark parallel_jobs must be at least 1".into(),
+        ));
     }
+
+    let matrices = if config.parallel_jobs == 1 {
+        config
+            .matrices
+            .iter()
+            .map(|matrix| build_matrix_view_artifact(config, matrix))
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(config.parallel_jobs)
+            .build()
+            .map_err(|error| {
+                SolverError::ValidationError(format!(
+                    "solver6 benchmark failed to build rayon thread pool: {error}"
+                ))
+            })?;
+        pool.install(|| {
+            config
+                .matrices
+                .par_iter()
+                .map(|matrix| build_matrix_view_artifact(config, matrix))
+                .collect::<Result<Vec<_>, _>>()
+        })?
+    };
 
     Ok(Solver6MatrixArtifact {
         report_name: "solver6-optimality-frontier".into(),
         config: config.to_artifact(),
         matrices,
+    })
+}
+
+fn build_matrix_view_artifact(
+    config: &Solver6BenchmarkConfig,
+    matrix: &MatrixViewDefinition,
+) -> Result<MatrixViewArtifact, SolverError> {
+    let coordinates = (matrix.bounds.g_min..=matrix.bounds.g_max)
+        .flat_map(|g| (matrix.bounds.p_min..=matrix.bounds.p_max).map(move |p| (g, p)))
+        .collect::<Vec<_>>();
+
+    let cells = if config.parallel_jobs == 1 {
+        coordinates
+            .iter()
+            .map(|&(g, p)| build_cell_artifact(config, g, p))
+            .collect::<Result<Vec<_>, _>>()?
+    } else {
+        coordinates
+            .par_iter()
+            .map(|&(g, p)| build_cell_artifact(config, g, p))
+            .collect::<Result<Vec<_>, _>>()?
+    };
+
+    Ok(MatrixViewArtifact {
+        title: matrix.title.clone(),
+        subtitle: matrix.subtitle.clone(),
+        bounds: matrix.bounds,
+        cells,
     })
 }
 
@@ -882,6 +929,35 @@ mod tests {
             .week_results
             .iter()
             .all(|week| week.linear_status == LayerWeekStatus::NotRun));
+    }
+
+    #[test]
+    fn parallel_benchmark_artifact_preserves_matrix_cell_order() {
+        let config = Solver6BenchmarkConfig {
+            week_cap: 1,
+            max_people_to_run: 8,
+            parallel_jobs: 4,
+            matrices: vec![super::MatrixViewDefinition {
+                title: "tiny".into(),
+                subtitle: "tiny".into(),
+                bounds: super::MatrixBounds {
+                    g_min: 2,
+                    g_max: 3,
+                    p_min: 2,
+                    p_max: 3,
+                },
+            }],
+            ..Solver6BenchmarkConfig::default()
+        };
+
+        let artifact = build_matrix_artifact(&config).unwrap();
+        let coordinates = artifact.matrices[0]
+            .cells
+            .iter()
+            .map(|cell| (cell.g, cell.p))
+            .collect::<Vec<_>>();
+
+        assert_eq!(coordinates, vec![(2, 2), (2, 3), (3, 2), (3, 3)]);
     }
 
     #[test]

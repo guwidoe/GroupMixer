@@ -30,6 +30,14 @@ fn main() {
                     .parse()
                     .expect("--max-people must parse as usize");
             }
+            "--jobs" => {
+                idx += 1;
+                config.parallel_jobs = args
+                    .get(idx)
+                    .expect("--jobs requires a value")
+                    .parse()
+                    .expect("--jobs must parse as usize");
+            }
             "--seed" => {
                 idx += 1;
                 config.effective_seed = args
