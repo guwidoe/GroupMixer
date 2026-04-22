@@ -12,7 +12,7 @@ use self::state::LocalSearchState;
 use self::tabu::{RepeatAwareTabuMemory, RepeatAwareTabuPolicy};
 use crate::models::{Solver6SearchStrategy, StopConditions, StopReason};
 use crate::solver6::problem::PureSgpProblem;
-use crate::solver6::score::pure_sgp_linear_repeat_excess_lower_bound;
+use crate::solver6::score::{pure_sgp_linear_repeat_excess_lower_bound, PairFrequencyState};
 use crate::solver_support::SolverError;
 use std::time::Instant;
 
@@ -113,6 +113,7 @@ pub(crate) struct RepeatAwareSearchTelemetry {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct RepeatAwareLocalSearchOutcome {
     pub best_schedule: Vec<Vec<Vec<usize>>>,
+    pub best_pair_state: PairFrequencyState,
     pub best_active_score: u64,
     pub best_iteration: u64,
     pub iterations_completed: u64,
@@ -373,6 +374,7 @@ fn build_outcome_from_state(
 ) -> RepeatAwareLocalSearchOutcome {
     RepeatAwareLocalSearchOutcome {
         best_schedule: state.best_schedule().to_vec(),
+        best_pair_state: state.best().pair_state.clone(),
         best_active_score: state.best_active_score(),
         best_iteration: state.best().iteration,
         iterations_completed: state.current_iteration(),

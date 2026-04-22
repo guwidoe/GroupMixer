@@ -1,6 +1,9 @@
 use super::execute_solver6_run;
 use super::problem::PureSgpProblem;
-use super::score::{pure_sgp_linear_repeat_excess_lower_bound, PairFrequencySummary};
+use super::score::{
+    pure_sgp_linear_repeat_excess_lower_bound, PairFrequencyState, PairFrequencySummary,
+};
+use super::seed::SeedPairTelemetry;
 use crate::models::{
     ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
     Solver6PairRepeatPenaltyModel, Solver6Params, SolverConfiguration, SolverKind, SolverParams,
@@ -176,6 +179,65 @@ impl ScoreMetrics {
             multiplicity_histogram: summary.multiplicity_histogram().counts_by_frequency().to_vec(),
         }
     }
+
+    fn from_pair_state(
+        problem: &PureSgpProblem,
+        pair_state: &PairFrequencyState,
+        active_penalty_model: Solver6PairRepeatPenaltyModel,
+    ) -> Self {
+        let linear_repeat_lower_bound = pure_sgp_linear_repeat_excess_lower_bound(
+            problem.num_groups,
+            problem.group_size,
+            problem.num_weeks,
+            pair_state.universe().total_distinct_pairs(),
+            pair_state.total_pair_incidences(),
+        );
+        Self {
+            active_penalty_model: penalty_model_label(active_penalty_model).into(),
+            active_penalty_score: pair_state.score_for_model(active_penalty_model),
+            linear_repeat_excess: pair_state.linear_repeat_excess(),
+            linear_repeat_lower_bound,
+            linear_repeat_lower_bound_gap: pair_state
+                .linear_repeat_excess()
+                .saturating_sub(linear_repeat_lower_bound),
+            squared_repeat_excess: pair_state.squared_repeat_excess(),
+            squared_repeat_lower_bound: pair_state.squared_repeat_excess_lower_bound(),
+            squared_repeat_lower_bound_gap: pair_state.squared_repeat_excess_lower_bound_gap(),
+            distinct_pairs_covered: pair_state.distinct_pairs_covered(),
+            total_pair_incidences: pair_state.total_pair_incidences(),
+            max_pair_frequency: pair_state.max_pair_frequency(),
+            multiplicity_histogram: pair_state.multiplicity_histogram().to_vec(),
+        }
+    }
+
+    fn from_seed_telemetry(problem: &PureSgpProblem, telemetry: &SeedPairTelemetry) -> Self {
+        let total_distinct_pairs = problem.num_groups * problem.group_size;
+        let universe_pairs = total_distinct_pairs.saturating_mul(total_distinct_pairs.saturating_sub(1)) / 2;
+        let squared_repeat_lower_bound = if universe_pairs == 0 {
+            0
+        } else {
+            let repeat_excess = telemetry.linear_repeat_excess;
+            let q = repeat_excess / universe_pairs as u64;
+            let r = repeat_excess % universe_pairs as u64;
+            (universe_pairs as u64 - r) * q * q + r * (q + 1) * (q + 1)
+        };
+        Self {
+            active_penalty_model: penalty_model_label(telemetry.active_penalty_model).into(),
+            active_penalty_score: telemetry.active_penalty_score,
+            linear_repeat_excess: telemetry.linear_repeat_excess,
+            linear_repeat_lower_bound: telemetry.linear_repeat_lower_bound,
+            linear_repeat_lower_bound_gap: telemetry.linear_repeat_lower_bound_gap,
+            squared_repeat_excess: telemetry.squared_repeat_excess,
+            squared_repeat_lower_bound,
+            squared_repeat_lower_bound_gap: telemetry
+                .squared_repeat_excess
+                .saturating_sub(squared_repeat_lower_bound),
+            distinct_pairs_covered: telemetry.distinct_pairs_covered,
+            total_pair_incidences: telemetry.total_pair_incidences,
+            max_pair_frequency: telemetry.max_pair_frequency,
+            multiplicity_histogram: telemetry.multiplicity_histogram.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -277,21 +339,33 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
     let start = Instant::now();
     let executed = execute_solver6_run(input, &input.solver)?;
     let runtime_seconds = start.elapsed().as_secs_f64();
-    let final_metrics = ScoreMetrics::from_schedule(
-        &executed.problem,
-        &executed.final_schedule,
-        executed.active_penalty_model,
-    )?;
+    let final_metrics = if let Some(outcome) = executed.local_search_outcome.as_ref() {
+        ScoreMetrics::from_pair_state(
+            &executed.problem,
+            &outcome.best_pair_state,
+            executed.active_penalty_model,
+        )
+    } else {
+        ScoreMetrics::from_schedule(
+            &executed.problem,
+            &executed.final_schedule,
+            executed.active_penalty_model,
+        )?
+    };
     let exact_handoff = executed.exact_handoff_atom.is_some();
     let (seed_family, seed_metrics, mixed_seed_candidates) =
         if let Some(selection) = executed.seed_selection.as_ref() {
             (
                 selection.selected_family.label().to_string(),
-                ScoreMetrics::from_schedule(
+                ScoreMetrics::from_seed_telemetry(
                     &executed.problem,
-                    &selection.seed.schedule,
-                    executed.active_penalty_model,
-                )?,
+                    selection
+                        .seed
+                        .diagnostics
+                        .pair_telemetry
+                        .as_ref()
+                        .expect("selected seed should expose pair telemetry"),
+                ),
                 selection
                     .candidates
                     .iter()
