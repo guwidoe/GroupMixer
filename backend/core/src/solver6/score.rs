@@ -84,13 +84,21 @@ impl PairUniverse {
             )));
         }
 
+        Ok(self.pair_index_known_valid(left, right))
+    }
+
+    pub(crate) fn pair_index_known_valid(&self, left: usize, right: usize) -> usize {
+        debug_assert_ne!(left, right);
+        debug_assert!(left < self.num_people);
+        debug_assert!(right < self.num_people);
+
         let (left, right) = if left < right {
             (left, right)
         } else {
             (right, left)
         };
         let row_offset = left * (2 * self.num_people - left - 1) / 2;
-        Ok(row_offset + (right - left - 1))
+        row_offset + (right - left - 1)
     }
 }
 
@@ -195,6 +203,11 @@ impl PairFrequencyState {
                 self.pair_counts.len()
             ))
         })
+    }
+
+    pub(crate) fn pair_count_by_index_known_valid(&self, pair_idx: usize) -> u16 {
+        debug_assert!(pair_idx < self.pair_counts.len());
+        self.pair_counts[pair_idx]
     }
 
     pub fn total_pair_incidences(&self) -> usize {

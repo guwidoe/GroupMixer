@@ -212,15 +212,15 @@ pub(crate) fn evaluate_same_week_swap(
         if member_idx == swap.left_pos_idx {
             continue;
         }
-        aggregated_adjustments.apply(universe.pair_index(left_person, other)?, -1);
-        aggregated_adjustments.apply(universe.pair_index(right_person, other)?, 1);
+        aggregated_adjustments.apply(universe.pair_index_known_valid(left_person, other), -1);
+        aggregated_adjustments.apply(universe.pair_index_known_valid(right_person, other), 1);
     }
     for (member_idx, &other) in right_group.iter().enumerate() {
         if member_idx == swap.right_pos_idx {
             continue;
         }
-        aggregated_adjustments.apply(universe.pair_index(right_person, other)?, -1);
-        aggregated_adjustments.apply(universe.pair_index(left_person, other)?, 1);
+        aggregated_adjustments.apply(universe.pair_index_known_valid(right_person, other), -1);
+        aggregated_adjustments.apply(universe.pair_index_known_valid(left_person, other), 1);
     }
 
     let pair_adjustments = aggregated_adjustments.finish();
@@ -289,15 +289,22 @@ fn score_delta_for_adjustments(
     adjustments: &[PairCountAdjustment],
     model: Solver6PairRepeatPenaltyModel,
 ) -> Result<i64, SolverError> {
-    let mut delta_total = 0i64;
-    for adjustment in adjustments {
-        delta_total += state.pair_state().score_delta_for_pair_change(
-            adjustment.pair_idx,
-            adjustment.delta,
-            model,
-        )?;
-    }
-    Ok(delta_total)
+    let pair_state = state.pair_state();
+    Ok(adjustments.iter().fold(0i64, |delta_total, adjustment| {
+        delta_total
+            + match model {
+                Solver6PairRepeatPenaltyModel::LinearRepeatExcess => pair_state
+                    .linear_score_delta_for_pair_change_known_valid(
+                        adjustment.pair_idx,
+                        adjustment.delta,
+                    ),
+                _ => pair_state.score_delta_for_pair_change_known_valid(
+                    adjustment.pair_idx,
+                    adjustment.delta,
+                    model,
+                ),
+            }
+    }))
 }
 
 #[cfg(test)]
