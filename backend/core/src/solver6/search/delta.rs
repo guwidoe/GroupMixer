@@ -14,6 +14,10 @@ impl PairAdjustmentAccumulator {
         }
     }
 
+    fn start_candidate(&mut self) {
+        self.adjustments.clear();
+    }
+
     fn apply(&mut self, pair_idx: usize, delta: i8) {
         debug_assert_ne!(delta, 0);
         if let Some(existing_idx) = self
@@ -33,9 +37,16 @@ impl PairAdjustmentAccumulator {
         self.adjustments.push(PairCountAdjustment { pair_idx, delta });
     }
 
-    fn finish(self) -> Vec<PairCountAdjustment> {
-        self.adjustments
+    fn materialize(&self) -> Vec<PairCountAdjustment> {
+        self.adjustments.clone()
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SameWeekSwapEvaluationSummary {
+    active_score_before: u64,
+    active_score_after: u64,
+    linear_repeat_excess_after: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -204,42 +215,66 @@ pub(crate) fn evaluate_same_week_swap(
         ));
     }
 
-    let universe = state.pair_state().universe();
-    let mut aggregated_adjustments = PairAdjustmentAccumulator::with_capacity(
+    let mut scratch = PairAdjustmentAccumulator::with_capacity(
         4 * left_group.len().saturating_sub(1),
     );
+    evaluate_same_week_swap_with_accumulator(state, swap, &mut scratch)
+}
+
+fn evaluate_same_week_swap_with_accumulator(
+    state: &LocalSearchState,
+    swap: SameWeekSwapMove,
+    scratch: &mut PairAdjustmentAccumulator,
+) -> Result<EvaluatedSameWeekSwapMove, SolverError> {
+    let summary = evaluate_same_week_swap_summary_with_accumulator(state, swap, scratch)?;
+    Ok(EvaluatedSameWeekSwapMove {
+        swap,
+        pair_adjustments: scratch.materialize(),
+        active_score_before: summary.active_score_before,
+        active_score_after: summary.active_score_after,
+        linear_repeat_excess_after: summary.linear_repeat_excess_after,
+    })
+}
+
+fn evaluate_same_week_swap_summary_with_accumulator(
+    state: &LocalSearchState,
+    swap: SameWeekSwapMove,
+    scratch: &mut PairAdjustmentAccumulator,
+) -> Result<SameWeekSwapEvaluationSummary, SolverError> {
+    let week = &state.schedule()[swap.week_idx];
+    let left_group = &week[swap.left_group_idx];
+    let right_group = &week[swap.right_group_idx];
+    scratch.start_candidate();
+
+    let universe = state.pair_state().universe();
     for (member_idx, &other) in left_group.iter().enumerate() {
         if member_idx == swap.left_pos_idx {
             continue;
         }
-        aggregated_adjustments.apply(universe.pair_index_known_valid(left_person, other), -1);
-        aggregated_adjustments.apply(universe.pair_index_known_valid(right_person, other), 1);
+        scratch.apply(universe.pair_index_known_valid(swap.left_person, other), -1);
+        scratch.apply(universe.pair_index_known_valid(swap.right_person, other), 1);
     }
     for (member_idx, &other) in right_group.iter().enumerate() {
         if member_idx == swap.right_pos_idx {
             continue;
         }
-        aggregated_adjustments.apply(universe.pair_index_known_valid(right_person, other), -1);
-        aggregated_adjustments.apply(universe.pair_index_known_valid(left_person, other), 1);
+        scratch.apply(universe.pair_index_known_valid(swap.right_person, other), -1);
+        scratch.apply(universe.pair_index_known_valid(swap.left_person, other), 1);
     }
-
-    let pair_adjustments = aggregated_adjustments.finish();
 
     let linear_delta = score_delta_for_adjustments(
         state,
-        &pair_adjustments,
+        &scratch.adjustments,
         Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
     )?;
     let active_delta = match state.active_penalty_model() {
         Solver6PairRepeatPenaltyModel::LinearRepeatExcess => linear_delta,
-        active_model => score_delta_for_adjustments(state, &pair_adjustments, active_model)?,
+        active_model => score_delta_for_adjustments(state, &scratch.adjustments, active_model)?,
     };
     let active_score_before = state.current_active_score();
     let active_score_after = (active_score_before as i64 + active_delta) as u64;
 
-    Ok(EvaluatedSameWeekSwapMove {
-        swap,
-        pair_adjustments,
+    Ok(SameWeekSwapEvaluationSummary {
         active_score_before,
         active_score_after,
         linear_repeat_excess_after: (state.pair_state().linear_repeat_excess() as i64 + linear_delta)
@@ -251,14 +286,49 @@ pub(crate) fn find_best_same_week_swap(
     state: &LocalSearchState,
 ) -> Result<Option<EvaluatedSameWeekSwapMove>, SolverError> {
     let mut best: Option<EvaluatedSameWeekSwapMove> = None;
+    let mut scratch = PairAdjustmentAccumulator::with_capacity(
+        4 * state.problem().group_size.saturating_sub(1),
+    );
     try_for_each_same_week_swap_move(state, |candidate| {
-        let evaluated = evaluate_same_week_swap(state, candidate)?;
-        if best.as_ref().is_none_or(|incumbent| same_week_swap_is_better(&evaluated, incumbent)) {
-            best = Some(evaluated);
+        let summary = evaluate_same_week_swap_summary_with_accumulator(state, candidate, &mut scratch)?;
+        if best.as_ref().is_none_or(|incumbent| {
+            same_week_swap_summary_is_better(candidate, summary, incumbent)
+        }) {
+            best = Some(EvaluatedSameWeekSwapMove {
+                swap: candidate,
+                pair_adjustments: scratch.materialize(),
+                active_score_before: summary.active_score_before,
+                active_score_after: summary.active_score_after,
+                linear_repeat_excess_after: summary.linear_repeat_excess_after,
+            });
         }
         Ok(())
     })?;
     Ok(best)
+}
+
+fn same_week_swap_summary_is_better(
+    candidate_swap: SameWeekSwapMove,
+    candidate: SameWeekSwapEvaluationSummary,
+    incumbent: &EvaluatedSameWeekSwapMove,
+) -> bool {
+    (
+        candidate.active_score_after,
+        candidate.linear_repeat_excess_after,
+        candidate_swap.week_idx,
+        candidate_swap.left_group_idx,
+        candidate_swap.left_pos_idx,
+        candidate_swap.right_group_idx,
+        candidate_swap.right_pos_idx,
+    ) < (
+        incumbent.active_score_after,
+        incumbent.linear_repeat_excess_after,
+        incumbent.swap.week_idx,
+        incumbent.swap.left_group_idx,
+        incumbent.swap.left_pos_idx,
+        incumbent.swap.right_group_idx,
+        incumbent.swap.right_pos_idx,
+    )
 }
 
 pub(crate) fn same_week_swap_is_better(

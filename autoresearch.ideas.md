@@ -6,6 +6,7 @@
 - More selective mixed-seed candidate pruning: dominant-prefix-tail warm-starting landed, but wholesale removal when requested tails exist lost one squared hit, so only benchmark-honest dominance tests remain interesting there.
 - Tail-focused improvement operator for weak sparse-tail cases (`4-3-5`, `4-3-6`, similar small remainder cells).
 - Reporting-side instrumentation split between seed-build time and local-search time, so the benchmark exposes the exact runtime bottleneck directly.
+- Same-week local-search scan-path reuse: reduce repeated per-candidate adjustment allocation/materialization inside `backend/core/src/solver6/search/delta.rs` without changing move ordering.
 - Stronger structural lower bounds beyond the current two-week linear strengthening, but only if they remain mathematically honest and cheap.
 
 ## De-emphasized / recently negative
@@ -17,3 +18,5 @@
 - Incremental per-apply relabeling score-delta bookkeeping inside the dense scratch workspace: folding touched pairs after the cheap write-side accumulation is materially faster than updating penalty totals on every scratch mutation.
 - Winner-reevaluation materialization deferral during relabeling scans: skipping interim materializations and reevaluating the final winner once still lost to the current single-pass incumbent capture path.
 - Repeating previously failed lanes: shared prefix `PairFrequencyState` wrappers across mixed-tail candidates, heuristic-tail closed-form increment math substitution, reusing final exact-block packaged pair-state, early-return prune after first optimum-reaching swap, full `PairUniverse` pair-index table caching, simple source-equivalence symmetry pruning, or dropping `dominant_prefix_tail` whenever requested-tail exists.
+- Heuristic-tail candidate-scoring fast paths that perturb timeout/quality behavior without a clear primary-metric win.
+- Additional search-loop validation-elision tweaks beyond the landed same-week fast-path keep; the latest trusted-evaluator refactor regressed the current best line.

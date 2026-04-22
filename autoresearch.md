@@ -149,6 +149,21 @@ Lower is better. This means runtime wins are good, but not if they degrade bench
 - Precomputed flat source-mate swap summaries are the current best exact-block relabeling hot-loop line.
 - Benchmark harness parallelism (`--jobs`) is now available and should remain deterministic in artifact ordering.
 
+### Current 100-person baseline and best keep in this loop
+- Reinitialized 100-person baseline (`week_cap=20`, `max_people=100`, `jobs=4`) landed at:
+  - `objective_cost = 10245058156845`
+  - `total_runtime_ms = 1648445`
+  - `timeout_runs = 94`
+  - `linear_hit_count = 2243`
+  - `linear_gap_sum = 50170`
+- Current best keep on this 100-person lane:
+  - `objective_cost = 9252939167415`
+  - `total_runtime_ms = 1635015`
+  - `timeout_runs = 84`
+  - `linear_hit_count = 2243`
+  - `linear_gap_sum = 49958`
+- That keep fast-pathed same-week local-search swap evaluation with known-valid pair indexing and trusted score-delta lookups. The main win came from reducing timeout pressure under the 2s per-cell cap.
+
 ### Recent negative results to avoid repeating blindly
 - Incremental per-apply relabeling score-delta bookkeeping inside dense scratch regressed sharply.
 - Trusted fast write-side pair-state mutation clones were not worth it.
@@ -158,3 +173,5 @@ Lower is better. This means runtime wins are good, but not if they degrade bench
 - Simple source-equivalence symmetry pruning did not pay off.
 - Dropping `dominant_prefix_tail` whenever requested-tail exists lost benchmark quality.
 - Final exact-block seed-packaging micro-optimizations have not been promising.
+- Heuristic-tail candidate-scoring fast paths were not robust winners on the 100-person lane.
+- Further search-loop validation elision beyond the landed same-week fast path did not beat the current best keep.
