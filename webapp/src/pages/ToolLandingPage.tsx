@@ -15,6 +15,7 @@ import { DemoDataDropdown } from '../components/ScenarioEditor/DemoDataDropdown'
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
 import { Tooltip } from '../components/Tooltip';
 import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../components/ui';
+import { useLocalStorageState } from '../hooks/useLocalStorageState';
 import { interpolate } from '../i18n/interpolate';
 import { getLandingUiContent } from '../i18n/landingUi';
 import { Seo } from '../components/Seo';
@@ -51,6 +52,12 @@ interface DisplaySession {
     members: string[];
   }>;
 }
+
+const LANDING_TOOL_RESIZE_STORAGE_KEY = 'landing:tool-split';
+const LANDING_TOOL_RESIZE_MIN_WIDTH = 1100;
+const LANDING_TOOL_RESIZE_HANDLE_WIDTH = 22;
+const LANDING_TOOL_LEFT_MIN_WIDTH = 400;
+const LANDING_TOOL_RIGHT_MIN_WIDTH = 340;
 
 function buildDisplaySessions(
   sharedSessionData: Array<{ sessionIndex: number; groups: Array<{ id: string; people: Array<{ id: string }> }> }>,
@@ -113,8 +120,12 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const navigate = useNavigate();
   const location = useLocation();
   const resultsRef = useRef<HTMLDivElement>(null);
+  const toolColumnsRef = useRef<HTMLDivElement>(null);
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
+  const [toolSplitRatio, setToolSplitRatio] = useLocalStorageState<number>(`${LANDING_TOOL_RESIZE_STORAGE_KEY}:${pageKey}`, 0.56);
+  const [toolColumnsWidth, setToolColumnsWidth] = useState(0);
+  const [isDraggingToolDivider, setIsDraggingToolDivider] = useState(false);
   const languageOptions = useMemo(
     () =>
       config.liveLocales.map((liveLocale) => ({
@@ -200,6 +211,64 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     };
   }, [controller.result?.generatedAt]);
 
+  useEffect(() => {
+    const node = toolColumnsRef.current;
+    if (!node) {
+      return undefined;
+    }
+
+    const measure = () => {
+      const nextWidth = node.getBoundingClientRect().width;
+      setToolColumnsWidth((previous) => (Math.abs(previous - nextWidth) < 0.5 ? previous : nextWidth));
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => measure());
+      observer.observe(node);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer?.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isDraggingToolDivider || !canResizeToolColumns) {
+      return undefined;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const bounds = toolColumnsRef.current?.getBoundingClientRect();
+      if (!bounds) {
+        return;
+      }
+
+      const nextLeftWidth = Math.min(
+        Math.max(event.clientX - bounds.left - (LANDING_TOOL_RESIZE_HANDLE_WIDTH / 2), LANDING_TOOL_LEFT_MIN_WIDTH),
+        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, bounds.width - LANDING_TOOL_RESIZE_HANDLE_WIDTH - LANDING_TOOL_RIGHT_MIN_WIDTH),
+      );
+      const nextRatio = nextLeftWidth / Math.max(1, bounds.width - LANDING_TOOL_RESIZE_HANDLE_WIDTH);
+      setToolSplitRatio(Math.min(0.72, Math.max(0.4, nextRatio)));
+    };
+
+    const stopDragging = () => setIsDraggingToolDivider(false);
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopDragging);
+    window.addEventListener('pointercancel', stopDragging);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopDragging);
+      window.removeEventListener('pointercancel', stopDragging);
+    };
+  }, [isDraggingToolDivider, setToolSplitRatio]);
+
   const navigateToAdvancedWorkspace = (target: 'results' | 'people') => {
     const nextScenarioId = loadWorkspaceAsNewScenario({
       ...workspacePayload,
@@ -240,6 +309,23 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const participantColumns = normalizeParticipantColumns(draft);
   const displayedGroupCount = Math.max(1, estimatedGroupCount);
   const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
+  const canResizeToolColumns = toolColumnsWidth >= LANDING_TOOL_RESIZE_MIN_WIDTH;
+  const resolvedToolSplitRatio = Math.min(0.72, Math.max(0.4, toolSplitRatio));
+  const resizableTrackWidth = Math.max(0, toolColumnsWidth - LANDING_TOOL_RESIZE_HANDLE_WIDTH);
+  const leftColumnWidth = canResizeToolColumns
+    ? Math.min(
+        Math.max(resizableTrackWidth * resolvedToolSplitRatio, LANDING_TOOL_LEFT_MIN_WIDTH),
+        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, resizableTrackWidth - LANDING_TOOL_RIGHT_MIN_WIDTH),
+      )
+    : null;
+  const rightColumnWidth = canResizeToolColumns && leftColumnWidth != null
+    ? Math.max(LANDING_TOOL_RIGHT_MIN_WIDTH, resizableTrackWidth - leftColumnWidth)
+    : null;
+  const toolColumnsStyle = canResizeToolColumns && leftColumnWidth != null && rightColumnWidth != null
+    ? {
+        gridTemplateColumns: `minmax(0, ${leftColumnWidth}px) ${LANDING_TOOL_RESIZE_HANDLE_WIDTH}px minmax(${LANDING_TOOL_RIGHT_MIN_WIDTH}px, ${rightColumnWidth}px)`,
+      }
+    : undefined;
   const useCasesGridClassName = config.sectionSet === 'technical'
     ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3'
     : 'mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
@@ -588,10 +674,16 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
 
             <div
               data-testid="landing-tool-panel"
-              className="order-1 rounded-2xl border p-5 shadow-sm sm:p-6 lg:order-2"
-              style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+              className="order-1 lg:order-2"
             >
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.9fr)] lg:gap-5">
+              <div
+                ref={toolColumnsRef}
+                className={[
+                  'grid gap-5 lg:gap-5',
+                  canResizeToolColumns ? null : 'lg:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.92fr)]',
+                ].filter(Boolean).join(' ')}
+                style={toolColumnsStyle}
+              >
                 <div className="min-w-0">
                   <label className="mb-2 block text-sm font-medium">
                     {ui.quickSetup.participantsLabel}
@@ -814,7 +906,28 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     </p>
                   )}
                 </div>
-                <div className="lg:pl-1">
+
+                {canResizeToolColumns ? (
+                  <button
+                    type="button"
+                    aria-label="Resize landing tool columns"
+                    aria-orientation="vertical"
+                    className="hidden lg:flex w-[22px] cursor-col-resize items-center justify-center rounded-full border-0 bg-transparent p-0"
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.currentTarget.setPointerCapture?.(event.pointerId);
+                      setIsDraggingToolDivider(true);
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-full min-h-16 w-px rounded-full transition-colors"
+                      style={{ backgroundColor: isDraggingToolDivider ? 'var(--color-accent)' : 'var(--border-primary)' }}
+                    />
+                  </button>
+                ) : null}
+
+                <div className="lg:pl-2">
                   <QuickSetupAdvancedOptions controller={controller} onOpenFullEditor={() => openAdvancedWorkspace('people')} />
                 </div>
               </div>

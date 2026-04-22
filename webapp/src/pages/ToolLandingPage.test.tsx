@@ -574,8 +574,8 @@ describe('ToolLandingPage SEO wiring', () => {
     });
     expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('team');
     expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Ada - Grace');
-    expect(screen.getByRole('combobox', { name: /name 1/i })).toHaveValue('Ada');
-    expect(screen.getByRole('combobox', { name: /group 1/i })).toHaveValue('Group 1');
+    expect(screen.getByRole('textbox', { name: /fixed people: name/i })).toHaveTextContent('Ada');
+    expect(screen.getByRole('textbox', { name: /fixed people: group/i })).toHaveTextContent('Group 1');
   });
 
   it('lets users remove attribute columns from the structured participant editor', async () => {
@@ -597,7 +597,7 @@ describe('ToolLandingPage SEO wiring', () => {
     confirmSpy.mockRestore();
   });
 
-  it('lets users add fixed people assignments from the landing tool', async () => {
+  it('lets users enter fixed people assignments from the landing tool', async () => {
     const user = userEvent.setup();
 
     render(
@@ -606,8 +606,13 @@ describe('ToolLandingPage SEO wiring', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: /add fixed person/i }));
-    await user.selectOptions(screen.getByRole('combobox', { name: /group 1/i }), 'Group 2');
+    const fixedNames = screen.getByRole('textbox', { name: /fixed people: name/i });
+    const fixedGroups = screen.getByRole('textbox', { name: /fixed people: group/i });
+
+    await user.click(fixedNames);
+    await user.keyboard('Alex');
+    await user.click(fixedGroups);
+    await user.keyboard('Group 2');
     await user.click(screen.getByRole('button', { name: /generate groups/i }));
 
     expect(vi.mocked(solveScenario)).toHaveBeenCalledWith(

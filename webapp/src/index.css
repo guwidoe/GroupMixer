@@ -807,6 +807,7 @@
     box-sizing: border-box;
     width: 100%;
     display: block;
+    position: relative;
     padding: 0.18rem 0.7rem 0.35rem;
     cursor: text;
     box-shadow: none !important;
@@ -843,8 +844,13 @@
   }
 
   .landing-participant-columns .landing-participant-columns__textarea[data-empty='true']::before {
-    display: block;
+    position: absolute;
+    top: 0.18rem;
+    left: 0.7rem;
+    right: 0.7rem;
+    white-space: pre-wrap;
     overflow: hidden;
+    line-height: 1.6;
   }
 
   .landing-participant-columns__ghost-textarea {

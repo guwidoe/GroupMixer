@@ -138,7 +138,7 @@ export function LandingParticipantColumnsInput({
     Math.max(6, ...columns.map((column) => Math.max(1, splitParticipantColumnValues(column.values).length)))
   ), [columns]);
 
-  const contentHeight = Math.max(minHeight - HEADER_HEIGHT - 28, maxLineCount * LINE_HEIGHT + BODY_PADDING);
+  const contentHeight = Math.max(height - HEADER_HEIGHT - 28, maxLineCount * LINE_HEIGHT + BODY_PADDING);
   const surfaceMinWidth = columnWidths.reduce((sum, width) => sum + width, 0) + (Math.max(0, columns.length) * SEPARATOR_WIDTH) + ghostColumnWidth;
 
   const handleColumnPointerMove = useCallback((event: PointerEvent) => {

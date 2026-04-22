@@ -7,6 +7,7 @@ import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import { solveScenario } from '../../services/solver/solveScenario';
 import { buildGroups, buildScenarioFromDraft, parseParticipantInput } from '../../utils/quickSetup';
 import { deriveBalancedTargetValues, hasAnyBalanceTargets, normalizeBalanceTargets } from '../../utils/quickSetup/attributeBalanceTargets';
+import { normalizeFixedAssignmentRows } from '../../utils/quickSetup/fixedAssignments';
 import { createQuickSetupDraftFromScenario } from '../../utils/quickSetup/landingDemo';
 import { normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import type { AttributeDefinition, Scenario, Solution } from '../../types';
@@ -86,7 +87,7 @@ function normalizeQuickSetupDraft(draft: QuickSetupDraft): QuickSetupDraft {
   const nextDraft = {
     ...draft,
     avoidRepeatPairings: draft.avoidRepeatPairings ?? true,
-    fixedAssignments: normalizeFixedAssignments(draft.fixedAssignments),
+    fixedAssignments: normalizeFixedAssignmentRows(draft.fixedAssignments),
     balanceTargets: normalizeBalanceTargets(draft.balanceTargets),
     participantColumns: normalizeParticipantColumns(draft),
   };
@@ -107,25 +108,6 @@ function normalizeQuickSetupDraft(draft: QuickSetupDraft): QuickSetupDraft {
 
 function normalizeName(value: string): string {
   return value.trim().toLowerCase();
-}
-
-function normalizeFixedAssignments(fixedAssignments: QuickSetupFixedAssignment[] | undefined): QuickSetupFixedAssignment[] {
-  const seen = new Set<string>();
-
-  return (fixedAssignments ?? [])
-    .map((assignment) => ({
-      personId: assignment.personId.trim(),
-      groupId: assignment.groupId.trim(),
-    }))
-    .filter((assignment) => assignment.personId.length > 0 && assignment.groupId.length > 0)
-    .filter((assignment) => {
-      const key = normalizeName(assignment.personId);
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
 }
 
 function parseParticipants(draft: QuickSetupDraft): Pick<QuickSetupAnalysis, 'participants' | 'availableBalanceKeys' | 'balanceAttributes'> {
@@ -174,6 +156,7 @@ function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
   const { participants, availableBalanceKeys, balanceAttributes } = parseParticipants(draft);
   const participantByName = new Map(participants.map((participant) => [normalizeName(participant.name), participant] as const));
   const nameSet = new Set(participantByName.keys());
+  const validGroupIds = new Set(buildGroups(participants.length, draft).map((group) => group.id));
   const ignoredConstraintNames = new Set<string>();
 
   const keepTogetherGroups = parseConstraintLines(draft.keepTogetherInput)
@@ -203,18 +186,31 @@ function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
     })
     .filter((pair): pair is NonNullable<typeof pair> => Boolean(pair));
 
-  const fixedAssignments = normalizeFixedAssignments(draft.fixedAssignments)
-    .map((assignment) => {
-      const participant = participantByName.get(normalizeName(assignment.personId));
-      if (!participant) {
-        ignoredConstraintNames.add(assignment.personId);
-        return null;
-      }
+  const resolvedFixedAssignments = new Map<string, QuickSetupFixedAssignment>();
+  for (const assignment of normalizeFixedAssignmentRows(draft.fixedAssignments)) {
+    if (assignment.personId.length === 0 || assignment.groupId.length === 0) {
+      continue;
+    }
 
-      return {
-        personId: participant.id,
-        groupId: assignment.groupId,
-      } satisfies QuickSetupFixedAssignment;
+    const participant = participantByName.get(normalizeName(assignment.personId));
+    if (!participant) {
+      ignoredConstraintNames.add(assignment.personId);
+      continue;
+    }
+
+    if (!validGroupIds.has(assignment.groupId)) {
+      continue;
+    }
+
+    resolvedFixedAssignments.set(participant.id, {
+      personId: participant.id,
+      groupId: assignment.groupId,
+    });
+  }
+
+  const fixedAssignments = [...resolvedFixedAssignments.values()]
+    .map((assignment) => {
+      return assignment satisfies QuickSetupFixedAssignment;
     })
     .filter((assignment): assignment is QuickSetupFixedAssignment => Boolean(assignment));
 
