@@ -49,6 +49,77 @@ struct SameWeekSwapEvaluationSummary {
     linear_repeat_excess_after: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DensePairAdjustmentScratch {
+    deltas_by_pair: Vec<i8>,
+    touched_pairs: Vec<usize>,
+    touched_generations: Vec<u32>,
+    current_generation: u32,
+}
+
+impl DensePairAdjustmentScratch {
+    fn new(total_pairs: usize, expected_adjustments: usize) -> Self {
+        Self {
+            deltas_by_pair: vec![0; total_pairs],
+            touched_pairs: Vec::with_capacity(expected_adjustments),
+            touched_generations: vec![0; total_pairs],
+            current_generation: 1,
+        }
+    }
+
+    fn start_candidate(&mut self) {
+        self.touched_pairs.clear();
+        self.current_generation = self.current_generation.wrapping_add(1);
+        if self.current_generation == 0 {
+            self.touched_generations.fill(0);
+            self.current_generation = 1;
+        }
+    }
+
+    fn apply(&mut self, pair_idx: usize, delta: i8) {
+        debug_assert_ne!(delta, 0);
+        if self.touched_generations[pair_idx] != self.current_generation {
+            self.touched_generations[pair_idx] = self.current_generation;
+            self.deltas_by_pair[pair_idx] = 0;
+            self.touched_pairs.push(pair_idx);
+        }
+        self.deltas_by_pair[pair_idx] += delta;
+    }
+
+    fn score_delta_for_model(
+        &self,
+        state: &LocalSearchState,
+        model: Solver6PairRepeatPenaltyModel,
+    ) -> i64 {
+        let pair_state = state.pair_state();
+        self.touched_pairs.iter().fold(0i64, |delta_total, &pair_idx| {
+            let delta = self.deltas_by_pair[pair_idx];
+            if delta == 0 {
+                delta_total
+            } else {
+                delta_total
+                    + match model {
+                        Solver6PairRepeatPenaltyModel::LinearRepeatExcess => pair_state
+                            .linear_score_delta_for_pair_change_known_valid(pair_idx, delta),
+                        _ => pair_state.score_delta_for_pair_change_known_valid(
+                            pair_idx, delta, model,
+                        ),
+                    }
+            }
+        })
+    }
+
+    fn materialize(&self) -> Vec<PairCountAdjustment> {
+        self.touched_pairs
+            .iter()
+            .filter_map(|&pair_idx| {
+                let delta = self.deltas_by_pair[pair_idx];
+                (delta != 0).then_some(PairCountAdjustment { pair_idx, delta })
+            })
+            .collect()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct SameWeekSwapMove {
     pub week_idx: usize,
@@ -286,11 +357,12 @@ pub(crate) fn find_best_same_week_swap(
     state: &LocalSearchState,
 ) -> Result<Option<EvaluatedSameWeekSwapMove>, SolverError> {
     let mut best: Option<EvaluatedSameWeekSwapMove> = None;
-    let mut scratch = PairAdjustmentAccumulator::with_capacity(
+    let mut scratch = DensePairAdjustmentScratch::new(
+        state.pair_state().universe().total_distinct_pairs(),
         4 * state.problem().group_size.saturating_sub(1),
     );
     try_for_each_same_week_swap_move(state, |candidate| {
-        let summary = evaluate_same_week_swap_summary_with_accumulator(state, candidate, &mut scratch)?;
+        let summary = evaluate_same_week_swap_summary_with_dense_scratch(state, candidate, &mut scratch);
         if best.as_ref().is_none_or(|incumbent| {
             same_week_swap_summary_is_better(candidate, summary, incumbent)
         }) {
@@ -305,6 +377,51 @@ pub(crate) fn find_best_same_week_swap(
         Ok(())
     })?;
     Ok(best)
+}
+
+fn evaluate_same_week_swap_summary_with_dense_scratch(
+    state: &LocalSearchState,
+    swap: SameWeekSwapMove,
+    scratch: &mut DensePairAdjustmentScratch,
+) -> SameWeekSwapEvaluationSummary {
+    let week = &state.schedule()[swap.week_idx];
+    let left_group = &week[swap.left_group_idx];
+    let right_group = &week[swap.right_group_idx];
+    scratch.start_candidate();
+
+    let universe = state.pair_state().universe();
+    for (member_idx, &other) in left_group.iter().enumerate() {
+        if member_idx == swap.left_pos_idx {
+            continue;
+        }
+        scratch.apply(universe.pair_index_known_valid(swap.left_person, other), -1);
+        scratch.apply(universe.pair_index_known_valid(swap.right_person, other), 1);
+    }
+    for (member_idx, &other) in right_group.iter().enumerate() {
+        if member_idx == swap.right_pos_idx {
+            continue;
+        }
+        scratch.apply(universe.pair_index_known_valid(swap.right_person, other), -1);
+        scratch.apply(universe.pair_index_known_valid(swap.left_person, other), 1);
+    }
+
+    let linear_delta = scratch.score_delta_for_model(
+        state,
+        Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
+    );
+    let active_delta = match state.active_penalty_model() {
+        Solver6PairRepeatPenaltyModel::LinearRepeatExcess => linear_delta,
+        active_model => scratch.score_delta_for_model(state, active_model),
+    };
+    let active_score_before = state.current_active_score();
+    let active_score_after = (active_score_before as i64 + active_delta) as u64;
+
+    SameWeekSwapEvaluationSummary {
+        active_score_before,
+        active_score_after,
+        linear_repeat_excess_after: (state.pair_state().linear_repeat_excess() as i64 + linear_delta)
+            as u64,
+    }
 }
 
 fn same_week_swap_summary_is_better(
