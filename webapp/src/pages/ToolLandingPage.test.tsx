@@ -467,11 +467,13 @@ describe('ToolLandingPage SEO wiring', () => {
       'Keep certain people together or apart. Balance people by gender or other attributes. Generate multiple rounds with minimal repeats.',
     )).toBeInTheDocument();
 
-    // Optimizer CTA fills the desktop dead-space under the hero copy
+    // Advanced options are expanded by default and the deeper CTA still exists below the tool.
+    expect(screen.getByLabelText(/keep together/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/avoid pairing/i)).toBeInTheDocument();
     expect(screen.getByText(/want to do better than random/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /use the full group optimizer/i })).toBeInTheDocument();
     expect(screen.getByText(/your inputs from this page come with you/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /open scenario editor/i })[0]).toHaveClass('btn-primary');
+    expect(screen.getAllByRole('button', { name: /open scenario editor/i }).some((button) => button.className.includes('btn-primary'))).toBe(true);
   }, 10000);
 
   it('uses explicit technical-page defaults without involving localized behavior', () => {
@@ -528,20 +530,16 @@ describe('ToolLandingPage SEO wiring', () => {
 
     await user.click(screen.getByRole('button', { name: /generate groups/i }));
 
-    expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-2', 'lg:order-3', 'lg:col-span-2');
-    expect(screen.getByTestId('landing-hero')).toHaveClass('order-3', 'lg:order-1');
+    expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-4');
+    expect(screen.getByTestId('landing-hero')).toHaveClass('order-2', 'lg:order-1');
   });
 
-  it('uses consistent comma-separated helper text for advanced constraint inputs', async () => {
-    const user = userEvent.setup();
-
+  it('uses consistent comma-separated helper text for advanced constraint inputs', () => {
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
-
-    await user.click(screen.getByRole('button', { name: /show/i }));
 
     expect(screen.getByLabelText(/keep together/i)).toHaveAttribute(
       'placeholder',

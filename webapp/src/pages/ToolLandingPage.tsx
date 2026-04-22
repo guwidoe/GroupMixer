@@ -233,19 +233,59 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
   const displayedGroupCount = Math.max(1, estimatedGroupCount);
   const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
-  const heroOrderClass = controller.result ? 'order-3 lg:order-1' : 'order-2 lg:order-1';
   const useCasesGridClassName = config.sectionSet === 'technical'
     ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3'
     : 'mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
   const advancedGridClassName = config.sectionSet === 'technical'
     ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4'
     : 'mt-8 grid gap-4 sm:grid-cols-2';
+  const optimizerCtaCard = !controller.result ? (
+    <div
+      className="rounded-2xl border p-5 sm:p-6"
+      style={{
+        borderColor: 'var(--border-primary)',
+        backgroundColor: 'var(--bg-primary)',
+      }}
+    >
+      <div className="max-w-3xl">
+        <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
+          {config.optimizerCta.eyebrow}
+        </div>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
+          {config.optimizerCta.title}
+        </h2>
+
+        <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+          {config.optimizerCta.featureBullets.map((feature) => (
+            <span key={feature} className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              {feature}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
+            className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
+          >
+            <Users className="h-4 w-4" />
+            {config.optimizerCta.buttonLabel}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {config.optimizerCta.supportingText}
+          </span>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   const resultsSection = controller.result ? (
     <div
       ref={resultsRef}
       data-testid="landing-results-panel"
-      className="order-2 border-t pt-8 lg:order-3 lg:col-span-2"
+      className="order-4 border-t pt-8"
       style={{ borderColor: 'var(--border-primary)' }}
     >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -492,15 +532,169 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       />
 
       <main>
-        <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-16 lg:pt-12">
-          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_minmax(340px,420px)] lg:items-start lg:gap-12">
-            <div data-testid="landing-hero" className={`${heroOrderClass} max-w-xl pt-2`}>
+        <section className="px-4 pb-10 pt-6 sm:px-6 lg:pb-16 lg:pt-8">
+          <div className="mx-auto grid max-w-7xl gap-6 lg:gap-8">
+            <div data-testid="landing-hero" className="order-2 max-w-4xl pt-2 lg:order-1 lg:pt-0">
+              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl lg:leading-[1.15]">
+                {config.hero.title}
+              </h1>
+            </div>
+
+            <div
+              data-testid="landing-tool-panel"
+              className="order-1 rounded-2xl border p-5 shadow-sm sm:p-6 lg:order-2"
+              style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+            >
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.9fr)] lg:gap-5">
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <label htmlFor="participantInput" className="text-sm font-medium">
+                      {ui.quickSetup.participantsLabel}
+                    </label>
+                    <div className="flex flex-wrap items-center justify-end gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      <button
+                        type="button"
+                        className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
+                        style={{ borderColor: 'var(--border-primary)' }}
+                        onClick={() =>
+                          controller.updateDraft((current) => ({
+                            ...current,
+                            inputMode: current.inputMode === 'csv' ? 'names' : 'csv',
+                            balanceAttributeKey: null,
+                          }))
+                        }
+                      >
+                        {draft.inputMode === 'csv' ? ui.quickSetup.switchToNamesLabel : ui.quickSetup.switchToCsvLabel}
+                      </button>
+                      <button
+                        type="button"
+                        className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
+                        style={{ borderColor: 'var(--border-primary)' }}
+                        onClick={controller.loadSampleData}
+                      >
+                        {ui.quickSetup.sampleLabel}
+                      </button>
+                      <button
+                        type="button"
+                        className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
+                        style={{ borderColor: 'var(--border-primary)' }}
+                        onClick={controller.resetDraft}
+                      >
+                        {ui.quickSetup.resetLabel}
+                      </button>
+                    </div>
+                  </div>
+                  <LandingResizableTextarea
+                    id="participantInput"
+                    value={draft.participantInput}
+                    onChange={(value) =>
+                      controller.updateDraft((current) => ({ ...current, participantInput: value }))
+                    }
+                    placeholder={draft.inputMode === 'csv' ? ui.quickSetup.csvPlaceholder : ui.quickSetup.namesPlaceholder}
+                    minHeight={130}
+                    className="rounded-xl"
+                    textareaClassName="px-3 py-2.5 text-sm leading-relaxed outline-none transition-shadow"
+                    style={{
+                      borderColor: 'var(--border-primary)',
+                      backgroundColor: 'var(--bg-secondary)',
+                      color: 'var(--text-primary)',
+                    }}
+                  />
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <NumberField
+                        label={ui.quickSetup.groupingValueGroupCountLabel}
+                        value={displayedGroupCount}
+                        onChange={(value) =>
+                          controller.updateDraft((current) => ({
+                            ...current,
+                            groupingMode: 'groupCount',
+                            groupingValue: Math.max(1, value ?? 1),
+                          }))
+                        }
+                        {...withContextualMax(NUMBER_FIELD_PRESETS.groupCount, participantCount > 0 ? participantCount : undefined)}
+                      />
+                    </div>
+
+                    <div>
+                      <NumberField
+                        label={ui.quickSetup.groupingValueGroupSizeLabel}
+                        value={displayedPeoplePerGroup}
+                        onChange={(value) =>
+                          controller.updateDraft((current) => ({
+                            ...current,
+                            groupingMode: 'groupSize',
+                            groupingValue: Math.max(1, value ?? 1),
+                          }))
+                        }
+                        {...withContextualMax(NUMBER_FIELD_PRESETS.groupSize, participantCount > 0 ? participantCount : undefined)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl px-3 py-2.5 text-center text-sm" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                    <div>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.peopleStatLabel}</div>
+                      <div className="text-lg font-semibold">{participantCount}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.groupsStatLabel}</div>
+                      <div className="text-lg font-semibold">{estimatedGroupCount}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.approxSizeStatLabel}</div>
+                      <div className="text-lg font-semibold">{estimatedGroupSize}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trackLandingEvent('landing_generate_clicked', {
+                          preset: draft.preset,
+                          participantCount,
+                          groupingMode: draft.groupingMode,
+                        });
+                        controller.generateGroups();
+                      }}
+                      disabled={!controller.canGenerate || controller.isSolving}
+                      className="btn-primary inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
+                    </button>
+                    {controller.result && (
+                      <button
+                        type="button"
+                        onClick={controller.reshuffle}
+                        disabled={controller.isSolving}
+                        className="landing-action-button inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                        style={{ borderColor: 'var(--border-primary)' }}
+                        title={ui.quickSetup.reshuffleLabel}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {controller.result && (
+                    <p className="mt-3 text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
+                      {ui.quickSetup.resultsGeneratedHint}
+                    </p>
+                  )}
+                </div>
+                <div className="lg:pl-1">
+                  <QuickSetupAdvancedOptions controller={controller} onOpenFullEditor={() => openAdvancedWorkspace('people')} />
+                </div>
+              </div>
+            </div>
+
+            <div className="order-3 max-w-4xl">
               <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
                 {config.hero.eyebrow}
               </div>
-              <h1 className="mt-7 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl lg:leading-[1.15]">
-                {config.hero.title}
-              </h1>
               <p className="mt-5 text-base leading-7 sm:text-lg sm:leading-8" style={{ color: 'var(--text-secondary)' }}>
                 {config.hero.subhead}
               </p>
@@ -528,48 +722,8 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 </div>
               )}
 
-              <div
-                className="mt-8 rounded-2xl border p-5 sm:p-6"
-                style={{
-                  borderColor: 'var(--border-primary)',
-                  backgroundColor: 'var(--bg-primary)',
-                }}
-              >
-                <div className="max-w-lg">
-                  <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
-                    {config.optimizerCta.eyebrow}
-                  </div>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
-                    {config.optimizerCta.title}
-                  </h2>
-
-                  <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                    {config.optimizerCta.featureBullets.map((feature) => (
-                      <span key={feature} className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                        {feature}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
-                      className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
-                    >
-                      <Users className="h-4 w-4" />
-                      {config.optimizerCta.buttonLabel}
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {config.optimizerCta.supportingText}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
               {!controller.result && (
-                <div className="mt-10 hidden text-sm lg:block" style={{ color: 'var(--text-secondary)' }}>
+                <div className="mt-8 hidden text-sm lg:block" style={{ color: 'var(--text-secondary)' }}>
                   <span className="flex items-center gap-1">
                     <ChevronDown className="h-4 w-4" />
                     {config.chrome.scrollHint}
@@ -578,155 +732,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               )}
             </div>
 
-            <div
-              data-testid="landing-tool-panel"
-              className="order-1 rounded-2xl border p-5 shadow-sm sm:p-6 lg:order-2"
-              style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-            >
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label htmlFor="participantInput" className="text-sm font-medium">
-                    {ui.quickSetup.participantsLabel}
-                  </label>
-                  <div className="flex flex-wrap items-center justify-end gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    <button
-                      type="button"
-                      className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
-                      style={{ borderColor: 'var(--border-primary)' }}
-                      onClick={() =>
-                        controller.updateDraft((current) => ({
-                          ...current,
-                          inputMode: current.inputMode === 'csv' ? 'names' : 'csv',
-                          balanceAttributeKey: null,
-                        }))
-                      }
-                    >
-                      {draft.inputMode === 'csv' ? ui.quickSetup.switchToNamesLabel : ui.quickSetup.switchToCsvLabel}
-                    </button>
-                    <button
-                      type="button"
-                      className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
-                      style={{ borderColor: 'var(--border-primary)' }}
-                      onClick={controller.loadSampleData}
-                    >
-                      {ui.quickSetup.sampleLabel}
-                    </button>
-                    <button
-                      type="button"
-                      className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
-                      style={{ borderColor: 'var(--border-primary)' }}
-                      onClick={controller.resetDraft}
-                    >
-                      {ui.quickSetup.resetLabel}
-                    </button>
-                  </div>
-                </div>
-                <LandingResizableTextarea
-                  id="participantInput"
-                  value={draft.participantInput}
-                  onChange={(value) =>
-                    controller.updateDraft((current) => ({ ...current, participantInput: value }))
-                  }
-                  placeholder={draft.inputMode === 'csv' ? ui.quickSetup.csvPlaceholder : ui.quickSetup.namesPlaceholder}
-                  minHeight={130}
-                  className="rounded-xl"
-                  textareaClassName="px-3 py-2.5 text-sm leading-relaxed outline-none transition-shadow"
-                  style={{
-                    borderColor: 'var(--border-primary)',
-                    backgroundColor: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <NumberField
-                    label={ui.quickSetup.groupingValueGroupCountLabel}
-                    value={displayedGroupCount}
-                    onChange={(value) =>
-                      controller.updateDraft((current) => ({
-                        ...current,
-                        groupingMode: 'groupCount',
-                        groupingValue: Math.max(1, value ?? 1),
-                      }))
-                    }
-                    {...withContextualMax(NUMBER_FIELD_PRESETS.groupCount, participantCount > 0 ? participantCount : undefined)}
-                  />
-                </div>
-
-                <div>
-                  <NumberField
-                    label={ui.quickSetup.groupingValueGroupSizeLabel}
-                    value={displayedPeoplePerGroup}
-                    onChange={(value) =>
-                      controller.updateDraft((current) => ({
-                        ...current,
-                        groupingMode: 'groupSize',
-                        groupingValue: Math.max(1, value ?? 1),
-                      }))
-                    }
-                    {...withContextualMax(NUMBER_FIELD_PRESETS.groupSize, participantCount > 0 ? participantCount : undefined)}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl px-3 py-2.5 text-center text-sm" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                <div>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.peopleStatLabel}</div>
-                  <div className="text-lg font-semibold">{participantCount}</div>
-                </div>
-                <div>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.groupsStatLabel}</div>
-                  <div className="text-lg font-semibold">{estimatedGroupCount}</div>
-                </div>
-                <div>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.approxSizeStatLabel}</div>
-                  <div className="text-lg font-semibold">{estimatedGroupSize}</div>
-                </div>
-              </div>
-
-              <div className="mt-5 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    trackLandingEvent('landing_generate_clicked', {
-                      preset: draft.preset,
-                      participantCount,
-                      groupingMode: draft.groupingMode,
-                    });
-                    controller.generateGroups();
-                  }}
-                  disabled={!controller.canGenerate || controller.isSolving}
-                  className="btn-primary inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
-                </button>
-                {controller.result && (
-                  <button
-                    type="button"
-                    onClick={controller.reshuffle}
-                    disabled={controller.isSolving}
-                    className="landing-action-button inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-                    style={{ borderColor: 'var(--border-primary)' }}
-                    title={ui.quickSetup.reshuffleLabel}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              {controller.result && (
-                <p className="mt-3 text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
-                  {ui.quickSetup.resultsGeneratedHint}
-                </p>
-              )}
-
-              <div className="mt-4">
-                <QuickSetupAdvancedOptions controller={controller} onOpenFullEditor={() => openAdvancedWorkspace('people')} />
-              </div>
-            </div>
+            {optimizerCtaCard && <div className="order-4">{optimizerCtaCard}</div>}
 
             {resultsSection}
           </div>
