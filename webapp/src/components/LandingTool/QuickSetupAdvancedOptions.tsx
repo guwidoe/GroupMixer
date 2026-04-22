@@ -1,5 +1,4 @@
 import { ArrowRight } from 'lucide-react';
-import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
 import { LandingResizableTextarea } from './LandingResizableTextarea';
 import type { QuickSetupController } from './useQuickSetup';
 
@@ -44,15 +43,6 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             className="rounded-2xl"
             textareaClassName="px-4 py-3 text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
-          />
-        </div>
-
-        <div className={showBalanceSelector ? '' : 'sm:col-span-2 lg:col-span-1 2xl:col-span-2'}>
-          <NumberField
-            label={labels.sessionsLabel}
-            value={draft.sessions}
-            onChange={(value) => controller.updateDraft((current) => ({ ...current, sessions: Math.max(1, value ?? 1) }))}
-            {...NUMBER_FIELD_PRESETS.sessionCount}
           />
         </div>
 

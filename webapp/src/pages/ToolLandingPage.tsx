@@ -546,44 +546,10 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
             >
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.9fr)] lg:gap-5">
-                <div className="lg:-mt-2">
-                  <div className="mb-2 flex items-center justify-between">
-                    <label htmlFor="participantInput" className="text-sm font-medium">
-                      {ui.quickSetup.participantsLabel}
-                    </label>
-                    <div className="flex flex-wrap items-center justify-end gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      <button
-                        type="button"
-                        className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
-                        style={{ borderColor: 'var(--border-primary)' }}
-                        onClick={() =>
-                          controller.updateDraft((current) => ({
-                            ...current,
-                            inputMode: current.inputMode === 'csv' ? 'names' : 'csv',
-                            balanceAttributeKey: null,
-                          }))
-                        }
-                      >
-                        {draft.inputMode === 'csv' ? ui.quickSetup.switchToNamesLabel : ui.quickSetup.switchToCsvLabel}
-                      </button>
-                      <button
-                        type="button"
-                        className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
-                        style={{ borderColor: 'var(--border-primary)' }}
-                        onClick={controller.loadSampleData}
-                      >
-                        {ui.quickSetup.sampleLabel}
-                      </button>
-                      <button
-                        type="button"
-                        className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
-                        style={{ borderColor: 'var(--border-primary)' }}
-                        onClick={controller.resetDraft}
-                      >
-                        {ui.quickSetup.resetLabel}
-                      </button>
-                    </div>
-                  </div>
+                <div>
+                  <label htmlFor="participantInput" className="mb-2 block text-sm font-medium">
+                    {ui.quickSetup.participantsLabel}
+                  </label>
                   <LandingResizableTextarea
                     id="participantInput"
                     value={draft.participantInput}
@@ -601,7 +567,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     }}
                   />
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     <div>
                       <NumberField
                         label={ui.quickSetup.groupingValueGroupCountLabel}
@@ -629,6 +595,20 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                           }))
                         }
                         {...withContextualMax(NUMBER_FIELD_PRESETS.groupSize, participantCount > 0 ? participantCount : undefined)}
+                      />
+                    </div>
+
+                    <div>
+                      <NumberField
+                        label={ui.advancedOptions.sessionsLabel}
+                        value={draft.sessions}
+                        onChange={(value) =>
+                          controller.updateDraft((current) => ({
+                            ...current,
+                            sessions: Math.max(1, value ?? 1),
+                          }))
+                        }
+                        {...NUMBER_FIELD_PRESETS.sessionCount}
                       />
                     </div>
                   </div>

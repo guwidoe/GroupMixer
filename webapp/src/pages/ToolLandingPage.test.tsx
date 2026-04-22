@@ -462,6 +462,9 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByLabelText(/participants/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /generate groups/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /generate groups/i })).toHaveClass('btn-primary');
+    expect(screen.queryByRole('button', { name: /switch to csv/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /sample/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^reset$/i })).not.toBeInTheDocument();
     
     expect(screen.getByText(
       'Keep certain people together or apart. Balance people by gender or other attributes. Generate multiple rounds with minimal repeats.',
@@ -492,7 +495,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Group Assignment Optimizer' })).toBeInTheDocument();
     expect((screen.getByLabelText(/participants/i) as HTMLTextAreaElement).value).toContain('name,team,role');
-    expect(screen.getByRole('button', { name: /switch to names/i })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /switch to names/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText(/balance groups by attribute/i)).toHaveValue('role');
     expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();
   });
