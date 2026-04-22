@@ -412,7 +412,12 @@ def render_html(artifact):
           `${'{'}candidate.family{'}'}:${'{'}candidate.linear_repeat_lower_bound_gap{'}'}`
         ).join(', ');
         const search = week.search_telemetry
-          ? `it=${'{'}week.search_telemetry.iterations_completed{'}'}, best@${'{'}week.search_telemetry.best_iteration{'}'}, breakouts=${'{'}week.search_telemetry.breakout_count{'}'}`
+          ? (() => {{
+              const scans = week.search_telemetry.neighborhood_scans;
+              const avgScanMs = scans === 0 ? 0 : (week.search_telemetry.total_scan_micros / 1000) / scans;
+              const maxScanMs = week.search_telemetry.max_scan_micros / 1000;
+              return `it=${'{'}week.search_telemetry.iterations_completed{'}'}, best@${'{'}week.search_telemetry.best_iteration{'}'}, scans=${'{'}scans{'}'}, cand=${'{'}week.search_telemetry.candidates_evaluated{'}'}, avg_scan_ms=${'{'}avgScanMs.toFixed(2){'}'}, max_scan_ms=${'{'}maxScanMs.toFixed(2){'}'}`;
+            }})()
           : '—';
         return `<tr>
           <td class="mono">${'{'}week.week{'}'}</td>

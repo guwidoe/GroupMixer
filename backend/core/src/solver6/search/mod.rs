@@ -5,8 +5,8 @@ pub(crate) mod tabu;
 
 use self::breakout::{BreakoutConfig, BreakoutRng};
 use self::delta::{
-    enumerate_same_week_swap_moves, evaluate_same_week_swap, find_best_same_week_swap,
-    same_week_swap_is_better, EvaluatedSameWeekSwapMove,
+    count_same_week_swap_moves, evaluate_same_week_swap, find_best_same_week_swap,
+    same_week_swap_is_better, try_for_each_same_week_swap_move, EvaluatedSameWeekSwapMove,
 };
 use self::state::LocalSearchState;
 use self::tabu::{RepeatAwareTabuMemory, RepeatAwareTabuPolicy};
@@ -103,6 +103,10 @@ pub(crate) struct RepeatAwareSearchTelemetry {
     pub breakout_swaps_applied: u64,
     pub tabu_pruned_candidates: u64,
     pub max_stagnation_streak: u64,
+    pub neighborhood_scans: u64,
+    pub candidates_evaluated: u64,
+    pub total_scan_micros: u64,
+    pub max_scan_micros: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -163,11 +167,19 @@ pub(crate) fn run_deterministic_hill_climb(
             0,
             0,
             0,
+            0,
+            0,
+            0,
+            0,
         ));
     }
 
     let start = Instant::now();
     let mut improving_moves_accepted = 0u64;
+    let mut neighborhood_scans = 0u64;
+    let mut candidates_evaluated = 0u64;
+    let mut total_scan_micros = 0u64;
+    let mut max_scan_micros = 0u64;
 
     let stop_reason = loop {
         if state.current_iteration() >= config.max_iterations {
@@ -177,7 +189,16 @@ pub(crate) fn run_deterministic_hill_climb(
             break StopReason::TimeLimitReached;
         }
 
-        let Some(best_move) = find_best_same_week_swap(state)? else {
+        let scan_started = Instant::now();
+        let scan_candidate_count = count_same_week_swap_moves(state) as u64;
+        let best_move = find_best_same_week_swap(state)?;
+        let scan_elapsed_micros = scan_started.elapsed().as_micros() as u64;
+        neighborhood_scans += 1;
+        candidates_evaluated += scan_candidate_count;
+        total_scan_micros += scan_elapsed_micros;
+        max_scan_micros = max_scan_micros.max(scan_elapsed_micros);
+
+        let Some(best_move) = best_move else {
             break StopReason::NoImprovementLimitReached;
         };
         if !best_move.improves_current() {
@@ -205,6 +226,10 @@ pub(crate) fn run_deterministic_hill_climb(
         0,
         0,
         0,
+        neighborhood_scans,
+        candidates_evaluated,
+        total_scan_micros,
+        max_scan_micros,
     ))
 }
 
@@ -231,6 +256,10 @@ pub(crate) fn run_repeat_aware_local_search(
             0,
             0,
             0,
+            0,
+            0,
+            0,
+            0,
         ));
     }
 
@@ -244,6 +273,10 @@ pub(crate) fn run_repeat_aware_local_search(
     let mut tabu_pruned_candidates = 0u64;
     let mut no_improvement_streak = 0u64;
     let mut max_stagnation_streak = 0u64;
+    let mut neighborhood_scans = 0u64;
+    let mut candidates_evaluated = 0u64;
+    let mut total_scan_micros = 0u64;
+    let mut max_scan_micros = 0u64;
 
     let stop_reason = loop {
         if state.current_iteration() >= config.max_iterations {
@@ -269,6 +302,10 @@ pub(crate) fn run_repeat_aware_local_search(
 
         let selection = select_best_admissible_same_week_swap(state, &tabu_memory)?;
         tabu_pruned_candidates += selection.tabu_pruned_candidates;
+        neighborhood_scans += 1;
+        candidates_evaluated += selection.candidates_evaluated;
+        total_scan_micros += selection.elapsed_micros;
+        max_scan_micros = max_scan_micros.max(selection.elapsed_micros);
         let Some(selected_move) = selection.best_move else {
             break StopReason::NoImprovementLimitReached;
         };
@@ -308,6 +345,10 @@ pub(crate) fn run_repeat_aware_local_search(
         breakout_swaps_applied,
         tabu_pruned_candidates,
         max_stagnation_streak,
+        neighborhood_scans,
+        candidates_evaluated,
+        total_scan_micros,
+        max_scan_micros,
     ))
 }
 
@@ -324,6 +365,10 @@ fn build_outcome_from_state(
     breakout_swaps_applied: u64,
     tabu_pruned_candidates: u64,
     max_stagnation_streak: u64,
+    neighborhood_scans: u64,
+    candidates_evaluated: u64,
+    total_scan_micros: u64,
+    max_scan_micros: u64,
 ) -> RepeatAwareLocalSearchOutcome {
     RepeatAwareLocalSearchOutcome {
         best_schedule: state.best_schedule().to_vec(),
@@ -350,6 +395,10 @@ fn build_outcome_from_state(
             breakout_swaps_applied,
             tabu_pruned_candidates,
             max_stagnation_streak,
+            neighborhood_scans,
+            candidates_evaluated,
+            total_scan_micros,
+            max_scan_micros,
         },
     }
 }
@@ -358,22 +407,27 @@ fn build_outcome_from_state(
 pub(crate) struct CandidateSelection {
     pub best_move: Option<EvaluatedSameWeekSwapMove>,
     pub tabu_pruned_candidates: u64,
+    pub candidates_evaluated: u64,
+    pub elapsed_micros: u64,
 }
 
 pub(crate) fn select_best_admissible_same_week_swap(
     state: &LocalSearchState,
     tabu_memory: &RepeatAwareTabuMemory,
 ) -> Result<CandidateSelection, SolverError> {
+    let started = Instant::now();
     let mut best: Option<EvaluatedSameWeekSwapMove> = None;
     let mut tabu_pruned_candidates = 0u64;
+    let mut candidates_evaluated = 0u64;
     let evaluation_iteration = state.current_iteration() + 1;
-    for candidate in enumerate_same_week_swap_moves(state) {
+    try_for_each_same_week_swap_move(state, |candidate| {
+        candidates_evaluated += 1;
         let evaluated = evaluate_same_week_swap(state, candidate)?;
         if tabu_memory.is_tabu(candidate, evaluation_iteration)
             && evaluated.active_score_after >= state.best_active_score()
         {
             tabu_pruned_candidates += 1;
-            continue;
+            return Ok(());
         }
         if best
             .as_ref()
@@ -381,10 +435,13 @@ pub(crate) fn select_best_admissible_same_week_swap(
         {
             best = Some(evaluated);
         }
-    }
+        Ok(())
+    })?;
     Ok(CandidateSelection {
         best_move: best,
         tabu_pruned_candidates,
+        candidates_evaluated,
+        elapsed_micros: started.elapsed().as_micros() as u64,
     })
 }
 
@@ -508,6 +565,9 @@ mod tests {
 
         let selected = select_best_admissible_same_week_swap(&state, &tabu)
             .unwrap()
+            ;
+        assert_eq!(selected.candidates_evaluated, 12);
+        let selected = selected
             .best_move
             .expect("aspiration should keep the best-improving move admissible");
         assert_eq!(selected.swap, improving.swap);
@@ -574,6 +634,8 @@ mod tests {
         assert_eq!(outcome.telemetry.improving_moves_accepted, 1);
         assert_eq!(outcome.telemetry.breakout_count, 0);
         assert_eq!(outcome.telemetry.non_improving_moves_accepted, 0);
+        assert_eq!(outcome.telemetry.neighborhood_scans, 1);
+        assert_eq!(outcome.telemetry.candidates_evaluated, 12);
         assert_eq!(outcome.stop_reason, StopReason::OptimalScoreReached);
         assert_eq!(state.best_active_score(), 0);
         state.assert_matches_recompute().unwrap();

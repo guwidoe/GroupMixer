@@ -169,6 +169,10 @@ pub struct SearchTelemetrySummary {
     pub breakout_swaps_applied: u64,
     pub tabu_pruned_candidates: u64,
     pub max_stagnation_streak: u64,
+    pub neighborhood_scans: u64,
+    pub candidates_evaluated: u64,
+    pub total_scan_micros: u64,
+    pub max_scan_micros: u64,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -329,6 +333,10 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
             breakout_swaps_applied: outcome.telemetry.breakout_swaps_applied,
             tabu_pruned_candidates: outcome.telemetry.tabu_pruned_candidates,
             max_stagnation_streak: outcome.telemetry.max_stagnation_streak,
+            neighborhood_scans: outcome.telemetry.neighborhood_scans,
+            candidates_evaluated: outcome.telemetry.candidates_evaluated,
+            total_scan_micros: outcome.telemetry.total_scan_micros,
+            max_scan_micros: outcome.telemetry.max_scan_micros,
         }),
     })
 }

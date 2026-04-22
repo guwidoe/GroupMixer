@@ -1,4 +1,4 @@
-use super::delta::{enumerate_same_week_swap_moves, evaluate_same_week_swap};
+use super::delta::{count_same_week_swap_moves, evaluate_same_week_swap, nth_same_week_swap_move};
 use super::state::LocalSearchState;
 use super::tabu::RepeatAwareTabuMemory;
 use crate::solver_support::SolverError;
@@ -39,12 +39,17 @@ impl BreakoutRng {
     ) -> Result<BreakoutOutcome, SolverError> {
         let mut applied_swaps = 0usize;
         for _ in 0..swaps_per_breakout {
-            let candidates = enumerate_same_week_swap_moves(state);
-            if candidates.is_empty() {
+            let candidate_count = count_same_week_swap_moves(state);
+            if candidate_count == 0 {
                 break;
             }
-            let choice_idx = self.rng.random_range(0..candidates.len());
-            let evaluated = evaluate_same_week_swap(state, candidates[choice_idx])?;
+            let choice_idx = self.rng.random_range(0..candidate_count);
+            let candidate = nth_same_week_swap_move(state, choice_idx).ok_or_else(|| {
+                SolverError::ValidationError(format!(
+                    "solver6 breakout selected move index {choice_idx} out of bounds for {candidate_count} candidates"
+                ))
+            })?;
+            let evaluated = evaluate_same_week_swap(state, candidate)?;
             state.apply_evaluated_swap(&evaluated)?;
             tabu_memory.record_swap(evaluated.swap, state.current_iteration());
             applied_swaps += 1;

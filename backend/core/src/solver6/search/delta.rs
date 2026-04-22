@@ -1,7 +1,42 @@
 use super::state::{LocalSearchState, PairCountAdjustment, SameWeekSwapApplication};
 use crate::models::Solver6PairRepeatPenaltyModel;
 use crate::solver_support::SolverError;
-use std::collections::BTreeMap;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct PairAdjustmentAccumulator {
+    adjustments: Vec<PairCountAdjustment>,
+}
+
+impl PairAdjustmentAccumulator {
+    fn with_capacity(capacity: usize) -> Self {
+        Self {
+            adjustments: Vec::with_capacity(capacity),
+        }
+    }
+
+    fn apply(&mut self, pair_idx: usize, delta: i8) {
+        debug_assert_ne!(delta, 0);
+        if let Some(existing_idx) = self
+            .adjustments
+            .iter()
+            .position(|adjustment| adjustment.pair_idx == pair_idx)
+        {
+            let merged_delta = self.adjustments[existing_idx].delta + delta;
+            if merged_delta == 0 {
+                self.adjustments.swap_remove(existing_idx);
+            } else {
+                self.adjustments[existing_idx].delta = merged_delta;
+            }
+            return;
+        }
+
+        self.adjustments.push(PairCountAdjustment { pair_idx, delta });
+    }
+
+    fn finish(self) -> Vec<PairCountAdjustment> {
+        self.adjustments
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct SameWeekSwapMove {
@@ -33,8 +68,6 @@ pub(crate) struct EvaluatedSameWeekSwapMove {
     pub active_score_before: u64,
     pub active_score_after: u64,
     pub linear_repeat_excess_after: u64,
-    pub triangular_repeat_excess_after: u64,
-    pub squared_repeat_excess_after: u64,
 }
 
 impl EvaluatedSameWeekSwapMove {
@@ -50,13 +83,44 @@ impl EvaluatedSameWeekSwapMove {
 pub(crate) fn enumerate_same_week_swap_moves(
     state: &LocalSearchState,
 ) -> Vec<SameWeekSwapMove> {
-    let mut moves = Vec::new();
+    let mut moves = Vec::with_capacity(count_same_week_swap_moves(state));
+    for_each_same_week_swap_move(state, |candidate| moves.push(candidate));
+    moves
+}
+
+pub(crate) fn count_same_week_swap_moves(state: &LocalSearchState) -> usize {
+    let problem = state.problem();
+    problem.num_weeks
+        * (problem.num_groups * problem.num_groups.saturating_sub(1) / 2)
+        * problem.group_size
+        * problem.group_size
+}
+
+pub(crate) fn nth_same_week_swap_move(
+    state: &LocalSearchState,
+    target_idx: usize,
+) -> Option<SameWeekSwapMove> {
+    let mut current_idx = 0usize;
+    let mut found = None;
+    for_each_same_week_swap_move(state, |candidate| {
+        if found.is_none() && current_idx == target_idx {
+            found = Some(candidate);
+        }
+        current_idx += 1;
+    });
+    found
+}
+
+fn for_each_same_week_swap_move(
+    state: &LocalSearchState,
+    mut visit: impl FnMut(SameWeekSwapMove),
+) {
     for (week_idx, week) in state.schedule().iter().enumerate() {
         for left_group_idx in 0..week.len() {
             for right_group_idx in (left_group_idx + 1)..week.len() {
                 for left_pos_idx in 0..week[left_group_idx].len() {
                     for right_pos_idx in 0..week[right_group_idx].len() {
-                        moves.push(SameWeekSwapMove {
+                        visit(SameWeekSwapMove {
                             week_idx,
                             left_group_idx,
                             left_pos_idx,
@@ -70,7 +134,32 @@ pub(crate) fn enumerate_same_week_swap_moves(
             }
         }
     }
-    moves
+}
+
+pub(crate) fn try_for_each_same_week_swap_move(
+    state: &LocalSearchState,
+    mut visit: impl FnMut(SameWeekSwapMove) -> Result<(), SolverError>,
+) -> Result<(), SolverError> {
+    for (week_idx, week) in state.schedule().iter().enumerate() {
+        for left_group_idx in 0..week.len() {
+            for right_group_idx in (left_group_idx + 1)..week.len() {
+                for left_pos_idx in 0..week[left_group_idx].len() {
+                    for right_pos_idx in 0..week[right_group_idx].len() {
+                        visit(SameWeekSwapMove {
+                            week_idx,
+                            left_group_idx,
+                            left_pos_idx,
+                            right_group_idx,
+                            right_pos_idx,
+                            left_person: week[left_group_idx][left_pos_idx],
+                            right_person: week[right_group_idx][right_pos_idx],
+                        })?;
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn evaluate_same_week_swap(
@@ -116,41 +205,34 @@ pub(crate) fn evaluate_same_week_swap(
     }
 
     let universe = state.pair_state().universe();
-    let mut aggregated_adjustments = BTreeMap::<usize, i8>::new();
+    let mut aggregated_adjustments = PairAdjustmentAccumulator::with_capacity(
+        4 * left_group.len().saturating_sub(1),
+    );
     for (member_idx, &other) in left_group.iter().enumerate() {
         if member_idx == swap.left_pos_idx {
             continue;
         }
-        *aggregated_adjustments
-            .entry(universe.pair_index(left_person, other)?)
-            .or_insert(0) -= 1;
-        *aggregated_adjustments
-            .entry(universe.pair_index(right_person, other)?)
-            .or_insert(0) += 1;
+        aggregated_adjustments.apply(universe.pair_index(left_person, other)?, -1);
+        aggregated_adjustments.apply(universe.pair_index(right_person, other)?, 1);
     }
     for (member_idx, &other) in right_group.iter().enumerate() {
         if member_idx == swap.right_pos_idx {
             continue;
         }
-        *aggregated_adjustments
-            .entry(universe.pair_index(right_person, other)?)
-            .or_insert(0) -= 1;
-        *aggregated_adjustments
-            .entry(universe.pair_index(left_person, other)?)
-            .or_insert(0) += 1;
+        aggregated_adjustments.apply(universe.pair_index(right_person, other)?, -1);
+        aggregated_adjustments.apply(universe.pair_index(left_person, other)?, 1);
     }
 
-    let pair_adjustments = aggregated_adjustments
-        .into_iter()
-        .filter(|(_, delta)| *delta != 0)
-        .map(|(pair_idx, delta)| PairCountAdjustment { pair_idx, delta })
-        .collect::<Vec<_>>();
+    let pair_adjustments = aggregated_adjustments.finish();
 
-    let (linear_delta, triangular_delta, squared_delta) = score_deltas_for_adjustments(state, &pair_adjustments)?;
+    let linear_delta = score_delta_for_adjustments(
+        state,
+        &pair_adjustments,
+        Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
+    )?;
     let active_delta = match state.active_penalty_model() {
         Solver6PairRepeatPenaltyModel::LinearRepeatExcess => linear_delta,
-        Solver6PairRepeatPenaltyModel::TriangularRepeatExcess => triangular_delta,
-        Solver6PairRepeatPenaltyModel::SquaredRepeatExcess => squared_delta,
+        active_model => score_delta_for_adjustments(state, &pair_adjustments, active_model)?,
     };
     let active_score_before = state.current_active_score();
     let active_score_after = (active_score_before as i64 + active_delta) as u64;
@@ -162,10 +244,6 @@ pub(crate) fn evaluate_same_week_swap(
         active_score_after,
         linear_repeat_excess_after: (state.pair_state().linear_repeat_excess() as i64 + linear_delta)
             as u64,
-        triangular_repeat_excess_after:
-            (state.pair_state().triangular_repeat_excess() as i64 + triangular_delta) as u64,
-        squared_repeat_excess_after:
-            (state.pair_state().squared_repeat_excess() as i64 + squared_delta) as u64,
     })
 }
 
@@ -173,12 +251,13 @@ pub(crate) fn find_best_same_week_swap(
     state: &LocalSearchState,
 ) -> Result<Option<EvaluatedSameWeekSwapMove>, SolverError> {
     let mut best: Option<EvaluatedSameWeekSwapMove> = None;
-    for candidate in enumerate_same_week_swap_moves(state) {
+    try_for_each_same_week_swap_move(state, |candidate| {
         let evaluated = evaluate_same_week_swap(state, candidate)?;
         if best.as_ref().is_none_or(|incumbent| same_week_swap_is_better(&evaluated, incumbent)) {
             best = Some(evaluated);
         }
-    }
+        Ok(())
+    })?;
     Ok(best)
 }
 
@@ -205,31 +284,20 @@ pub(crate) fn same_week_swap_is_better(
     )
 }
 
-fn score_deltas_for_adjustments(
+fn score_delta_for_adjustments(
     state: &LocalSearchState,
     adjustments: &[PairCountAdjustment],
-) -> Result<(i64, i64, i64), SolverError> {
-    let mut linear_delta = 0i64;
-    let mut triangular_delta = 0i64;
-    let mut squared_delta = 0i64;
+    model: Solver6PairRepeatPenaltyModel,
+) -> Result<i64, SolverError> {
+    let mut delta_total = 0i64;
     for adjustment in adjustments {
-        linear_delta += state.pair_state().score_delta_for_pair_change(
+        delta_total += state.pair_state().score_delta_for_pair_change(
             adjustment.pair_idx,
             adjustment.delta,
-            Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
-        )?;
-        triangular_delta += state.pair_state().score_delta_for_pair_change(
-            adjustment.pair_idx,
-            adjustment.delta,
-            Solver6PairRepeatPenaltyModel::TriangularRepeatExcess,
-        )?;
-        squared_delta += state.pair_state().score_delta_for_pair_change(
-            adjustment.pair_idx,
-            adjustment.delta,
-            Solver6PairRepeatPenaltyModel::SquaredRepeatExcess,
+            model,
         )?;
     }
-    Ok((linear_delta, triangular_delta, squared_delta))
+    Ok(delta_total)
 }
 
 #[cfg(test)]
