@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
+import { LandingResizableTextarea } from './LandingResizableTextarea';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupAdvancedOptionsProps {
@@ -46,12 +47,14 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             <label htmlFor="keepTogetherInput" className="mb-2 block text-sm font-medium">
               {labels.keepTogetherLabel}
             </label>
-            <textarea
+            <LandingResizableTextarea
               id="keepTogetherInput"
               value={draft.keepTogetherInput}
-              onChange={(event) => controller.updateDraft((current) => ({ ...current, keepTogetherInput: event.target.value }))}
+              onChange={(value) => controller.updateDraft((current) => ({ ...current, keepTogetherInput: value }))}
               placeholder={labels.keepTogetherPlaceholder}
-              className="min-h-[96px] w-full rounded-2xl border px-4 py-3 text-sm outline-none focus:ring-2"
+              minHeight={96}
+              className="rounded-2xl"
+              textareaClassName="px-4 py-3 text-sm outline-none"
               style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
             />
           </div>
@@ -60,12 +63,14 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             <label htmlFor="avoidPairingsInput" className="mb-2 block text-sm font-medium">
               {labels.avoidPairingLabel}
             </label>
-            <textarea
+            <LandingResizableTextarea
               id="avoidPairingsInput"
               value={draft.avoidPairingsInput}
-              onChange={(event) => controller.updateDraft((current) => ({ ...current, avoidPairingsInput: event.target.value }))}
+              onChange={(value) => controller.updateDraft((current) => ({ ...current, avoidPairingsInput: value }))}
               placeholder={labels.avoidPairingPlaceholder}
-              className="min-h-[96px] w-full rounded-2xl border px-4 py-3 text-sm outline-none focus:ring-2"
+              minHeight={96}
+              className="rounded-2xl"
+              textareaClassName="px-4 py-3 text-sm outline-none"
               style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
             />
           </div>

@@ -3,6 +3,7 @@ import { ArrowRight, ChevronDown, Copy, Download, RotateCcw, Sparkles, Users } f
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
+import { LandingResizableTextarea } from '../components/LandingTool/LandingResizableTextarea';
 import { QuickSetupAdvancedOptions } from '../components/LandingTool/QuickSetupAdvancedOptions';
 import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { useQuickSetup } from '../components/LandingTool/useQuickSetup';
@@ -405,11 +406,13 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {ui.results.plainTextDescription}
           </p>
-          <textarea
-            aria-label={ui.results.textResultsAriaLabel}
+          <LandingResizableTextarea
+            ariaLabel={ui.results.textResultsAriaLabel}
             readOnly
             value={resultText}
-            className="min-h-[260px] w-full rounded-xl border px-4 py-3 text-sm outline-none"
+            minHeight={260}
+            className="rounded-xl"
+            textareaClassName="px-4 py-3 text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
           />
         </div>
@@ -420,11 +423,13 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {ui.results.csvDescription}
           </p>
-          <textarea
-            aria-label={ui.results.csvResultsAriaLabel}
+          <LandingResizableTextarea
+            ariaLabel={ui.results.csvResultsAriaLabel}
             readOnly
             value={resultCsv}
-            className="min-h-[260px] w-full rounded-xl border px-4 py-3 font-mono text-sm outline-none"
+            minHeight={260}
+            className="rounded-xl"
+            textareaClassName="px-4 py-3 font-mono text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
           />
         </div>
@@ -616,14 +621,16 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     </button>
                   </div>
                 </div>
-                <textarea
+                <LandingResizableTextarea
                   id="participantInput"
                   value={draft.participantInput}
-                  onChange={(event) =>
-                    controller.updateDraft((current) => ({ ...current, participantInput: event.target.value }))
+                  onChange={(value) =>
+                    controller.updateDraft((current) => ({ ...current, participantInput: value }))
                   }
                   placeholder={draft.inputMode === 'csv' ? ui.quickSetup.csvPlaceholder : ui.quickSetup.namesPlaceholder}
-                  className="min-h-[130px] w-full rounded-xl border px-3 py-2.5 text-sm leading-relaxed outline-none transition-shadow focus:ring-2"
+                  minHeight={130}
+                  className="rounded-xl"
+                  textareaClassName="px-3 py-2.5 text-sm leading-relaxed outline-none transition-shadow"
                   style={{
                     borderColor: 'var(--border-primary)',
                     backgroundColor: 'var(--bg-secondary)',

@@ -591,6 +591,53 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
 
+  .landing-resizable-textarea {
+    width: 100%;
+    border: 1px solid var(--border-primary);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .landing-resizable-textarea:focus-within {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 2px var(--color-accent), 0 0 0 4px rgba(59, 130, 246, 0.1);
+  }
+
+  .landing-resizable-textarea__field {
+    width: 100%;
+    min-height: 0;
+    display: block;
+    border: none;
+    resize: none;
+    overflow-y: auto;
+    background: transparent;
+    color: inherit;
+  }
+
+  .landing-resizable-textarea__field:focus {
+    outline: none;
+  }
+
+  .landing-resizable-textarea__resize-handle {
+    height: 0.625rem;
+    cursor: ns-resize;
+    background: transparent;
+  }
+
+  .landing-resizable-textarea__resize-handle::before {
+    content: '';
+    display: block;
+    width: 2.25rem;
+    height: 2px;
+    margin: 0.2rem auto 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--text-tertiary) 50%, transparent);
+  }
+
+  .landing-resizable-textarea__resize-handle:hover::before {
+    background: color-mix(in srgb, var(--text-secondary) 70%, transparent);
+  }
+
   /* Card Styles */
   .card {
     border-radius: 0.5rem;
