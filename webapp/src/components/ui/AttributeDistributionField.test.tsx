@@ -8,13 +8,11 @@ import { getAttributeDistributionBuckets } from './attributeDistribution';
 function ControlledField({
   initialValue,
   capacity,
-  variant = 'default',
   showSummary,
   showChips,
 }: {
   initialValue: Record<string, number>;
   capacity: number;
-  variant?: 'default' | 'compact';
   showSummary?: boolean;
   showChips?: boolean;
 }) {
@@ -26,7 +24,6 @@ function ControlledField({
       value={value}
       capacity={capacity}
       onChange={setValue}
-      variant={variant}
       showSummary={showSummary}
       showChips={showChips}
     />
@@ -102,14 +99,13 @@ describe('AttributeDistributionField', () => {
     expect(screen.getByRole('button', { name: /adjust boundary between a and b/i })).toBeDisabled();
   });
 
-  it('supports a compact bar-only mode with toggle dots for grid usage', async () => {
+  it('supports a bar-only mode with toggle dots for grid usage', async () => {
     const user = userEvent.setup();
 
     render(
       <ControlledField
         initialValue={{ A: 2, C: 1 }}
         capacity={5}
-        variant="compact"
         showSummary={false}
         showChips={false}
       />,

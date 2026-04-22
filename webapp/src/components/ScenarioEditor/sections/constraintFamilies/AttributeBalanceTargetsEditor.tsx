@@ -43,7 +43,6 @@ export function AttributeBalanceTargetsEditor({
         capacity={effectiveCapacity}
         onChange={(nextValue) => onCommit(nextValue)}
         disabled={disabled}
-        variant="default"
         showSummary={false}
       />
       {unknownKeys.length > 0 ? (

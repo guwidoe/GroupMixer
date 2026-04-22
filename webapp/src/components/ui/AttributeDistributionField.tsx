@@ -10,8 +10,6 @@ import {
   type DistributionBucket,
 } from './attributeDistribution';
 
-export type AttributeDistributionFieldVariant = 'default' | 'compact';
-
 const INLINE_LABEL_PERCENT_THRESHOLD = 24;
 
 function areDistributionValuesEqual(left: AttributeDistributionValue, right: AttributeDistributionValue) {
@@ -49,7 +47,6 @@ interface AttributeDistributionFieldProps {
   error?: React.ReactNode;
   disabled?: boolean;
   className?: string;
-  variant?: AttributeDistributionFieldVariant;
   showSummary?: boolean;
   showChips?: boolean;
 }
@@ -122,7 +119,6 @@ export function AttributeDistributionField({
   error,
   disabled = false,
   className,
-  variant = 'default',
   showSummary,
   showChips,
 }: AttributeDistributionFieldProps) {
@@ -158,13 +154,14 @@ export function AttributeDistributionField({
   const [frozenBucketLayout, setFrozenBucketLayout] = useState<Record<string, FrozenBucketLayoutState> | null>(null);
   const dragMovedRef = useRef(false);
   const dragEnabled = !disabled && summary.capacity > 0 && !summary.isOverallocated;
-  const resolvedShowSummary = showSummary ?? variant === 'default';
-  const resolvedShowChips = showChips ?? variant === 'default';
+  const resolvedShowSummary = showSummary ?? true;
+  const resolvedShowChips = showChips ?? true;
+  const allowInlineEdit = resolvedShowChips;
   const bucketStates = useMemo(() => attributeBuckets.map((bucket, index) => {
     const count = localValue[bucket.key] ?? 0;
     const isActive = Object.prototype.hasOwnProperty.call(localValue, bucket.key);
     const widthPercent = summary.capacity > 0 ? (count / summary.capacity) * 100 : 0;
-    const canInlineEdit = variant === 'default' && isActive && count > 0 && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD;
+    const canInlineEdit = allowInlineEdit && isActive && count > 0 && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD;
     const frozenState = frozenBucketLayout?.[bucket.key];
 
     return {
@@ -179,7 +176,7 @@ export function AttributeDistributionField({
       showInlineLabel: frozenState?.showInlineLabel ?? (canInlineEdit && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD),
       needsLegend: frozenState?.needsLegend ?? (!canInlineEdit || !isActive || count === 0),
     };
-  }), [attributeBuckets, frozenBucketLayout, localValue, summary.capacity, variant]);
+  }), [allowInlineEdit, attributeBuckets, frozenBucketLayout, localValue, summary.capacity]);
   const bucketStateByKey = useMemo(
     () => new Map(bucketStates.map((state) => [state.bucket.key, state])),
     [bucketStates],
@@ -371,7 +368,6 @@ export function AttributeDistributionField({
     <div
       className={[
         'attribute-distribution',
-        `attribute-distribution--${variant}`,
         disabled ? 'attribute-distribution--disabled' : null,
         className,
       ].filter(Boolean).join(' ')}
@@ -440,7 +436,7 @@ export function AttributeDistributionField({
                                   return;
                                 }
                                 const rounded = nextRaw === '' ? 0 : Math.max(0, Math.round(Number(nextRaw)));
-                                const nextWillInlineEdit = variant === 'default'
+                                const nextWillInlineEdit = allowInlineEdit
                                   && rounded > 0
                                   && summary.capacity > 0
                                   && ((rounded / summary.capacity) * 100) >= INLINE_LABEL_PERCENT_THRESHOLD;
@@ -624,7 +620,7 @@ export function AttributeDistributionField({
                       return;
                     }
                     const rounded = nextRaw === '' ? 0 : Math.max(0, Math.round(Number(nextRaw)));
-                    const nextWillInlineEdit = variant === 'default'
+                    const nextWillInlineEdit = allowInlineEdit
                       && rounded > 0
                       && summary.capacity > 0
                       && ((rounded / summary.capacity) * 100) >= INLINE_LABEL_PERCENT_THRESHOLD;
