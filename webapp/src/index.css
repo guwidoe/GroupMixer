@@ -825,17 +825,17 @@
   }
 
   .attribute-distribution__bar {
-    --attribute-distribution-track-top: 0.35rem;
-    --attribute-distribution-track-height: 2.45rem;
+    --attribute-distribution-track-top: 0.0rem;
+    --attribute-distribution-track-height: 2.3rem;
     position: relative;
     min-height: 2.85rem;
-    padding-top: 0.35rem;
+    padding-top: 0.0rem;
   }
 
   .attribute-distribution__segments {
     display: flex;
     overflow: hidden;
-    min-height: 2.45rem;
+    min-height: 2.3rem;
     border-radius: 999px;
     border: 1px solid var(--border-primary);
     background: color-mix(in srgb, var(--bg-secondary) 92%, white 8%);
@@ -1007,6 +1007,10 @@
     margin: 0;
     font-size: 0.74rem;
     color: var(--color-warning);
+  }
+
+  .attribute-distribution__bar-shell + .attribute-distribution__support-legend {
+    margin-top: -0.125rem;
   }
 
   .attribute-distribution__support-legend {
