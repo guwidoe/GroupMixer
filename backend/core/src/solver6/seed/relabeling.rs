@@ -324,8 +324,8 @@ pub(crate) fn build_greedy_relabeling_plan(
     for copy_count in 2..=context.full_copies {
         plan.copy_permutations
             .push(SeedPermutation::identity(context.num_people()));
-        let partial_input = clone_input_with_num_weeks(input, copy_count * context.atom_weeks)?;
-        plan = build_greedy_relabeling_plan_from_initial_plan(&partial_input, &plan)?;
+        let partial_context = context.prefix_context(copy_count)?;
+        plan = build_greedy_relabeling_plan_with_context(&partial_context, &plan)?;
     }
     Ok(plan)
 }
@@ -335,7 +335,14 @@ pub(crate) fn build_greedy_relabeling_plan_from_initial_plan(
     initial_plan: &ExactBlockRelabelingPlan,
 ) -> Result<ExactBlockRelabelingPlan, SolverError> {
     let context = ExactBlockCompositionContext::for_input(input)?;
-    let mut state = GreedyRelabelingState::from_plan(&context, initial_plan.clone())?;
+    build_greedy_relabeling_plan_with_context(&context, initial_plan)
+}
+
+fn build_greedy_relabeling_plan_with_context(
+    context: &ExactBlockCompositionContext,
+    initial_plan: &ExactBlockRelabelingPlan,
+) -> Result<ExactBlockRelabelingPlan, SolverError> {
+    let mut state = GreedyRelabelingState::from_plan(context, initial_plan.clone())?;
 
     if greedy_relabeling_has_reached_known_optimum(&state, context.active_penalty_model) {
         return Ok(state.plan);
@@ -633,17 +640,7 @@ fn derive_random_relabeling_seed(
         ^ (num_people as u64)
 }
 
-fn clone_input_with_num_weeks(input: &ApiInput, num_weeks: usize) -> Result<ApiInput, SolverError> {
-    let num_sessions = u32::try_from(num_weeks).map_err(|_| {
-        SolverError::ValidationError(format!(
-            "solver6 exact-block relabeling could not fit {num_weeks} sessions into u32"
-        ))
-    })?;
-    let mut cloned = input.clone();
-    cloned.problem.num_sessions = num_sessions;
-    Ok(cloned)
-}
-
+#[derive(Debug, Clone)]
 struct ExactBlockCompositionContext {
     problem: PureSgpProblem,
     atom: Solver5ConstructionAtom,
@@ -705,6 +702,20 @@ impl ExactBlockCompositionContext {
 
     fn num_people(&self) -> usize {
         self.problem.num_groups * self.problem.group_size
+    }
+
+    fn prefix_context(&self, full_copies: usize) -> Result<Self, SolverError> {
+        if full_copies == 0 || full_copies > self.full_copies {
+            return Err(SolverError::ValidationError(format!(
+                "solver6 exact-block relabeling prefix context expected 1..={} copies, got {}",
+                self.full_copies, full_copies
+            )));
+        }
+
+        let mut context = self.clone();
+        context.full_copies = full_copies;
+        context.problem.num_weeks = full_copies * self.atom_weeks;
+        Ok(context)
     }
 
     fn validate_plan(&self, plan: &ExactBlockRelabelingPlan) -> Result<(), SolverError> {
