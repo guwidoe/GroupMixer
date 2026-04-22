@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AttributeDistributionField } from './AttributeDistributionField';
@@ -96,11 +96,10 @@ describe('AttributeDistributionField', () => {
 
     expect(screen.getByText(/allocated values exceed the current capacity/i)).toBeInTheDocument();
     expect(screen.getByLabelText('A count')).toHaveValue('3');
-    expect(screen.getByRole('button', { name: /adjust boundary between a and b/i })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /adjust boundary between a and b/i })).not.toBeInTheDocument();
   });
 
-  it('supports a bar-only mode with toggle dots for grid usage', async () => {
-    const user = userEvent.setup();
+  it('supports a bar-only mode for grid usage', async () => {
 
     render(
       <ControlledField
@@ -113,29 +112,29 @@ describe('AttributeDistributionField', () => {
 
     expect(screen.queryByText(/allocated \d/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText('A count')).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /enable target for b/i }));
-
-    expect(screen.getByRole('button', { name: /adjust boundary between a and b/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /disable target for b/i })).toHaveAttribute('title', 'B');
+    expect(screen.getByRole('button', { name: /adjust boundary between a and c/i })).toBeInTheDocument();
   });
 
-  it('lets toggle dots act as drag handles without toggling on drag', () => {
-    render(<ControlledField initialValue={{ A: 2, B: 0, C: 1 }} capacity={5} />);
+  it('clamps divider markers inside the bar when allocations exceed capacity', () => {
+    render(<ControlledField initialValue={{ A: 1, B: 2 }} capacity={2} showSummary={false} showChips={false} />);
+
+    expect(screen.queryByRole('button', { name: /adjust boundary between/i })).not.toBeInTheDocument();
+  });
+
+  it('lets divider handles rebalance adjacent sections', () => {
+    render(<ControlledField initialValue={{ A: 2, B: 0, C: 1 }} capacity={5} showSummary={false} showChips={false} />);
 
     const bar = screen.getByRole('group', { name: 'Desired Distribution' });
     Object.defineProperty(bar, 'getBoundingClientRect', {
       value: () => ({ left: 0, width: 100, top: 0, right: 100, bottom: 40, height: 40, x: 0, y: 0, toJSON: () => ({}) }),
     });
 
-    const dot = screen.getByRole('button', { name: /^disable target for a$/i });
-    fireEvent.pointerDown(dot, { clientX: 40, pointerId: 1 });
+    const handle = screen.getByRole('button', { name: /adjust boundary between a and b/i });
+    fireEvent.pointerDown(handle, { clientX: 40, pointerId: 1 });
     fireEvent.pointerMove(window, { clientX: 20 });
     fireEvent.pointerUp(window, { clientX: 20 });
 
-    expect(screen.getByLabelText('A count')).toHaveValue('1');
-    expect(screen.getByLabelText('B count')).toHaveValue('1');
-    expect(screen.getByRole('button', { name: /^disable target for a$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /adjust boundary between a and b/i }).style.left).toBe('20%');
   });
 
   it('keeps legend layout stable until drag ends', () => {
@@ -189,12 +188,50 @@ describe('AttributeDistributionField', () => {
 
     render(<ControlledField initialValue={{ A: 2 }} capacity={11} />);
 
-    await user.click(screen.getByRole('button', { name: /enable target for b from legend/i }));
+    await user.click(screen.getByRole('button', { name: /enable target for b/i }));
 
     expect(screen.getByLabelText('B count')).toHaveValue('0');
 
-    await user.click(screen.getByRole('button', { name: /disable target for b from legend/i }));
+    await user.click(screen.getByRole('button', { name: /disable target for b/i }));
 
     expect(screen.queryByLabelText('B count')).not.toBeInTheDocument();
+  });
+
+  it('lets inline bar labels toggle active attributes', async () => {
+    const user = userEvent.setup();
+
+    render(<ControlledField initialValue={{ A: 4, B: 1 }} capacity={5} />);
+
+    await user.click(screen.getByRole('button', { name: /^disable target for a$/i }));
+
+    expect(screen.queryByLabelText('A count')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^enable target for a$/i })).toBeInTheDocument();
+  });
+
+  it('falls back to legend editing when the bar becomes too narrow for inline controls', async () => {
+    const { container } = render(<ControlledField initialValue={{ A: 4, B: 1 }} capacity={5} />);
+
+    expect(container.querySelectorAll('.attribute-distribution__support-item')).toHaveLength(2);
+
+    const bar = screen.getByRole('group', { name: 'Desired Distribution' });
+    Object.defineProperty(bar, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 88, top: 0, right: 88, bottom: 40, height: 40, x: 0, y: 0, toJSON: () => ({}) }),
+    });
+
+    fireEvent(window, new Event('resize'));
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('.attribute-distribution__support-item')).toHaveLength(3);
+    });
+
+    expect(container.querySelector('.attribute-distribution__segment-input')).not.toBeInTheDocument();
+  });
+
+  it('hides bar toggle dots when the chip legend is available', () => {
+    const { container } = render(<ControlledField initialValue={{ A: 2, B: 1 }} capacity={5} />);
+
+    expect(container.querySelector('.attribute-distribution__toggle-dot')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /disable target for b/i })).toBeInTheDocument();
   });
 });

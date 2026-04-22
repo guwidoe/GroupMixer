@@ -11,6 +11,8 @@ import {
 } from './attributeDistribution';
 
 const INLINE_LABEL_PERCENT_THRESHOLD = 24;
+const INLINE_EDITOR_MIN_PX = 112;
+const COMPACT_SEGMENT_LABEL_MIN_PX = 72;
 
 function areDistributionValuesEqual(left: AttributeDistributionValue, right: AttributeDistributionValue) {
   const leftKeys = Object.keys(left);
@@ -109,6 +111,14 @@ function buildCenteredClusterOffsets(positions: number[]) {
   return offsets;
 }
 
+function clampMarkerPosition(position: number, capacity: number) {
+  if (capacity <= 0) {
+    return 0;
+  }
+
+  return Math.min(capacity, Math.max(0, position));
+}
+
 export function AttributeDistributionField({
   buckets,
   value,
@@ -137,17 +147,17 @@ export function AttributeDistributionField({
     () => summarizeAttributeDistribution(localValue, buckets, capacity),
     [localValue, buckets, capacity],
   );
-  const allBucketCounts = useMemo(
-    () => getBarBucketCounts(buckets, localValue, summary.capacity),
-    [buckets, localValue, summary.capacity],
-  );
   const barBucketCounts = useMemo(
     () => getBarBucketCounts(activeBarBuckets, localValue, summary.capacity),
     [activeBarBuckets, localValue, summary.capacity],
   );
   const dividerPositions = useMemo(() => getDividerPositions(barBucketCounts), [barBucketCounts]);
-  const togglePositions = useMemo(() => getDividerPositions(allBucketCounts).slice(0, attributeBuckets.length), [allBucketCounts, attributeBuckets.length]);
+  const clampedDividerPositions = useMemo(
+    () => dividerPositions.map((position) => clampMarkerPosition(position, summary.capacity)),
+    [dividerPositions, summary.capacity],
+  );
   const barRef = useRef<HTMLDivElement | null>(null);
+  const [barWidth, setBarWidth] = useState(0);
   const editableInputRefs = useRef(new Map<string, HTMLInputElement | null>());
   const pendingFocusKeyRef = useRef<string | null>(null);
   const [activeDrag, setActiveDrag] = useState<ActiveDistributionDrag | null>(null);
@@ -161,7 +171,12 @@ export function AttributeDistributionField({
     const count = localValue[bucket.key] ?? 0;
     const isActive = Object.prototype.hasOwnProperty.call(localValue, bucket.key);
     const widthPercent = summary.capacity > 0 ? (count / summary.capacity) * 100 : 0;
-    const canInlineEdit = allowInlineEdit && isActive && count > 0 && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD;
+    const segmentWidthPx = barWidth > 0 ? (widthPercent / 100) * barWidth : null;
+    const canInlineEdit = allowInlineEdit
+      && isActive
+      && count > 0
+      && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD
+      && (segmentWidthPx == null || segmentWidthPx >= INLINE_EDITOR_MIN_PX);
     const frozenState = frozenBucketLayout?.[bucket.key];
 
     return {
@@ -172,11 +187,12 @@ export function AttributeDistributionField({
       color: getSegmentColor(index, bucket.kind),
       textColor: getSegmentTextColor(index, bucket.kind),
       widthPercent,
+      segmentWidthPx,
       canInlineEdit: frozenState?.canInlineEdit ?? canInlineEdit,
       showInlineLabel: frozenState?.showInlineLabel ?? (canInlineEdit && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD),
       needsLegend: frozenState?.needsLegend ?? (!canInlineEdit || !isActive || count === 0),
     };
-  }), [allowInlineEdit, attributeBuckets, frozenBucketLayout, localValue, summary.capacity]);
+  }), [allowInlineEdit, attributeBuckets, barWidth, frozenBucketLayout, localValue, summary.capacity]);
   const bucketStateByKey = useMemo(
     () => new Map(bucketStates.map((state) => [state.bucket.key, state])),
     [bucketStates],
@@ -190,8 +206,7 @@ export function AttributeDistributionField({
     }
   }, []);
 
-  const handleClusterOffsets = useMemo(() => buildCenteredClusterOffsets(dividerPositions), [dividerPositions]);
-  const toggleClusterOffsets = useMemo(() => buildCenteredClusterOffsets(togglePositions), [togglePositions]);
+  const handleClusterOffsets = useMemo(() => buildCenteredClusterOffsets(clampedDividerPositions), [clampedDividerPositions]);
 
   const freezeCurrentLayout = React.useCallback(() => {
     setFrozenBucketLayout(Object.fromEntries(bucketStates.map((state) => [state.bucket.key, {
@@ -364,6 +379,32 @@ export function AttributeDistributionField({
     pendingFocusKeyRef.current = null;
   }, [bucketStates]);
 
+  useEffect(() => {
+    const node = barRef.current;
+    if (!node) {
+      return undefined;
+    }
+
+    const measure = () => {
+      const nextWidth = node.getBoundingClientRect().width;
+      setBarWidth((previous) => (Math.abs(previous - nextWidth) < 0.5 ? previous : nextWidth));
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => measure());
+      observer.observe(node);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer?.disconnect();
+    };
+  }, []);
+
   return (
     <div
       className={[
@@ -394,7 +435,7 @@ export function AttributeDistributionField({
         >
           {summary.capacity > 0 ? (
             <>
-              <div className="attribute-distribution__segments" aria-hidden="true">
+              <div className="attribute-distribution__segments">
                 {activeBarBuckets.map((bucket, index) => {
                   const units = barBucketCounts[index] ?? 0;
                   if (units <= 0) {
@@ -404,6 +445,8 @@ export function AttributeDistributionField({
                   const colorIndex = buckets.findIndex((candidate) => candidate.key === bucket.key);
                   const widthPercent = summary.capacity > 0 ? (units / summary.capacity) * 100 : 0;
                   const bucketState = bucket.kind === 'attribute' ? bucketStateByKey.get(bucket.key) : null;
+                  const showCompactSegmentLabel = bucket.kind === 'unallocated'
+                    && ((barWidth > 0 ? (widthPercent / 100) * barWidth : Infinity) >= COMPACT_SEGMENT_LABEL_MIN_PX);
                   return (
                     <div
                       key={bucket.key}
@@ -420,7 +463,17 @@ export function AttributeDistributionField({
                       {bucket.kind === 'attribute' ? (
                         bucketState?.canInlineEdit ? (
                           <>
-                            {bucketState.showInlineLabel ? <span className="attribute-distribution__segment-label">{bucket.label}</span> : null}
+                            {bucketState.showInlineLabel ? (
+                              <button
+                                type="button"
+                                className="attribute-distribution__segment-label-button"
+                                aria-label={`Disable target for ${bucket.label}`}
+                                disabled={disabled}
+                                onClick={() => toggleBucketActive(bucket)}
+                              >
+                                <span className="attribute-distribution__segment-label">{bucket.label}</span>
+                              </button>
+                            ) : null}
                             <input
                               type="text"
                               inputMode="numeric"
@@ -452,7 +505,7 @@ export function AttributeDistributionField({
                         ) : null
                       ) : (
                         <>
-                          <span className="attribute-distribution__segment-label">{bucket.label}</span>
+                          {showCompactSegmentLabel ? <span className="attribute-distribution__segment-label">{bucket.label}</span> : null}
                           <span className="attribute-distribution__segment-value">{units}</span>
                         </>
                       )}
@@ -461,62 +514,14 @@ export function AttributeDistributionField({
                 })}
               </div>
 
-              {attributeBuckets.map((bucket, index) => {
-                const position = togglePositions[index] ?? 0;
-                const leftPercent = summary.capacity > 0 ? (position / summary.capacity) * 100 : 0;
-                const isActive = Object.prototype.hasOwnProperty.call(localValue, bucket.key);
-                return (
-                  <button
-                    key={`toggle-${bucket.key}`}
-                    type="button"
-                    className={[
-                      'attribute-distribution__toggle-dot',
-                      isActive ? 'attribute-distribution__toggle-dot--active' : 'attribute-distribution__toggle-dot--inactive',
-                    ].filter(Boolean).join(' ')}
-                    style={{
-                      left: `${leftPercent}%`,
-                      '--attribute-distribution-toggle-offset': `${toggleClusterOffsets[index] * 0.7}rem`,
-                      '--attribute-distribution-toggle-color': getSegmentColor(index, bucket.kind),
-                    } as React.CSSProperties}
-                    aria-label={`${isActive ? 'Disable' : 'Enable'} target for ${bucket.label}`}
-                    aria-pressed={isActive}
-                    title={bucket.label}
-                    disabled={disabled}
-                    onPointerDown={(event) => {
-                      if (!dragEnabled) {
-                        return;
-                      }
-
-                      freezeCurrentLayout();
-                      event.preventDefault();
-                      event.currentTarget.setPointerCapture?.(event.pointerId);
-                      dragMovedRef.current = false;
-                      setActiveDrag({
-                        source: 'dot',
-                        dividerIndex: index,
-                        buckets,
-                        startClientX: event.clientX,
-                        toggleBucketKey: bucket.key,
-                      });
-                    }}
-                    onClick={(event) => {
-                      if (event.detail === 0) {
-                        toggleBucketActive(bucket);
-                      }
-                    }}
-                  >
-                    <span className="attribute-distribution__toggle-tooltip" aria-hidden="true">{bucket.label}</span>
-                    <span className="sr-only">{bucket.label}</span>
-                  </button>
-                );
-              })}
             </>
           ) : (
             <div className="attribute-distribution__empty">Select a group with capacity to edit the distribution.</div>
           )}
 
-          {summary.capacity > 0
-            ? dividerPositions.map((position, index) => {
+          {dragEnabled
+            ? dividerPositions.map((_, index) => {
+                const position = clampedDividerPositions[index] ?? 0;
                 const leftPercent = summary.capacity > 0 ? (position / summary.capacity) * 100 : 0;
                 const leftBucket = activeBarBuckets[index];
                 const rightBucket = activeBarBuckets[index + 1];
@@ -530,11 +535,7 @@ export function AttributeDistributionField({
                       '--attribute-distribution-handle-offset': `${handleClusterOffsets[index] * 0.7}rem`,
                     } as React.CSSProperties}
                     aria-label={`Adjust boundary between ${leftBucket?.label ?? 'left'} and ${rightBucket?.label ?? 'right'}`}
-                    disabled={!dragEnabled}
                     onPointerDown={(event) => {
-                      if (!dragEnabled) {
-                        return;
-                      }
                       freezeCurrentLayout();
                       event.preventDefault();
                       event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -547,10 +548,6 @@ export function AttributeDistributionField({
                       });
                     }}
                     onKeyDown={(event) => {
-                      if (!dragEnabled) {
-                        return;
-                      }
-
                       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') {
                         return;
                       }
@@ -594,16 +591,20 @@ export function AttributeDistributionField({
                 state.isActive ? 'attribute-distribution__support-item--active' : 'attribute-distribution__support-item--inactive',
               ].filter(Boolean).join(' ')}
             >
-              <button
-                type="button"
+              <span
                 className="attribute-distribution__support-swatch"
                 style={{ background: state.color }}
-                aria-label={`${state.isActive ? 'Disable' : 'Enable'} target for ${state.bucket.label} from legend`}
+              />
+              <button
+                type="button"
+                className="attribute-distribution__support-label-button"
+                aria-label={`${state.isActive ? 'Disable' : 'Enable'} target for ${state.bucket.label}`}
                 aria-pressed={state.isActive}
                 disabled={disabled}
                 onClick={() => toggleBucketActive(state.bucket)}
-              />
-              <span className="attribute-distribution__support-label">{state.bucket.label}</span>
+              >
+                <span className="attribute-distribution__support-label">{state.bucket.label}</span>
+              </button>
               {state.isActive ? (
                 <input
                   type="text"
