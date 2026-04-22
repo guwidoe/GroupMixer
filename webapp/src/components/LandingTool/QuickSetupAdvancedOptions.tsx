@@ -160,93 +160,104 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
               </button>
             </div>
 
-            <div className="grid gap-2">
-              {fixedAssignments.map((assignment, index) => {
-                const selectablePeople = analysis.participants.filter((participant) => (
-                  participant.id === assignment.personId || !fixedAssignments.some((candidate, candidateIndex) => (
-                    candidateIndex !== index && candidate.personId === participant.id
-                  ))
-                ));
-
-                return (
+            <div className="overflow-hidden rounded-2xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              {fixedAssignments.length > 0 ? (
+                <>
                   <div
-                    key={`${assignment.personId}-${assignment.groupId}-${index}`}
-                    className="grid gap-2 rounded-2xl p-3 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] sm:items-center"
-                    style={{ backgroundColor: 'var(--bg-secondary)' }}
+                    className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_2.75rem] gap-3 px-4 py-3 text-[0.7rem] font-medium uppercase tracking-[0.08em]"
+                    style={{ color: 'var(--text-secondary)' }}
                   >
-                    <label className="grid gap-1 text-xs font-medium uppercase tracking-[0.08em] sm:text-[0.7rem]" style={{ color: 'var(--text-secondary)' }}>
-                      <span>{labels.fixedPersonNameLabel}</span>
-                      <select
-                        aria-label={`${labels.fixedPersonNameLabel} ${index + 1}`}
-                        className="h-11 rounded-xl border px-3 text-sm font-medium outline-none"
-                        style={{
-                          borderColor: 'var(--border-primary)',
-                          backgroundColor: 'var(--bg-primary)',
-                          color: 'var(--text-primary)',
-                        }}
-                        value={selectablePeople.some((participant) => participant.id === assignment.personId) ? assignment.personId : ''}
-                        onChange={(event) => controller.updateDraft((current) => ({
-                          ...current,
-                          fixedAssignments: (current.fixedAssignments ?? []).map((candidate, candidateIndex) => (
-                            candidateIndex === index
-                              ? { ...candidate, personId: event.target.value }
-                              : candidate
-                          )),
-                        }))}
-                      >
-                        <option value="">{labels.fixedPersonSelectPlaceholder}</option>
-                        {selectablePeople.map((participant) => (
-                          <option key={participant.id} value={participant.id}>{participant.name}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label className="grid gap-1 text-xs font-medium uppercase tracking-[0.08em] sm:text-[0.7rem]" style={{ color: 'var(--text-secondary)' }}>
-                      <span>{labels.fixedPersonGroupLabel}</span>
-                      <select
-                        aria-label={`${labels.fixedPersonGroupLabel} ${index + 1}`}
-                        className="h-11 rounded-xl border px-3 text-sm font-medium outline-none"
-                        style={{
-                          borderColor: 'var(--border-primary)',
-                          backgroundColor: 'var(--bg-primary)',
-                          color: 'var(--text-primary)',
-                        }}
-                        value={balanceGroups.some((group) => group.id === assignment.groupId) ? assignment.groupId : ''}
-                        onChange={(event) => controller.updateDraft((current) => ({
-                          ...current,
-                          fixedAssignments: (current.fixedAssignments ?? []).map((candidate, candidateIndex) => (
-                            candidateIndex === index
-                              ? { ...candidate, groupId: event.target.value }
-                              : candidate
-                          )),
-                        }))}
-                      >
-                        <option value="">{labels.fixedGroupSelectPlaceholder}</option>
-                        {balanceGroups.map((group) => (
-                          <option key={group.id} value={group.id}>{group.id}</option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <button
-                      type="button"
-                      className="h-11 rounded-xl border px-3 text-sm font-medium transition-colors"
-                      style={{
-                        borderColor: 'var(--border-primary)',
-                        backgroundColor: 'var(--bg-primary)',
-                        color: 'var(--text-primary)',
-                      }}
-                      aria-label={`${labels.removeFixedPersonLabel}: ${assignment.personId || index + 1}`}
-                      onClick={() => controller.updateDraft((current) => ({
-                        ...current,
-                        fixedAssignments: (current.fixedAssignments ?? []).filter((_, candidateIndex) => candidateIndex !== index),
-                      }))}
-                    >
-                      ×
-                    </button>
+                    <div>{labels.fixedPersonNameLabel}</div>
+                    <div>{labels.fixedPersonGroupLabel}</div>
+                    <div className="sr-only">{labels.removeFixedPersonLabel}</div>
                   </div>
-                );
-              })}
+
+                  {fixedAssignments.map((assignment, index) => {
+                    const selectablePeople = analysis.participants.filter((participant) => (
+                      participant.id === assignment.personId || !fixedAssignments.some((candidate, candidateIndex) => (
+                        candidateIndex !== index && candidate.personId === participant.id
+                      ))
+                    ));
+
+                    return (
+                      <div
+                        key={`${assignment.personId}-${assignment.groupId}-${index}`}
+                        className="grid grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_2.75rem] items-center gap-3 border-t px-4 py-3"
+                        style={{ borderColor: 'var(--border-primary)' }}
+                      >
+                        <select
+                          aria-label={`${labels.fixedPersonNameLabel} ${index + 1}`}
+                          className="h-11 min-w-0 rounded-xl border px-3 text-sm font-medium outline-none"
+                          style={{
+                            borderColor: 'var(--border-primary)',
+                            backgroundColor: 'var(--bg-primary)',
+                            color: 'var(--text-primary)',
+                          }}
+                          value={selectablePeople.some((participant) => participant.id === assignment.personId) ? assignment.personId : ''}
+                          onChange={(event) => controller.updateDraft((current) => ({
+                            ...current,
+                            fixedAssignments: (current.fixedAssignments ?? []).map((candidate, candidateIndex) => (
+                              candidateIndex === index
+                                ? { ...candidate, personId: event.target.value }
+                                : candidate
+                            )),
+                          }))}
+                        >
+                          <option value="">{labels.fixedPersonSelectPlaceholder}</option>
+                          {selectablePeople.map((participant) => (
+                            <option key={participant.id} value={participant.id}>{participant.name}</option>
+                          ))}
+                        </select>
+
+                        <select
+                          aria-label={`${labels.fixedPersonGroupLabel} ${index + 1}`}
+                          className="h-11 min-w-0 rounded-xl border px-3 text-sm font-medium outline-none"
+                          style={{
+                            borderColor: 'var(--border-primary)',
+                            backgroundColor: 'var(--bg-primary)',
+                            color: 'var(--text-primary)',
+                          }}
+                          value={balanceGroups.some((group) => group.id === assignment.groupId) ? assignment.groupId : ''}
+                          onChange={(event) => controller.updateDraft((current) => ({
+                            ...current,
+                            fixedAssignments: (current.fixedAssignments ?? []).map((candidate, candidateIndex) => (
+                              candidateIndex === index
+                                ? { ...candidate, groupId: event.target.value }
+                                : candidate
+                            )),
+                          }))}
+                        >
+                          <option value="">{labels.fixedGroupSelectPlaceholder}</option>
+                          {balanceGroups.map((group) => (
+                            <option key={group.id} value={group.id}>{group.id}</option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          className="inline-flex h-10 w-10 items-center justify-center self-center rounded-xl border text-lg leading-none font-medium transition-colors"
+                          style={{
+                            borderColor: 'var(--border-primary)',
+                            backgroundColor: 'var(--bg-primary)',
+                            color: 'var(--text-primary)',
+                          }}
+                          aria-label={`${labels.removeFixedPersonLabel}: ${assignment.personId || index + 1}`}
+                          onClick={() => controller.updateDraft((current) => ({
+                            ...current,
+                            fixedAssignments: (current.fixedAssignments ?? []).filter((_, candidateIndex) => candidateIndex !== index),
+                          }))}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    );
+                  })}
+                </>
+              ) : (
+                <div className="px-4 py-4 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  {labels.fixedPeopleDescription}
+                </div>
+              )}
             </div>
           </div>
         )}
