@@ -531,11 +531,24 @@ fn find_best_copy_permutation_swap(
     state: &GreedyRelabelingState,
     copy_index: usize,
 ) -> Result<Option<EvaluatedCopyPermutationSwap>, SolverError> {
+    let current_active_score = state.current_active_score(context.active_penalty_model);
+    let current_linear_repeat_excess = state.pair_state.linear_repeat_excess();
+    let current_linear_repeat_lower_bound_gap = current_linear_repeat_excess
+        .saturating_sub(state.linear_repeat_lower_bound);
     let mut best: Option<EvaluatedCopyPermutationSwap> = None;
     for left in 0..context.num_people() {
         for right in (left + 1)..context.num_people() {
-            let evaluated = evaluate_copy_permutation_swap(context, state, copy_index, left, right)?;
-            if copy_permutation_swap_is_improving(state, context.active_penalty_model, &evaluated)
+            let evaluated = evaluate_copy_permutation_swap(
+                context,
+                state,
+                copy_index,
+                left,
+                right,
+                current_active_score,
+                current_linear_repeat_excess,
+            )?;
+            if (evaluated.active_score_after, evaluated.linear_repeat_lower_bound_gap_after)
+                < (current_active_score, current_linear_repeat_lower_bound_gap)
                 && best.as_ref().is_none_or(|incumbent| {
                     copy_permutation_swap_is_better(&evaluated, incumbent)
                 })
@@ -553,6 +566,8 @@ fn evaluate_copy_permutation_swap(
     copy_index: usize,
     left: usize,
     right: usize,
+    current_active_score: u64,
+    current_linear_repeat_excess: u64,
 ) -> Result<EvaluatedCopyPermutationSwap, SolverError> {
     let permutation = &state.plan.copy_permutations[copy_index];
     let image = &permutation.image_by_person;
@@ -565,7 +580,7 @@ fn evaluate_copy_permutation_swap(
 
     for week_idx in 0..context.atom_weeks {
         let left_mates = &context.groupmates_by_person_by_week[left][week_idx];
-        if left_mates.contains(&right) {
+        if context.groupmate_flags_by_person_by_week[left][week_idx][right] {
             continue;
         }
         let right_mates = &context.groupmates_by_person_by_week[right][week_idx];
@@ -592,10 +607,8 @@ fn evaluate_copy_permutation_swap(
         Solver6PairRepeatPenaltyModel::LinearRepeatExcess => linear_delta,
         active_model => score_delta_for_adjustments(&state.pair_state, &pair_adjustments, active_model)?,
     };
-    let active_score_after =
-        (state.current_active_score(context.active_penalty_model) as i64 + active_delta) as u64;
-    let linear_repeat_excess_after =
-        (state.pair_state.linear_repeat_excess() as i64 + linear_delta) as u64;
+    let active_score_after = (current_active_score as i64 + active_delta) as u64;
+    let linear_repeat_excess_after = (current_linear_repeat_excess as i64 + linear_delta) as u64;
 
     Ok(EvaluatedCopyPermutationSwap {
         left,
@@ -605,20 +618,6 @@ fn evaluate_copy_permutation_swap(
         linear_repeat_lower_bound_gap_after: linear_repeat_excess_after
             .saturating_sub(state.linear_repeat_lower_bound),
     })
-}
-
-fn copy_permutation_swap_is_improving(
-    state: &GreedyRelabelingState,
-    active_penalty_model: Solver6PairRepeatPenaltyModel,
-    candidate: &EvaluatedCopyPermutationSwap,
-) -> bool {
-    (
-        candidate.active_score_after,
-        candidate.linear_repeat_lower_bound_gap_after,
-    ) < (
-        state.current_active_score(active_penalty_model),
-        state.current_linear_repeat_lower_bound_gap(),
-    )
 }
 
 fn copy_permutation_swap_is_better(
@@ -713,6 +712,7 @@ struct ExactBlockCompositionContext {
     full_copies: usize,
     active_penalty_model: Solver6PairRepeatPenaltyModel,
     groupmates_by_person_by_week: Vec<Vec<Vec<usize>>>,
+    groupmate_flags_by_person_by_week: Vec<Vec<Vec<bool>>>,
 }
 
 impl ExactBlockCompositionContext {
@@ -753,7 +753,8 @@ impl ExactBlockCompositionContext {
             }
         };
 
-        let groupmates_by_person_by_week = groupmates_by_person_by_week(&atom, problem.num_groups * problem.group_size)?;
+        let (groupmates_by_person_by_week, groupmate_flags_by_person_by_week) =
+            groupmates_by_person_by_week(&atom, problem.num_groups * problem.group_size)?;
 
         Ok(Self {
             problem,
@@ -762,6 +763,7 @@ impl ExactBlockCompositionContext {
             full_copies,
             active_penalty_model,
             groupmates_by_person_by_week,
+            groupmate_flags_by_person_by_week,
         })
     }
 
@@ -809,8 +811,9 @@ impl ExactBlockCompositionContext {
 fn groupmates_by_person_by_week(
     atom: &Solver5ConstructionAtom,
     num_people: usize,
-) -> Result<Vec<Vec<Vec<usize>>>, SolverError> {
+) -> Result<(Vec<Vec<Vec<usize>>>, Vec<Vec<Vec<bool>>>), SolverError> {
     let mut groupmates = vec![vec![Vec::new(); atom.schedule.len()]; num_people];
+    let mut groupmate_flags = vec![vec![vec![false; num_people]; atom.schedule.len()]; num_people];
 
     for (week_idx, week) in atom.schedule.iter().enumerate() {
         for block in week {
@@ -825,11 +828,16 @@ fn groupmates_by_person_by_week(
                     .copied()
                     .filter(|other| *other != person)
                     .collect();
+                for &other in block {
+                    if other != person {
+                        groupmate_flags[person][week_idx][other] = true;
+                    }
+                }
             }
         }
     }
 
-    Ok(groupmates)
+    Ok((groupmates, groupmate_flags))
 }
 
 #[cfg(test)]
@@ -1131,8 +1139,16 @@ mod tests {
         let state = GreedyRelabelingState::from_plan(&context, plan.clone())
             .expect("greedy relabeling state should build");
 
-        let evaluated = evaluate_copy_permutation_swap(&context, &state, 1, 0, 1)
-            .expect("incremental swap evaluation should succeed");
+        let evaluated = evaluate_copy_permutation_swap(
+            &context,
+            &state,
+            1,
+            0,
+            1,
+            state.current_active_score(context.active_penalty_model),
+            state.pair_state.linear_repeat_excess(),
+        )
+        .expect("incremental swap evaluation should succeed");
 
         let mut candidate_plan = plan;
         candidate_plan.copy_permutations[1].image_by_person.swap(0, 1);
