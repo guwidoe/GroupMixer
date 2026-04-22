@@ -1,5 +1,6 @@
 use super::relabeling::{
-    build_exact_block_seed_from_plan, build_greedy_exact_block_seed,
+    build_exact_block_seed_from_plan, build_exact_block_seed_prefix_from_plan,
+    build_greedy_exact_block_seed,
     build_greedy_relabeling_plan, build_greedy_relabeling_plan_from_initial_plan,
     ExactBlockRelabelingPlan, SeedPermutation,
 };
@@ -201,8 +202,7 @@ fn build_dominant_prefix_tail_seed(
         problem.num_groups * problem.group_size,
     ));
     let plan = build_greedy_relabeling_plan_from_initial_plan(&full_copy_input, &initial_plan)?;
-    let seed = build_exact_block_seed_from_plan(&full_copy_input, &plan)?;
-    truncate_seed_to_weeks(input, seed, problem.num_weeks)
+    build_exact_block_seed_prefix_from_plan(&full_copy_input, &plan, problem.num_weeks)
 }
 
 fn build_requested_tail_seed(
@@ -359,33 +359,6 @@ fn compose_seed_with_solver5_tail(
             pair_telemetry: Some(pair_telemetry),
         },
     })
-}
-
-fn truncate_seed_to_weeks(
-    input: &ApiInput,
-    mut seed: ExactBlockSeed,
-    requested_weeks: usize,
-) -> Result<ExactBlockSeed, SolverError> {
-    let problem = PureSgpProblem::from_input(input)?;
-    let active_penalty_model = active_penalty_model(input)?;
-    seed.schedule.truncate(requested_weeks);
-    seed.diagnostics.total_weeks = requested_weeks;
-    seed.diagnostics
-        .atom_uses
-        .retain(|usage| usage.week_range_start < requested_weeks);
-    if let Some(last_usage) = seed.diagnostics.atom_uses.last_mut() {
-        if last_usage.week_range_end_exclusive > requested_weeks {
-            last_usage.week_range_end_exclusive = requested_weeks;
-            last_usage.weeks_used = requested_weeks - last_usage.week_range_start;
-        }
-    }
-    validate_full_schedule_shape(&problem, &seed.schedule)?;
-    seed.diagnostics.pair_telemetry = Some(SeedPairTelemetry::from_schedule(
-        &problem,
-        &seed.schedule,
-        active_penalty_model,
-    )?);
-    Ok(seed)
 }
 
 fn build_heuristic_tail_week(

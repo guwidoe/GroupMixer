@@ -315,7 +315,16 @@ pub(crate) fn build_exact_block_seed_from_plan(
     plan: &ExactBlockRelabelingPlan,
 ) -> Result<ExactBlockSeed, SolverError> {
     let context = ExactBlockCompositionContext::for_input(input)?;
-    build_exact_block_seed_from_plan_with_context(&context, plan)
+    build_exact_block_seed_from_plan_prefix_with_context(&context, plan, context.problem.num_weeks)
+}
+
+pub(crate) fn build_exact_block_seed_prefix_from_plan(
+    input: &ApiInput,
+    plan: &ExactBlockRelabelingPlan,
+    requested_weeks: usize,
+) -> Result<ExactBlockSeed, SolverError> {
+    let context = ExactBlockCompositionContext::for_input(input)?;
+    build_exact_block_seed_from_plan_prefix_with_context(&context, plan, requested_weeks)
 }
 
 pub(crate) fn evaluate_exact_block_relabeling_objective(
@@ -409,34 +418,40 @@ pub(crate) fn evaluate_greedy_relabeling_objective(
     evaluate_exact_block_relabeling_objective(input, &plan)
 }
 
-fn build_exact_block_seed_from_plan_with_context(
+fn build_exact_block_seed_from_plan_prefix_with_context(
     context: &ExactBlockCompositionContext,
     plan: &ExactBlockRelabelingPlan,
+    requested_weeks: usize,
 ) -> Result<ExactBlockSeed, SolverError> {
     context.validate_plan(plan)?;
+    if requested_weeks == 0 || requested_weeks > context.problem.num_weeks {
+        return Err(SolverError::ValidationError(format!(
+            "solver6 exact-block seed builder expected requested weeks in 1..={}, got {}",
+            context.problem.num_weeks, requested_weeks
+        )));
+    }
 
     let atom_id = SeedAtomId::from_solver5_atom(&context.atom);
-    let mut schedule = Vec::with_capacity(context.problem.num_weeks);
+    let mut schedule = Vec::with_capacity(requested_weeks);
     let mut atom_uses = Vec::with_capacity(context.full_copies);
+    let mut weeks_remaining = requested_weeks;
 
     for (copy_index, permutation) in plan.copy_permutations.iter().enumerate() {
+        if weeks_remaining == 0 {
+            break;
+        }
+
         let week_range_start = schedule.len();
-        schedule.extend(
-            context
-                .atom
-                .schedule
+        let image = &permutation.image_by_person;
+        for week in context.atom.schedule.iter().take(weeks_remaining) {
+            let projected_week = week
                 .iter()
-                .map(|week| {
-                    week.iter()
-                        .map(|block| {
-                            block.iter()
-                                .map(|person_idx| permutation.apply(*person_idx))
-                                .collect::<Result<Vec<_>, _>>()
-                        })
-                        .collect::<Result<Vec<_>, _>>()
-                })
-                .collect::<Result<Vec<_>, _>>()?,
-        );
+                .map(|block| block.iter().map(|person_idx| image[*person_idx]).collect())
+                .collect();
+            schedule.push(projected_week);
+        }
+        let weeks_used = schedule.len() - week_range_start;
+        weeks_remaining = weeks_remaining.saturating_sub(weeks_used);
 
         let relabeling = if permutation.changed_people() == 0 {
             SeedRelabelingSummary::identity()
@@ -446,16 +461,18 @@ fn build_exact_block_seed_from_plan_with_context(
         atom_uses.push(SeedAtomUsage::new(
             atom_id.clone(),
             copy_index,
-            context.atom_weeks,
+            weeks_used,
             week_range_start,
-            week_range_start + context.atom_weeks,
+            week_range_start + weeks_used,
             relabeling,
         ));
     }
 
-    validate_full_schedule_shape(&context.problem, &schedule)?;
+    let mut output_problem = context.problem.clone();
+    output_problem.num_weeks = requested_weeks;
+    validate_full_schedule_shape(&output_problem, &schedule)?;
     let pair_telemetry = SeedPairTelemetry::from_schedule(
-        &context.problem,
+        &output_problem,
         &schedule,
         context.active_penalty_model,
     )?;
@@ -463,7 +480,7 @@ fn build_exact_block_seed_from_plan_with_context(
     Ok(ExactBlockSeed {
         schedule,
         diagnostics: ExactBlockSeedDiagnostics {
-            total_weeks: context.problem.num_weeks,
+            total_weeks: requested_weeks,
             atom_uses,
             pair_telemetry: Some(pair_telemetry),
         },
@@ -474,7 +491,11 @@ fn evaluate_exact_block_relabeling_objective_with_context(
     context: &ExactBlockCompositionContext,
     plan: &ExactBlockRelabelingPlan,
 ) -> Result<ExactBlockRelabelingObjective, SolverError> {
-    let seed = build_exact_block_seed_from_plan_with_context(context, plan)?;
+    let seed = build_exact_block_seed_from_plan_prefix_with_context(
+        context,
+        plan,
+        context.problem.num_weeks,
+    )?;
     let pair_telemetry = seed.diagnostics.pair_telemetry.clone().ok_or_else(|| {
         SolverError::ValidationError(
             "solver6 exact-block relabeling objective expected pair telemetry on composed seed"
