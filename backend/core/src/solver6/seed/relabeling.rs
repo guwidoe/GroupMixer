@@ -81,8 +81,7 @@ impl GreedyRelabelingState {
         context: &ExactBlockCompositionContext,
         plan: ExactBlockRelabelingPlan,
     ) -> Result<Self, SolverError> {
-        let seed = build_exact_block_seed_from_plan_with_context(context, &plan)?;
-        let pair_state = PairFrequencyState::from_raw_schedule(context.num_people(), &seed.schedule)?;
+        let pair_state = pair_state_for_plan(context, &plan)?;
         let linear_repeat_lower_bound = pure_sgp_linear_repeat_excess_lower_bound(
             context.problem.num_groups,
             context.problem.group_size,
@@ -124,6 +123,31 @@ impl GreedyRelabelingState {
         }
         Ok(())
     }
+}
+
+fn pair_state_for_plan(
+    context: &ExactBlockCompositionContext,
+    plan: &ExactBlockRelabelingPlan,
+) -> Result<PairFrequencyState, SolverError> {
+    context.validate_plan(plan)?;
+
+    let mut pair_state = PairFrequencyState::from_raw_schedule(context.num_people(), &[])?;
+    let universe = pair_state.universe().clone();
+    for permutation in &plan.copy_permutations {
+        for week in &context.atom.schedule {
+            for block in week {
+                for left_idx in 0..block.len() {
+                    let left = permutation.apply(block[left_idx])?;
+                    for right_idx in (left_idx + 1)..block.len() {
+                        let right = permutation.apply(block[right_idx])?;
+                        let pair_idx = universe.pair_index(left, right)?;
+                        pair_state.apply_pair_count_delta(pair_idx, 1)?;
+                    }
+                }
+            }
+        }
+    }
+    Ok(pair_state)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -773,7 +797,7 @@ mod tests {
         build_exact_block_seed_from_plan, build_random_exact_block_seed,
         build_greedy_exact_block_seed, build_greedy_relabeling_plan,
         build_greedy_relabeling_plan_from_initial_plan, build_relabeling_baseline_plan,
-        evaluate_copy_permutation_swap,
+        evaluate_copy_permutation_swap, pair_state_for_plan,
         evaluate_exact_block_relabeling_objective,
         evaluate_exact_block_relabeling_objective_with_context,
         evaluate_greedy_relabeling_objective, evaluate_relabeling_baseline_objective,
@@ -786,6 +810,7 @@ mod tests {
         RepeatEncounterParams, Solver6PairRepeatPenaltyModel, Solver6Params,
         SolverConfiguration, SolverKind, SolverParams, StopConditions,
     };
+    use crate::solver6::score::PairFrequencyState;
     use std::collections::HashMap;
 
     fn solver6_config() -> SolverConfiguration {
@@ -1090,5 +1115,23 @@ mod tests {
             .expect("warm-started greedy relabeling should build");
 
         assert_eq!(warm_started, greedy_plan);
+    }
+
+    #[test]
+    fn pair_state_for_plan_matches_full_schedule_recompute() {
+        let input = pure_input(8, 4, 20);
+        let context = ExactBlockCompositionContext::for_input(&input)
+            .expect("exact-block context should build");
+        let plan = build_greedy_relabeling_plan(&input)
+            .expect("greedy relabeling plan should build");
+
+        let direct = pair_state_for_plan(&context, &plan)
+            .expect("direct pair state construction should succeed");
+        let seed = build_exact_block_seed_from_plan(&input, &plan)
+            .expect("seed construction should succeed");
+        let recomputed = PairFrequencyState::from_raw_schedule(context.num_people(), &seed.schedule)
+            .expect("schedule recompute should succeed");
+
+        assert_eq!(direct, recomputed);
     }
 }
