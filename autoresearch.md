@@ -1,20 +1,23 @@
-# Autoresearch: solver6 runtime-quality frontier at 50 people
+# Autoresearch: solver6 runtime-quality frontier at 100 people
 
 ## Objective
-Improve `solver6` on its current pure-SGP repeat-minimization frontier benchmark with the scope expanded to **20 weeks** and **up to 50 people**.
+Improve `solver6` on its current pure-SGP repeat-minimization frontier benchmark with the scope expanded to **20 weeks** and **up to 100 people**.
 
 This loop should prefer changes that:
 1. keep correctness intact,
 2. preserve or improve solver6 result quality on the benchmark,
-3. reduce benchmark runtime,
+3. reduce total solver runtime across the benchmark artifact,
 4. stay honest about unsupported behavior and lower-bound/report semantics.
 
 The active benchmark is the existing `solver6_optimality_frontier` example and HTML report pipeline, now run with:
 - `--week-cap 20`
-- `--max-people 50`
+- `--max-people 100`
+- `--jobs 4`
 - `--time-limit 2`
 - `--max-iterations 2000`
 - `--no-improvement 300`
+
+`--jobs 4` is a **benchmark-harness wall-clock optimization only**. The primary metric is still computed from the summed per-cell solver runtimes inside the artifact, not from outer elapsed time.
 
 The primary metric is a **quality-first lexicographic cost** emitted as `objective_cost`:
 - catastrophic penalties for `error` / `unsupported` / `timeout`
@@ -34,6 +37,7 @@ Lower is better. This means runtime wins are good, but not if they degrade bench
   - `timeout_runs`
   - `unsupported_runs`
   - `error_runs`
+  - `not_run_runs`
   - `linear_exact_count`
   - `linear_hit_count`
   - `linear_miss_count`
@@ -44,6 +48,7 @@ Lower is better. This means runtime wins are good, but not if they degrade bench
   - `search_scans`
   - `scan_time_ms`
   - `candidates_evaluated`
+  - `parallel_jobs`
   - `exact_block_only_count`
   - `exact_block_only_runtime_ms`
   - `requested_tail_atom_count`
@@ -78,7 +83,7 @@ Lower is better. This means runtime wins are good, but not if they degrade bench
 ## Off Limits
 - Solver5 construction work unrelated to solver6 runtime-quality improvement
 - Benchmark-shaped hidden fallbacks or special cases that only exist to game the report
-- Changing the benchmark scope away from `week_cap=20` / `max_people=50`
+- Changing the benchmark scope away from `week_cap=20` / `max_people=100` without explicitly re-initializing the target again
 - Regressing explicitness/honesty rules around pure-SGP-only support
 
 ## Constraints
@@ -88,51 +93,68 @@ Lower is better. This means runtime wins are good, but not if they degrade bench
 - Correctness checks must pass before keeping a result.
 - Prefer reusable structural/performance improvements over ad hoc benchmark hacks.
 - Be especially suspicious of changes that make the report greener only by weakening semantics.
+- Treat benchmark parallelization as a harness concern, not solver-quality logic.
 
 ## What's Been Tried
-### Established context before this loop
+### Established context before this 100-person loop
 - `solver6` already has:
   - solver5 exact handoff,
   - exact-block relabeling seeds,
   - mixed-tail seed selection,
   - deterministic same-week best-improving hill climbing,
-  - frontier reporting with detailed seed/search telemetry.
-- Local-search neighborhood scans were already optimized significantly.
-- The dominant remaining runtime cost is **seed construction**, especially greedy exact-block relabeling.
-- Prior benchmark attribution on the smaller `max_people=32` scope showed most runtime came from zero-scan cases, i.e. seed synthesis rather than hill climbing.
-- Current likely high-value lanes:
-  1. incremental relabeling evaluation instead of rebuilding/rescoring full seeds for every person swap,
-  2. caching/compressing exact-block composition state,
-  3. better tail-specific improvements for weak sparse-tail cells,
-  4. measurement/report honesty improvements that do not misclassify impossible regimes.
+  - frontier reporting with detailed seed/search telemetry,
+  - configurable benchmark parallelism via `--jobs`.
+- The most successful recent optimization lane was cutting repeated work inside exact-block relabeling candidate evaluation.
+- On the 50-person target, the current best quality-preserving line reached:
+  - `objective_cost = 188450183987`
+  - `total_runtime_ms = 71387`
+  - `linear_hit_count = 1455 / 1600`
+  - `linear_gap_sum = 4318`
+  - `squared_gap_sum = 2025126`
+- A prior one-off 100-person probe on the same solver line showed the larger workload is now runnable but still expensive:
+  - `objective_cost = 9550238650903`
+  - `total_runtime_ms = 1425503`
+  - `eligible_week_runs = 2680`
+  - `success_week_runs = 2243`
+  - `timeout_runs = 87`
+  - `linear_hit_count = 2243`
+  - `linear_gap_sum = 49988`
+  - `squared_gap_sum = 2609254`
+  - `exact_block_only_runtime_ms = 554248`
+  - `heuristic_tail_runtime_ms = 861835`
+  - `scan_time_ms = 289295`
+  - `candidates_evaluated = 91102548`
+- That probe strongly suggests the 100-person bottlenecks are still dominated by exact-block relabeling and heuristic-tail work, with search scan cost also large enough to monitor closely.
 
 ### Guidance for the next agent
-- Start by understanding `backend/core/src/solver6/seed/relabeling.rs` and the reporting artifact metrics.
+- Start by understanding:
+  - `backend/core/src/solver6/seed/relabeling.rs`
+  - `backend/core/src/solver6/seed/mixed.rs`
+  - `backend/core/src/solver6/reporting.rs`
 - Treat the benchmark as **quality-first, runtime-second**.
-- If a change only improves runtime while worsening `linear_hit_count`, `linear_gap_sum`, or timeout behavior, it is probably a discard.
+- If a change only improves runtime while worsening `linear_hit_count`, `linear_gap_sum`, timeout behavior, or unsupported/error counts, it is probably a discard.
 - If a change improves runtime while preserving quality exactly, that is a strong keep.
 - If a change improves quality materially with a modest runtime cost, it may still be a keep because the primary metric is lexicographic.
+- Keep higher-level honest reductions in repeated relabeling work ahead of low-level memory-heavy caching; the latter has mostly regressed.
 
-### Landed improvements in this solver6 autoresearch loop
-- Baseline for this target (`week_cap=20`, `max_people=50`) started at:
-  - `objective_cost = 192188052267`
-  - `total_runtime_ms = 5881867`
-  - `linear_hit_count = 1452 / 1600`
-  - `linear_gap_sum = 4392`
-- Kept improvements so far:
-  1. incremental exact-block relabeling evaluation instead of full seed rebuild/rescore per swap candidate
-  2. early exit once greedy relabeling reaches the known linear optimum
-  3. mixed-tail seed selection now breaks linear-score ties with explicit `squared_repeat_excess`
-  4. requested-tail and heuristic-tail candidates reuse a shared greedy exact-block prefix seed
-  5. reporting reuses existing seed/local-search telemetry instead of recomputing schedule summaries from scratch
-- Current best kept state (after the wins above):
-  - `objective_cost = 192182086549`
-  - `total_runtime_ms = 114749`
-  - `linear_hit_count = 1452 / 1600`
-  - `linear_gap_sum = 4392`
-  - `squared_gap_sum = 1943718`
+### Landed improvements worth preserving
+- Incremental exact-block relabeling evaluation instead of full seed rebuild/rescore per swap candidate.
+- Early exit once greedy relabeling reaches the known linear optimum.
+- Mixed-tail seed selection now breaks linear-score ties with explicit `squared_repeat_excess`.
+- Requested-tail and heuristic-tail candidates reuse a shared greedy exact-block prefix seed.
+- Reporting reuses existing seed/local-search telemetry instead of recomputing schedule summaries from scratch.
+- Dominant-prefix-tail relabeling is warm-started from the optimized prefix plan.
+- Incremental exact-block relabeling now builds copy permutations copy-by-copy, which materially improved linear quality and must not be casually reverted.
+- Dense reusable relabeling scratch space plus generation-stamped reuse were major runtime wins.
+- Precomputed flat source-mate swap summaries are the current best exact-block relabeling hot-loop line.
+- Benchmark harness parallelism (`--jobs`) is now available and should remain deterministic in artifact ordering.
 
 ### Recent negative results to avoid repeating blindly
-- closed-form heuristic-tail candidate delta math was too small/noisy to beat the current best reliably
-- collect-then-sort relabeling adjustment aggregation was materially worse than the prior small-vector merge path
-- squared-aware tie-breaking inside local-search move selection improved squared metrics but lost one linear hit, so it is not acceptable under the current objective
+- Incremental per-apply relabeling score-delta bookkeeping inside dense scratch regressed sharply.
+- Trusted fast write-side pair-state mutation clones were not worth it.
+- Winner-reevaluation materialization deferral during relabeling scans regressed.
+- Two-path dominant-prefix-tail preparation regressed.
+- Full `PairUniverse` pair-index table caching regressed badly.
+- Simple source-equivalence symmetry pruning did not pay off.
+- Dropping `dominant_prefix_tail` whenever requested-tail exists lost benchmark quality.
+- Final exact-block seed-packaging micro-optimizations have not been promising.

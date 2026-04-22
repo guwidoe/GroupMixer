@@ -6,7 +6,7 @@ JSON_OUT="$ROOT/autoresearch.solver6.last_run_metrics.json"
 HTML_OUT="$ROOT/autoresearch.solver6.last_run_report.html"
 
 WEEK_CAP=20
-MAX_PEOPLE=50
+MAX_PEOPLE=100
 TIME_LIMIT=2
 MAX_ITERATIONS=2000
 NO_IMPROVEMENT=300
@@ -30,7 +30,6 @@ python3 "$ROOT/tools/autoresearch/solver6-optimality/generate_matrix_report.py" 
 
 python3 - "$JSON_OUT" <<'PY'
 import json
-import math
 import sys
 from collections import defaultdict
 
@@ -39,6 +38,7 @@ with open(json_path, "r", encoding="utf-8") as f:
     artifact = json.load(f)
 
 week_cap = artifact["config"]["week_cap"]
+parallel_jobs = artifact["config"].get("parallel_jobs", 1)
 
 eligible_cells = []
 for matrix in artifact["matrices"]:
@@ -143,6 +143,7 @@ print(f"METRIC squared_gap_sum={squared_gap_sum}")
 print(f"METRIC search_scans={search_scans}")
 print(f"METRIC scan_time_ms={scan_time_ms}")
 print(f"METRIC candidates_evaluated={candidates_evaluated}")
+print(f"METRIC parallel_jobs={parallel_jobs}")
 
 for family in [
     "exact_block_only",
