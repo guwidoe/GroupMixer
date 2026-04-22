@@ -7,12 +7,124 @@ use crate::solver5::atoms::{
     query_construction_atom_from_solver6_input, Solver5AtomSpanRequest, Solver5ConstructionAtom,
 };
 use crate::solver6::problem::PureSgpProblem;
+use crate::solver6::score::{
+    pure_sgp_linear_repeat_excess_lower_bound, PairFrequencyState,
+};
 use crate::solver_support::SolverError;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaCha12Rng;
 
 const RANDOM_RELABELING_BASELINE_SEED_SALT: u64 = 0x6f4d_6d21_4c2b_f973;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RelabelingPairCountAdjustment {
+    pair_idx: usize,
+    delta: i8,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct RelabelingPairAdjustmentAccumulator {
+    adjustments: Vec<RelabelingPairCountAdjustment>,
+}
+
+impl RelabelingPairAdjustmentAccumulator {
+    fn with_capacity(capacity: usize) -> Self {
+        Self {
+            adjustments: Vec::with_capacity(capacity),
+        }
+    }
+
+    fn apply(&mut self, pair_idx: usize, delta: i8) {
+        debug_assert_ne!(delta, 0);
+        if let Some(existing_idx) = self
+            .adjustments
+            .iter()
+            .position(|adjustment| adjustment.pair_idx == pair_idx)
+        {
+            let merged_delta = self.adjustments[existing_idx].delta + delta;
+            if merged_delta == 0 {
+                self.adjustments.swap_remove(existing_idx);
+            } else {
+                self.adjustments[existing_idx].delta = merged_delta;
+            }
+            return;
+        }
+
+        self.adjustments
+            .push(RelabelingPairCountAdjustment { pair_idx, delta });
+    }
+
+    fn finish(self) -> Vec<RelabelingPairCountAdjustment> {
+        self.adjustments
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct EvaluatedCopyPermutationSwap {
+    left: usize,
+    right: usize,
+    pair_adjustments: Vec<RelabelingPairCountAdjustment>,
+    active_score_after: u64,
+    linear_repeat_lower_bound_gap_after: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct GreedyRelabelingState {
+    plan: ExactBlockRelabelingPlan,
+    pair_state: PairFrequencyState,
+    linear_repeat_lower_bound: u64,
+}
+
+impl GreedyRelabelingState {
+    fn from_plan(
+        context: &ExactBlockCompositionContext,
+        plan: ExactBlockRelabelingPlan,
+    ) -> Result<Self, SolverError> {
+        let seed = build_exact_block_seed_from_plan_with_context(context, &plan)?;
+        let pair_state = PairFrequencyState::from_raw_schedule(context.num_people(), &seed.schedule)?;
+        let linear_repeat_lower_bound = pure_sgp_linear_repeat_excess_lower_bound(
+            context.problem.num_groups,
+            context.problem.group_size,
+            context.problem.num_weeks,
+            pair_state.universe().total_distinct_pairs(),
+            pair_state.total_pair_incidences(),
+        );
+        Ok(Self {
+            plan,
+            pair_state,
+            linear_repeat_lower_bound,
+        })
+    }
+
+    fn current_active_score(
+        &self,
+        active_penalty_model: Solver6PairRepeatPenaltyModel,
+    ) -> u64 {
+        self.pair_state.score_for_model(active_penalty_model)
+    }
+
+    fn current_linear_repeat_lower_bound_gap(&self) -> u64 {
+        self.pair_state
+            .linear_repeat_excess()
+            .saturating_sub(self.linear_repeat_lower_bound)
+    }
+
+    fn apply_swap(
+        &mut self,
+        copy_index: usize,
+        evaluated: &EvaluatedCopyPermutationSwap,
+    ) -> Result<(), SolverError> {
+        self.plan.copy_permutations[copy_index]
+            .image_by_person
+            .swap(evaluated.left, evaluated.right);
+        for adjustment in &evaluated.pair_adjustments {
+            self.pair_state
+                .apply_pair_count_delta(adjustment.pair_idx, adjustment.delta)?;
+        }
+        Ok(())
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ExactBlockRelabelingBaseline {
@@ -201,15 +313,16 @@ pub(crate) fn build_greedy_relabeling_plan(
     input: &ApiInput,
 ) -> Result<ExactBlockRelabelingPlan, SolverError> {
     let context = ExactBlockCompositionContext::for_input(input)?;
-    let mut plan = ExactBlockRelabelingPlan::identity(context.full_copies, context.num_people());
+    let mut state = GreedyRelabelingState::from_plan(
+        &context,
+        ExactBlockRelabelingPlan::identity(context.full_copies, context.num_people()),
+    )?;
 
     loop {
         let mut improved_any_copy = false;
         for copy_index in 1..context.full_copies {
-            let improved_plan = greedily_improve_copy_permutation(&context, &plan, copy_index)?;
-            if improved_plan != plan {
+            if greedily_improve_copy_permutation(&context, &mut state, copy_index)? {
                 improved_any_copy = true;
-                plan = improved_plan;
             }
         }
 
@@ -218,7 +331,7 @@ pub(crate) fn build_greedy_relabeling_plan(
         }
     }
 
-    Ok(plan)
+    Ok(state.plan)
 }
 
 pub(crate) fn evaluate_greedy_relabeling_objective(
@@ -311,48 +424,139 @@ fn evaluate_exact_block_relabeling_objective_with_context(
 
 fn greedily_improve_copy_permutation(
     context: &ExactBlockCompositionContext,
-    plan: &ExactBlockRelabelingPlan,
+    state: &mut GreedyRelabelingState,
     copy_index: usize,
-) -> Result<ExactBlockRelabelingPlan, SolverError> {
-    let mut current_plan = plan.clone();
-    let mut current_objective =
-        evaluate_exact_block_relabeling_objective_with_context(context, &current_plan)?;
-
+) -> Result<bool, SolverError> {
+    let mut improved_any = false;
     loop {
-        let mut best_improvement: Option<(ExactBlockRelabelingPlan, ExactBlockRelabelingObjective)> =
-            None;
-        for left in 0..context.num_people() {
-            for right in (left + 1)..context.num_people() {
-                let mut candidate_plan = current_plan.clone();
-                candidate_plan.copy_permutations[copy_index]
-                    .image_by_person
-                    .swap(left, right);
-                let candidate_objective =
-                    evaluate_exact_block_relabeling_objective_with_context(context, &candidate_plan)?;
-                if relabeling_objective_is_better(&candidate_objective, &current_objective)
-                    && best_improvement.as_ref().is_none_or(|(_, incumbent_best)| {
-                        relabeling_objective_is_better(&candidate_objective, incumbent_best)
-                    })
-                {
-                    best_improvement = Some((candidate_plan, candidate_objective));
-                }
-            }
-        }
-
-        let Some((improved_plan, improved_objective)) = best_improvement else {
-            return Ok(current_plan);
+        let Some(best_improvement) = find_best_copy_permutation_swap(context, state, copy_index)? else {
+            return Ok(improved_any);
         };
-        current_plan = improved_plan;
-        current_objective = improved_objective;
+        state.apply_swap(copy_index, &best_improvement)?;
+        improved_any = true;
     }
 }
 
-fn relabeling_objective_is_better(
-    candidate: &ExactBlockRelabelingObjective,
-    incumbent: &ExactBlockRelabelingObjective,
+fn find_best_copy_permutation_swap(
+    context: &ExactBlockCompositionContext,
+    state: &GreedyRelabelingState,
+    copy_index: usize,
+) -> Result<Option<EvaluatedCopyPermutationSwap>, SolverError> {
+    let mut best: Option<EvaluatedCopyPermutationSwap> = None;
+    for left in 0..context.num_people() {
+        for right in (left + 1)..context.num_people() {
+            let evaluated = evaluate_copy_permutation_swap(context, state, copy_index, left, right)?;
+            if copy_permutation_swap_is_improving(state, context.active_penalty_model, &evaluated)
+                && best.as_ref().is_none_or(|incumbent| {
+                    copy_permutation_swap_is_better(&evaluated, incumbent)
+                })
+            {
+                best = Some(evaluated);
+            }
+        }
+    }
+    Ok(best)
+}
+
+fn evaluate_copy_permutation_swap(
+    context: &ExactBlockCompositionContext,
+    state: &GreedyRelabelingState,
+    copy_index: usize,
+    left: usize,
+    right: usize,
+) -> Result<EvaluatedCopyPermutationSwap, SolverError> {
+    let permutation = &state.plan.copy_permutations[copy_index];
+    let left_target = permutation.apply(left)?;
+    let right_target = permutation.apply(right)?;
+    let universe = state.pair_state.universe();
+    let mut aggregated_adjustments = RelabelingPairAdjustmentAccumulator::with_capacity(
+        2 * context.atom_weeks * context.problem.group_size.saturating_sub(1),
+    );
+
+    for week_idx in 0..context.atom_weeks {
+        let left_mates = &context.groupmates_by_person_by_week[left][week_idx];
+        if left_mates.contains(&right) {
+            continue;
+        }
+        let right_mates = &context.groupmates_by_person_by_week[right][week_idx];
+
+        for &mate in left_mates {
+            let mate_target = permutation.apply(mate)?;
+            aggregated_adjustments.apply(universe.pair_index(left_target, mate_target)?, -1);
+            aggregated_adjustments.apply(universe.pair_index(right_target, mate_target)?, 1);
+        }
+        for &mate in right_mates {
+            let mate_target = permutation.apply(mate)?;
+            aggregated_adjustments.apply(universe.pair_index(right_target, mate_target)?, -1);
+            aggregated_adjustments.apply(universe.pair_index(left_target, mate_target)?, 1);
+        }
+    }
+
+    let pair_adjustments = aggregated_adjustments.finish();
+    let linear_delta = score_delta_for_adjustments(
+        &state.pair_state,
+        &pair_adjustments,
+        Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
+    )?;
+    let active_delta = match context.active_penalty_model {
+        Solver6PairRepeatPenaltyModel::LinearRepeatExcess => linear_delta,
+        active_model => score_delta_for_adjustments(&state.pair_state, &pair_adjustments, active_model)?,
+    };
+    let active_score_after =
+        (state.current_active_score(context.active_penalty_model) as i64 + active_delta) as u64;
+    let linear_repeat_excess_after =
+        (state.pair_state.linear_repeat_excess() as i64 + linear_delta) as u64;
+
+    Ok(EvaluatedCopyPermutationSwap {
+        left,
+        right,
+        pair_adjustments,
+        active_score_after,
+        linear_repeat_lower_bound_gap_after: linear_repeat_excess_after
+            .saturating_sub(state.linear_repeat_lower_bound),
+    })
+}
+
+fn copy_permutation_swap_is_improving(
+    state: &GreedyRelabelingState,
+    active_penalty_model: Solver6PairRepeatPenaltyModel,
+    candidate: &EvaluatedCopyPermutationSwap,
 ) -> bool {
-    (candidate.active_penalty_score(), candidate.linear_repeat_lower_bound_gap())
-        < (incumbent.active_penalty_score(), incumbent.linear_repeat_lower_bound_gap())
+    (
+        candidate.active_score_after,
+        candidate.linear_repeat_lower_bound_gap_after,
+    ) < (
+        state.current_active_score(active_penalty_model),
+        state.current_linear_repeat_lower_bound_gap(),
+    )
+}
+
+fn copy_permutation_swap_is_better(
+    candidate: &EvaluatedCopyPermutationSwap,
+    incumbent: &EvaluatedCopyPermutationSwap,
+) -> bool {
+    (
+        candidate.active_score_after,
+        candidate.linear_repeat_lower_bound_gap_after,
+        candidate.left,
+        candidate.right,
+    ) < (
+        incumbent.active_score_after,
+        incumbent.linear_repeat_lower_bound_gap_after,
+        incumbent.left,
+        incumbent.right,
+    )
+}
+
+fn score_delta_for_adjustments(
+    pair_state: &PairFrequencyState,
+    adjustments: &[RelabelingPairCountAdjustment],
+    model: Solver6PairRepeatPenaltyModel,
+) -> Result<i64, SolverError> {
+    adjustments.iter().try_fold(0i64, |delta_sum, adjustment| {
+        Ok(delta_sum
+            + pair_state.score_delta_for_pair_change(adjustment.pair_idx, adjustment.delta, model)?)
+    })
 }
 
 fn build_random_relabeling_plan_from_context(
@@ -399,6 +603,7 @@ struct ExactBlockCompositionContext {
     atom_weeks: usize,
     full_copies: usize,
     active_penalty_model: Solver6PairRepeatPenaltyModel,
+    groupmates_by_person_by_week: Vec<Vec<Vec<usize>>>,
 }
 
 impl ExactBlockCompositionContext {
@@ -439,12 +644,15 @@ impl ExactBlockCompositionContext {
             }
         };
 
+        let groupmates_by_person_by_week = groupmates_by_person_by_week(&atom, problem.num_groups * problem.group_size)?;
+
         Ok(Self {
             problem,
             atom,
             atom_weeks,
             full_copies,
             active_penalty_model,
+            groupmates_by_person_by_week,
         })
     }
 
@@ -475,15 +683,44 @@ impl ExactBlockCompositionContext {
     }
 }
 
+fn groupmates_by_person_by_week(
+    atom: &Solver5ConstructionAtom,
+    num_people: usize,
+) -> Result<Vec<Vec<Vec<usize>>>, SolverError> {
+    let mut groupmates = vec![vec![Vec::new(); atom.schedule.len()]; num_people];
+
+    for (week_idx, week) in atom.schedule.iter().enumerate() {
+        for block in week {
+            for &person in block {
+                if person >= num_people {
+                    return Err(SolverError::ValidationError(format!(
+                        "solver6 exact-block relabeling atom contains out-of-bounds person {person} for {num_people} people"
+                    )));
+                }
+                groupmates[person][week_idx] = block
+                    .iter()
+                    .copied()
+                    .filter(|other| *other != person)
+                    .collect();
+            }
+        }
+    }
+
+    Ok(groupmates)
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         build_exact_block_seed_from_plan, build_random_exact_block_seed,
         build_greedy_exact_block_seed, build_greedy_relabeling_plan,
-        build_relabeling_baseline_plan, evaluate_exact_block_relabeling_objective,
+        build_relabeling_baseline_plan, evaluate_copy_permutation_swap,
+        evaluate_exact_block_relabeling_objective,
+        evaluate_exact_block_relabeling_objective_with_context,
         evaluate_greedy_relabeling_objective, evaluate_relabeling_baseline_objective,
-        ExactBlockRelabelingBaseline, ExactBlockRelabelingPlan,
-        ExactBlockRelabelingSearch, SeedPermutation,
+        ExactBlockCompositionContext, ExactBlockRelabelingBaseline,
+        ExactBlockRelabelingPlan, ExactBlockRelabelingSearch,
+        GreedyRelabelingState, SeedPermutation,
     };
     use crate::models::{
         ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
@@ -758,5 +995,29 @@ mod tests {
         assert_eq!(telemetry.active_penalty_score, 464);
         assert_eq!(telemetry.linear_repeat_lower_bound_gap, 0);
         assert_eq!(telemetry.max_pair_frequency, 2);
+    }
+
+    #[test]
+    fn incremental_copy_swap_evaluation_matches_full_recompute() {
+        let input = pure_input(8, 4, 20);
+        let context = ExactBlockCompositionContext::for_input(&input)
+            .expect("exact-block context should build");
+        let plan = ExactBlockRelabelingPlan::identity(context.full_copies, context.num_people());
+        let state = GreedyRelabelingState::from_plan(&context, plan.clone())
+            .expect("greedy relabeling state should build");
+
+        let evaluated = evaluate_copy_permutation_swap(&context, &state, 1, 0, 1)
+            .expect("incremental swap evaluation should succeed");
+
+        let mut candidate_plan = plan;
+        candidate_plan.copy_permutations[1].image_by_person.swap(0, 1);
+        let recomputed = evaluate_exact_block_relabeling_objective_with_context(&context, &candidate_plan)
+            .expect("full recompute objective should succeed");
+
+        assert_eq!(evaluated.active_score_after, recomputed.active_penalty_score());
+        assert_eq!(
+            evaluated.linear_repeat_lower_bound_gap_after,
+            recomputed.linear_repeat_lower_bound_gap()
+        );
     }
 }
