@@ -1,4 +1,5 @@
 import type { ToolPageConfig, ToolPagePreset } from '../../pages/toolPageConfigs';
+import type { QuickSetupBalanceTargets } from '../../utils/quickSetup/attributeBalanceTargets';
 
 export type QuickSetupGroupingMode = 'groupCount' | 'groupSize';
 export type QuickSetupInputMode = 'names' | 'csv';
@@ -21,6 +22,7 @@ export interface QuickSetupDraft {
   avoidPairingsInput: string;
   inputMode: QuickSetupInputMode;
   balanceAttributeKey: string | null;
+  balanceTargets?: QuickSetupBalanceTargets;
   advancedOpen: boolean;
   workspaceScenarioId: string | null;
 }
@@ -59,6 +61,10 @@ export interface QuickSetupPairConstraint {
 export interface QuickSetupAnalysis {
   participants: QuickSetupParticipant[];
   availableBalanceKeys: string[];
+  balanceAttributes: Array<{
+    key: string;
+    values: string[];
+  }>;
   keepTogetherGroups: QuickSetupConstraintGroup[];
   avoidPairings: QuickSetupPairConstraint[];
   ignoredConstraintNames: string[];

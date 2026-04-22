@@ -6,6 +6,8 @@ import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import { solveScenario } from '../../services/solver/solveScenario';
 import { buildGroups, buildScenarioFromDraft, parseParticipantInput } from '../../utils/quickSetup';
+import { deriveBalancedTargetValues, hasAnyBalanceTargets, normalizeBalanceTargets } from '../../utils/quickSetup/attributeBalanceTargets';
+import { createQuickSetupDraftFromScenario } from '../../utils/quickSetup/landingDemo';
 import { normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import type { AttributeDefinition, Scenario, Solution } from '../../types';
 import type {
@@ -48,6 +50,7 @@ export interface QuickSetupController {
   reshuffle: () => void;
   resetDraft: () => void;
   loadSampleData: () => void;
+  loadScenarioDraft: (scenario: Scenario) => boolean;
   exportGroupsCsv: () => void;
   exportProjectDraft: () => void;
 }
@@ -78,26 +81,45 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
 }
 
 function normalizeQuickSetupDraft(draft: QuickSetupDraft): QuickSetupDraft {
-  return {
+  const nextDraft = {
     ...draft,
     avoidRepeatPairings: draft.avoidRepeatPairings ?? true,
+    balanceTargets: normalizeBalanceTargets(draft.balanceTargets),
     participantColumns: normalizeParticipantColumns(draft),
   };
+
+  if (!hasAnyBalanceTargets(nextDraft.balanceTargets) && nextDraft.balanceAttributeKey) {
+    const parsed = parseParticipantInput(nextDraft);
+    const groups = buildGroups(parsed.people.length, nextDraft);
+    return {
+      ...nextDraft,
+      balanceTargets: {
+        [nextDraft.balanceAttributeKey]: deriveBalancedTargetValues(parsed.people, groups, nextDraft.balanceAttributeKey),
+      },
+    };
+  }
+
+  return nextDraft;
 }
 
 function normalizeName(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function parseParticipants(draft: QuickSetupDraft): Pick<QuickSetupAnalysis, 'participants' | 'availableBalanceKeys'> {
+function parseParticipants(draft: QuickSetupDraft): Pick<QuickSetupAnalysis, 'participants' | 'availableBalanceKeys' | 'balanceAttributes'> {
   const parsed = parseParticipantInput(draft);
+  const balanceAttributes = parsed.attributeKeys.map((key) => ({
+    key,
+    values: [...new Set(parsed.people.map((person) => person.attributes[key]).filter(Boolean))].sort((left, right) => left.localeCompare(right)),
+  }));
   return {
     participants: parsed.people.map((person) => ({
       id: person.id,
       name: person.id,
       attributes: person.attributes,
     })),
-    availableBalanceKeys: parsed.attributeKeys,
+    availableBalanceKeys: balanceAttributes.map((attribute) => attribute.key),
+    balanceAttributes,
   };
 }
 
@@ -127,7 +149,7 @@ function parsePairConstraints(text: string) {
 }
 
 function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
-  const { participants, availableBalanceKeys } = parseParticipants(draft);
+  const { participants, availableBalanceKeys, balanceAttributes } = parseParticipants(draft);
   const nameSet = new Set(participants.map((participant) => normalizeName(participant.name)));
   const ignoredConstraintNames = new Set<string>();
 
@@ -161,6 +183,7 @@ function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
   return {
     participants,
     availableBalanceKeys,
+    balanceAttributes,
     keepTogetherGroups,
     avoidPairings,
     ignoredConstraintNames: [...ignoredConstraintNames],
@@ -237,7 +260,7 @@ function generateSessions(draft: QuickSetupDraft, analysis: QuickSetupAnalysis, 
   );
 
   const attributeTargets = new Map<string, Map<string, number>>();
-  if (draft.balanceAttributeKey) {
+  if (!hasAnyBalanceTargets(draft.balanceTargets) && draft.balanceAttributeKey) {
     const counts = participants.reduce<Map<string, number>>((acc, participant) => {
       const value = participant.attributes[draft.balanceAttributeKey!];
       if (value) {
@@ -250,6 +273,8 @@ function generateSessions(draft: QuickSetupDraft, analysis: QuickSetupAnalysis, 
       new Map([...counts.entries()].map(([value, count]) => [value, count / groupCount])),
     );
   }
+
+  const manualAttributeTargets = normalizeBalanceTargets(draft.balanceTargets);
 
   for (let sessionIndex = 0; sessionIndex < Math.max(1, draft.sessions); sessionIndex += 1) {
     const groups: QuickSetupGroupResult[] = Array.from({ length: groupCount }, (_, index) => ({
@@ -292,7 +317,26 @@ function generateSessions(draft: QuickSetupDraft, analysis: QuickSetupAnalysis, 
           }
         }
 
-        if (draft.balanceAttributeKey && attributeTargets.has(draft.balanceAttributeKey)) {
+        if (Object.keys(manualAttributeTargets).length > 0) {
+          for (const [attributeKey, groupTargets] of Object.entries(manualAttributeTargets)) {
+            const targetCounts = groupTargets[group.id];
+            if (!targetCounts) {
+              continue;
+            }
+
+            const projectedCounts = projectedMembers.reduce<Map<string, number>>((acc, participant) => {
+              const value = participant.attributes[attributeKey];
+              if (value) {
+                acc.set(value, (acc.get(value) ?? 0) + 1);
+              }
+              return acc;
+            }, new Map());
+
+            for (const [value, target] of Object.entries(targetCounts)) {
+              score += Math.abs((projectedCounts.get(value) ?? 0) - target) * 4;
+            }
+          }
+        } else if (draft.balanceAttributeKey && attributeTargets.has(draft.balanceAttributeKey)) {
           const targetCounts = attributeTargets.get(draft.balanceAttributeKey)!;
           const projectedCounts = projectedMembers.reduce<Map<string, number>>((acc, participant) => {
             const value = participant.attributes[draft.balanceAttributeKey!];
@@ -525,6 +569,21 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     }));
   }, [sampleCsv, sampleNames, setDraft]);
 
+  const loadScenarioDraft = useCallback((scenario: Scenario) => {
+    const nextDraft = createQuickSetupDraftFromScenario(scenario, draft);
+    if (!nextDraft) {
+      return false;
+    }
+
+    setDraft(nextDraft);
+    setResult(null);
+    setLastSolvedScenario(null);
+    setLastSolvedSolution(null);
+    setLastSolvedAttributeDefinitions([]);
+    setErrorMessage(null);
+    return true;
+  }, [draft, setDraft]);
+
   const exportGroupsCsv = useCallback(() => {
     if (!result) {
       return;
@@ -566,6 +625,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     reshuffle,
     resetDraft,
     loadSampleData,
+    loadScenarioDraft,
     exportGroupsCsv,
     exportProjectDraft,
   };

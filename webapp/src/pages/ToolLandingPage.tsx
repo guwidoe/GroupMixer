@@ -11,6 +11,7 @@ import { useQuickSetup } from '../components/LandingTool/useQuickSetup';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
 import { LandingLanguageSelector } from '../components/LandingPage/LandingLanguageSelector';
 import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
+import { DemoDataDropdown } from '../components/ScenarioEditor/DemoDataDropdown';
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
 import { Tooltip } from '../components/Tooltip';
 import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../components/ui';
@@ -24,6 +25,7 @@ import {
   readTelemetryAttributionFromSearch,
   trackLandingEvent,
 } from '../services/landingInstrumentation';
+import { loadDemoCase, loadLandingCompatibleDemoCasesWithMetrics } from '../services/demoDataService';
 import { useAppStore } from '../store';
 import { nextAttributeColumnId, normalizeParticipantColumns, withParticipantColumns } from '../utils/quickSetup/participantColumns';
 import {
@@ -107,6 +109,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const ui = getLandingUiContent(locale);
   const controller = useQuickSetup(config);
   const loadWorkspaceAsNewScenario = useAppStore((state) => state.loadWorkspaceAsNewScenario);
+  const addNotification = useAppStore((state) => state.addNotification);
   const navigate = useNavigate();
   const location = useLocation();
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -481,6 +484,27 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     </div>
   ) : null;
 
+  const handleLandingDemoCaseClick = async (demoCaseId: string) => {
+    try {
+      const scenario = await loadDemoCase(demoCaseId);
+      const loaded = controller.loadScenarioDraft(scenario);
+      if (!loaded) {
+        addNotification({
+          type: 'error',
+          title: 'Demo case not supported here',
+          message: 'This demo uses session-aware settings that require the advanced workspace.',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load landing demo case:', error);
+      addNotification({
+        type: 'error',
+        title: 'Failed to load demo data',
+        message: 'Please try again or open the advanced workspace.',
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
       <Seo
@@ -497,6 +521,15 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         logoAlt="GroupMixer logo"
         renderDesktopActions={() => (
           <div className="flex items-center gap-2 w-full sm:w-auto">
+            <DemoDataDropdown
+              onDemoCaseClick={(demoCaseId) => {
+                void handleLandingDemoCaseClick(demoCaseId);
+              }}
+              variant="header"
+              triggerLabel="Demo Data"
+              loadCases={loadLandingCompatibleDemoCasesWithMetrics}
+              includeGeneratedDemo={false}
+            />
             <button
               type="button"
               onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
@@ -516,6 +549,15 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         )}
         renderMobileActions={() => (
           <>
+            <DemoDataDropdown
+              onDemoCaseClick={(demoCaseId) => {
+                void handleLandingDemoCaseClick(demoCaseId);
+              }}
+              variant="menu"
+              triggerLabel="Demo Data"
+              loadCases={loadLandingCompatibleDemoCasesWithMetrics}
+              includeGeneratedDemo={false}
+            />
             <button
               type="button"
               onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
@@ -675,7 +717,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     </div>
 
                     <div>
-                      <div className="mb-[0.8rem] flex items-center justify-between gap-3">
+                      <div className="mb-[0.86rem] flex items-center justify-between gap-3">
                         <label className="text-sm font-medium" htmlFor="landing-sessions-slider">
                           {ui.advancedOptions.sessionsLabel}
                         </label>

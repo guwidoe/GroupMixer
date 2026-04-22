@@ -11,12 +11,15 @@ function makeDraft(overrides: Partial<QuickSetupDraft> = {}): QuickSetupDraft {
     groupingMode: 'groupCount',
     groupingValue: 2,
     sessions: 1,
+    avoidRepeatPairings: true,
     preset: 'balanced',
     keepTogetherInput: '',
     avoidPairingsInput: '',
     inputMode: 'names',
     balanceAttributeKey: null,
+    balanceTargets: {},
     advancedOpen: false,
+    workspaceScenarioId: null,
     ...overrides,
   };
 }
@@ -127,5 +130,52 @@ describe('quick setup scenario mapping', () => {
     expect(attributeDefinitions).toEqual([
       createAttributeDefinition('gender', ['F', 'M'], attributeDefinitions[0]?.id),
     ]);
+  });
+
+  it('maps manual attribute balance targets for each group and attribute', () => {
+    const { scenario } = buildScenarioFromDraft(
+      makeDraft({
+        participantColumns: [
+          { id: 'name', name: 'Name', values: 'Alice\nBob\nCara\nDan' },
+          { id: 'attr-1', name: 'gender', values: 'F\nM\nF\nM' },
+          { id: 'attr-2', name: 'team', values: 'Red\nBlue\nRed\nBlue' },
+        ],
+        balanceTargets: {
+          gender: {
+            'Group 1': { F: 1, M: 1 },
+            'Group 2': { F: 1, M: 1 },
+          },
+          team: {
+            'Group 1': { Red: 2, Blue: 0 },
+          },
+        },
+      }),
+    );
+
+    expect(scenario.constraints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'AttributeBalance',
+          group_id: 'Group 1',
+          attribute_key: 'gender',
+          desired_values: { F: 1, M: 1 },
+        }),
+        expect.objectContaining({
+          type: 'AttributeBalance',
+          group_id: 'Group 2',
+          attribute_key: 'gender',
+          desired_values: { F: 1, M: 1 },
+        }),
+        expect.objectContaining({
+          type: 'AttributeBalance',
+          group_id: 'Group 1',
+          attribute_key: 'team',
+          desired_values: { Red: 2, Blue: 0 },
+        }),
+      ]),
+    );
+    expect(
+      scenario.constraints.filter((constraint) => constraint.type === 'AttributeBalance'),
+    ).toHaveLength(3);
   });
 });

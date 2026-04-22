@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store';
 import { solveScenario } from '../services/solver/solveScenario';
@@ -50,6 +50,10 @@ beforeEach(() => {
   window.__groupmixerLandingEvents = [];
   vi.mocked(solveScenario).mockClear();
   useAppStore.getState().reset();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('ToolLandingPage SEO wiring', () => {
@@ -498,7 +502,8 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('team');
     expect(screen.getByLabelText('Attribute column 2')).toHaveTextContent('role');
     expect(screen.queryByRole('button', { name: /switch to names/i })).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/balance groups by attribute/i)).toHaveValue('role');
+    expect(screen.getByText(/balance groups by attribute/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/^role$/i).length).toBeGreaterThan(1);
     expect(screen.getByRole('checkbox', { name: /minimize repeat pairings/i })).toBeChecked();
     expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();
   });
@@ -520,6 +525,52 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(checkbox).not.toBeChecked();
   });
 
+  it('loads landing-compatible demo data into the quick setup form', async () => {
+    const user = userEvent.setup();
+    const demoFixture = {
+      demo_metadata: {
+        id: 'landing-ok',
+        display_name: 'Landing OK',
+        description: 'Compatible with landing quick setup',
+        category: 'Simple',
+      },
+      input: {
+        solver: { solver_type: 'SimulatedAnnealing' },
+        scenario: {
+          people: [
+            { id: 'Ada', attributes: { team: 'Blue' } },
+            { id: 'Grace', attributes: { team: 'Red' } },
+          ],
+          groups: [{ id: 'A', size: 1 }, { id: 'B', size: 1 }],
+          num_sessions: 2,
+        },
+        constraints: [{ type: 'MustStayApart', people: ['Ada', 'Grace'] }],
+      },
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ files: ['landing-ok.json'] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => demoFixture })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ files: ['landing-ok.json'] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => demoFixture })
+      .mockResolvedValueOnce({ ok: true, json: async () => demoFixture });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getAllByRole('button', { name: /demo data/i })[0]);
+    await user.click(await screen.findByRole('menuitem', { name: /landing ok/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/participants/i)).toHaveTextContent('Ada');
+    });
+    expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('team');
+    expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Ada - Grace');
+  });
+
   it('lets users remove attribute columns from the structured participant editor', async () => {
     const user = userEvent.setup();
     const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
@@ -535,7 +586,6 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(confirmSpy).toHaveBeenCalledWith('Remove "role" and all entered values?');
     expect(screen.queryByLabelText('Attribute column 2')).not.toBeInTheDocument();
     expect(screen.queryByText('role')).not.toBeInTheDocument();
-    expect(screen.getByLabelText(/balance groups by attribute/i)).not.toHaveValue('role');
 
     confirmSpy.mockRestore();
   });

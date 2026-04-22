@@ -1,4 +1,7 @@
 import { ArrowRight } from 'lucide-react';
+import { AttributeDistributionField, getAttributeDistributionBuckets } from '../ui';
+import { buildGroups } from '../../utils/quickSetup';
+import { setBalanceTargetValues } from '../../utils/quickSetup/attributeBalanceTargets';
 import { LandingResizableTextarea } from './LandingResizableTextarea';
 import type { QuickSetupController } from './useQuickSetup';
 
@@ -10,7 +13,8 @@ interface QuickSetupAdvancedOptionsProps {
 export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: QuickSetupAdvancedOptionsProps) {
   const { draft, analysis } = controller;
   const labels = controller.ui.advancedOptions;
-  const showBalanceSelector = analysis.availableBalanceKeys.length > 0;
+  const balanceGroups = buildGroups(analysis.participants.length, draft);
+  const showBalanceTargets = analysis.balanceAttributes.length > 0 && balanceGroups.length > 0;
 
   return (
     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
@@ -46,28 +50,42 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
           />
         </div>
 
-        {showBalanceSelector && (
-          <div>
-            <label htmlFor="balanceAttributeKey" className="mb-2 block text-sm font-medium">
+        {showBalanceTargets && (
+          <div className="sm:col-span-2 lg:col-span-1 2xl:col-span-2">
+            <label className="mb-3 block text-sm font-medium">
               {labels.balanceGroupsByAttributeLabel}
             </label>
-            <select
-              id="balanceAttributeKey"
-              value={draft.balanceAttributeKey ?? ''}
-              onChange={(event) => controller.updateDraft((current) => ({
-                ...current,
-                balanceAttributeKey: event.target.value || null,
-              }))}
-              className="w-full rounded-2xl border px-4 py-3 text-sm outline-none focus:ring-2"
-              style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
-            >
-              <option value="">{labels.noBalancingLabel}</option>
-              {analysis.availableBalanceKeys.map((key) => (
-                <option key={key} value={key}>
-                  {key}
-                </option>
+            <div className="grid gap-4">
+              {analysis.balanceAttributes.map((attribute) => (
+                <div
+                  key={attribute.key}
+                  className="rounded-2xl px-4 py-4"
+                  style={{ backgroundColor: 'var(--bg-secondary)' }}
+                >
+                  <div className="mb-3 text-sm font-medium">{attribute.key}</div>
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    {balanceGroups.map((group) => (
+                      <div key={`${attribute.key}-${group.id}`}>
+                        <div className="mb-2 text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-secondary)' }}>
+                          {group.id}
+                        </div>
+                        <AttributeDistributionField
+                          buckets={getAttributeDistributionBuckets(attribute.values)}
+                          value={draft.balanceTargets?.[attribute.key]?.[group.id]}
+                          capacity={group.size}
+                          onChange={(nextValue) => controller.updateDraft((current) => ({
+                            ...current,
+                            balanceAttributeKey: null,
+                            balanceTargets: setBalanceTargetValues(current.balanceTargets, attribute.key, group.id, nextValue),
+                          }))}
+                          showSummary={false}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               ))}
-            </select>
+            </div>
           </div>
         )}
 

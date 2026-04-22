@@ -1,4 +1,5 @@
 import type { QuickSetupDraft, QuickSetupParticipantColumn } from '../../components/LandingTool/types';
+import { normalizeBalanceTargets } from './attributeBalanceTargets';
 
 function splitCsvLine(line: string) {
   return line.split(',').map((entry) => entry.trim());
@@ -109,6 +110,11 @@ export function nextAttributeColumnId(columns: QuickSetupParticipantColumn[]): s
 }
 
 export function withParticipantColumns(draft: QuickSetupDraft, columns: QuickSetupParticipantColumn[]): QuickSetupDraft {
+  const previousColumns = normalizeParticipantColumns({
+    participantColumns: draft.participantColumns,
+    participantInput: draft.participantInput,
+    inputMode: draft.inputMode,
+  });
   const normalizedColumns = normalizeParticipantColumns({
     participantColumns: columns,
     participantInput: draft.participantInput,
@@ -118,6 +124,14 @@ export function withParticipantColumns(draft: QuickSetupDraft, columns: QuickSet
   const nextBalanceAttributeKey = draft.balanceAttributeKey && availableKeys.includes(draft.balanceAttributeKey)
     ? draft.balanceAttributeKey
     : null;
+  const previousNameById = new Map(previousColumns.slice(1).map((column) => [column.id, column.name.trim()] as const));
+  const nextBalanceTargets = normalizeBalanceTargets(Object.fromEntries(
+    Object.entries(draft.balanceTargets ?? {}).flatMap(([attributeKey, groupTargets]) => {
+      const matchingColumn = normalizedColumns.slice(1).find((column) => previousNameById.get(column.id) === attributeKey || column.name.trim() === attributeKey);
+      const nextAttributeKey = matchingColumn?.name.trim();
+      return nextAttributeKey ? [[nextAttributeKey, groupTargets] as const] : [];
+    }),
+  ));
 
   return {
     ...draft,
@@ -125,5 +139,6 @@ export function withParticipantColumns(draft: QuickSetupDraft, columns: QuickSet
     participantInput: serializeParticipantColumns(normalizedColumns),
     inputMode: normalizedColumns.length > 1 ? 'csv' : 'names',
     balanceAttributeKey: nextBalanceAttributeKey,
+    balanceTargets: nextBalanceTargets,
   };
 }

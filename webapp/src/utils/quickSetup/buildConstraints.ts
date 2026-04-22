@@ -1,5 +1,6 @@
 import type { Constraint, Group, Person } from '../../types';
 import type { QuickSetupDraft } from '../../components/LandingTool/types';
+import { deriveBalancedTargetValues, hasAnyBalanceTargets, normalizeBalanceTargets } from './attributeBalanceTargets';
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
@@ -27,45 +28,10 @@ function resolvePeople(names: string[], people: Person[]): string[] {
     .filter((id): id is string => Boolean(id));
 }
 
-function deriveDesiredValues(people: Person[], groups: Group[], attributeKey: string) {
-  const totals = new Map<string, number>();
-  for (const person of people) {
-    const value = person.attributes[attributeKey];
-    if (value) {
-      totals.set(value, (totals.get(value) ?? 0) + 1);
-    }
-  }
-
-  const entries = [...totals.entries()].sort(([left], [right]) => left.localeCompare(right));
-  const assignments: Record<string, number>[] = groups.map(() => ({}));
-
-  for (const [value, total] of entries) {
-    const exactTargets = groups.map((group) => (total * group.size) / Math.max(1, people.length));
-    const floors = exactTargets.map((target) => Math.floor(target));
-    let remaining = total - floors.reduce((sum, current) => sum + current, 0);
-    const order = exactTargets
-      .map((target, index) => ({ index, fraction: target - floors[index] }))
-      .sort((left, right) => right.fraction - left.fraction || left.index - right.index);
-
-    for (const group of assignments) {
-      group[value] = 0;
-    }
-    floors.forEach((count, index) => {
-      assignments[index][value] = count;
-    });
-    for (let index = 0; index < order.length && remaining > 0; index += 1) {
-      assignments[order[index].index][value] += 1;
-      remaining -= 1;
-    }
-  }
-
-  return assignments;
-}
-
 export function buildConstraints(
   draft: Pick<
     QuickSetupDraft,
-    'sessions' | 'keepTogetherInput' | 'avoidPairingsInput' | 'balanceAttributeKey'
+    'sessions' | 'keepTogetherInput' | 'avoidPairingsInput' | 'balanceAttributeKey' | 'balanceTargets'
   >,
   people: Person[],
   groups: Group[],
@@ -101,14 +67,33 @@ export function buildConstraints(
     }
   }
 
-  if (draft.balanceAttributeKey) {
-    const desiredByGroup = deriveDesiredValues(people, groups, draft.balanceAttributeKey);
-    for (const [index, group] of groups.entries()) {
+  const manualBalanceTargets = normalizeBalanceTargets(draft.balanceTargets);
+  if (hasAnyBalanceTargets(manualBalanceTargets)) {
+    for (const group of groups) {
+      for (const [attributeKey, targetsByGroup] of Object.entries(manualBalanceTargets)) {
+        const desiredValues = targetsByGroup[group.id];
+        if (!desiredValues) {
+          continue;
+        }
+
+        constraints.push({
+          type: 'AttributeBalance',
+          group_id: group.id,
+          attribute_key: attributeKey,
+          desired_values: desiredValues,
+          penalty_weight: 30,
+          mode: 'exact',
+        });
+      }
+    }
+  } else if (draft.balanceAttributeKey) {
+    const desiredByGroup = deriveBalancedTargetValues(people, groups, draft.balanceAttributeKey);
+    for (const group of groups) {
       constraints.push({
         type: 'AttributeBalance',
         group_id: group.id,
         attribute_key: draft.balanceAttributeKey,
-        desired_values: desiredByGroup[index],
+        desired_values: desiredByGroup[group.id] ?? {},
         penalty_weight: 30,
         mode: 'exact',
       });
