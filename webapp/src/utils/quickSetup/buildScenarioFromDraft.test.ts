@@ -16,6 +16,7 @@ function makeDraft(overrides: Partial<QuickSetupDraft> = {}): QuickSetupDraft {
     keepTogetherInput: '',
     avoidPairingsInput: '',
     inputMode: 'names',
+    fixedAssignments: [],
     balanceAttributeKey: null,
     balanceTargets: {},
     advancedOpen: false,
@@ -177,5 +178,31 @@ describe('quick setup scenario mapping', () => {
     expect(
       scenario.constraints.filter((constraint) => constraint.type === 'AttributeBalance'),
     ).toHaveLength(3);
+  });
+
+  it('maps fixed people assignments into immovable constraints', () => {
+    const { scenario } = buildScenarioFromDraft(
+      makeDraft({
+        fixedAssignments: [
+          { personId: 'Alice', groupId: 'Group 1' },
+          { personId: 'Dan', groupId: 'Group 2' },
+        ],
+      }),
+    );
+
+    expect(scenario.constraints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'ImmovablePeople',
+          people: ['Alice'],
+          group_id: 'Group 1',
+        }),
+        expect.objectContaining({
+          type: 'ImmovablePeople',
+          people: ['Dan'],
+          group_id: 'Group 2',
+        }),
+      ]),
+    );
   });
 });

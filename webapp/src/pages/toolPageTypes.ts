@@ -119,6 +119,14 @@ export interface ToolPageAdvancedOptionsUiContent {
   fullEditorButtonLabel: string;
   balanceGroupsByAttributeLabel: string;
   autoDistributeAttributeLabel: string;
+  fixedPeopleLabel: string;
+  fixedPeopleDescription: string;
+  addFixedPersonLabel: string;
+  fixedPersonNameLabel: string;
+  fixedPersonGroupLabel: string;
+  fixedPersonSelectPlaceholder: string;
+  fixedGroupSelectPlaceholder: string;
+  removeFixedPersonLabel: string;
   noBalancingLabel: string;
   ignoredNamesPrefix: string;
 }

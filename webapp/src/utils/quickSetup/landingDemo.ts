@@ -1,5 +1,5 @@
 import type { Constraint, Scenario } from '../../types';
-import type { QuickSetupDraft, QuickSetupParticipantColumn } from '../../components/LandingTool/types';
+import type { QuickSetupDraft, QuickSetupFixedAssignment, QuickSetupParticipantColumn } from '../../components/LandingTool/types';
 import { buildGroups } from './buildGroups';
 import { normalizeBalanceTargets, type QuickSetupBalanceTargets } from './attributeBalanceTargets';
 import { serializeParticipantColumns } from './participantColumns';
@@ -38,6 +38,10 @@ function isLandingSupportedConstraint(constraint: Constraint, scenario: Scenario
       return hasAllSessionsScope(constraint.sessions, scenario.num_sessions) && constraint.people.length > 1;
     case 'MustStayApart':
       return hasAllSessionsScope(constraint.sessions, scenario.num_sessions) && constraint.people.length === 2;
+    case 'ImmovablePerson':
+      return hasAllSessionsScope(constraint.sessions, scenario.num_sessions);
+    case 'ImmovablePeople':
+      return hasAllSessionsScope(constraint.sessions, scenario.num_sessions) && constraint.people.length > 0;
     case 'AttributeBalance':
       return hasAllSessionsScope(constraint.sessions, scenario.num_sessions)
         && (constraint.mode ?? 'exact') === 'exact';
@@ -137,6 +141,42 @@ function buildBalanceTargets(
   return normalizeBalanceTargets(nextTargets);
 }
 
+function buildFixedAssignments(
+  scenario: Scenario,
+  generatedGroups: Scenario['groups'],
+): QuickSetupFixedAssignment[] {
+  const originalGroupIndexById = new Map(scenario.groups.map((group, index) => [group.id, index] as const));
+  const assignments: QuickSetupFixedAssignment[] = [];
+
+  for (const constraint of scenario.constraints) {
+    if (constraint.type !== 'ImmovablePerson' && constraint.type !== 'ImmovablePeople') {
+      continue;
+    }
+
+    const originalGroupIndex = originalGroupIndexById.get(constraint.group_id);
+    if (originalGroupIndex == null) {
+      continue;
+    }
+
+    const nextGroupId = generatedGroups[originalGroupIndex]?.id;
+    if (!nextGroupId) {
+      continue;
+    }
+
+    const people = constraint.type === 'ImmovablePerson' ? [constraint.person_id] : constraint.people;
+    for (const personId of people) {
+      assignments.push({ personId, groupId: nextGroupId });
+    }
+  }
+
+  const deduped = new Map<string, QuickSetupFixedAssignment>();
+  for (const assignment of assignments) {
+    deduped.set(assignment.personId, assignment);
+  }
+
+  return [...deduped.values()];
+}
+
 export function isLandingDemoScenarioCompatible(scenario: Scenario) {
   if (!inferLandingGroupingConfig(scenario)) {
     return false;
@@ -158,9 +198,28 @@ export function isLandingDemoScenarioCompatible(scenario: Scenario) {
   }
 
   const attributeBalanceKeys = new Set<string>();
+  const immovableAssignments = new Map<string, string>();
   for (const constraint of scenario.constraints) {
     if (!isLandingSupportedConstraint(constraint, scenario)) {
       return false;
+    }
+
+    if (constraint.type === 'ImmovablePerson') {
+      const previousGroupId = immovableAssignments.get(constraint.person_id);
+      if (previousGroupId && previousGroupId !== constraint.group_id) {
+        return false;
+      }
+      immovableAssignments.set(constraint.person_id, constraint.group_id);
+    }
+
+    if (constraint.type === 'ImmovablePeople') {
+      for (const personId of constraint.people) {
+        const previousGroupId = immovableAssignments.get(personId);
+        if (previousGroupId && previousGroupId !== constraint.group_id) {
+          return false;
+        }
+        immovableAssignments.set(personId, constraint.group_id);
+      }
     }
 
     if (constraint.type === 'AttributeBalance') {
@@ -208,6 +267,7 @@ export function createQuickSetupDraftFromScenario(
     avoidRepeatPairings: repeatEncounterEnabled,
     keepTogetherInput: buildKeepTogetherInput(scenario.constraints),
     avoidPairingsInput: buildKeepApartInput(scenario.constraints),
+    fixedAssignments: buildFixedAssignments(scenario, grouping.groups),
     balanceAttributeKey: null,
     balanceTargets: buildBalanceTargets(scenario, grouping.groups),
     workspaceScenarioId: null,

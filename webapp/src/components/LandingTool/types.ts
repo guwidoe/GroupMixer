@@ -10,6 +10,11 @@ export interface QuickSetupParticipantColumn {
   values: string;
 }
 
+export interface QuickSetupFixedAssignment {
+  personId: string;
+  groupId: string;
+}
+
 export interface QuickSetupDraft {
   participantInput: string;
   participantColumns?: QuickSetupParticipantColumn[];
@@ -21,6 +26,7 @@ export interface QuickSetupDraft {
   keepTogetherInput: string;
   avoidPairingsInput: string;
   inputMode: QuickSetupInputMode;
+  fixedAssignments?: QuickSetupFixedAssignment[];
   balanceAttributeKey: string | null;
   balanceTargets?: QuickSetupBalanceTargets;
   advancedOpen: boolean;
@@ -65,6 +71,7 @@ export interface QuickSetupAnalysis {
     key: string;
     values: string[];
   }>;
+  fixedAssignments: QuickSetupFixedAssignment[];
   keepTogetherGroups: QuickSetupConstraintGroup[];
   avoidPairings: QuickSetupPairConstraint[];
   ignoredConstraintNames: string[];

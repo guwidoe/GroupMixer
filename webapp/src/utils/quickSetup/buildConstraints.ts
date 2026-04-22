@@ -31,7 +31,7 @@ function resolvePeople(names: string[], people: Person[]): string[] {
 export function buildConstraints(
   draft: Pick<
     QuickSetupDraft,
-    'sessions' | 'keepTogetherInput' | 'avoidPairingsInput' | 'balanceAttributeKey' | 'balanceTargets'
+    'sessions' | 'keepTogetherInput' | 'avoidPairingsInput' | 'fixedAssignments' | 'balanceAttributeKey' | 'balanceTargets'
   >,
   people: Person[],
   groups: Group[],
@@ -65,6 +65,21 @@ export function buildConstraints(
         people: resolved,
       });
     }
+  }
+
+  const availableGroupIds = new Set(groups.map((group) => group.id));
+  const resolvedPeopleByName = new Map(people.map((person) => [normalize(person.id), person.id] as const));
+  for (const assignment of draft.fixedAssignments ?? []) {
+    const personId = resolvedPeopleByName.get(normalize(assignment.personId));
+    if (!personId || !availableGroupIds.has(assignment.groupId)) {
+      continue;
+    }
+
+    constraints.push({
+      type: 'ImmovablePeople',
+      people: [personId],
+      group_id: assignment.groupId,
+    });
   }
 
   const manualBalanceTargets = normalizeBalanceTargets(draft.balanceTargets);

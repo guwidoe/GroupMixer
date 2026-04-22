@@ -13,6 +13,7 @@ import type { AttributeDefinition, Scenario, Solution } from '../../types';
 import type {
   QuickSetupAnalysis,
   QuickSetupDraft,
+  QuickSetupFixedAssignment,
   QuickSetupGroupResult,
   QuickSetupParticipant,
   QuickSetupResult,
@@ -69,6 +70,7 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
     keepTogetherInput: defaults.keepTogetherInput,
     avoidPairingsInput: defaults.avoidPairingsInput,
     inputMode: defaults.inputMode,
+    fixedAssignments: [],
     balanceAttributeKey: defaults.balanceAttributeKey,
     advancedOpen: defaults.advancedOpen,
     workspaceScenarioId: null,
@@ -84,6 +86,7 @@ function normalizeQuickSetupDraft(draft: QuickSetupDraft): QuickSetupDraft {
   const nextDraft = {
     ...draft,
     avoidRepeatPairings: draft.avoidRepeatPairings ?? true,
+    fixedAssignments: normalizeFixedAssignments(draft.fixedAssignments),
     balanceTargets: normalizeBalanceTargets(draft.balanceTargets),
     participantColumns: normalizeParticipantColumns(draft),
   };
@@ -104,6 +107,25 @@ function normalizeQuickSetupDraft(draft: QuickSetupDraft): QuickSetupDraft {
 
 function normalizeName(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function normalizeFixedAssignments(fixedAssignments: QuickSetupFixedAssignment[] | undefined): QuickSetupFixedAssignment[] {
+  const seen = new Set<string>();
+
+  return (fixedAssignments ?? [])
+    .map((assignment) => ({
+      personId: assignment.personId.trim(),
+      groupId: assignment.groupId.trim(),
+    }))
+    .filter((assignment) => assignment.personId.length > 0 && assignment.groupId.length > 0)
+    .filter((assignment) => {
+      const key = normalizeName(assignment.personId);
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
 }
 
 function parseParticipants(draft: QuickSetupDraft): Pick<QuickSetupAnalysis, 'participants' | 'availableBalanceKeys' | 'balanceAttributes'> {
@@ -150,7 +172,8 @@ function parsePairConstraints(text: string) {
 
 function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
   const { participants, availableBalanceKeys, balanceAttributes } = parseParticipants(draft);
-  const nameSet = new Set(participants.map((participant) => normalizeName(participant.name)));
+  const participantByName = new Map(participants.map((participant) => [normalizeName(participant.name), participant] as const));
+  const nameSet = new Set(participantByName.keys());
   const ignoredConstraintNames = new Set<string>();
 
   const keepTogetherGroups = parseConstraintLines(draft.keepTogetherInput)
@@ -180,10 +203,26 @@ function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
     })
     .filter((pair): pair is NonNullable<typeof pair> => Boolean(pair));
 
+  const fixedAssignments = normalizeFixedAssignments(draft.fixedAssignments)
+    .map((assignment) => {
+      const participant = participantByName.get(normalizeName(assignment.personId));
+      if (!participant) {
+        ignoredConstraintNames.add(assignment.personId);
+        return null;
+      }
+
+      return {
+        personId: participant.id,
+        groupId: assignment.groupId,
+      } satisfies QuickSetupFixedAssignment;
+    })
+    .filter((assignment): assignment is QuickSetupFixedAssignment => Boolean(assignment));
+
   return {
     participants,
     availableBalanceKeys,
     balanceAttributes,
+    fixedAssignments,
     keepTogetherGroups,
     avoidPairings,
     ignoredConstraintNames: [...ignoredConstraintNames],
@@ -258,6 +297,7 @@ function generateSessions(draft: QuickSetupDraft, analysis: QuickSetupAnalysis, 
   const avoidPairs = new Set(
     analysis.avoidPairings.map((pair) => pairKey(normalizeName(pair.left), normalizeName(pair.right))),
   );
+  const fixedGroupByPerson = new Map(analysis.fixedAssignments.map((assignment) => [assignment.personId, assignment.groupId] as const));
 
   const attributeTargets = new Map<string, Map<string, number>>();
   if (!hasAnyBalanceTargets(draft.balanceTargets) && draft.balanceAttributeKey) {
@@ -285,8 +325,18 @@ function generateSessions(draft: QuickSetupDraft, analysis: QuickSetupAnalysis, 
     for (const entity of shuffled(entities, random)) {
       let bestGroup: QuickSetupGroupResult | null = null;
       let bestScore = Number.POSITIVE_INFINITY;
+      const requiredGroupIds = [...new Set(
+        entity
+          .map((member) => fixedGroupByPerson.get(member.id))
+          .filter((groupId): groupId is string => Boolean(groupId)),
+      )];
+      const requiredGroupId = requiredGroupIds[0] ?? null;
 
       for (const group of groups) {
+        if (requiredGroupId && group.id !== requiredGroupId) {
+          continue;
+        }
+
         const projectedMembers = [...group.members, ...entity];
         const projectedSize = projectedMembers.length;
 

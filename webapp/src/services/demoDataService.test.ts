@@ -88,7 +88,7 @@ describe('demoDataService', () => {
 
   it('filters landing demo cases down to all-session-compatible scenarios', async () => {
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse({ files: ['landing-ok.json', 'session-aware.json', 'unsupported.json'] }))
+      .mockResolvedValueOnce(jsonResponse({ files: ['landing-ok.json', 'session-aware.json', 'fixed-ok.json'] }))
       .mockResolvedValueOnce(
         jsonResponse({
           demo_metadata: {
@@ -133,9 +133,9 @@ describe('demoDataService', () => {
       .mockResolvedValueOnce(
         jsonResponse({
           demo_metadata: {
-            id: 'unsupported',
-            display_name: 'Unsupported',
-            description: 'Has unsupported constraint type',
+            id: 'fixed-ok',
+            display_name: 'Fixed OK',
+            description: 'Has all-session fixed people constraints',
             category: 'Simple',
           },
           input: {
@@ -153,14 +153,21 @@ describe('demoDataService', () => {
 
     const demoCases = await loadLandingCompatibleDemoCasesWithMetrics();
 
-    expect(demoCases).toEqual([
+    expect(demoCases).toHaveLength(2);
+    expect(demoCases).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'landing-ok',
         peopleCount: 2,
         groupCount: 2,
         sessionCount: 2,
       }),
-    ]);
+      expect.objectContaining({
+        id: 'fixed-ok',
+        peopleCount: 2,
+        groupCount: 2,
+        sessionCount: 1,
+      }),
+    ]));
   });
 
   it('supports legacy demo fixtures that still use input.problem', async () => {

@@ -546,7 +546,10 @@ describe('ToolLandingPage SEO wiring', () => {
           groups: [{ id: 'A', size: 1 }, { id: 'B', size: 1 }],
           num_sessions: 2,
         },
-        constraints: [{ type: 'MustStayApart', people: ['Ada', 'Grace'] }],
+        constraints: [
+          { type: 'MustStayApart', people: ['Ada', 'Grace'] },
+          { type: 'ImmovablePerson', person_id: 'Ada', group_id: 'A', sessions: [0, 1] },
+        ],
       },
     };
     const fetchMock = vi.fn()
@@ -571,6 +574,8 @@ describe('ToolLandingPage SEO wiring', () => {
     });
     expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('team');
     expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Ada - Grace');
+    expect(screen.getByRole('combobox', { name: /name 1/i })).toHaveValue('Ada');
+    expect(screen.getByRole('combobox', { name: /group 1/i })).toHaveValue('Group 1');
   });
 
   it('lets users remove attribute columns from the structured participant editor', async () => {
@@ -590,6 +595,34 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.queryByText('role')).not.toBeInTheDocument();
 
     confirmSpy.mockRestore();
+  });
+
+  it('lets users add fixed people assignments from the landing tool', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /add fixed person/i }));
+    await user.selectOptions(screen.getByRole('combobox', { name: /group 1/i }), 'Group 2');
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+
+    expect(vi.mocked(solveScenario)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scenario: expect.objectContaining({
+          constraints: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'ImmovablePeople',
+              people: expect.any(Array),
+              group_id: 'Group 2',
+            }),
+          ]),
+        }),
+      }),
+    );
   });
 
   it('does not remove a populated attribute column when the warning is cancelled', async () => {
