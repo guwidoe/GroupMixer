@@ -638,6 +638,108 @@
     background: color-mix(in srgb, var(--text-secondary) 70%, transparent);
   }
 
+  .landing-participant-columns {
+    overflow: auto;
+  }
+
+  .landing-participant-columns__surface {
+    padding: 0.6rem 0.75rem 0.25rem;
+  }
+
+  .landing-participant-columns__toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.35rem;
+  }
+
+  .landing-participant-columns__columns {
+    display: flex;
+    align-items: stretch;
+  }
+
+  .landing-participant-columns__column {
+    min-width: 0;
+    flex: 0 0 auto;
+  }
+
+  .landing-participant-columns__column-header {
+    min-height: 2.4rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border-primary);
+  }
+
+  .landing-participant-columns__header-label,
+  .landing-participant-columns__header-input {
+    display: block;
+    width: 100%;
+    min-height: 2.25rem;
+    padding: 0.25rem 0.6rem 0.4rem;
+    border-radius: 0;
+    border: 0 !important;
+    box-shadow: none !important;
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+
+  .landing-participant-columns__header-input:hover,
+  .landing-participant-columns__header-input:focus {
+    outline: none;
+    background: color-mix(in srgb, var(--bg-primary) 38%, transparent);
+  }
+
+  .landing-participant-columns__textarea {
+    width: 100%;
+    display: block;
+    border: 0 !important;
+    border-radius: 0;
+    box-shadow: none !important;
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 0.25rem 0.6rem 0.75rem;
+    resize: none;
+    overflow: hidden;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 1rem;
+    line-height: 2.375rem;
+    white-space: pre;
+  }
+
+  .landing-participant-columns__textarea:focus {
+    outline: none;
+    background: color-mix(in srgb, var(--bg-primary) 38%, transparent);
+  }
+
+  .landing-participant-columns__add-button {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+  }
+
+  .landing-participant-columns__separator {
+    flex: 0 0 0.75rem;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    cursor: col-resize;
+  }
+
+  .landing-participant-columns__separator-line {
+    width: 1px;
+    background: var(--border-primary);
+  }
+
+  .landing-participant-columns__separator:hover .landing-participant-columns__separator-line {
+    background: var(--color-accent);
+  }
+
   /* Card Styles */
   .card {
     border-radius: 0.5rem;

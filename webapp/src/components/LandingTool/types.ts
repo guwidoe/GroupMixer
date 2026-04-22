@@ -3,8 +3,15 @@ import type { ToolPageConfig, ToolPagePreset } from '../../pages/toolPageConfigs
 export type QuickSetupGroupingMode = 'groupCount' | 'groupSize';
 export type QuickSetupInputMode = 'names' | 'csv';
 
+export interface QuickSetupParticipantColumn {
+  id: string;
+  name: string;
+  values: string;
+}
+
 export interface QuickSetupDraft {
   participantInput: string;
+  participantColumns?: QuickSetupParticipantColumn[];
   groupingMode: QuickSetupGroupingMode;
   groupingValue: number;
   sessions: number;

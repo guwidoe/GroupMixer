@@ -6,6 +6,7 @@ import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import { solveScenario } from '../../services/solver/solveScenario';
 import { buildGroups, buildScenarioFromDraft, parseParticipantInput } from '../../utils/quickSetup';
+import { normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import type { AttributeDefinition, Scenario, Solution } from '../../types';
 import type {
   QuickSetupAnalysis,
@@ -53,7 +54,7 @@ export interface QuickSetupController {
 
 function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
   const defaults = pageConfig.quickSetupDefaults;
-  return {
+  const draft: QuickSetupDraft = {
     participantInput: defaults.inputMode === 'csv'
       ? getLandingSampleCsvText(pageConfig.locale)
       : getLandingSampleNamesText(pageConfig.locale),
@@ -67,6 +68,11 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
     balanceAttributeKey: defaults.balanceAttributeKey,
     advancedOpen: defaults.advancedOpen,
     workspaceScenarioId: null,
+  };
+
+  return {
+    ...draft,
+    participantColumns: normalizeParticipantColumns(draft),
   };
 }
 
@@ -499,8 +505,11 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
 
   const loadSampleData = useCallback(() => {
     setDraft((current) => ({
-      ...current,
-      participantInput: current.inputMode === 'csv' ? sampleCsv : sampleNames,
+      ...withParticipantColumns(current, normalizeParticipantColumns({
+        participantInput: current.inputMode === 'csv' ? sampleCsv : sampleNames,
+        inputMode: current.inputMode,
+        participantColumns: undefined,
+      })),
     }));
   }, [sampleCsv, sampleNames, setDraft]);
 

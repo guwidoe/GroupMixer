@@ -97,4 +97,35 @@ describe('quick setup scenario mapping', () => {
       createAttributeDefinition('level', ['Junior', 'Senior'], attributeDefinitions[1]?.id),
     ]);
   });
+
+  it('maps structured participant columns into people attributes and balance keys', () => {
+    const { scenario, attributeDefinitions } = buildScenarioFromDraft(
+      makeDraft({
+        participantInput: 'Alice\nBob\nCara\nDan',
+        participantColumns: [
+          { id: 'name', name: 'Name', values: 'Alice\nBob\nCara\nDan' },
+          { id: 'attr-1', name: 'gender', values: 'F\nM\nF\nM' },
+        ],
+        balanceAttributeKey: 'gender',
+      }),
+    );
+
+    expect(scenario.people).toEqual([
+      { id: 'Alice', attributes: { gender: 'F' } },
+      { id: 'Bob', attributes: { gender: 'M' } },
+      { id: 'Cara', attributes: { gender: 'F' } },
+      { id: 'Dan', attributes: { gender: 'M' } },
+    ]);
+    expect(scenario.constraints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'AttributeBalance',
+          attribute_key: 'gender',
+        }),
+      ]),
+    );
+    expect(attributeDefinitions).toEqual([
+      createAttributeDefinition('gender', ['F', 'M'], attributeDefinitions[0]?.id),
+    ]);
+  });
 });

@@ -3,6 +3,7 @@ import { ArrowRight, ChevronDown, Copy, Download, RotateCcw, Sparkles, Users } f
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
+import { LandingParticipantColumnsInput } from '../components/LandingTool/LandingParticipantColumnsInput';
 import { LandingResizableTextarea } from '../components/LandingTool/LandingResizableTextarea';
 import { QuickSetupAdvancedOptions } from '../components/LandingTool/QuickSetupAdvancedOptions';
 import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
@@ -23,6 +24,7 @@ import {
   trackLandingEvent,
 } from '../services/landingInstrumentation';
 import { useAppStore } from '../store';
+import { nextAttributeColumnName, normalizeParticipantColumns, withParticipantColumns } from '../utils/quickSetup/participantColumns';
 import {
   buildToolPagePath,
   getLocaleDisplayName,
@@ -231,6 +233,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   };
 
   const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
+  const participantColumns = normalizeParticipantColumns(draft);
   const displayedGroupCount = Math.max(1, estimatedGroupCount);
   const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
   const useCasesGridClassName = config.sectionSet === 'technical'
@@ -547,23 +550,62 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
             >
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.9fr)] lg:gap-5">
                 <div>
-                  <label htmlFor="participantInput" className="mb-2 block text-sm font-medium">
+                  <label className="mb-2 block text-sm font-medium">
                     {ui.quickSetup.participantsLabel}
                   </label>
-                  <LandingResizableTextarea
-                    id="participantInput"
-                    value={draft.participantInput}
-                    onChange={(value) =>
-                      controller.updateDraft((current) => ({ ...current, participantInput: value }))
-                    }
-                    placeholder={draft.inputMode === 'csv' ? ui.quickSetup.csvPlaceholder : ui.quickSetup.namesPlaceholder}
+                  <LandingParticipantColumnsInput
+                    label={ui.quickSetup.participantsLabel}
+                    nameColumnLabel={ui.quickSetup.nameColumnLabel}
+                    nameColumnPlaceholder={ui.quickSetup.namesPlaceholder}
+                    addAttributeLabel={ui.quickSetup.addAttributeLabel}
+                    columns={participantColumns}
                     minHeight={130}
-                    className="rounded-xl"
-                    textareaClassName="px-3 py-2.5 text-sm leading-relaxed outline-none transition-shadow"
-                    style={{
-                      borderColor: 'var(--border-primary)',
-                      backgroundColor: 'var(--bg-secondary)',
-                      color: 'var(--text-primary)',
+                    onAddAttribute={() => {
+                      controller.updateDraft((current) => {
+                        const columns = normalizeParticipantColumns(current);
+                        return withParticipantColumns(current, [
+                          ...columns,
+                          {
+                            id: `attribute-${columns.length}`,
+                            name: nextAttributeColumnName(columns, ui.quickSetup.attributeColumnDefaultLabel),
+                            values: '',
+                          },
+                        ]);
+                      });
+                    }}
+                    onChangeColumnName={(index, value) => {
+                      controller.updateDraft((current) => {
+                        const columns = normalizeParticipantColumns(current);
+                        const nextColumns = columns.map((column, columnIndex) => {
+                          if (columnIndex !== index) {
+                            return column;
+                          }
+
+                          return {
+                            ...column,
+                            name: value,
+                          };
+                        });
+
+                        const previousName = columns[index]?.name ?? '';
+                        const nextDraft = withParticipantColumns(current, nextColumns);
+                        return previousName.trim() !== '' && current.balanceAttributeKey === previousName
+                          ? { ...nextDraft, balanceAttributeKey: value.trim() || null }
+                          : nextDraft;
+                      });
+                    }}
+                    onChangeColumnValues={(index, value) => {
+                      controller.updateDraft((current) => {
+                        const columns = normalizeParticipantColumns(current);
+                        return withParticipantColumns(
+                          current,
+                          columns.map((column, columnIndex) => (
+                            columnIndex === index
+                              ? { ...column, values: value }
+                              : column
+                          )),
+                        );
+                      });
                     }}
                   />
 

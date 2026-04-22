@@ -76,6 +76,9 @@ export interface ToolPageAdvancedSectionContent extends ToolPageSectionContent {
 
 export interface ToolPageQuickSetupUiContent {
   participantsLabel: string;
+  nameColumnLabel: string;
+  addAttributeLabel: string;
+  attributeColumnDefaultLabel: string;
   switchToCsvLabel: string;
   switchToNamesLabel: string;
   sampleLabel: string;

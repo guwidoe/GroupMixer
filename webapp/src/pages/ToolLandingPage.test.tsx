@@ -494,7 +494,9 @@ describe('ToolLandingPage SEO wiring', () => {
     );
 
     expect(screen.getByRole('heading', { level: 1, name: 'Group Assignment Optimizer' })).toBeInTheDocument();
-    expect((screen.getByLabelText(/participants/i) as HTMLTextAreaElement).value).toContain('name,team,role');
+    expect((screen.getByLabelText(/participants/i) as HTMLTextAreaElement).value).toContain('Alex');
+    expect(screen.getByDisplayValue('team')).toBeInTheDocument();
+    expect(screen.getByLabelText('Attribute column 2')).toHaveValue('role');
     expect(screen.queryByRole('button', { name: /switch to names/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText(/balance groups by attribute/i)).toHaveValue('role');
     expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();

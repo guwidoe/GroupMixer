@@ -3,6 +3,9 @@ import type { SupportedLocale, ToolPageSharedUiContent } from '../pages/toolPage
 const EN_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: 'Participants',
+    nameColumnLabel: 'Name',
+    addAttributeLabel: '+ Add attribute',
+    attributeColumnDefaultLabel: 'Attribute',
     switchToCsvLabel: 'Switch to CSV',
     switchToNamesLabel: 'Switch to names',
     sampleLabel: 'Sample',
@@ -71,6 +74,9 @@ const EN_LANDING_UI: ToolPageSharedUiContent = {
 const DE_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: 'Teilnehmende',
+    nameColumnLabel: 'Name',
+    addAttributeLabel: '+ Attribut hinzufügen',
+    attributeColumnDefaultLabel: 'Attribut',
     switchToCsvLabel: 'Zu CSV wechseln',
     switchToNamesLabel: 'Zu Namen wechseln',
     sampleLabel: 'Beispiel',
@@ -139,6 +145,9 @@ const DE_LANDING_UI: ToolPageSharedUiContent = {
 const ES_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: 'Participantes',
+    nameColumnLabel: 'Nombre',
+    addAttributeLabel: '+ Añadir atributo',
+    attributeColumnDefaultLabel: 'Atributo',
     switchToCsvLabel: 'Cambiar a CSV',
     switchToNamesLabel: 'Cambiar a nombres',
     sampleLabel: 'Ejemplo',
@@ -207,6 +216,9 @@ const ES_LANDING_UI: ToolPageSharedUiContent = {
 const FR_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: 'Participants',
+    nameColumnLabel: 'Nom',
+    addAttributeLabel: '+ Ajouter un attribut',
+    attributeColumnDefaultLabel: 'Attribut',
     switchToCsvLabel: 'Passer au CSV',
     switchToNamesLabel: 'Passer aux noms',
     sampleLabel: 'Exemple',
@@ -275,6 +287,9 @@ const FR_LANDING_UI: ToolPageSharedUiContent = {
 const JA_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: '参加者',
+    nameColumnLabel: '名前',
+    addAttributeLabel: '+ 属性を追加',
+    attributeColumnDefaultLabel: '属性',
     switchToCsvLabel: 'CSVに切り替え',
     switchToNamesLabel: '名前入力に切り替え',
     sampleLabel: '例を表示',
@@ -343,6 +358,9 @@ const JA_LANDING_UI: ToolPageSharedUiContent = {
 const HI_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: 'प्रतिभागी',
+    nameColumnLabel: 'नाम',
+    addAttributeLabel: '+ गुण जोड़ें',
+    attributeColumnDefaultLabel: 'गुण',
     switchToCsvLabel: 'CSV पर बदलें',
     switchToNamesLabel: 'नाम मोड पर बदलें',
     sampleLabel: 'नमूना',
@@ -411,6 +429,9 @@ const HI_LANDING_UI: ToolPageSharedUiContent = {
 const ZH_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
     participantsLabel: '参与者',
+    nameColumnLabel: '姓名',
+    addAttributeLabel: '+ 添加属性',
+    attributeColumnDefaultLabel: '属性',
     switchToCsvLabel: '切换到 CSV',
     switchToNamesLabel: '切换到姓名模式',
     sampleLabel: '示例',

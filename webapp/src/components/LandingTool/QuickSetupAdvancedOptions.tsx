@@ -10,7 +10,7 @@ interface QuickSetupAdvancedOptionsProps {
 export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: QuickSetupAdvancedOptionsProps) {
   const { draft, analysis } = controller;
   const labels = controller.ui.advancedOptions;
-  const showBalanceSelector = draft.inputMode === 'csv' && analysis.availableBalanceKeys.length > 0;
+  const showBalanceSelector = analysis.availableBalanceKeys.length > 0;
 
   return (
     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1 2xl:grid-cols-2">
