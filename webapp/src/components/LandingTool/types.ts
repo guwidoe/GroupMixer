@@ -15,6 +15,7 @@ export interface QuickSetupDraft {
   groupingMode: QuickSetupGroupingMode;
   groupingValue: number;
   sessions: number;
+  avoidRepeatPairings: boolean;
   preset: ToolPagePreset;
   keepTogetherInput: string;
   avoidPairingsInput: string;

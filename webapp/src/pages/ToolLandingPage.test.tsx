@@ -499,7 +499,25 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByLabelText('Attribute column 2')).toHaveTextContent('role');
     expect(screen.queryByRole('button', { name: /switch to names/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText(/balance groups by attribute/i)).toHaveValue('role');
+    expect(screen.getByRole('checkbox', { name: /minimize repeat pairings/i })).toBeChecked();
     expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();
+  });
+
+  it('lets users toggle repeat-pairing minimization from the sessions row', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    const checkbox = screen.getByRole('checkbox', { name: /minimize repeat pairings/i });
+    expect(checkbox).toBeChecked();
+
+    await user.click(checkbox);
+
+    expect(checkbox).not.toBeChecked();
   });
 
   it('lets users remove attribute columns from the structured participant editor', async () => {
@@ -553,7 +571,8 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByText('Add attribute (e.g. Gender)')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /add attribute/i })).toHaveTextContent('Female');
     await user.click(screen.getByRole('button', { name: /add attribute/i }));
-    await user.click(screen.getByRole('button', { name: /remove attribute: gender/i }));
+    expect(screen.getByLabelText('Attribute column 1')).toHaveAttribute('data-placeholder', 'Attribute Name');
+    await user.click(screen.getByRole('button', { name: /remove attribute: attribute 1/i }));
 
     expect(confirmSpy).not.toHaveBeenCalled();
 

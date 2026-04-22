@@ -61,6 +61,7 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
     groupingMode: defaults.groupingMode,
     groupingValue: defaults.groupingValue,
     sessions: defaults.sessions,
+    avoidRepeatPairings: true,
     preset: pageConfig.defaultPreset,
     keepTogetherInput: defaults.keepTogetherInput,
     avoidPairingsInput: defaults.avoidPairingsInput,
@@ -72,6 +73,14 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
 
   return {
     ...draft,
+    participantColumns: normalizeParticipantColumns(draft),
+  };
+}
+
+function normalizeQuickSetupDraft(draft: QuickSetupDraft): QuickSetupDraft {
+  return {
+    ...draft,
+    avoidRepeatPairings: draft.avoidRepeatPairings ?? true,
     participantColumns: normalizeParticipantColumns(draft),
   };
 }
@@ -221,7 +230,7 @@ function generateSessions(draft: QuickSetupDraft, analysis: QuickSetupAnalysis, 
   const random = mulberry32(seed);
   const pairCounts = new Map<string, number>();
   const sessions: QuickSetupSessionResult[] = [];
-  const avoidRepeatPairings = draft.sessions > 1;
+  const avoidRepeatPairings = draft.avoidRepeatPairings && draft.sessions > 1;
 
   const avoidPairs = new Set(
     analysis.avoidPairings.map((pair) => pairKey(normalizeName(pair.left), normalizeName(pair.right))),
@@ -396,7 +405,8 @@ function downloadBlob(filename: string, content: string, mimeType: string) {
 export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController {
   const ui = getLandingUiContent(pageConfig.locale);
   const storageKey = `groupmixer.quick-setup.${pageConfig.key}.v1`;
-  const [draft, setDraft] = useLocalStorageState<QuickSetupDraft>(storageKey, defaultDraft(pageConfig));
+  const [storedDraft, setDraft] = useLocalStorageState<QuickSetupDraft>(storageKey, defaultDraft(pageConfig));
+  const draft = useMemo(() => normalizeQuickSetupDraft(storedDraft), [storedDraft]);
   const [result, setResult] = useState<QuickSetupResult | null>(null);
   const [isSolving, setIsSolving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -434,7 +444,9 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
 
   const updateDraft = useCallback(
     (updater: QuickSetupDraft | ((draft: QuickSetupDraft) => QuickSetupDraft)) => {
-      setDraft(updater);
+      setDraft((current) => normalizeQuickSetupDraft(typeof updater === 'function'
+        ? updater(normalizeQuickSetupDraft(current))
+        : updater));
     },
     [setDraft],
   );

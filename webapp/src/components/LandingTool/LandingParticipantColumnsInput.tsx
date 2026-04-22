@@ -9,7 +9,7 @@ interface LandingParticipantColumnsInputProps {
   nameColumnPlaceholder: string;
   addAttributeLabel: string;
   ghostAttributeDisplayLabel: string;
-  ghostAttributeLabel: string;
+  attributeNamePlaceholder: string;
   ghostAttributeValuesPreview: string;
   removeAttributeLabel: string;
   columns: QuickSetupParticipantColumn[];
@@ -33,7 +33,7 @@ interface EditableTextBlockProps {
 }
 
 const NAME_COLUMN_WIDTH = 120;
-const ATTRIBUTE_COLUMN_WIDTH = 80;
+const ATTRIBUTE_COLUMN_WIDTH = 140;
 const MIN_NAME_WIDTH = 96;
 const MIN_ATTRIBUTE_WIDTH = 64;
 const SEPARATOR_WIDTH = 12;
@@ -107,7 +107,7 @@ export function LandingParticipantColumnsInput({
   nameColumnPlaceholder,
   addAttributeLabel,
   ghostAttributeDisplayLabel,
-  ghostAttributeLabel,
+  attributeNamePlaceholder,
   ghostAttributeValuesPreview,
   removeAttributeLabel,
   columns,
@@ -178,11 +178,16 @@ export function LandingParticipantColumnsInput({
   const startColumnResize = useCallback((index: number, event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     const rightIsGhost = index === columns.length - 1;
+    const leftElement = event.currentTarget.previousElementSibling as HTMLDivElement | null;
+    const rightElement = event.currentTarget.nextElementSibling as HTMLDivElement | null;
+    const measuredLeftWidth = leftElement?.getBoundingClientRect().width;
+    const measuredRightWidth = rightElement?.getBoundingClientRect().width;
+
     dragStateRef.current = {
       index,
       startX: event.clientX,
-      leftWidth: columnWidths[index],
-      rightWidth: rightIsGhost ? ghostColumnWidth : columnWidths[index + 1],
+      leftWidth: measuredLeftWidth ?? columnWidths[index],
+      rightWidth: measuredRightWidth ?? (rightIsGhost ? ghostColumnWidth : columnWidths[index + 1]),
       rightIsGhost,
     };
 
@@ -225,7 +230,7 @@ export function LandingParticipantColumnsInput({
     const selection = window.getSelection();
     const range = document.createRange();
     range.selectNodeContents(element);
-    range.collapse(false);
+    range.collapse(true);
     selection?.removeAllRanges();
     selection?.addRange(range);
     setPendingFocusColumnId(null);
@@ -276,6 +281,7 @@ export function LandingParticipantColumnsInput({
                             }}
                             className="landing-participant-columns__header-input"
                             ariaLabel={`Attribute column ${index}`}
+                            placeholder={attributeNamePlaceholder}
                             dataFocusTarget
                           />
                           <button

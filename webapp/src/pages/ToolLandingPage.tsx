@@ -12,6 +12,7 @@ import { LandingFooter } from '../components/LandingPage/LandingFooter';
 import { LandingLanguageSelector } from '../components/LandingPage/LandingLanguageSelector';
 import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
+import { Tooltip } from '../components/Tooltip';
 import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../components/ui';
 import { interpolate } from '../i18n/interpolate';
 import { getLandingUiContent } from '../i18n/landingUi';
@@ -559,7 +560,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     nameColumnPlaceholder={ui.quickSetup.namesPlaceholder}
                     addAttributeLabel={ui.quickSetup.addAttributeLabel}
                     ghostAttributeDisplayLabel={ui.quickSetup.ghostAttributeDisplayLabel}
-                    ghostAttributeLabel={ui.quickSetup.ghostAttributeLabel}
+                    attributeNamePlaceholder={ui.quickSetup.attributeNamePlaceholder}
                     ghostAttributeValuesPreview={ui.quickSetup.ghostAttributeValuesPreview}
                     removeAttributeLabel={ui.quickSetup.removeAttributeLabel}
                     columns={participantColumns}
@@ -575,7 +576,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                           ...columns,
                           {
                             id: newColumnId,
-                            name: ui.quickSetup.ghostAttributeLabel,
+                            name: '',
                             values: '',
                           },
                         ]);
@@ -674,8 +675,39 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     </div>
 
                     <div>
+                      <div className="mb-[0.8rem] flex items-center justify-between gap-3">
+                        <label className="text-sm font-medium" htmlFor="landing-sessions-slider">
+                          {ui.advancedOptions.sessionsLabel}
+                        </label>
+                        <label
+                          className="ml-auto flex min-w-0 max-w-[65%] items-center gap-2 text-xs font-medium sm:max-w-[70%] sm:text-sm"
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          <input
+                            type="checkbox"
+                            className="shrink-0"
+                            checked={draft.avoidRepeatPairings}
+                            onChange={(event) =>
+                              controller.updateDraft((current) => ({
+                                ...current,
+                                avoidRepeatPairings: event.target.checked,
+                              }))}
+                          />
+                          <Tooltip
+                            content={(
+                              <span>
+                                <strong>{ui.advancedOptions.avoidRepeatPairingsLabel}.</strong>{' '}
+                                {ui.advancedOptions.avoidRepeatPairingsDescription}
+                              </span>
+                            )}
+                            className="min-w-0 flex-1"
+                          >
+                            <span className="block min-w-0 truncate whitespace-nowrap">{ui.advancedOptions.avoidRepeatPairingsLabel}</span>
+                          </Tooltip>
+                        </label>
+                      </div>
                       <NumberField
-                        label={ui.advancedOptions.sessionsLabel}
+                        id="landing-sessions-slider"
                         value={draft.sessions}
                         onChange={(value) =>
                           controller.updateDraft((current) => ({
