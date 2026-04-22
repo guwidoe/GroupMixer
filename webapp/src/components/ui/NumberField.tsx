@@ -90,6 +90,20 @@ function normalizeNumber(value: number, {
   return roundToStep(bounded, step, min ?? 0, kind);
 }
 
+function getSliderPercent(value: number, min: number, max: number) {
+  if (!Number.isFinite(value) || max <= min) {
+    return 0;
+  }
+
+  return ((clamp(value, min, max) - min) / (max - min)) * 100;
+}
+
+function getSliderLabelOffsetRem(percent: number) {
+  const thumbRadiusRem = 1.05 / 2;
+  const normalizedPercent = clamp(percent, 0, 100) / 100;
+  return thumbRadiusRem * (1 - (2 * normalizedPercent));
+}
+
 export function NumberField({
   value,
   onChange,
@@ -138,6 +152,11 @@ export function NumberField({
     ? clamp(value ?? sliderMin, sliderMin, effectiveSoftMax)
     : undefined;
   const isOverflowing = sliderEnabled && typeof effectiveSoftMax === 'number' && value != null && value > effectiveSoftMax;
+  const sliderPercent = sliderEnabled && typeof sliderValue === 'number' && typeof effectiveSoftMax === 'number'
+    ? getSliderPercent(sliderValue, sliderMin, effectiveSoftMax)
+    : 0;
+  const sliderLabelOffsetRem = getSliderLabelOffsetRem(sliderPercent);
+  const sliderDisplayValue = formatValue(value ?? sliderValue ?? null, kind, step);
 
   const commitDraft = () => {
     if (disabled) return;
@@ -208,14 +227,23 @@ export function NumberField({
                 onCommit?.(next);
               }}
             />
-            <div className="number-field__scale" aria-hidden="true">
-              <span>{sliderMin}</span>
-              <span>{isOverflowing ? `${effectiveSoftMax}+` : effectiveSoftMax}</span>
-            </div>
+            {showInput ? (
+              <div className="number-field__slider-value-track" aria-hidden="true">
+                <span
+                  className="number-field__slider-value"
+                  style={{
+                    '--number-field-slider-value-position': `${sliderPercent}%`,
+                    '--number-field-slider-value-offset': `${sliderLabelOffsetRem}rem`,
+                  } as React.CSSProperties}
+                >
+                  {sliderDisplayValue}
+                </span>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
-        {showInput ? (
+        {showInput && !sliderEnabled ? (
           <input
             id={inputId}
             name={name}

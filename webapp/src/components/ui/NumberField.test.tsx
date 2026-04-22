@@ -35,33 +35,35 @@ function DecimalHarness({ onCommit }: { onCommit: (value: number | null) => void
       value={value}
       onChange={setValue}
       onCommit={onCommit}
+      showSlider={false}
     />
   );
 }
 
 describe('NumberField', () => {
-  it('renders a slider and editable field by default', () => {
-    render(<NumberFieldHarness />);
+  it('renders a slider and current value label by default', () => {
+    const { container } = render(<NumberFieldHarness />);
 
     expect(screen.getByRole('slider', { name: /sessions slider/i })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /sessions/i })).toHaveValue('4');
+    expect(container.querySelector('.number-field__slider-value')).toHaveTextContent('4');
+    expect(screen.queryByRole('textbox', { name: /sessions/i })).not.toBeInTheDocument();
   });
 
   it('pins the slider to softMax when the value overflows', () => {
-    render(<NumberFieldHarness value={27} />);
+    const { container } = render(<NumberFieldHarness value={27} />);
 
     expect(screen.getByRole('slider', { name: /sessions slider/i })).toHaveValue('10');
-    expect(screen.getByText('10+')).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: /sessions/i })).toHaveValue('27');
+    expect(container.querySelector('.number-field__slider-value')).toHaveTextContent('27');
+    expect(screen.queryByText('10+')).not.toBeInTheDocument();
   });
 
   it('keeps the slider scale fixed when the value overflows', () => {
-    render(<NumberFieldHarness value={27} />);
+    const { container } = render(<NumberFieldHarness value={27} />);
 
     const slider = screen.getByRole('slider', { name: /sessions slider/i }) as HTMLInputElement;
     expect(slider).toHaveAttribute('min', '1');
     expect(slider).toHaveAttribute('max', '10');
-    expect(screen.getByRole('textbox', { name: /sessions/i })).toHaveValue('27');
+    expect(container.querySelector('.number-field__slider-value')).toHaveTextContent('27');
   });
 
   it('uses the configured soft range for the slider track', () => {
@@ -73,9 +75,9 @@ describe('NumberField', () => {
     expect(slider).toHaveValue('4');
   });
 
-  it('supports keyboard stepping for integer fields', async () => {
+  it('supports keyboard stepping for text-input fields', async () => {
     const user = userEvent.setup();
-    render(<NumberFieldHarness value={4} />);
+    render(<NumberFieldHarness value={4} showSlider={false} />);
 
     const input = screen.getByRole('textbox', { name: /sessions/i });
     await user.click(input);
@@ -103,7 +105,7 @@ describe('NumberField', () => {
 
   it('reverts invalid draft text on blur', async () => {
     const user = userEvent.setup();
-    render(<NumberFieldHarness value={4} />);
+    render(<NumberFieldHarness value={4} showSlider={false} />);
 
     const input = screen.getByRole('textbox', { name: /sessions/i });
     await user.clear(input);
@@ -128,7 +130,7 @@ describe('NumberField', () => {
     );
 
     expect(screen.getByRole('slider', { name: /sessions slider/i })).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: /sessions/i })).toBeDisabled();
+    expect(screen.queryByRole('textbox', { name: /sessions/i })).not.toBeInTheDocument();
     expect(screen.getByText('Required')).toBeInTheDocument();
   });
 });
