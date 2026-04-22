@@ -268,7 +268,7 @@ export function LandingParticipantColumnsInput({
                     : 'landing-participant-columns__header-shell landing-participant-columns__header-shell--interactive'}>
                     <div className="landing-participant-columns__column-header">
                       {index === 0 ? (
-                        <div className="landing-participant-columns__header-label">{nameColumnLabel}</div>
+                        <div className="landing-participant-columns__header-label landing-participant-columns__header-text">{nameColumnLabel}</div>
                       ) : (
                         <div className="landing-participant-columns__header-editor-row">
                           <EditableTextBlock
@@ -279,7 +279,7 @@ export function LandingParticipantColumnsInput({
                                 event.preventDefault();
                               }
                             }}
-                            className="landing-participant-columns__header-input"
+                            className="landing-participant-columns__header-input landing-participant-columns__header-text"
                             ariaLabel={`Attribute column ${index}`}
                             placeholder={attributeNamePlaceholder}
                             dataFocusTarget
@@ -350,7 +350,7 @@ export function LandingParticipantColumnsInput({
             >
               <div className="landing-participant-columns__ghost-header-shell">
                 <div className="landing-participant-columns__column-header">
-                  <div className="landing-participant-columns__ghost-header-label">{ghostAttributeDisplayLabel}</div>
+                  <div className="landing-participant-columns__ghost-header-label landing-participant-columns__header-text">{ghostAttributeDisplayLabel}</div>
                 </div>
               </div>
               <div className="landing-participant-columns__ghost-body-shell">
