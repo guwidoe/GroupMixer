@@ -312,14 +312,22 @@ pub(crate) fn evaluate_relabeling_baseline_objective(
 pub(crate) fn build_greedy_relabeling_plan(
     input: &ApiInput,
 ) -> Result<ExactBlockRelabelingPlan, SolverError> {
-    let problem = PureSgpProblem::from_input(input)?;
-    build_greedy_relabeling_plan_from_initial_plan(
-        input,
-        &ExactBlockRelabelingPlan::identity(
-            ExactBlockCompositionContext::for_input(input)?.full_copies,
-            problem.num_groups * problem.group_size,
-        ),
-    )
+    let context = ExactBlockCompositionContext::for_input(input)?;
+    if context.full_copies <= 1 {
+        return Ok(ExactBlockRelabelingPlan::identity(
+            context.full_copies,
+            context.num_people(),
+        ));
+    }
+
+    let mut plan = ExactBlockRelabelingPlan::identity(1, context.num_people());
+    for copy_count in 2..=context.full_copies {
+        plan.copy_permutations
+            .push(SeedPermutation::identity(context.num_people()));
+        let partial_input = clone_input_with_num_weeks(input, copy_count * context.atom_weeks)?;
+        plan = build_greedy_relabeling_plan_from_initial_plan(&partial_input, &plan)?;
+    }
+    Ok(plan)
 }
 
 pub(crate) fn build_greedy_relabeling_plan_from_initial_plan(
@@ -623,6 +631,17 @@ fn derive_random_relabeling_seed(
         ^ ((full_copies as u64) << 32)
         ^ ((atom_weeks as u64) << 16)
         ^ (num_people as u64)
+}
+
+fn clone_input_with_num_weeks(input: &ApiInput, num_weeks: usize) -> Result<ApiInput, SolverError> {
+    let num_sessions = u32::try_from(num_weeks).map_err(|_| {
+        SolverError::ValidationError(format!(
+            "solver6 exact-block relabeling could not fit {num_weeks} sessions into u32"
+        ))
+    })?;
+    let mut cloned = input.clone();
+    cloned.problem.num_sessions = num_sessions;
+    Ok(cloned)
 }
 
 struct ExactBlockCompositionContext {
