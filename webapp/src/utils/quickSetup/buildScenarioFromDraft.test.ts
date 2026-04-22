@@ -83,7 +83,7 @@ describe('quick setup scenario mapping', () => {
           people: ['Alice', 'Cara'],
         }),
         expect.objectContaining({
-          type: 'ShouldNotBeTogether',
+          type: 'MustStayApart',
           people: ['Bob', 'Dan'],
         }),
         expect.objectContaining({

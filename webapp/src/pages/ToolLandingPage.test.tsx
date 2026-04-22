@@ -469,7 +469,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     // Advanced options are expanded by default and the deeper CTA still exists below the tool.
     expect(screen.getByLabelText(/keep together/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/avoid pairing/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/keep apart/i)).toBeInTheDocument();
     expect(screen.getByText(/want to do better than random/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /use the full group optimizer/i })).toBeInTheDocument();
     expect(screen.getByText(/your inputs from this page come with you/i)).toBeInTheDocument();
@@ -545,7 +545,7 @@ describe('ToolLandingPage SEO wiring', () => {
       'placeholder',
       'One group per line\nAlex, Sam\nPriya, Jordan, Mina',
     );
-    expect(screen.getByLabelText(/avoid pairing/i)).toHaveAttribute(
+    expect(screen.getByLabelText(/keep apart/i)).toHaveAttribute(
       'placeholder',
       'One pair per line\nAlex, Sam\nPriya, Jordan',
     );

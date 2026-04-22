@@ -95,9 +95,8 @@ export function buildConstraints(
     const resolved = resolvePeople([left, right], people);
     if (resolved.length === 2) {
       constraints.push({
-        type: 'ShouldNotBeTogether',
+        type: 'MustStayApart',
         people: resolved,
-        penalty_weight: 120,
       });
     }
   }
