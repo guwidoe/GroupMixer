@@ -61,10 +61,76 @@ impl RelabelingPairAdjustmentAccumulator {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+struct DenseRelabelingPairAdjustmentScratch {
+    deltas_by_pair: Vec<i8>,
+    touched_pairs: Vec<usize>,
+    touched_flags: Vec<bool>,
+}
+
+impl DenseRelabelingPairAdjustmentScratch {
+    fn new(total_pairs: usize, expected_adjustments: usize) -> Self {
+        Self {
+            deltas_by_pair: vec![0; total_pairs],
+            touched_pairs: Vec::with_capacity(expected_adjustments),
+            touched_flags: vec![false; total_pairs],
+        }
+    }
+
+    fn clear(&mut self) {
+        for &pair_idx in &self.touched_pairs {
+            self.deltas_by_pair[pair_idx] = 0;
+            self.touched_flags[pair_idx] = false;
+        }
+        self.touched_pairs.clear();
+    }
+
+    fn apply(&mut self, pair_idx: usize, delta: i8) {
+        debug_assert_ne!(delta, 0);
+        if !self.touched_flags[pair_idx] {
+            self.touched_flags[pair_idx] = true;
+            self.touched_pairs.push(pair_idx);
+        }
+        self.deltas_by_pair[pair_idx] += delta;
+    }
+
+    fn score_delta_for_model(
+        &self,
+        pair_state: &PairFrequencyState,
+        model: Solver6PairRepeatPenaltyModel,
+    ) -> i64 {
+        self.touched_pairs.iter().fold(0i64, |delta_sum, &pair_idx| {
+            let delta = self.deltas_by_pair[pair_idx];
+            if delta == 0 {
+                delta_sum
+            } else {
+                delta_sum
+                    + pair_state.score_delta_for_pair_change_known_valid(pair_idx, delta, model)
+            }
+        })
+    }
+
+    fn materialize(&self) -> Vec<RelabelingPairCountAdjustment> {
+        self.touched_pairs
+            .iter()
+            .filter_map(|&pair_idx| {
+                let delta = self.deltas_by_pair[pair_idx];
+                (delta != 0).then_some(RelabelingPairCountAdjustment { pair_idx, delta })
+            })
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct EvaluatedCopyPermutationSwap {
     left: usize,
     right: usize,
     pair_adjustments: Vec<RelabelingPairCountAdjustment>,
+    active_score_after: u64,
+    linear_repeat_lower_bound_gap_after: u64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct EvaluatedCopyPermutationSwapSummary {
     active_score_after: u64,
     linear_repeat_lower_bound_gap_after: u64,
 }
@@ -535,10 +601,14 @@ fn find_best_copy_permutation_swap(
     let current_linear_repeat_excess = state.pair_state.linear_repeat_excess();
     let current_linear_repeat_lower_bound_gap = current_linear_repeat_excess
         .saturating_sub(state.linear_repeat_lower_bound);
+    let mut scratch = DenseRelabelingPairAdjustmentScratch::new(
+        state.pair_state.universe().total_distinct_pairs(),
+        2 * context.atom_weeks * context.problem.group_size.saturating_sub(1),
+    );
     let mut best: Option<EvaluatedCopyPermutationSwap> = None;
     for left in 0..context.num_people() {
         for right in (left + 1)..context.num_people() {
-            let evaluated = evaluate_copy_permutation_swap(
+            let evaluated = evaluate_copy_permutation_swap_summary(
                 context,
                 state,
                 copy_index,
@@ -546,14 +616,21 @@ fn find_best_copy_permutation_swap(
                 right,
                 current_active_score,
                 current_linear_repeat_excess,
-            )?;
+                &mut scratch,
+            );
             if (evaluated.active_score_after, evaluated.linear_repeat_lower_bound_gap_after)
                 < (current_active_score, current_linear_repeat_lower_bound_gap)
                 && best.as_ref().is_none_or(|incumbent| {
-                    copy_permutation_swap_is_better(&evaluated, incumbent)
+                    copy_permutation_swap_summary_is_better(left, right, evaluated, incumbent)
                 })
             {
-                best = Some(evaluated);
+                best = Some(EvaluatedCopyPermutationSwap {
+                    left,
+                    right,
+                    pair_adjustments: scratch.materialize(),
+                    active_score_after: evaluated.active_score_after,
+                    linear_repeat_lower_bound_gap_after: evaluated.linear_repeat_lower_bound_gap_after,
+                });
             }
         }
     }
@@ -569,14 +646,45 @@ fn evaluate_copy_permutation_swap(
     current_active_score: u64,
     current_linear_repeat_excess: u64,
 ) -> Result<EvaluatedCopyPermutationSwap, SolverError> {
+    let mut scratch = DenseRelabelingPairAdjustmentScratch::new(
+        state.pair_state.universe().total_distinct_pairs(),
+        2 * context.atom_weeks * context.problem.group_size.saturating_sub(1),
+    );
+    let summary = evaluate_copy_permutation_swap_summary(
+        context,
+        state,
+        copy_index,
+        left,
+        right,
+        current_active_score,
+        current_linear_repeat_excess,
+        &mut scratch,
+    );
+    Ok(EvaluatedCopyPermutationSwap {
+        left,
+        right,
+        pair_adjustments: scratch.materialize(),
+        active_score_after: summary.active_score_after,
+        linear_repeat_lower_bound_gap_after: summary.linear_repeat_lower_bound_gap_after,
+    })
+}
+
+fn evaluate_copy_permutation_swap_summary(
+    context: &ExactBlockCompositionContext,
+    state: &GreedyRelabelingState,
+    copy_index: usize,
+    left: usize,
+    right: usize,
+    current_active_score: u64,
+    current_linear_repeat_excess: u64,
+    scratch: &mut DenseRelabelingPairAdjustmentScratch,
+) -> EvaluatedCopyPermutationSwapSummary {
     let permutation = &state.plan.copy_permutations[copy_index];
     let image = &permutation.image_by_person;
     let left_target = image[left];
     let right_target = image[right];
     let universe = state.pair_state.universe();
-    let mut aggregated_adjustments = RelabelingPairAdjustmentAccumulator::with_capacity(
-        2 * context.atom_weeks * context.problem.group_size.saturating_sub(1),
-    );
+    scratch.clear();
 
     for week_idx in 0..context.atom_weeks {
         let left_mates = &context.groupmates_by_person_by_week[left][week_idx];
@@ -587,69 +695,51 @@ fn evaluate_copy_permutation_swap(
 
         for &mate in left_mates {
             let mate_target = image[mate];
-            aggregated_adjustments.apply(pair_index_fast(universe, left_target, mate_target), -1);
-            aggregated_adjustments.apply(pair_index_fast(universe, right_target, mate_target), 1);
+            scratch.apply(pair_index_fast(universe, left_target, mate_target), -1);
+            scratch.apply(pair_index_fast(universe, right_target, mate_target), 1);
         }
         for &mate in right_mates {
             let mate_target = image[mate];
-            aggregated_adjustments.apply(pair_index_fast(universe, right_target, mate_target), -1);
-            aggregated_adjustments.apply(pair_index_fast(universe, left_target, mate_target), 1);
+            scratch.apply(pair_index_fast(universe, right_target, mate_target), -1);
+            scratch.apply(pair_index_fast(universe, left_target, mate_target), 1);
         }
     }
 
-    let pair_adjustments = aggregated_adjustments.finish();
-    let linear_delta = score_delta_for_adjustments(
+    let linear_delta = scratch.score_delta_for_model(
         &state.pair_state,
-        &pair_adjustments,
         Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
-    )?;
+    );
     let active_delta = match context.active_penalty_model {
         Solver6PairRepeatPenaltyModel::LinearRepeatExcess => linear_delta,
-        active_model => score_delta_for_adjustments(&state.pair_state, &pair_adjustments, active_model)?,
+        active_model => scratch.score_delta_for_model(&state.pair_state, active_model),
     };
     let active_score_after = (current_active_score as i64 + active_delta) as u64;
     let linear_repeat_excess_after = (current_linear_repeat_excess as i64 + linear_delta) as u64;
 
-    Ok(EvaluatedCopyPermutationSwap {
-        left,
-        right,
-        pair_adjustments,
+    EvaluatedCopyPermutationSwapSummary {
         active_score_after,
         linear_repeat_lower_bound_gap_after: linear_repeat_excess_after
             .saturating_sub(state.linear_repeat_lower_bound),
-    })
+    }
 }
 
-fn copy_permutation_swap_is_better(
-    candidate: &EvaluatedCopyPermutationSwap,
+fn copy_permutation_swap_summary_is_better(
+    candidate_left: usize,
+    candidate_right: usize,
+    candidate: EvaluatedCopyPermutationSwapSummary,
     incumbent: &EvaluatedCopyPermutationSwap,
 ) -> bool {
     (
         candidate.active_score_after,
         candidate.linear_repeat_lower_bound_gap_after,
-        candidate.left,
-        candidate.right,
+        candidate_left,
+        candidate_right,
     ) < (
         incumbent.active_score_after,
         incumbent.linear_repeat_lower_bound_gap_after,
         incumbent.left,
         incumbent.right,
     )
-}
-
-fn score_delta_for_adjustments(
-    pair_state: &PairFrequencyState,
-    adjustments: &[RelabelingPairCountAdjustment],
-    model: Solver6PairRepeatPenaltyModel,
-) -> Result<i64, SolverError> {
-    Ok(adjustments.iter().fold(0i64, |delta_sum, adjustment| {
-        delta_sum
-            + pair_state.score_delta_for_pair_change_known_valid(
-                adjustment.pair_idx,
-                adjustment.delta,
-                model,
-            )
-    }))
 }
 
 fn pair_index_fast(
