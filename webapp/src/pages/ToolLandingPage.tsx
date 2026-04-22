@@ -558,6 +558,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     nameColumnLabel={ui.quickSetup.nameColumnLabel}
                     nameColumnPlaceholder={ui.quickSetup.namesPlaceholder}
                     addAttributeLabel={ui.quickSetup.addAttributeLabel}
+                    removeAttributeLabel={ui.quickSetup.removeAttributeLabel}
                     columns={participantColumns}
                     minHeight={130}
                     onAddAttribute={() => {
@@ -604,6 +605,29 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                               ? { ...column, values: value }
                               : column
                           )),
+                        );
+                      });
+                    }}
+                    onRemoveAttribute={(index) => {
+                      controller.updateDraft((current) => {
+                        const columns = normalizeParticipantColumns(current);
+                        const columnToRemove = columns[index];
+                        const hasValues = Boolean(columnToRemove?.values.trim());
+
+                        if (hasValues) {
+                          const columnName = columnToRemove.name.trim() || `${ui.quickSetup.attributeColumnDefaultLabel} ${index}`;
+                          const confirmed = window.confirm(
+                            ui.quickSetup.removeAttributeConfirmMessage.replace('{name}', columnName),
+                          );
+
+                          if (!confirmed) {
+                            return current;
+                          }
+                        }
+
+                        return withParticipantColumns(
+                          current,
+                          columns.filter((_, columnIndex) => columnIndex !== index),
                         );
                       });
                     }}

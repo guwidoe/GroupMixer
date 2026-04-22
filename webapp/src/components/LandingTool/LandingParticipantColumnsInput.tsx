@@ -1,5 +1,5 @@
-import { Plus } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Plus, X } from 'lucide-react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { QuickSetupParticipantColumn } from './types';
 import { splitParticipantColumnValues } from '../../utils/quickSetup/participantColumns';
 
@@ -8,11 +8,24 @@ interface LandingParticipantColumnsInputProps {
   nameColumnLabel: string;
   nameColumnPlaceholder: string;
   addAttributeLabel: string;
+  removeAttributeLabel: string;
   columns: QuickSetupParticipantColumn[];
   onChangeColumnName: (index: number, value: string) => void;
   onChangeColumnValues: (index: number, value: string) => void;
   onAddAttribute: () => void;
+  onRemoveAttribute: (index: number) => void;
   minHeight: number;
+}
+
+interface EditableTextBlockProps {
+  className: string;
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+  multiline?: boolean;
+  placeholder?: string;
+  style?: React.CSSProperties;
+  onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
 }
 
 const NAME_COLUMN_WIDTH = 300;
@@ -24,15 +37,72 @@ const HEADER_HEIGHT = 38;
 const LINE_HEIGHT = 38;
 const BODY_PADDING = 24;
 
+function readEditableValue(element: HTMLDivElement) {
+  const rawValue = typeof element.innerText === 'string'
+    ? element.innerText
+    : (element.textContent ?? '');
+
+  return rawValue.replace(/\n+$/g, '');
+}
+
+function EditableTextBlock({
+  className,
+  value,
+  onChange,
+  ariaLabel,
+  multiline = false,
+  placeholder,
+  style,
+  onKeyDown,
+}: EditableTextBlockProps) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (!element) {
+      return;
+    }
+
+    if (document.activeElement === element) {
+      return;
+    }
+
+    const currentValue = readEditableValue(element);
+    if (currentValue !== value) {
+      element.textContent = value;
+    }
+  }, [value]);
+
+  return (
+    <div
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck={false}
+      role="textbox"
+      aria-label={ariaLabel}
+      aria-multiline={multiline || undefined}
+      className={className}
+      data-placeholder={placeholder ?? ''}
+      data-empty={value.length === 0 ? 'true' : 'false'}
+      onInput={(event) => onChange(readEditableValue(event.currentTarget))}
+      onKeyDown={onKeyDown}
+      style={style}
+    />
+  );
+}
+
 export function LandingParticipantColumnsInput({
   label,
   nameColumnLabel,
   nameColumnPlaceholder,
   addAttributeLabel,
+  removeAttributeLabel,
   columns,
   onChangeColumnName,
   onChangeColumnValues,
   onAddAttribute,
+  onRemoveAttribute,
   minHeight,
 }: LandingParticipantColumnsInputProps) {
   const [height, setHeight] = useState(minHeight);
@@ -129,42 +199,53 @@ export function LandingParticipantColumnsInput({
     <div className="landing-resizable-textarea rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <div className="theme-scrollbar landing-participant-columns" style={{ height: `${height}px` }}>
         <div className="landing-participant-columns__surface">
-          <div className="landing-participant-columns__toolbar">
-            <button
-              type="button"
-              onClick={onAddAttribute}
-              className="landing-action-button landing-participant-columns__add-button rounded-lg border px-3 py-1.5 text-sm font-medium"
-              style={{ borderColor: 'var(--border-primary)' }}
-            >
-              <Plus className="h-4 w-4" />
-              {addAttributeLabel}
-            </button>
-          </div>
-
           <div className="landing-participant-columns__columns" style={{ minWidth: `${surfaceMinWidth}px` }}>
             {columns.map((column, index) => (
               <React.Fragment key={column.id}>
                 <div className="landing-participant-columns__column" style={{ width: `${columnWidths[index]}px` }}>
-                  <div className="landing-participant-columns__column-header">
-                    {index === 0 ? (
-                      <div className="landing-participant-columns__header-label">{nameColumnLabel}</div>
-                    ) : (
-                      <input
-                        value={column.name}
-                        onChange={(event) => onChangeColumnName(index, event.target.value)}
-                        className="landing-participant-columns__header-input"
-                        aria-label={`Attribute column ${index}`}
-                      />
-                    )}
+                  <div className={index === 0
+                    ? 'landing-participant-columns__header-shell landing-participant-columns__header-shell--static'
+                    : 'landing-participant-columns__header-shell landing-participant-columns__header-shell--interactive'}>
+                    <div className="landing-participant-columns__column-header">
+                      {index === 0 ? (
+                        <div className="landing-participant-columns__header-label">{nameColumnLabel}</div>
+                      ) : (
+                        <div className="landing-participant-columns__header-editor-row">
+                          <EditableTextBlock
+                            value={column.name}
+                            onChange={(nextValue) => onChangeColumnName(index, nextValue)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter') {
+                                event.preventDefault();
+                              }
+                            }}
+                            className="landing-participant-columns__header-input"
+                            ariaLabel={`Attribute column ${index}`}
+                          />
+                          <button
+                            type="button"
+                            className="landing-participant-columns__remove-button"
+                            onClick={() => onRemoveAttribute(index)}
+                            aria-label={`${removeAttributeLabel}: ${column.name || `Attribute ${index}`}`}
+                            title={removeAttributeLabel}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <textarea
-                    aria-label={index === 0 ? label : column.name || `Attribute ${index}`}
-                    value={column.values}
-                    onChange={(event) => onChangeColumnValues(index, event.target.value)}
-                    placeholder={index === 0 ? nameColumnPlaceholder : ''}
-                    className="landing-participant-columns__textarea"
-                    style={{ height: `${contentHeight}px` }}
-                  />
+                  <div className="landing-participant-columns__body-shell">
+                    <EditableTextBlock
+                      value={column.values}
+                      onChange={(nextValue) => onChangeColumnValues(index, nextValue)}
+                      ariaLabel={index === 0 ? label : column.name || `Attribute ${index}`}
+                      className="landing-participant-columns__textarea"
+                      style={{ height: `${contentHeight}px` }}
+                      multiline
+                      placeholder={index === 0 ? nameColumnPlaceholder : ''}
+                    />
+                  </div>
                 </div>
 
                 {index < columns.length - 1 && (
@@ -181,6 +262,16 @@ export function LandingParticipantColumnsInput({
               </React.Fragment>
             ))}
           </div>
+
+          <button
+            type="button"
+            onClick={onAddAttribute}
+            className="landing-action-button landing-participant-columns__add-button rounded-lg border px-3 py-1.5 text-sm font-medium"
+            style={{ borderColor: 'var(--border-primary)' }}
+          >
+            <Plus className="h-4 w-4" />
+            {addAttributeLabel}
+          </button>
         </div>
       </div>
       <div

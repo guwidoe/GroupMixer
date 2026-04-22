@@ -494,12 +494,68 @@ describe('ToolLandingPage SEO wiring', () => {
     );
 
     expect(screen.getByRole('heading', { level: 1, name: 'Group Assignment Optimizer' })).toBeInTheDocument();
-    expect((screen.getByLabelText(/participants/i) as HTMLTextAreaElement).value).toContain('Alex');
-    expect(screen.getByDisplayValue('team')).toBeInTheDocument();
-    expect(screen.getByLabelText('Attribute column 2')).toHaveValue('role');
+    expect(screen.getByLabelText(/participants/i)).toHaveTextContent('Alex');
+    expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('team');
+    expect(screen.getByLabelText('Attribute column 2')).toHaveTextContent('role');
     expect(screen.queryByRole('button', { name: /switch to names/i })).not.toBeInTheDocument();
     expect(screen.getByLabelText(/balance groups by attribute/i)).toHaveValue('role');
     expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();
+  });
+
+  it('lets users remove attribute columns from the structured participant editor', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="group-assignment-optimizer" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /remove attribute: role/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Remove "role" and all entered values?');
+    expect(screen.queryByLabelText('Attribute column 2')).not.toBeInTheDocument();
+    expect(screen.queryByText('role')).not.toBeInTheDocument();
+    expect(screen.getByLabelText(/balance groups by attribute/i)).not.toHaveValue('role');
+
+    confirmSpy.mockRestore();
+  });
+
+  it('does not remove a populated attribute column when the warning is cancelled', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="group-assignment-optimizer" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /remove attribute: role/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Remove "role" and all entered values?');
+    expect(screen.getByLabelText('Attribute column 2')).toBeInTheDocument();
+
+    confirmSpy.mockRestore();
+  });
+
+  it('removes an empty attribute column without showing a warning', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /add attribute/i }));
+    await user.click(screen.getByRole('button', { name: /remove attribute: attribute 1/i }));
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
   });
 
   it('stacks the generator above the hero content on mobile while preserving desktop order classes', () => {

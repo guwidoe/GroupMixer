@@ -78,6 +78,8 @@ export interface ToolPageQuickSetupUiContent {
   participantsLabel: string;
   nameColumnLabel: string;
   addAttributeLabel: string;
+  removeAttributeLabel: string;
+  removeAttributeConfirmMessage: string;
   attributeColumnDefaultLabel: string;
   switchToCsvLabel: string;
   switchToNamesLabel: string;
