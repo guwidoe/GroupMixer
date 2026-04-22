@@ -583,8 +583,17 @@ fn greedily_improve_copy_permutation(
     copy_index: usize,
 ) -> Result<bool, SolverError> {
     let mut improved_any = false;
+    let mut scratch = DenseRelabelingPairAdjustmentScratch::new(
+        state.pair_state.universe().total_distinct_pairs(),
+        2 * context.atom_weeks * context.problem.group_size.saturating_sub(1),
+    );
     loop {
-        let Some(best_improvement) = find_best_copy_permutation_swap(context, state, copy_index)? else {
+        let Some(best_improvement) = find_best_copy_permutation_swap(
+            context,
+            state,
+            copy_index,
+            &mut scratch,
+        )? else {
             return Ok(improved_any);
         };
         state.apply_swap(copy_index, &best_improvement)?;
@@ -596,15 +605,12 @@ fn find_best_copy_permutation_swap(
     context: &ExactBlockCompositionContext,
     state: &GreedyRelabelingState,
     copy_index: usize,
+    scratch: &mut DenseRelabelingPairAdjustmentScratch,
 ) -> Result<Option<EvaluatedCopyPermutationSwap>, SolverError> {
     let current_active_score = state.current_active_score(context.active_penalty_model);
     let current_linear_repeat_excess = state.pair_state.linear_repeat_excess();
     let current_linear_repeat_lower_bound_gap = current_linear_repeat_excess
         .saturating_sub(state.linear_repeat_lower_bound);
-    let mut scratch = DenseRelabelingPairAdjustmentScratch::new(
-        state.pair_state.universe().total_distinct_pairs(),
-        2 * context.atom_weeks * context.problem.group_size.saturating_sub(1),
-    );
     let mut best: Option<EvaluatedCopyPermutationSwap> = None;
     for left in 0..context.num_people() {
         for right in (left + 1)..context.num_people() {
@@ -616,7 +622,7 @@ fn find_best_copy_permutation_swap(
                 right,
                 current_active_score,
                 current_linear_repeat_excess,
-                &mut scratch,
+                scratch,
             );
             if (evaluated.active_score_after, evaluated.linear_repeat_lower_bound_gap_after)
                 < (current_active_score, current_linear_repeat_lower_bound_gap)
