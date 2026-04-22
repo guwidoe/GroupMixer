@@ -86,6 +86,10 @@
   --scrollbar-thumb: color-mix(in srgb, var(--border-secondary) 88%, var(--text-tertiary) 12%);
   --scrollbar-thumb-hover: color-mix(in srgb, var(--text-tertiary) 30%, var(--border-secondary) 70%);
   --landing-ghost-text: var(--text-tertiary);
+  --number-slider-track-bg: color-mix(in srgb, var(--bg-tertiary) 88%, #d1d5db 12%);
+  --number-slider-track-border: color-mix(in srgb, var(--border-secondary) 82%, #9ca3af 18%);
+  --number-slider-thumb-border: color-mix(in srgb, var(--color-accent) 78%, white 22%);
+  --number-slider-thumb-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
   }
 
   /* Dark theme variables */
@@ -123,6 +127,10 @@
     --scrollbar-track: color-mix(in srgb, var(--bg-secondary) 88%, black 12%);
     --scrollbar-thumb: color-mix(in srgb, var(--bg-tertiary) 55%, var(--text-tertiary) 45%);
     --scrollbar-thumb-hover: color-mix(in srgb, var(--text-secondary) 58%, var(--bg-tertiary) 42%);
+    --number-slider-track-bg: color-mix(in srgb, var(--bg-secondary) 82%, white 18%);
+    --number-slider-track-border: color-mix(in srgb, var(--border-primary) 88%, white 12%);
+    --number-slider-thumb-border: color-mix(in srgb, var(--color-accent) 72%, white 28%);
+    --number-slider-thumb-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
   }
 
   .dark .label {
@@ -1029,8 +1037,8 @@
     width: 100%;
     height: 0.5rem;
     border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--border-primary) 88%, white 12%);
-    background: color-mix(in srgb, var(--bg-secondary) 82%, white 18%);
+    border: 1px solid var(--number-slider-track-border);
+    background: var(--number-slider-track-bg);
     cursor: pointer;
     margin: 0;
   }
@@ -1038,7 +1046,7 @@
   .number-field__slider::-webkit-slider-runnable-track {
     height: 0.5rem;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--bg-secondary) 82%, white 18%);
+    background: var(--number-slider-track-bg);
   }
 
   .number-field__slider::-webkit-slider-thumb {
@@ -1048,25 +1056,25 @@
     height: 1.05rem;
     margin-top: -0.3125rem;
     border-radius: 999px;
-    border: 2px solid color-mix(in srgb, var(--color-accent) 72%, white 28%);
+    border: 2px solid var(--number-slider-thumb-border);
     background: var(--color-accent);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    box-shadow: var(--number-slider-thumb-shadow);
   }
 
   .number-field__slider::-moz-range-track {
     height: 0.5rem;
     border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--border-primary) 88%, white 12%);
-    background: color-mix(in srgb, var(--bg-secondary) 82%, white 18%);
+    border: 1px solid var(--number-slider-track-border);
+    background: var(--number-slider-track-bg);
   }
 
   .number-field__slider::-moz-range-thumb {
     width: 1.05rem;
     height: 1.05rem;
     border-radius: 999px;
-    border: 2px solid color-mix(in srgb, var(--color-accent) 72%, white 28%);
+    border: 2px solid var(--number-slider-thumb-border);
     background: var(--color-accent);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    box-shadow: var(--number-slider-thumb-shadow);
   }
 
   .number-field__slider:disabled {

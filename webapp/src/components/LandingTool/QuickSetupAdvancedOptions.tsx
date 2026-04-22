@@ -44,6 +44,7 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             onChange={(value) => controller.updateDraft((current) => ({ ...current, keepTogetherInput: value }))}
             placeholder={labels.keepTogetherPlaceholder}
             minHeight={96}
+            clipFieldBorder
             className="rounded-2xl"
             textareaClassName="px-4 py-3 text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
@@ -60,6 +61,7 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             onChange={(value) => controller.updateDraft((current) => ({ ...current, avoidPairingsInput: value }))}
             placeholder={labels.avoidPairingPlaceholder}
             minHeight={96}
+            clipFieldBorder
             className="rounded-2xl"
             textareaClassName="px-4 py-3 text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
