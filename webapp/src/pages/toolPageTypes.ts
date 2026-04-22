@@ -118,6 +118,7 @@ export interface ToolPageAdvancedOptionsUiContent {
   fullEditorPrompt: string;
   fullEditorButtonLabel: string;
   balanceGroupsByAttributeLabel: string;
+  autoDistributeAttributeLabel: string;
   noBalancingLabel: string;
   ignoredNamesPrefix: string;
 }

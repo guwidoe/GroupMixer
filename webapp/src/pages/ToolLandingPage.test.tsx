@@ -504,6 +504,8 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.queryByRole('button', { name: /switch to names/i })).not.toBeInTheDocument();
     expect(screen.getByText(/balance groups by attribute/i)).toBeInTheDocument();
     expect(screen.getAllByText(/^role$/i).length).toBeGreaterThan(1);
+    expect(screen.getByRole('button', { name: /auto distribute attribute: team/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /auto distribute attribute: role/i })).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: /minimize repeat pairings/i })).toBeChecked();
     expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();
   });

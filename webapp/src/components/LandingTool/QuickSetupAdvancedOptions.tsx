@@ -1,7 +1,11 @@
 import { ArrowRight } from 'lucide-react';
 import { AttributeDistributionField, getAttributeDistributionBuckets } from '../ui';
 import { buildGroups } from '../../utils/quickSetup';
-import { setBalanceTargetValues } from '../../utils/quickSetup/attributeBalanceTargets';
+import {
+  deriveBalancedTargetValues,
+  setBalanceAttributeTargets,
+  setBalanceTargetValues,
+} from '../../utils/quickSetup/attributeBalanceTargets';
 import { LandingResizableTextarea } from './LandingResizableTextarea';
 import type { QuickSetupController } from './useQuickSetup';
 
@@ -62,7 +66,30 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
                   className="rounded-2xl px-4 py-4"
                   style={{ backgroundColor: 'var(--bg-secondary)' }}
                 >
-                  <div className="mb-3 text-sm font-medium">{attribute.key}</div>
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div className="text-sm font-medium">{attribute.key}</div>
+                    <button
+                      type="button"
+                      className="rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors sm:text-sm"
+                      style={{
+                        borderColor: 'var(--border-primary)',
+                        backgroundColor: 'var(--bg-primary)',
+                        color: 'var(--text-primary)',
+                      }}
+                      aria-label={`${labels.autoDistributeAttributeLabel}: ${attribute.key}`}
+                      onClick={() => controller.updateDraft((current) => ({
+                        ...current,
+                        balanceAttributeKey: null,
+                        balanceTargets: setBalanceAttributeTargets(
+                          current.balanceTargets,
+                          attribute.key,
+                          deriveBalancedTargetValues(analysis.participants, balanceGroups, attribute.key),
+                        ),
+                      }))}
+                    >
+                      {labels.autoDistributeAttributeLabel}
+                    </button>
+                  </div>
                   <div className="grid gap-4 xl:grid-cols-2">
                     {balanceGroups.map((group) => (
                       <div key={`${attribute.key}-${group.id}`}>

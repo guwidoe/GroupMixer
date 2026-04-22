@@ -104,6 +104,27 @@ export function setBalanceTargetValues(
   return nextTargets;
 }
 
+export function setBalanceAttributeTargets(
+  balanceTargets: QuickSetupBalanceTargets | undefined,
+  attributeKey: string,
+  targetsByGroup: Record<string, Record<string, number>>,
+): QuickSetupBalanceTargets {
+  const nextTargets = normalizeBalanceTargets(balanceTargets);
+  const normalizedTargetsByGroup = Object.fromEntries(
+    Object.entries(targetsByGroup)
+      .map(([groupId, values]) => [groupId, normalizeBalanceTargetValues(values)] as const)
+      .filter(([, values]) => Object.keys(values).length > 0),
+  );
+
+  if (Object.keys(normalizedTargetsByGroup).length === 0) {
+    delete nextTargets[attributeKey];
+    return nextTargets;
+  }
+
+  nextTargets[attributeKey] = normalizedTargetsByGroup;
+  return nextTargets;
+}
+
 export function hasAnyBalanceTargets(balanceTargets: QuickSetupBalanceTargets | undefined): boolean {
   return Object.keys(normalizeBalanceTargets(balanceTargets)).length > 0;
 }
