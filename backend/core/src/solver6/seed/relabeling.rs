@@ -134,13 +134,14 @@ fn pair_state_for_plan(
     let mut pair_state = PairFrequencyState::from_raw_schedule(context.num_people(), &[])?;
     let universe = pair_state.universe().clone();
     for permutation in &plan.copy_permutations {
+        let image = &permutation.image_by_person;
         for week in &context.atom.schedule {
             for block in week {
                 for left_idx in 0..block.len() {
-                    let left = permutation.apply(block[left_idx])?;
+                    let left = image[block[left_idx]];
                     for right_idx in (left_idx + 1)..block.len() {
-                        let right = permutation.apply(block[right_idx])?;
-                        let pair_idx = universe.pair_index(left, right)?;
+                        let right = image[block[right_idx]];
+                        let pair_idx = pair_index_fast(&universe, left, right);
                         pair_state.apply_pair_count_delta(pair_idx, 1)?;
                     }
                 }
@@ -533,8 +534,9 @@ fn evaluate_copy_permutation_swap(
     right: usize,
 ) -> Result<EvaluatedCopyPermutationSwap, SolverError> {
     let permutation = &state.plan.copy_permutations[copy_index];
-    let left_target = permutation.apply(left)?;
-    let right_target = permutation.apply(right)?;
+    let image = &permutation.image_by_person;
+    let left_target = image[left];
+    let right_target = image[right];
     let universe = state.pair_state.universe();
     let mut aggregated_adjustments = RelabelingPairAdjustmentAccumulator::with_capacity(
         2 * context.atom_weeks * context.problem.group_size.saturating_sub(1),
@@ -548,14 +550,14 @@ fn evaluate_copy_permutation_swap(
         let right_mates = &context.groupmates_by_person_by_week[right][week_idx];
 
         for &mate in left_mates {
-            let mate_target = permutation.apply(mate)?;
-            aggregated_adjustments.apply(universe.pair_index(left_target, mate_target)?, -1);
-            aggregated_adjustments.apply(universe.pair_index(right_target, mate_target)?, 1);
+            let mate_target = image[mate];
+            aggregated_adjustments.apply(pair_index_fast(universe, left_target, mate_target), -1);
+            aggregated_adjustments.apply(pair_index_fast(universe, right_target, mate_target), 1);
         }
         for &mate in right_mates {
-            let mate_target = permutation.apply(mate)?;
-            aggregated_adjustments.apply(universe.pair_index(right_target, mate_target)?, -1);
-            aggregated_adjustments.apply(universe.pair_index(left_target, mate_target)?, 1);
+            let mate_target = image[mate];
+            aggregated_adjustments.apply(pair_index_fast(universe, right_target, mate_target), -1);
+            aggregated_adjustments.apply(pair_index_fast(universe, left_target, mate_target), 1);
         }
     }
 
@@ -624,6 +626,24 @@ fn score_delta_for_adjustments(
         Ok(delta_sum
             + pair_state.score_delta_for_pair_change(adjustment.pair_idx, adjustment.delta, model)?)
     })
+}
+
+fn pair_index_fast(
+    universe: &crate::solver6::score::PairUniverse,
+    left: usize,
+    right: usize,
+) -> usize {
+    debug_assert_ne!(left, right);
+    debug_assert!(left < universe.num_people());
+    debug_assert!(right < universe.num_people());
+
+    let (left, right) = if left < right {
+        (left, right)
+    } else {
+        (right, left)
+    };
+    let row_offset = left * (2 * universe.num_people() - left - 1) / 2;
+    row_offset + (right - left - 1)
 }
 
 fn build_random_relabeling_plan_from_context(
