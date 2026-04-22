@@ -45,14 +45,16 @@ describe('NumberField', () => {
 
     expect(screen.getByRole('slider', { name: /sessions slider/i })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /sessions/i })).toHaveValue('4');
+    expect(screen.getByRole('button', { name: /decrease sessions/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /increase sessions/i })).toBeInTheDocument();
   });
 
-  it('pins the slider to softMax when the value overflows', () => {
+  it('pins the slider to softMax when the value overflows without showing scale labels', () => {
     render(<NumberFieldHarness value={27} />);
 
     expect(screen.getByRole('slider', { name: /sessions slider/i })).toHaveValue('10');
-    expect(screen.getByText('10+')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: /sessions/i })).toHaveValue('27');
+    expect(screen.queryByText('10+')).not.toBeInTheDocument();
   });
 
   it('keeps the slider scale fixed when the value overflows', () => {
@@ -65,7 +67,7 @@ describe('NumberField', () => {
   });
 
   it('uses the configured soft range for the slider track', () => {
-    render(<NumberFieldHarness value={4} />);
+    render(<NumberFieldHarness />);
 
     const slider = screen.getByRole('slider', { name: /sessions slider/i }) as HTMLInputElement;
     expect(slider).toHaveAttribute('min', '1');
@@ -84,6 +86,19 @@ describe('NumberField', () => {
 
     await user.keyboard('{Shift>}{ArrowUp}{/Shift}');
     expect(input).toHaveValue('15');
+  });
+
+  it('supports stepper buttons for precise slider adjustments', async () => {
+    const user = userEvent.setup();
+    render(<NumberFieldHarness />);
+
+    await user.click(screen.getByRole('button', { name: /increase sessions/i }));
+    expect(screen.getByLabelText('current-value')).toHaveTextContent('5');
+    expect(screen.getAllByRole('textbox').map((element) => (element as HTMLInputElement).value)).toEqual(['5']);
+
+    await user.click(screen.getByRole('button', { name: /decrease sessions/i }));
+    expect(screen.getByLabelText('current-value')).toHaveTextContent('4');
+    expect(screen.getAllByRole('textbox').map((element) => (element as HTMLInputElement).value)).toEqual(['4']);
   });
 
   it('supports decimal fields and commits on blur', async () => {
