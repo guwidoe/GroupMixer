@@ -2,6 +2,10 @@ import { ArrowRight, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
+import {
+  HEADER_ACTION_BUTTON_CLASS,
+  HEADER_ACTION_DIVIDER_CLASS,
+} from '../components/headerActionStyles';
 import { EmbeddableTool, type EmbeddableToolHandle } from '../components/LandingTool/EmbeddableTool';
 import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
@@ -130,16 +134,21 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         desktopBreakpoint="landing"
         utilityRailFramed={false}
         renderDesktopActions={() => (
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <>
             <button
               type="button"
               onClick={() => openAdvancedWorkspace()}
-              className="btn-secondary hidden sm:inline-flex items-center gap-1.5"
+              className={[HEADER_ACTION_BUTTON_CLASS, 'hidden min-[700px]:inline-flex items-center gap-1.5 whitespace-nowrap'].join(' ')}
             >
               {config.chrome.expertWorkspaceLabel}
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
-          </div>
+            <div
+              className={HEADER_ACTION_DIVIDER_CLASS}
+              style={{ backgroundColor: 'var(--border-primary)' }}
+              aria-hidden="true"
+            />
+          </>
         )}
         renderDesktopUtilityActions={() => (
           <LandingLanguageSelector
