@@ -47,7 +47,7 @@ const EN_LANDING_UI: ToolPageSharedUiContent = {
     avoidPairingLabel: 'Keep apart',
     avoidPairingHelp: 'Prevent specific pairs of people from being placed in the same group. Write one pair per line. Example: "Alex, Sam" means Alex and Sam must never be grouped together.',
     avoidPairingPlaceholder: 'One pair per line\nAlex, Ella\nSam, Jordan',
-    fullEditorPrompt: 'Need even more options? Use the scenario editor.',
+    fullEditorPrompt: 'Need even more options? Use the scenario editor. Your setup from this page comes with you.',
     fullEditorButtonLabel: 'Open scenario editor',
     balanceGroupsByAttributeLabel: 'Balance groups by attribute',
     balanceGroupsByAttributeHelp: 'Set target counts for each attribute value inside each group. Keep auto distribute enabled for fair automatic targets, or edit the counts manually when you need exact control.',
