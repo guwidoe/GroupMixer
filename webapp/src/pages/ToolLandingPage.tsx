@@ -712,7 +712,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 ].filter(Boolean).join(' ')}
                 style={toolColumnsStyle}
               >
-                <div className="min-w-0">
+                <div className="landing-participants-pane min-w-0">
                   <SectionLabelWithTooltip
                     label={ui.quickSetup.participantsLabel}
                     help={ui.quickSetup.participantsHelp}
@@ -828,7 +828,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     }}
                   />
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="landing-participants-controls mt-4">
                     <div>
                       <NumberField
                         label={ui.quickSetup.groupingValueGroupCountLabel}
@@ -859,13 +859,13 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                       />
                     </div>
 
-                    <div>
+                    <div className="landing-participants-controls__sessions min-w-0 w-full">
                       <div className="mb-[0.86rem] flex items-center justify-between gap-3">
                         <label className="text-sm font-medium" htmlFor="landing-sessions-slider">
                           {ui.advancedOptions.sessionsLabel}
                         </label>
                         <label
-                          className="ml-auto flex min-w-0 max-w-[65%] items-center gap-2 text-xs font-medium sm:max-w-[70%] sm:text-sm"
+                          className="landing-participants-controls__repeat-toggle"
                           style={{ color: 'var(--text-secondary)' }}
                         >
                           <input
@@ -893,6 +893,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                       </div>
                       <NumberField
                         id="landing-sessions-slider"
+                        className="w-full"
                         value={draft.sessions}
                         onChange={(value) =>
                           controller.updateDraft((current) => ({

@@ -978,7 +978,7 @@
     display: block;
     font-size: 0.875rem;
     font-weight: 500;
-    color: var(--text-secondary);
+    color: var(--text-primary);
   }
 
   .number-field__controls {
@@ -992,6 +992,56 @@
 
   .number-field--compact .number-field__controls {
     gap: 0.375rem;
+  }
+
+  .landing-participants-pane {
+    container-type: inline-size;
+  }
+
+  .landing-participants-controls {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .landing-participants-controls__sessions {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .landing-participants-controls__repeat-toggle {
+    margin-left: auto;
+    display: flex;
+    min-width: 0;
+    max-width: 65%;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  @container (min-width: 34rem) {
+    .landing-participants-controls {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .landing-participants-controls__sessions {
+      grid-column: 1 / -1;
+    }
+
+    .landing-participants-controls__repeat-toggle {
+      max-width: 70%;
+      font-size: 0.875rem;
+    }
+  }
+
+  @container (min-width: 54rem) {
+    .landing-participants-controls {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .landing-participants-controls__sessions {
+      grid-column: auto;
+    }
   }
 
   .number-field__slider-column {
