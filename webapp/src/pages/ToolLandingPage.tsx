@@ -54,10 +54,10 @@ interface DisplaySession {
 }
 
 const LANDING_TOOL_RESIZE_STORAGE_KEY = 'landing:tool-split';
-const LANDING_TOOL_RESIZE_MIN_WIDTH = 1100;
 const LANDING_TOOL_RESIZE_HANDLE_WIDTH = 22;
 const LANDING_TOOL_LEFT_MIN_WIDTH = 400;
 const LANDING_TOOL_RIGHT_MIN_WIDTH = 340;
+const LANDING_TOOL_RESIZE_MIN_WIDTH = LANDING_TOOL_LEFT_MIN_WIDTH + LANDING_TOOL_RIGHT_MIN_WIDTH + LANDING_TOOL_RESIZE_HANDLE_WIDTH;
 
 function buildDisplaySessions(
   sharedSessionData: Array<{ sessionIndex: number; groups: Array<{ id: string; people: Array<{ id: string }> }> }>,
@@ -628,6 +628,14 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     }
   };
 
+  const handleClearAllInputs = () => {
+    if (controller.hasAnyInputData && !window.confirm(ui.quickSetup.clearAllConfirmMessage)) {
+      return;
+    }
+
+    controller.clearDraft();
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
       <Seo
@@ -708,17 +716,26 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     label={ui.quickSetup.participantsLabel}
                     help={ui.quickSetup.participantsHelp}
                     action={(
-                      <DemoDataDropdown
-                        onDemoCaseClick={(demoCaseId) => {
-                          void handleLandingDemoCaseClick(demoCaseId);
-                        }}
-                        variant="default"
-                        triggerLabel="Example data"
-                        triggerButtonSize="sm"
-                        triggerClassName="min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
-                        loadCases={loadLandingCompatibleDemoCasesWithMetrics}
-                        includeGeneratedDemo={false}
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleClearAllInputs}
+                          className="ui-button ui-button--ghost ui-button--sm min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
+                        >
+                          {ui.quickSetup.clearAllLabel}
+                        </button>
+                        <DemoDataDropdown
+                          onDemoCaseClick={(demoCaseId) => {
+                            void handleLandingDemoCaseClick(demoCaseId);
+                          }}
+                          variant="default"
+                          triggerLabel="Example data"
+                          triggerButtonSize="sm"
+                          triggerClassName="min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
+                          loadCases={loadLandingCompatibleDemoCasesWithMetrics}
+                          includeGeneratedDemo={false}
+                        />
+                      </div>
                     )}
                   />
                   <LandingParticipantColumnsInput
@@ -945,7 +962,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     type="button"
                     aria-label="Resize landing tool columns"
                     aria-orientation="vertical"
-                    className="hidden lg:flex w-[22px] cursor-col-resize items-center justify-center rounded-full border-0 bg-transparent p-0"
+                    className="flex w-[22px] cursor-col-resize items-center justify-center rounded-full border-0 bg-transparent p-0"
                     onPointerDown={(event) => {
                       event.preventDefault();
                       event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -960,7 +977,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                   </button>
                 ) : null}
 
-                <div className="lg:pl-2">
+                <div className={canResizeToolColumns ? 'pl-2' : undefined}>
                   <QuickSetupAdvancedOptions controller={controller} onOpenFullEditor={() => openAdvancedWorkspace('people')} />
                 </div>
               </div>

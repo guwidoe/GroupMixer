@@ -57,6 +57,8 @@ export interface QuickSetupController {
   generateGroups: () => void;
   reshuffle: () => void;
   resetDraft: () => void;
+  clearDraft: () => void;
+  hasAnyInputData: boolean;
   loadSampleData: () => void;
   loadScenarioDraft: (scenario: Scenario) => boolean;
   exportGroupsCsv: () => void;
@@ -88,6 +90,25 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
     ...draft,
     participantColumns: normalizeParticipantColumns(draft),
   };
+}
+
+function emptyDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
+  const cleared = defaultDraft(pageConfig);
+
+  return normalizeQuickSetupDraft({
+    ...withParticipantColumns(cleared, [{ id: 'name', name: 'Name', values: '' }]),
+    keepTogetherInput: '',
+    avoidPairingsInput: '',
+    fixedAssignments: [],
+    balanceAttributeKey: null,
+    balanceTargets: {},
+    manualBalanceAttributeKeys: [],
+    workspaceScenarioId: null,
+  });
+}
+
+function draftsMatch(left: QuickSetupDraft, right: QuickSetupDraft): boolean {
+  return JSON.stringify(normalizeQuickSetupDraft(left)) === JSON.stringify(normalizeQuickSetupDraft(right));
 }
 
 function normalizeQuickSetupDraft(draft: QuickSetupDraft): QuickSetupDraft {
@@ -610,6 +631,15 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     void generateWithSeed(Date.now() + Math.floor(Math.random() * 100000));
   }, [generateWithSeed]);
 
+  const clearDraft = useCallback(() => {
+    setDraft(emptyDraft(pageConfig));
+    setResult(null);
+    setLastSolvedScenario(null);
+    setLastSolvedSolution(null);
+    setLastSolvedAttributeDefinitions([]);
+    setErrorMessage(null);
+  }, [pageConfig, setDraft]);
+
   const resetDraft = useCallback(() => {
     setDraft(defaultDraft(pageConfig));
     setResult(null);
@@ -618,6 +648,11 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     setLastSolvedAttributeDefinitions([]);
     setErrorMessage(null);
   }, [pageConfig, setDraft]);
+
+  const hasAnyInputData = useMemo(
+    () => !draftsMatch(draft, emptyDraft(pageConfig)) || result !== null || errorMessage !== null,
+    [draft, errorMessage, pageConfig, result],
+  );
 
   const loadSampleData = useCallback(() => {
     setDraft((current) => ({
@@ -684,6 +719,8 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     generateGroups,
     reshuffle,
     resetDraft,
+    clearDraft,
+    hasAnyInputData,
     loadSampleData,
     loadScenarioDraft,
     exportGroupsCsv,

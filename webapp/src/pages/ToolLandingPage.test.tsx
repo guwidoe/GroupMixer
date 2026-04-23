@@ -469,6 +469,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.queryByRole('button', { name: /switch to csv/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /sample/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^reset$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument();
     expect(screen.getByText(/^fixed people$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/balance groups by attribute/i).length).toBeGreaterThan(0);
     
@@ -601,6 +602,37 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Ada - Grace');
     expect(screen.getByRole('textbox', { name: /fixed people: name/i })).toHaveTextContent('Ada');
     expect(screen.getByRole('textbox', { name: /fixed people: group/i })).toHaveTextContent('Group 1');
+  });
+
+  it('confirms before clearing existing landing inputs', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/keep apart/i), 'Ada - Grace');
+    await user.click(screen.getByRole('button', { name: /clear all/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Clear all current inputs and results?');
+    expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Ada - Grace');
+
+    confirmSpy.mockClear();
+    confirmSpy.mockReturnValue(true);
+
+    await user.click(screen.getByRole('button', { name: /clear all/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Clear all current inputs and results?');
+    expect(screen.getByLabelText(/keep apart/i)).toHaveValue('');
+
+    confirmSpy.mockClear();
+
+    await user.click(screen.getByRole('button', { name: /clear all/i }));
+
+    expect(confirmSpy).not.toHaveBeenCalled();
   });
 
   it('lets users remove attribute columns from the structured participant editor', async () => {

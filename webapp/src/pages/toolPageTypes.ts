@@ -89,6 +89,8 @@ export interface ToolPageQuickSetupUiContent {
   switchToNamesLabel: string;
   sampleLabel: string;
   resetLabel: string;
+  clearAllLabel: string;
+  clearAllConfirmMessage: string;
   namesPlaceholder: string;
   csvPlaceholder: string;
   groupingValueGroupCountLabel: string;
