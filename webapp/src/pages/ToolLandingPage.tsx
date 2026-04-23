@@ -115,26 +115,35 @@ function SectionLabelWithTooltip({
   label,
   help,
   htmlFor,
+  action,
 }: {
   label: string;
   help: string;
   htmlFor?: string;
+  action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-2 flex items-center gap-1.5">
-      <label htmlFor={htmlFor} className="block text-sm font-medium">
-        {label}
-      </label>
-      <Tooltip content={help} offset={6} maxWidth={360}>
-        <button
-          type="button"
-          aria-label="Show section help"
-          className="inline-flex h-4 min-w-4 items-center justify-center rounded-full text-[0.7rem] font-medium leading-none"
-          style={{ color: 'var(--text-tertiary)' }}
-        >
-          <CircleHelp className="h-3.5 w-3.5" />
-        </button>
-      </Tooltip>
+    <div className={action ? 'relative mb-2 pr-28 sm:pr-32' : 'mb-2'}>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <label htmlFor={htmlFor} className="block text-sm font-medium">
+          {label}
+        </label>
+        <Tooltip content={help} offset={6} maxWidth={360}>
+          <button
+            type="button"
+            aria-label="Show section help"
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-full text-[0.7rem] font-medium leading-none"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
+            <CircleHelp className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
+      </div>
+      {action ? (
+        <div className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center">
+          {action}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -635,15 +644,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         logoAlt="GroupMixer logo"
         renderDesktopActions={() => (
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <DemoDataDropdown
-              onDemoCaseClick={(demoCaseId) => {
-                void handleLandingDemoCaseClick(demoCaseId);
-              }}
-              variant="header"
-              triggerLabel="Demo Data"
-              loadCases={loadLandingCompatibleDemoCasesWithMetrics}
-              includeGeneratedDemo={false}
-            />
             <button
               type="button"
               onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
@@ -663,15 +663,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         )}
         renderMobileActions={() => (
           <>
-            <DemoDataDropdown
-              onDemoCaseClick={(demoCaseId) => {
-                void handleLandingDemoCaseClick(demoCaseId);
-              }}
-              variant="menu"
-              triggerLabel="Demo Data"
-              loadCases={loadLandingCompatibleDemoCasesWithMetrics}
-              includeGeneratedDemo={false}
-            />
             <button
               type="button"
               onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
@@ -716,6 +707,19 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                   <SectionLabelWithTooltip
                     label={ui.quickSetup.participantsLabel}
                     help={ui.quickSetup.participantsHelp}
+                    action={(
+                      <DemoDataDropdown
+                        onDemoCaseClick={(demoCaseId) => {
+                          void handleLandingDemoCaseClick(demoCaseId);
+                        }}
+                        variant="default"
+                        triggerLabel="Example data"
+                        triggerButtonSize="sm"
+                        triggerClassName="min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
+                        loadCases={loadLandingCompatibleDemoCasesWithMetrics}
+                        includeGeneratedDemo={false}
+                      />
+                    )}
                   />
                   <LandingParticipantColumnsInput
                     label={ui.quickSetup.participantsLabel}

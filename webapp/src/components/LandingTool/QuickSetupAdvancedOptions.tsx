@@ -56,7 +56,7 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
   const fixedAssignments = normalizeFixedAssignmentRows(draft.fixedAssignments);
   const fixedPeopleNamePlaceholder = analysis.participants.length > 0
     ? analysis.participants.slice(0, 2).map((participant) => participant.name).join('\n')
-    : 'Alex\nSam';
+    : 'Alex\nElla';
   const fixedPeopleGroupPlaceholder = balanceGroups.length > 0
     ? balanceGroups.slice(0, 2).map((group) => group.id).join('\n')
     : 'Group 1\nGroup 2';

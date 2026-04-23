@@ -552,7 +552,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(checkbox).toBeChecked();
   });
 
-  it('loads landing-compatible demo data into the quick setup form', async () => {
+  it('loads landing-compatible example data into the quick setup form', async () => {
     const user = userEvent.setup();
     const demoFixture = {
       demo_metadata: {
@@ -591,7 +591,7 @@ describe('ToolLandingPage SEO wiring', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getAllByRole('button', { name: /demo data/i })[0]);
+    await user.click(screen.getByRole('button', { name: /example data/i }));
     await user.click(await screen.findByRole('menuitem', { name: /landing ok/i }));
 
     await waitFor(() => {
@@ -764,7 +764,7 @@ describe('ToolLandingPage SEO wiring', () => {
     );
     expect(screen.getByLabelText(/keep apart/i)).toHaveAttribute(
       'placeholder',
-      'One pair per line\nAlex, Sam\nElla, Jordan',
+      'One pair per line\nAlex, Ella\nSam, Jordan',
     );
   });
 
