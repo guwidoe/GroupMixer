@@ -1,4 +1,4 @@
-export type GuidePageKey = 'avoid-repeat-pairings-in-workshops';
+export type GuidePageKey = 'avoid-repeat-pairings-in-workshops' | 'run-speed-networking-rounds';
 
 export interface GuidePageLink {
   label: string;
