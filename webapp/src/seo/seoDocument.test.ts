@@ -23,6 +23,8 @@ describe('buildSeoDocument locale SEO metadata', () => {
       { hreflang: 'es', href: 'https://www.groupmixer.app/es/random-team-generator' },
       { hreflang: 'x-default', href: 'https://www.groupmixer.app/random-team-generator' },
     ]);
+    expect(documentData.schemaText).toContain('"WebSite"');
+    expect(documentData.schemaText).toContain('"Organization"');
     expect(documentData.schemaText).toContain('"inLanguage":"es"');
   });
 
@@ -46,5 +48,17 @@ describe('buildSeoDocument locale SEO metadata', () => {
       href: 'https://www.groupmixer.app/zh/random-team-generator',
     });
     expect(documentData.schemaText).toContain('"inLanguage":"zh-Hans"');
+  });
+
+  it('includes site identity schema for GroupMixer and its owner', () => {
+    const documentData = buildSeoDocument({
+      title: 'GroupMixer',
+      description: 'Browser-based group assignment tool',
+      canonicalPath: '/',
+      faqEntries: [],
+    });
+
+    expect(documentData.schemaText).toContain('"name":"GroupMixer"');
+    expect(documentData.schemaText).toContain('"founder":{"@type":"Person","name":"Guido Witt-Dörring"}');
   });
 });
