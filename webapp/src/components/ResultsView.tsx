@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { BarChart3, Target } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BarChart3, History, Target } from 'lucide-react';
 import { useAppStore } from '../store';
 import { createResultClipboardText, createResultExportFile, type ResultClipboardAction, type ResultExportAction } from '../utils/csvExport';
 import { compareScenarioConfigurations } from '../services/scenarioStorage';
@@ -11,9 +12,11 @@ import { buildResultsViewModel } from '../services/results/buildResultsModel';
 import { ResultsHeader } from './ResultsView/ResultsHeader';
 import { ResultsMetrics } from './ResultsView/ResultsMetrics';
 import { ResultsSchedule } from './ResultsView/ResultsSchedule';
+import { Button } from './ui';
 
 export function ResultsView() {
   const { scenario, solution, solverState, currentScenarioId, currentResultId, savedScenarios, restoreResultAsNewScenario, addNotification } = useAppStore();
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'visualize'>('grid');
   const [vizPluginId, setVizPluginId] = useLocalStorageState('resultsVisualizationPlugin', 'scheduleMatrix');
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -224,26 +227,42 @@ export function ResultsView() {
     return buildResultsViewModel(effectiveScenario, solution);
   }, [solution, effectiveScenario]);
 
+  const savedResultsAction = currentScenarioId ? (
+    <Button
+      variant="secondary"
+      leadingIcon={<History className="h-4 w-4" />}
+      onClick={() => navigate('/app/history')}
+    >
+      Saved Results
+    </Button>
+  ) : null;
+
   if (!solution) {
     return (
-      <div className="flex flex-col items-center justify-center py-12" style={{ color: 'var(--text-secondary)' }}>
-        <Target className="w-16 h-16 mb-4" style={{ color: 'var(--text-tertiary)' }} />
-        <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>No Results Yet</h3>
-        <p className="text-center max-w-md" style={{ color: 'var(--text-secondary)' }}>
-          Run the solver or select one of the results from the Results tab to see optimization results and group assignments.
-        </p>
+      <div className="space-y-6">
+        {savedResultsAction ? <div className="flex justify-end">{savedResultsAction}</div> : null}
+        <div className="flex flex-col items-center justify-center py-12" style={{ color: 'var(--text-secondary)' }}>
+          <Target className="w-16 h-16 mb-4" style={{ color: 'var(--text-tertiary)' }} />
+          <h3 className="text-lg font-medium mb-2" style={{ color: 'var(--text-primary)' }}>No Results Yet</h3>
+          <p className="text-center max-w-md" style={{ color: 'var(--text-secondary)' }}>
+            Run the solver or open a saved result from Saved Results to inspect assignments, exports, and group layouts.
+          </p>
+        </div>
       </div>
     );
   }
 
   if (!effectiveScenario) {
     return (
-      <div className="text-center py-12">
-        <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>No Results Available</h3>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-          Run the solver to generate results for this scenario.
-        </p>
+      <div className="space-y-6">
+        {savedResultsAction ? <div className="flex justify-end">{savedResultsAction}</div> : null}
+        <div className="text-center py-12">
+          <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>No Results Available</h3>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Run the solver to generate results for this scenario.
+          </p>
+        </div>
       </div>
     );
   }
@@ -255,6 +274,8 @@ export function ResultsView() {
         solution={solution}
         summary={resultsModel?.summary ?? null}
         configDiff={configDiff}
+        showSavedResultsAction={Boolean(currentScenarioId)}
+        onOpenSavedResults={() => navigate('/app/history')}
         configDetailsOpen={configDetailsOpen}
         onToggleConfigDetails={() => setConfigDetailsOpen(!configDetailsOpen)}
         onRestoreConfig={() => {

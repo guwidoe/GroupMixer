@@ -496,7 +496,7 @@ fn test_error_on_clique_too_large() {
 }
 
 #[test]
-fn test_error_on_forbidden_pair_in_clique() {
+fn test_error_on_soft_apart_pair_in_clique() {
     let mut input = create_test_input(5, vec![(1, 5)], 1);
     input.constraints = vec![
         Constraint::MustStayTogether {
@@ -516,6 +516,73 @@ fn test_error_on_forbidden_pair_in_clique() {
         .unwrap_err()
         .to_string()
         .contains("ShouldNotBeTogether constraint conflicts with MustStayTogether"));
+}
+
+#[test]
+fn test_must_stay_apart_pairwise_expansion_and_session_adjacency() {
+    let mut input = create_test_input(4, vec![(4, 1)], 2);
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into(), "p2".into()],
+        sessions: Some(vec![1]),
+    }];
+
+    let state = State::new(&input).unwrap();
+    let p0 = state.person_id_to_idx["p0"];
+    let p1 = state.person_id_to_idx["p1"];
+    let p2 = state.person_id_to_idx["p2"];
+
+    assert_eq!(state.hard_apart_pairs.len(), 3);
+    assert!(state.hard_apart_pairs.contains(&(p0.min(p1), p0.max(p1))));
+    assert!(state.hard_apart_pairs.contains(&(p0.min(p2), p0.max(p2))));
+    assert!(state.hard_apart_pairs.contains(&(p1.min(p2), p1.max(p2))));
+    for sessions in &state.hard_apart_pair_sessions {
+        assert_eq!(sessions.as_ref().unwrap(), &vec![1usize]);
+    }
+
+    assert!(state.hard_apart_partners(0, p0).is_empty());
+    assert_eq!(state.hard_apart_partners(1, p0), &[p1, p2]);
+    assert_eq!(state.hard_apart_partners(1, p1), &[p0, p2]);
+}
+
+#[test]
+fn test_construction_seed_rejects_must_stay_apart_violation() {
+    let mut input = create_test_input(4, vec![(2, 2)], 1);
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: None,
+    }];
+    input.construction_seed_schedule = Some(HashMap::from([(
+        "session_0".to_string(),
+        HashMap::from([
+            ("g0_0".to_string(), vec!["p0".to_string(), "p1".to_string()]),
+            ("g0_1".to_string(), vec!["p2".to_string()]),
+        ]),
+    )]));
+
+    let error = State::new(&input).unwrap_err().to_string();
+    assert!(
+        error.contains("construction seed places must-stay-apart pair ['p0', 'p1'] together"),
+        "{error}"
+    );
+}
+
+#[test]
+fn test_hard_apart_recompute_tracks_raw_violations_only() {
+    let mut input = create_test_input(4, vec![(2, 2)], 1);
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: None,
+    }];
+
+    let mut state = State::new(&input).unwrap();
+    state.schedule = vec![vec![vec![0, 1], vec![2, 3]]];
+    state._recalculate_locations_from_schedule();
+    state._recalculate_scores();
+
+    assert_eq!(state.hard_apart_pair_violations, vec![1]);
+    assert_eq!(state.constraint_penalty, 1);
+    assert_eq!(state.weighted_constraint_penalty, 0.0);
+    assert!(state.validate_hard_constraints().is_err());
 }
 
 #[test]

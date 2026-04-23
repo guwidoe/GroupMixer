@@ -26,6 +26,17 @@ export const HARD_SECTION_COPY: Record<HardConstraintFamily, { title: string; de
     icon: <Users className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
     addLabel: getConstraintAddLabel('MustStayTogether'),
   },
+  MustStayApart: {
+    title: getConstraintDisplayName('MustStayApart'),
+    description: (
+      <p>
+        Require selected people to stay in different groups. This is a requirement, so putting them together would make
+        the solution invalid.
+      </p>
+    ),
+    icon: <UserMinus className="h-10 w-10" style={{ color: 'var(--text-tertiary)' }} />,
+    addLabel: getConstraintAddLabel('MustStayApart'),
+  },
 };
 
 export const SOFT_SECTION_COPY: Record<SoftConstraintFamily, { title: string; description: React.ReactNode; icon: React.ReactNode; addLabel: string }> = {

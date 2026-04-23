@@ -4,7 +4,7 @@ benchmark_mode: search_iteration
 class: representative
 title: Hotpath search iteration benchmark suite
 description: Deterministic prebuilt-state search iteration lanes for recording/history bundles.
-default_iterations: 8
+default_iterations: 10000
 default_warmup_iterations: 1
 cases:
   - manifest: ../cases/hotpath/search_mixed.json

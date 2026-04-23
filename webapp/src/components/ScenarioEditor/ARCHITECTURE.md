@@ -146,3 +146,21 @@ Hard and soft constraints may keep their own local family selector in the first 
 Attribute Definitions are a **first-class setup concept** in the target IA.
 
 During the transition, existing attribute UI can be reused, but the long-term navigation model should treat attributes as their own section rather than as an implementation detail nested under People.
+
+## Scenario document boundary
+
+Scenario Setup edits a **frontend document aggregate**, not just the solver DTO.
+
+- `Scenario` = solver-facing payload that matches `gm-core`
+- `ScenarioDocument` = editor-facing aggregate:
+  - `scenario`
+  - `attributeDefinitions`
+
+This distinction is normative for the refactor:
+
+- the editor/store should treat `ScenarioDocument` as the primary workspace document
+- reconciliation and normalization should happen at the document boundary
+- solver/runtime flows should consume the derived solver payload from that document
+- attribute definitions are first-class document data, not incidental side state
+
+This keeps the GUI truthful to the real editing model and gives undo/redo a clean architectural unit.

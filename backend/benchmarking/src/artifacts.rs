@@ -4,7 +4,8 @@ use gm_core::models::{
     BestScoreTimelinePoint, DonorSessionTransplantBenchmarkTelemetry, MemeticBenchmarkTelemetry,
     MoveFamilyBenchmarkTelemetrySummary, MovePolicy,
     MultiRootBalancedSessionInheritanceBenchmarkTelemetry, RepeatGuidedSwapBenchmarkTelemetry,
-    SessionAlignedPathRelinkingBenchmarkTelemetry, SgpWeekPairTabuBenchmarkTelemetry, StopReason,
+    SessionAlignedPathRelinkingBenchmarkTelemetry, SgpWeekPairTabuBenchmarkTelemetry,
+    Solver4PaperTrace, StopReason,
 };
 use serde::{Deserialize, Serialize};
 
@@ -245,6 +246,8 @@ pub struct SearchTelemetryArtifact {
     #[serde(default)]
     pub multi_root_balanced_session_inheritance:
         Option<MultiRootBalancedSessionInheritanceBenchmarkTelemetry>,
+    #[serde(default)]
+    pub solver4_paper_trace: Option<Solver4PaperTrace>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -334,6 +337,8 @@ pub struct RunMetadata {
     pub generated_at: String,
     pub git: GitIdentity,
     pub machine: MachineIdentity,
+    #[serde(default)]
+    pub case_parallelism: Option<usize>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

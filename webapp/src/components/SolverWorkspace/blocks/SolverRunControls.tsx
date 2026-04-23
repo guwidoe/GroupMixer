@@ -2,6 +2,7 @@ import React from 'react';
 import { Info, Pause, Play, RotateCcw, TrendingUp } from 'lucide-react';
 import type { Scenario, SolverState } from '../../../types';
 import type { SolverCatalogEntry } from '../../../services/solverUi';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../../ui';
 import { Tooltip } from '../../Tooltip';
 import type { SolverFormInputs } from '../../SolverPanel/types';
 
@@ -29,7 +30,7 @@ export function SolverRunControls({
   selectedSolverCatalogEntry,
   solverCatalogStatus,
   solverCatalogErrorMessage,
-  solverFormInputs,
+  solverFormInputs: _solverFormInputs,
   setSolverFormInputs,
   desiredRuntimeMain,
   setDesiredRuntimeMain,
@@ -40,6 +41,7 @@ export function SolverRunControls({
   onSaveBestSoFar,
   onResetSolver,
 }: SolverRunControlsProps) {
+  void _solverFormInputs;
   const catalogReady = solverCatalogStatus === 'ready';
   const supportsRecommendedSettings = catalogReady
     ? selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false
@@ -81,9 +83,9 @@ export function SolverRunControls({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex flex-col items-start">
           <div className="mb-1 flex items-center gap-1.5">
-            <label className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+            <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
               Desired Runtime (s)
-            </label>
+            </span>
             {runtimeHelpText ? (
               <Tooltip content={runtimeHelpText} placement="top">
                 <button
@@ -96,23 +98,17 @@ export function SolverRunControls({
               </Tooltip>
             ) : null}
           </div>
-          <input
-            type="number"
-            value={solverFormInputs.desiredRuntimeMain ?? (desiredRuntimeMain?.toString() || '')}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeMain: e.target.value }))
-            }
-            onBlur={() => {
-              const inputValue = solverFormInputs.desiredRuntimeMain ?? (desiredRuntimeMain?.toString() || '');
-              const numValue = inputValue === '' ? null : Number(inputValue);
-              if (numValue === null || (!Number.isNaN(numValue) && numValue >= 1)) {
-                setDesiredRuntimeMain(numValue);
-                setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeMain: undefined }));
-              }
+          <NumberField
+            label={undefined}
+            value={desiredRuntimeMain}
+            onChange={setDesiredRuntimeMain}
+            onCommit={(value) => {
+              setDesiredRuntimeMain(value);
+              setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeMain: undefined }));
             }}
             disabled={solverState.isRunning}
-            className="input w-full sm:w-28"
-            min="1"
+            {...NUMBER_FIELD_PRESETS.runtimeSeconds}
+            className="w-full sm:w-[20rem]"
           />
         </div>
 

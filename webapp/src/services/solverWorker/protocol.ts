@@ -1,4 +1,4 @@
-import type { WasmContractSolveInput, WasmRecommendSettingsRequest } from "../wasm/module";
+import type { WasmContractSolveInput, WasmPublicError, WasmRecommendSettingsRequest } from "../wasm/module";
 import type { ProgressUpdate, RustResult } from "../wasm/types";
 import type { WarmStartSchedule } from "../wasm/scenarioContract";
 
@@ -79,6 +79,7 @@ export type WorkerRequestMessage =
 
 export interface WorkerErrorData {
   error: string;
+  publicError?: WasmPublicError;
   scenarioJson?: string;
   filename?: string;
   lineno?: number;

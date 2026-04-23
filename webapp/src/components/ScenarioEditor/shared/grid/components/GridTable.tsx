@@ -3,12 +3,14 @@ import type { Table } from '@tanstack/react-table';
 import type { ScenarioDataGridColumn } from '../types';
 import { GridBody } from './GridBody';
 import { GridHeaderCell } from './GridHeaderCell';
+import { useGridRowVirtualization } from '../hooks/useGridRowVirtualization';
 
 interface GridTableProps<T> {
   activeRows: T[];
   bodyScrollRef: React.RefObject<HTMLDivElement | null>;
   emptyState?: React.ReactNode;
   maxHeight: string;
+  viewportHeight?: number | null;
   onBodyScroll: () => void;
   onCloseFilter: (columnId: string) => void;
   onRowOpen?: (row: T) => void;
@@ -18,6 +20,7 @@ interface GridTableProps<T> {
   rowOpenLabel?: (row: T, rowIndex: number) => string;
   table: Table<T>;
   tableRef: React.RefObject<HTMLTableElement | null>;
+  virtualizeRows?: boolean;
 }
 
 export function GridTable<T>({
@@ -25,6 +28,7 @@ export function GridTable<T>({
   bodyScrollRef,
   emptyState,
   maxHeight,
+  viewportHeight,
   onBodyScroll,
   onCloseFilter,
   onRowOpen,
@@ -34,9 +38,37 @@ export function GridTable<T>({
   rowOpenLabel,
   table,
   tableRef,
+  virtualizeRows = false,
 }: GridTableProps<T>) {
+  const paginatedRows = table.getRowModel().rows;
+  const {
+    bottomSpacerHeight,
+    measureRow,
+    topSpacerHeight,
+    visibleRowEndIndex,
+    visibleRowStartIndex,
+  } = useGridRowVirtualization({
+    bodyScrollRef,
+    enabled: virtualizeRows,
+    rowCount: paginatedRows.length,
+    viewportHeight,
+  });
+  const visibleRows = visibleRowEndIndex < visibleRowStartIndex
+    ? []
+    : paginatedRows.slice(visibleRowStartIndex, visibleRowEndIndex + 1);
+
   return (
-    <div ref={bodyScrollRef} className="overflow-auto" style={{ maxHeight }} onScroll={onBodyScroll}>
+    <div
+      ref={bodyScrollRef}
+      role="region"
+      aria-label="Data grid rows"
+      className="overflow-auto"
+      style={{
+        height: viewportHeight == null ? undefined : `${viewportHeight}px`,
+        maxHeight: viewportHeight == null ? maxHeight : 'none',
+      }}
+      onScroll={onBodyScroll}
+    >
       <table ref={tableRef} className="w-full border-separate border-spacing-0 text-sm" style={{ width: `${table.getTotalSize()}px`, minWidth: '100%' }}>
         <colgroup>
           {table.getVisibleLeafColumns().map((column) => (
@@ -64,7 +96,17 @@ export function GridTable<T>({
             </tr>
           ))}
         </thead>
-        <GridBody table={table} emptyState={emptyState} onRowOpen={onRowOpen} rowOpenLabel={rowOpenLabel} />
+        <GridBody
+          table={table}
+          emptyState={emptyState}
+          measureRow={measureRow}
+          onRowOpen={onRowOpen}
+          rowOpenLabel={rowOpenLabel}
+          rows={visibleRows}
+          rowOffset={visibleRowStartIndex}
+          topSpacerHeight={topSpacerHeight}
+          bottomSpacerHeight={bottomSpacerHeight}
+        />
       </table>
     </div>
   );

@@ -1,3 +1,4 @@
+/* eslint-disable react/no-multi-comp */
 import { useCallback, useRef, useState } from 'react';
 import { Bug, Menu, Save, Upload } from 'lucide-react';
 import { useAppStore } from '../store';
@@ -5,9 +6,16 @@ import { useOutsideClick } from '../hooks';
 import { AppHeader } from './AppHeader';
 import { HEADER_ACTION_GROUP_CLASS, HEADER_ACTION_TOOLBAR_CLASS } from './headerActionStyles';
 import { DemoDataWarningModal } from './modals/DemoDataWarningModal';
+import { GeneratedDemoDataModal } from './modals/GeneratedDemoDataModal';
 import { DemoDataDropdown } from './ScenarioEditor/DemoDataDropdown';
 import { ThemeToggle } from './ThemeToggle';
 import { Button, getButtonClassName } from './ui';
+import {
+  createGeneratedDemoScenario,
+  formatGeneratedDemoScenarioName,
+  GENERATED_DEMO_CASE_ID,
+} from '../services/demoScenarioGenerator';
+import type { Scenario } from '../types';
 
 const ISSUE_HREF = 'https://github.com/guwidoe/GroupMixer/issues';
 const ISSUE_LABEL = 'Report an issue or suggest a feature';
@@ -16,6 +24,72 @@ interface WorkspaceActionHandlers {
   onLoadScenario: () => void;
   onSaveScenario: () => void;
   onDemoCaseClick: (demoCaseId: string, demoCaseName: string) => void;
+  advancedModeEnabled: boolean;
+  onSetAdvancedModeEnabled: (enabled: boolean) => void;
+  showWorkflowGuideButton: boolean;
+  onSetShowWorkflowGuideButton: (show: boolean) => void;
+}
+
+function PreferenceToggleMenuItem({
+  checked,
+  label,
+  description,
+  ariaLabel,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  description: string;
+  ariaLabel: string;
+  onChange: (enabled: boolean) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={() => onChange(!checked)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-all duration-150"
+      title={description}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      style={{
+        color: 'var(--text-primary)',
+        backgroundColor: hovered
+          ? 'var(--bg-secondary)'
+          : 'transparent',
+      }}
+    >
+      <span className="min-w-0 text-sm font-medium">{label}</span>
+
+      <span
+        className="mt-0.5 inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full p-0.5 transition-all duration-150"
+        style={{
+          backgroundColor: checked
+            ? 'var(--color-accent)'
+            : 'color-mix(in srgb, var(--border-primary) 72%, var(--bg-secondary))',
+          boxShadow: hovered
+            ? '0 0 0 1px color-mix(in srgb, var(--color-accent) 18%, var(--border-primary))'
+            : 'none',
+        }}
+        aria-hidden="true"
+      >
+        <span
+          className="h-5 w-5 rounded-full transition-all duration-150"
+          style={{
+            backgroundColor: 'var(--bg-primary)',
+            boxShadow: '0 1px 3px color-mix(in srgb, black 20%, transparent)',
+            transform: checked ? 'translateX(20px)' : 'translateX(0)',
+          }}
+        />
+      </span>
+    </button>
+  );
 }
 
 function WorkspaceInlineActions({
@@ -67,6 +141,35 @@ function WorkspaceInlineActions({
           variant="header"
           triggerLabel={closeMobileMenu ? 'Demo Data' : 'Demo'}
         />
+      </div>
+
+      <div
+        className="mt-2 rounded-2xl border px-3 py-3"
+        style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
+      >
+        <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
+          Preferences
+        </div>
+        <div className="mt-2 space-y-1.5">
+          <PreferenceToggleMenuItem
+            checked={handlers.advancedModeEnabled}
+            label="Advanced mode"
+            description="Show the dedicated solver page and full workflow steps."
+            ariaLabel="Enable advanced mode"
+            onChange={(enabled) => {
+              handlers.onSetAdvancedModeEnabled(enabled);
+            }}
+          />
+          <PreferenceToggleMenuItem
+            checked={handlers.showWorkflowGuideButton}
+            label="Show workflow guide button"
+            description="Show the floating next-step button in the bottom-right corner."
+            ariaLabel="Show workflow guide button"
+            onChange={(show) => {
+              handlers.onSetShowWorkflowGuideButton(show);
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -180,10 +283,35 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
 
           <div className="border-t px-4 py-3" style={{ borderColor: 'var(--border-primary)' }}>
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-              Appearance
+              Preferences
             </div>
-            <div className="mt-3">
-              <ThemeToggle showLabel size="sm" />
+            <div className="mt-2 space-y-1.5">
+              <PreferenceToggleMenuItem
+                checked={handlers.advancedModeEnabled}
+                label="Advanced mode"
+                description="Show the dedicated solver page and full workflow steps."
+                ariaLabel="Enable advanced mode"
+                onChange={(enabled) => {
+                  handlers.onSetAdvancedModeEnabled(enabled);
+                }}
+              />
+              <PreferenceToggleMenuItem
+                checked={handlers.showWorkflowGuideButton}
+                label="Show workflow guide button"
+                description="Show the floating next-step button in the bottom-right corner."
+                ariaLabel="Show workflow guide button"
+                onChange={(show) => {
+                  handlers.onSetShowWorkflowGuideButton(show);
+                }}
+              />
+            </div>
+            <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--border-primary)' }}>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
+                Appearance
+              </div>
+              <div className="mt-3">
+                <ThemeToggle showLabel size="sm" />
+              </div>
             </div>
           </div>
 
@@ -231,13 +359,21 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
     savedScenarios,
     setShowScenarioManager,
     saveScenario,
+    ui,
+    setAdvancedModeEnabled,
+    setShowWorkflowGuideButton,
     loadDemoCase,
     loadDemoCaseOverwrite,
     loadDemoCaseNewScenario,
+    loadGeneratedDemoScenario,
+    loadGeneratedDemoScenarioOverwrite,
+    loadGeneratedDemoScenarioNewScenario,
   } = useAppStore();
   const [showDemoWarningModal, setShowDemoWarningModal] = useState(false);
+  const [showGeneratedDemoModal, setShowGeneratedDemoModal] = useState(false);
   const [pendingDemoCaseId, setPendingDemoCaseId] = useState<string | null>(null);
   const [pendingDemoCaseName, setPendingDemoCaseName] = useState<string | null>(null);
+  const [pendingGeneratedScenario, setPendingGeneratedScenario] = useState<Scenario | null>(null);
 
   const currentScenarioName = currentScenarioId
     ? savedScenarios[currentScenarioId]?.name ?? 'Untitled Scenario'
@@ -251,6 +387,11 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
       saveScenario(currentScenarioName);
     },
     onDemoCaseClick: (demoCaseId, demoCaseName) => {
+      if (demoCaseId === GENERATED_DEMO_CASE_ID) {
+        setShowGeneratedDemoModal(true);
+        return;
+      }
+
       const hasContent =
         scenario && (scenario.people.length > 0 || scenario.groups.length > 0 || scenario.constraints.length > 0);
 
@@ -262,6 +403,14 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
       }
 
       loadDemoCase(demoCaseId);
+    },
+    advancedModeEnabled: ui.advancedModeEnabled ?? false,
+    onSetAdvancedModeEnabled: (enabled) => {
+      setAdvancedModeEnabled(enabled);
+    },
+    showWorkflowGuideButton: ui.showWorkflowGuideButton ?? true,
+    onSetShowWorkflowGuideButton: (show) => {
+      setShowWorkflowGuideButton(show);
     },
   };
 
@@ -283,24 +432,54 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
           setShowDemoWarningModal(false);
           setPendingDemoCaseId(null);
           setPendingDemoCaseName(null);
+          setPendingGeneratedScenario(null);
         }}
         onOverwrite={() => {
-          if (pendingDemoCaseId) {
+          if (pendingGeneratedScenario) {
+            loadGeneratedDemoScenarioOverwrite(pendingGeneratedScenario, pendingDemoCaseName ?? 'Random Demo');
+          } else if (pendingDemoCaseId) {
             loadDemoCaseOverwrite(pendingDemoCaseId);
           }
           setShowDemoWarningModal(false);
           setPendingDemoCaseId(null);
           setPendingDemoCaseName(null);
+          setPendingGeneratedScenario(null);
         }}
         onLoadNew={() => {
-          if (pendingDemoCaseId) {
+          if (pendingGeneratedScenario) {
+            loadGeneratedDemoScenarioNewScenario(pendingGeneratedScenario, pendingDemoCaseName ?? 'Random Demo');
+          } else if (pendingDemoCaseId) {
             loadDemoCaseNewScenario(pendingDemoCaseId);
           }
           setShowDemoWarningModal(false);
           setPendingDemoCaseId(null);
           setPendingDemoCaseName(null);
+          setPendingGeneratedScenario(null);
         }}
         demoCaseName={pendingDemoCaseName || 'Demo Case'}
+      />
+
+      <GeneratedDemoDataModal
+        isOpen={showGeneratedDemoModal}
+        onClose={() => setShowGeneratedDemoModal(false)}
+        onGenerate={(options) => {
+          const generatedScenario = createGeneratedDemoScenario(options);
+          const generatedScenarioName = formatGeneratedDemoScenarioName(options);
+          const hasContent =
+            scenario && (scenario.people.length > 0 || scenario.groups.length > 0 || scenario.constraints.length > 0);
+
+          setShowGeneratedDemoModal(false);
+
+          if (hasContent) {
+            setPendingGeneratedScenario(generatedScenario);
+            setPendingDemoCaseId(null);
+            setPendingDemoCaseName(generatedScenarioName);
+            setShowDemoWarningModal(true);
+            return;
+          }
+
+          loadGeneratedDemoScenario(generatedScenario, generatedScenarioName);
+        }}
       />
     </>
   );

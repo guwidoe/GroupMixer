@@ -1,8 +1,5 @@
-import type { AttributeDefinition, Person, Scenario } from '../../../types';
-import {
-  reconcileScenarioAttributeDefinitions,
-  reconcileScenarioAttributeState,
-} from '../../../services/scenarioAttributes';
+import type { AttributeDefinition, Person, Scenario, ScenarioDocument } from '../../../types';
+import { reconcileScenarioAttributeDefinitions } from '../../../services/scenarioAttributes';
 import { generateUniquePersonId } from '../helpers';
 import type { ScenarioEditorBulkNotification } from './scenarioEditorBulkNotifications';
 import { buildScenarioWithPeople } from './scenarioEditorBulkUtils';
@@ -11,8 +8,7 @@ interface UseScenarioEditorBulkUpdatePeopleArgs {
   scenario: Scenario | null;
   attributeDefinitions: AttributeDefinition[];
   addNotification: (notification: ScenarioEditorBulkNotification) => void;
-  setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
-  setScenario: (scenario: Scenario) => void;
+  setScenarioDocument: (document: ScenarioDocument) => void;
 }
 
 function sanitizeGridPeopleRows(people: Person[]): Person[] {
@@ -44,8 +40,7 @@ export function useScenarioEditorBulkUpdatePeople({
   scenario,
   attributeDefinitions,
   addNotification,
-  setAttributeDefinitions,
-  setScenario,
+  setScenarioDocument,
 }: UseScenarioEditorBulkUpdatePeopleArgs) {
   const createRow = () => ({
     id: generateUniquePersonId(scenario?.people),
@@ -58,8 +53,10 @@ export function useScenarioEditorBulkUpdatePeople({
     const nextScenario = buildScenarioWithPeople(scenario, normalizedPeople);
     const nextDefinitions = reconcileScenarioAttributeDefinitions(nextScenario, attributeDefinitions);
 
-    setAttributeDefinitions(nextDefinitions);
-    setScenario(reconcileScenarioAttributeState(nextScenario, nextDefinitions));
+    setScenarioDocument({
+      scenario: nextScenario,
+      attributeDefinitions: nextDefinitions,
+    });
     addNotification({
       type: 'success',
       title: 'People Updated',

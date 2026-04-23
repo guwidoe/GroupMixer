@@ -1,6 +1,6 @@
 import type { Constraint } from '../../../../types';
 
-export type HardConstraintFamily = 'ImmovablePeople' | 'MustStayTogether';
+export type HardConstraintFamily = 'ImmovablePeople' | 'MustStayTogether' | 'MustStayApart';
 export type SoftConstraintFamily =
   | 'ShouldNotBeTogether'
   | 'ShouldStayTogether'
@@ -10,7 +10,7 @@ export type SoftConstraintFamily =
 export type IndexedConstraint<T extends Constraint> = { constraint: T; index: number };
 
 export type PeopleConstraint = Extract<Constraint, {
-  type: 'ImmovablePeople' | 'MustStayTogether' | 'ShouldNotBeTogether' | 'ShouldStayTogether'
+  type: 'ImmovablePeople' | 'MustStayTogether' | 'MustStayApart' | 'ShouldNotBeTogether' | 'ShouldStayTogether'
 }>;
 export type AttributeBalanceConstraint = Extract<Constraint, { type: 'AttributeBalance' }>;
 export type PairMeetingCountConstraint = Extract<Constraint, { type: 'PairMeetingCount' }>;

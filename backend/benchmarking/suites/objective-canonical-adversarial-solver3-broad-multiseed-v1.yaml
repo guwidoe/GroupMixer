@@ -1,0 +1,103 @@
+schema_version: 1
+suite_id: objective-canonical-adversarial-solver3-broad-multiseed-v1
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: adversarial
+title: Objective canonical adversarial bundle for solver3 broad multiseed autoresearch (v1)
+description: Broad solver3 adversarial objective bundle with four explicit seeds per canonical case for multiseed autoresearch.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/adversarial/clique_swap_functionality_35p.json
+    case_role: canonical
+    purpose: objective_target.adversarial.clique_integrity_and_department_balance_35p.seed_333
+    provenance: converted_from_backend_core_tests_test_cases_clique_swap_functionality_test_json_with_objective_benchmark_metadata_broad_solver3_multiseed
+    declared_budget:
+      max_iterations: 3000000
+      time_limit_seconds: 12
+    seed: 333
+    max_iterations: 3000000
+    time_limit_seconds: 12
+  - manifest: ../cases/adversarial/clique_swap_functionality_35p.json
+    case_role: canonical
+    purpose: objective_target.adversarial.clique_integrity_and_department_balance_35p.seed_334
+    provenance: converted_from_backend_core_tests_test_cases_clique_swap_functionality_test_json_with_objective_benchmark_metadata_broad_solver3_multiseed
+    declared_budget:
+      max_iterations: 3000000
+      time_limit_seconds: 12
+    seed: 334
+    max_iterations: 3000000
+    time_limit_seconds: 12
+  - manifest: ../cases/adversarial/clique_swap_functionality_35p.json
+    case_role: canonical
+    purpose: objective_target.adversarial.clique_integrity_and_department_balance_35p.seed_335
+    provenance: converted_from_backend_core_tests_test_cases_clique_swap_functionality_test_json_with_objective_benchmark_metadata_broad_solver3_multiseed
+    declared_budget:
+      max_iterations: 3000000
+      time_limit_seconds: 12
+    seed: 335
+    max_iterations: 3000000
+    time_limit_seconds: 12
+  - manifest: ../cases/adversarial/clique_swap_functionality_35p.json
+    case_role: canonical
+    purpose: objective_target.adversarial.clique_integrity_and_department_balance_35p.seed_336
+    provenance: converted_from_backend_core_tests_test_cases_clique_swap_functionality_test_json_with_objective_benchmark_metadata_broad_solver3_multiseed
+    declared_budget:
+      max_iterations: 3000000
+      time_limit_seconds: 12
+    seed: 336
+    max_iterations: 3000000
+    time_limit_seconds: 12
+  - manifest: ../cases/adversarial/transfer_attribute_balance_111p.json
+    case_role: canonical
+    purpose: objective_target.adversarial.large_attribute_balance_111p.seed_424242
+    provenance: converted_from_backend_core_tests_test_cases_transfer_test_json_with_name_attributes_removed_and_objective_benchmark_metadata_broad_solver3_multiseed
+    declared_budget:
+      max_iterations: 3000000
+      time_limit_seconds: 15
+    seed: 424242
+    max_iterations: 3000000
+    time_limit_seconds: 15
+  - manifest: ../cases/adversarial/transfer_attribute_balance_111p.json
+    case_role: canonical
+    purpose: objective_target.adversarial.large_attribute_balance_111p.seed_424243
+    provenance: converted_from_backend_core_tests_test_cases_transfer_test_json_with_name_attributes_removed_and_objective_benchmark_metadata_broad_solver3_multiseed
+    declared_budget:
+      max_iterations: 3000000
+      time_limit_seconds: 15
+    seed: 424243
+    max_iterations: 3000000
+    time_limit_seconds: 15
+  - manifest: ../cases/adversarial/transfer_attribute_balance_111p.json
+    case_role: canonical
+    purpose: objective_target.adversarial.large_attribute_balance_111p.seed_424244
+    provenance: converted_from_backend_core_tests_test_cases_transfer_test_json_with_name_attributes_removed_and_objective_benchmark_metadata_broad_solver3_multiseed
+    declared_budget:
+      max_iterations: 3000000
+      time_limit_seconds: 15
+    seed: 424244
+    max_iterations: 3000000
+    time_limit_seconds: 15
+  - manifest: ../cases/adversarial/transfer_attribute_balance_111p.json
+    case_role: canonical
+    purpose: objective_target.adversarial.large_attribute_balance_111p.seed_424245
+    provenance: converted_from_backend_core_tests_test_cases_transfer_test_json_with_name_attributes_removed_and_objective_benchmark_metadata_broad_solver3_multiseed
+    declared_budget:
+      max_iterations: 3000000
+      time_limit_seconds: 15
+    seed: 424245
+    max_iterations: 3000000
+    time_limit_seconds: 15

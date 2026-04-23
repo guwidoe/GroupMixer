@@ -1,13 +1,19 @@
 /**
- * Scenario slice - manages the current scenario state and CRUD operations.
+ * Scenario slice - manages the current scenario document state and CRUD operations.
  */
 
-import type { Scenario } from "../../types";
-import { resolveScenarioWorkspaceState } from "../../services/scenarioAttributes";
-import { createDefaultSolverSettings } from "../../services/solverUi";
-import type { ScenarioState, ScenarioActions, StoreSlice } from "../types";
-import { scenarioStorage } from "../../services/scenarioStorage";
-import { initialSolverState } from "./solverSlice";
+import type { Scenario } from '../../types';
+import { createDefaultSolverSettings } from '../../services/solverUi';
+import type { ScenarioState, ScenarioActions, StoreSlice } from '../types';
+import { scenarioStorage } from '../../services/scenarioStorage';
+import { initialSolverState } from './solverSlice';
+import {
+  createScenarioDocument,
+  getSavedScenarioDocument,
+  getScenarioDocumentFromState,
+  getScenarioDocumentState,
+  replaceSavedScenarioDocument,
+} from '../scenarioDocument';
 
 const DEFAULT_SETTINGS = createDefaultSolverSettings();
 
@@ -23,177 +29,173 @@ function createEmptyScenario(): Scenario {
 
 export const createScenarioSlice: StoreSlice<ScenarioState & ScenarioActions> = (
   set,
-  get
+  get,
 ) => ({
+  scenarioDocument: null,
   scenario: null,
 
-  setScenario: (scenario) => set((state) => {
-    const nextWorkspace = resolveScenarioWorkspaceState(scenario, state.attributeDefinitions);
-    return {
-      scenario: nextWorkspace.scenario,
-      attributeDefinitions: nextWorkspace.attributeDefinitions,
-    };
-  }),
+  setScenarioDocument: (document, options) => {
+    const nextDocument = createScenarioDocument(document.scenario, document.attributeDefinitions);
+    const { currentScenarioId } = get();
+
+    if (options?.persist !== false && currentScenarioId) {
+      scenarioStorage.updateScenario(currentScenarioId, nextDocument.scenario, nextDocument.attributeDefinitions);
+    }
+
+    set((state) => ({
+      ...getScenarioDocumentState(nextDocument, state.attributeDefinitions),
+      savedScenarios:
+        currentScenarioId && state.savedScenarios[currentScenarioId]
+          ? {
+              ...state.savedScenarios,
+              [currentScenarioId]: replaceSavedScenarioDocument(state.savedScenarios[currentScenarioId], nextDocument),
+            }
+          : state.savedScenarios,
+    }));
+  },
+
+  updateScenarioDocument: (updater, options) => {
+    const currentDocument = getScenarioDocumentFromState(get());
+    if (!currentDocument) {
+      return;
+    }
+
+    get().setScenarioDocument(updater(currentDocument), options);
+  },
+
+  setScenario: (scenario) => {
+    const currentDocument = getScenarioDocumentFromState(get());
+    get().setScenarioDocument({
+      scenario,
+      attributeDefinitions: currentDocument?.attributeDefinitions ?? get().attributeDefinitions,
+    });
+  },
 
   updateScenario: (updates) => {
-    const currentScenario = get().scenario;
-    if (currentScenario) {
-      const nextWorkspace = resolveScenarioWorkspaceState(
-        { ...currentScenario, ...updates },
-        get().attributeDefinitions,
-      );
-      const nextScenario = nextWorkspace.scenario;
-      const { currentScenarioId } = get();
-
-      if (currentScenarioId) {
-        scenarioStorage.updateScenario(currentScenarioId, nextScenario, nextWorkspace.attributeDefinitions);
-      }
-
-      set((state) => ({
-        scenario: nextScenario,
-        attributeDefinitions: nextWorkspace.attributeDefinitions,
-        savedScenarios:
-          currentScenarioId && state.savedScenarios[currentScenarioId]
-            ? {
-                ...state.savedScenarios,
-                [currentScenarioId]: {
-                  ...state.savedScenarios[currentScenarioId],
-                  scenario: nextScenario,
-                  attributeDefinitions: nextWorkspace.attributeDefinitions,
-                  updatedAt: Date.now(),
-                },
-              }
-            : state.savedScenarios,
-      }));
-    }
+    get().updateScenarioDocument((currentDocument) => ({
+      ...currentDocument,
+      scenario: {
+        ...currentDocument.scenario,
+        ...updates,
+      },
+    }));
   },
 
   updateCurrentScenario: (scenarioId, scenario) => {
-    const nextWorkspace = resolveScenarioWorkspaceState(scenario, get().attributeDefinitions);
-    scenarioStorage.updateScenario(scenarioId, nextWorkspace.scenario, nextWorkspace.attributeDefinitions);
+    const currentDocument = getScenarioDocumentFromState(get());
+    const nextDocument = createScenarioDocument(
+      scenario,
+      currentDocument?.attributeDefinitions ?? get().attributeDefinitions,
+    );
+    scenarioStorage.updateScenario(scenarioId, nextDocument.scenario, nextDocument.attributeDefinitions);
+
     set((state) => ({
       savedScenarios: state.savedScenarios[scenarioId]
         ? {
             ...state.savedScenarios,
-            [scenarioId]: {
-              ...state.savedScenarios[scenarioId],
-              scenario: nextWorkspace.scenario,
-              attributeDefinitions: nextWorkspace.attributeDefinitions,
-              updatedAt: Date.now(),
-            },
+            [scenarioId]: replaceSavedScenarioDocument(state.savedScenarios[scenarioId], nextDocument),
           }
         : state.savedScenarios,
     }));
   },
 
   resolveScenario: () => {
-    const currentScenario = get().scenario;
-    if (currentScenario) {
-      return currentScenario;
+    const currentDocument = getScenarioDocumentFromState(get());
+    if (currentDocument) {
+      return currentDocument.scenario;
     }
 
-    // Check if we have a current scenario ID that should be loaded
     const { currentScenarioId, savedScenarios } = get();
     if (currentScenarioId && savedScenarios[currentScenarioId]) {
       const savedScenario = savedScenarios[currentScenarioId];
+      const document = getSavedScenarioDocument(savedScenario);
       set({
-        scenario: savedScenario.scenario,
-        attributeDefinitions: savedScenario.attributeDefinitions,
+        ...getScenarioDocumentState(document, get().attributeDefinitions),
         currentResultId: null,
         solution: null,
         solverState: initialSolverState,
       });
-      return savedScenario.scenario;
+      return document.scenario;
     }
 
-    // Check if there are any saved scenarios we can load
     const allScenarios = Object.values(savedScenarios);
     if (allScenarios.length > 0) {
       const firstScenario = allScenarios[0];
+      const document = getSavedScenarioDocument(firstScenario);
       scenarioStorage.setCurrentScenarioId(firstScenario.id);
       set({
-        scenario: firstScenario.scenario,
-        attributeDefinitions: firstScenario.attributeDefinitions,
+        ...getScenarioDocumentState(document, get().attributeDefinitions),
         currentScenarioId: firstScenario.id,
         currentResultId: null,
         solution: null,
         selectedResultIds: [],
         solverState: initialSolverState,
       });
-      return firstScenario.scenario;
+      return document.scenario;
     }
 
-    // Only create a new scenario if there are truly no scenarios available
-    // and we're not in a loading state
     const { ui } = get();
     if (ui.isLoading) {
-      // Still loading, return a minimal scenario temporarily
-      const tempScenario: Scenario = {
+      return {
         people: [],
         groups: [],
         num_sessions: 3,
         constraints: [],
         settings: DEFAULT_SETTINGS,
       };
-      return tempScenario;
     }
 
     const emptyScenario = createEmptyScenario();
-    set({ scenario: emptyScenario });
+    const document = createScenarioDocument(emptyScenario, get().attributeDefinitions);
+    set(getScenarioDocumentState(document, get().attributeDefinitions));
     return emptyScenario;
   },
 
   ensureScenarioExists: () => {
-    const currentScenario = get().scenario;
-    if (currentScenario) {
-      return currentScenario;
+    const currentDocument = getScenarioDocumentFromState(get());
+    if (currentDocument) {
+      return currentDocument.scenario;
     }
 
-    // Check if we have a current scenario ID that should be loaded
     const { currentScenarioId, savedScenarios } = get();
     if (currentScenarioId && savedScenarios[currentScenarioId]) {
       const savedScenario = savedScenarios[currentScenarioId];
+      const document = getSavedScenarioDocument(savedScenario);
       set({
-        scenario: savedScenario.scenario,
-        attributeDefinitions: savedScenario.attributeDefinitions,
+        ...getScenarioDocumentState(document, get().attributeDefinitions),
         currentResultId: null,
         solution: null,
         solverState: initialSolverState,
       });
-      return savedScenario.scenario;
+      return document.scenario;
     }
 
-    // Check if there are any saved scenarios we can load
     const allScenarios = Object.values(savedScenarios);
     if (allScenarios.length > 0) {
       const firstScenario = allScenarios[0];
+      const document = getSavedScenarioDocument(firstScenario);
       scenarioStorage.setCurrentScenarioId(firstScenario.id);
       set({
-        scenario: firstScenario.scenario,
-        attributeDefinitions: firstScenario.attributeDefinitions,
+        ...getScenarioDocumentState(document, get().attributeDefinitions),
         currentScenarioId: firstScenario.id,
         currentResultId: null,
         solution: null,
         selectedResultIds: [],
         solverState: initialSolverState,
       });
-      return firstScenario.scenario;
+      return document.scenario;
     }
 
-    // Create a new scenario if none exists
     const emptyScenario = createEmptyScenario();
-
-    // Create and save the new scenario
     const savedScenario = scenarioStorage.createScenario(
       'Untitled Scenario',
       emptyScenario,
       get().attributeDefinitions,
     );
+    const document = getSavedScenarioDocument(savedScenario);
 
-    // Update the store state
     set({
-      scenario: emptyScenario,
-      attributeDefinitions: savedScenario.attributeDefinitions,
+      ...getScenarioDocumentState(document, get().attributeDefinitions),
       currentScenarioId: savedScenario.id,
       currentResultId: null,
       savedScenarios: {
@@ -202,13 +204,12 @@ export const createScenarioSlice: StoreSlice<ScenarioState & ScenarioActions> = 
       },
     });
 
-    // Notify user that a new scenario was created
     get().addNotification({
-      type: "info",
-      title: "New Scenario Created",
-      message: "A new scenario has been created and saved.",
+      type: 'info',
+      title: 'New Scenario Created',
+      message: 'A new scenario has been created and saved.',
     });
 
-    return emptyScenario;
+    return document.scenario;
   },
 });

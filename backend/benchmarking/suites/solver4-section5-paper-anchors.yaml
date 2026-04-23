@@ -1,0 +1,127 @@
+schema_version: 1
+suite_id: solver4-section5-paper-anchors
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: allow_non_canonical
+class: stretch
+title: Solver4 Section 5 paper-anchor suite
+description: >-
+  Section 5 paper-anchor lane for solver4. Runs the complete-backtracking branch on the exact
+  anchor patterns cited in the Triska/Musliu paper: Kirkman 15x5x7 with pattern 3, plus
+  social_golfer_32x8x9 with patterns 2-2 and 4.
+default_solver_family: solver4
+default_solver:
+  solver_type: solver4
+  stop_conditions:
+    max_iterations: 50000000
+    time_limit_seconds: 120
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver4
+    mode: complete_backtracking
+    gamma: 0.0
+    diagnostics:
+      capture_paper_trace: true
+      trace_every_n_iterations: 1000
+      include_initial_schedule_in_trace: false
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.section5.kirkman_15x5x7.pattern_3
+    provenance: solver4_section5_paper_anchor_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 50000000
+        time_limit_seconds: 120
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        mode: complete_backtracking
+        backtracking_pattern: "3"
+        gamma: 0.0
+        diagnostics:
+          capture_paper_trace: true
+          trace_every_n_iterations: 1000
+          include_initial_schedule_in_trace: false
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 50000000
+      time_limit_seconds: 120
+    seed: 150507
+    max_iterations: 50000000
+    time_limit_seconds: 120
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.section5.social_golfer_32x8x9.pattern_2_2
+    provenance: solver4_section5_paper_anchor_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 50000000
+        time_limit_seconds: 120
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        mode: complete_backtracking
+        backtracking_pattern: "2-2"
+        gamma: 0.0
+        diagnostics:
+          capture_paper_trace: true
+          trace_every_n_iterations: 1000
+          include_initial_schedule_in_trace: false
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 50000000
+      time_limit_seconds: 120
+    seed: 320910
+    max_iterations: 50000000
+    time_limit_seconds: 120
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.section5.social_golfer_32x8x9.pattern_4
+    provenance: solver4_section5_paper_anchor_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 50000000
+        time_limit_seconds: 120
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        mode: complete_backtracking
+        backtracking_pattern: "4"
+        gamma: 0.0
+        diagnostics:
+          capture_paper_trace: true
+          trace_every_n_iterations: 1000
+          include_initial_schedule_in_trace: false
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 50000000
+      time_limit_seconds: 120
+    seed: 320910
+    max_iterations: 50000000
+    time_limit_seconds: 120

@@ -1,12 +1,16 @@
 //! Search baseline for `solver3`.
 
 mod acceptance;
-#[cfg(feature = "solver3-experimental-recombination")]
-mod archive;
 mod candidate_sampling;
 mod context;
 mod engine;
 mod family_selection;
+mod repeat_guidance;
+mod single_state;
+mod tabu;
+
+#[cfg(feature = "solver3-experimental-recombination")]
+mod archive;
 #[cfg(feature = "solver3-experimental-memetic")]
 mod memetic;
 #[cfg(not(feature = "solver3-experimental-memetic"))]
@@ -87,7 +91,6 @@ mod recombination {
         ))
     }
 }
-mod repeat_guidance;
 #[cfg(feature = "solver3-experimental-conflict-restricted-sampling")]
 mod sgp_conflicts;
 #[cfg(not(feature = "solver3-experimental-conflict-restricted-sampling"))]
@@ -126,8 +129,6 @@ mod sgp_conflicts {
         }
     }
 }
-mod single_state;
-mod tabu;
 
 #[cfg(test)]
 mod tests;

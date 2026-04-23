@@ -37,5 +37,18 @@ export default tseslint.config({ ignores: ['dist', 'public/pkg', 'coverage'] }, 
     'max-lines': ['warn', { max: 500, skipBlankLines: true, skipComments: true }],
     // Enforce one React component per file
     'react/no-multi-comp': ['warn', { ignoreStateless: false }],
+    // Centralize numeric inputs through the shared primitive.
+    'no-restricted-syntax': [
+      'error',
+      {
+        selector: "JSXAttribute[name.name='type'][value.type='Literal'][value.value='number']",
+        message: 'Use ui/NumberField instead of raw type="number" inputs unless the file is a documented exception.',
+      },
+    ],
+  },
+}, {
+  files: ['src/components/ScenarioEditor/shared/grid/components/filters/NumberRangeFilterPanel.tsx'],
+  rules: {
+    'no-restricted-syntax': 'off',
   },
 }, storybook.configs["flat/recommended"]);

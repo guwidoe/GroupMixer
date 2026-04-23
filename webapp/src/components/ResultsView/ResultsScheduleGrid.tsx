@@ -100,9 +100,6 @@ export function ResultsScheduleGrid({ sessionData, selectedSessionIndex = null, 
                             <div className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
                               {getPersonDisplayName(person)}
                             </div>
-                            <div className="truncate text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                              {person.id}
-                            </div>
                           </div>
                         </li>
                       ))}

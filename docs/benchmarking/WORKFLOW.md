@@ -69,7 +69,9 @@ Construction baseline ownership note:
 
 ### Real-demo large-workload validation
 
-Use the real Sailing Trip package with the benchmark meaning kept explicit:
+Use the real Sailing Trip package with the benchmark meaning kept explicit.
+
+For `search_iteration` hotpath regression suites, require at least `10_000` measured iterations so single-run noise does not masquerade as a major regression.
 
 ```bash
 gm-cli benchmark run --manifest backend/benchmarking/suites/stretch-sailing-trip-demo-time-solver3-canonical.yaml
