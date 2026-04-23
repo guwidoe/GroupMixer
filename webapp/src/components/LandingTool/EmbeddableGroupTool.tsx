@@ -9,11 +9,11 @@ import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import type { ResultsSessionData } from '../../services/results/buildResultsModel';
 import { nextAttributeColumnId, normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
-import { LandingParticipantColumnsInput } from '../LandingTool/LandingParticipantColumnsInput';
-import { LandingResizableTextarea } from '../LandingTool/LandingResizableTextarea';
-import { QuickSetupAdvancedOptions } from '../LandingTool/QuickSetupAdvancedOptions';
-import type { QuickSetupParticipantColumn } from '../LandingTool/types';
-import type { QuickSetupController } from '../LandingTool/useQuickSetup';
+import { LandingParticipantColumnsInput } from './LandingParticipantColumnsInput';
+import { LandingResizableTextarea } from './LandingResizableTextarea';
+import { QuickSetupAdvancedOptions } from './QuickSetupAdvancedOptions';
+import type { QuickSetupParticipantColumn } from './types';
+import type { QuickSetupController } from './useQuickSetup';
 
 export type LandingToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
@@ -25,7 +25,7 @@ interface LandingToolDisplaySession {
   }>;
 }
 
-interface EmbeddableToolProps {
+interface EmbeddableGroupToolProps {
   config: ToolPageConfig;
   ui: ToolPageSharedUiContent;
   controller: QuickSetupController;
@@ -99,7 +99,7 @@ function SectionLabelWithTooltip({
   );
 }
 
-export function EmbeddableTool({
+export function EmbeddableGroupTool({
   config,
   ui,
   controller,
@@ -132,7 +132,7 @@ export function EmbeddableTool({
   onGenerateGroups,
   onChangeResultFormat,
   onCopyActiveResult,
-}: EmbeddableToolProps) {
+}: EmbeddableGroupToolProps) {
   const { draft } = controller;
   const solvedSolution = controller.workspacePayload.solution ?? null;
 

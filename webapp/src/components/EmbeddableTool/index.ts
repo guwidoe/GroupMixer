@@ -1,1 +1,0 @@
-export { EmbeddableTool } from './Tool';
