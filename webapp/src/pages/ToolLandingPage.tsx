@@ -265,6 +265,19 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       return;
     }
 
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('view') !== 'results') {
+      searchParams.set('view', 'results');
+      navigate(
+        {
+          pathname: location.pathname,
+          search: searchParams.toString(),
+          hash: location.hash,
+        },
+        { replace: false },
+      );
+    }
+
     const scrollToResults = () => {
       resultsRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
     };
@@ -276,7 +289,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       window.cancelAnimationFrame(animationFrameId);
       window.clearTimeout(timeoutId);
     };
-  }, [controller.result?.generatedAt]);
+  }, [controller.result?.generatedAt, location.hash, location.pathname, location.search, navigate]);
 
   useEffect(() => {
     const node = toolColumnsRef.current;

@@ -11,9 +11,10 @@ import { getToolPageConfig, TOOL_PAGE_CONFIGS } from './toolPageConfigs';
 
 const scrollIntoViewMock = vi.fn();
 
-function LocationProbe() {
+function LocationProbe({ includeSearch = false }: { includeSearch?: boolean }) {
   const location = useLocation();
-  return <div data-testid="location-probe">{location.pathname}</div>;
+  const displayLocation = includeSearch ? `${location.pathname}${location.search}${location.hash}` : location.pathname;
+  return <div data-testid="location-probe">{displayLocation}</div>;
 }
 
 vi.mock('../services/solver/solveScenario', () => ({
@@ -221,6 +222,7 @@ describe('ToolLandingPage SEO wiring', () => {
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
+        <LocationProbe includeSearch />
       </MemoryRouter>,
     );
 
@@ -237,6 +239,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(await screen.findByText('Group 1')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /export csv/i })).toBeInTheDocument();
     expect(await screen.findByText(/results generated below/i)).toBeInTheDocument();
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/?view=results');
     expect(scrollIntoViewMock).toHaveBeenCalled();
 
     // Can transition to scenario editor
