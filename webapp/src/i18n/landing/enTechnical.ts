@@ -16,28 +16,38 @@ const TECHNICAL_OPTIMIZER_CTA = {
 
 const COMMON_FAQS = {
   free: {
-    question: 'Do I need an account?',
+    question: 'Is GroupMixer free?',
     answer:
-      'No. Paste names, adjust the setup, and generate groups right away.',
-  },
-  pricing: {
-    question: 'How much does GroupMixer cost?',
-    answer:
-      'GroupMixer is absolutely free with no limits. If you find it useful and want to support development, you can donate through GitHub Sponsors.',
+      'Yes. GroupMixer is completely free to use. If you find it useful and want to support development, you can donate through GitHub Sponsors.',
     link: {
       label: 'Donate on GitHub Sponsors.',
       href: 'https://github.com/sponsors/guwidoe',
     },
+  },
+  limits: {
+    question: 'Are there any usage limits?',
+    answer:
+      'No. There are no usage limits on GroupMixer.',
+  },
+  account: {
+    question: 'Do I need an account?',
+    answer:
+      'No. You do not need an account or sign-up. Paste names, adjust the setup, and generate groups right away.',
   },
   privacy: {
     question: 'Where is my data processed?',
     answer:
       'In your browser on this device. Your participant list and all other data you enter stays on your device while you work.',
   },
-  workspace: {
-    question: 'What is the scenario editor?',
+  offline: {
+    question: 'Does it work offline after first load?',
     answer:
-      'The scenario editor gives you more control over sessions, constraints, solver settings, and result analysis.',
+      'Yes. After the page has loaded, you can keep using GroupMixer offline in your browser.',
+  },
+  workspace: {
+    question: 'When should I use the scenario editor?',
+    answer:
+      'Use the scenario editor when the quick setup is not enough. It gives you more control over sessions, constraints, solver settings, previous results, and detailed analysis.',
   },
 };
 
@@ -136,8 +146,10 @@ export const EN_TECHNICAL_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPag
           'Yes. Switch to CSV input, add a column for the attribute, and choose that attribute in the advanced options.',
       },
       COMMON_FAQS.free,
-      COMMON_FAQS.pricing,
+      COMMON_FAQS.limits,
+      COMMON_FAQS.account,
       COMMON_FAQS.privacy,
+      COMMON_FAQS.offline,
       COMMON_FAQS.workspace,
     ],
     chrome: {
@@ -243,8 +255,10 @@ export const EN_TECHNICAL_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPag
           'For many workshop, classroom, and event cases, yes. GroupMixer provides an online interface for common group-assignment constraints without requiring solver code.',
       },
       COMMON_FAQS.free,
-      COMMON_FAQS.pricing,
+      COMMON_FAQS.limits,
+      COMMON_FAQS.account,
       COMMON_FAQS.privacy,
+      COMMON_FAQS.offline,
       COMMON_FAQS.workspace,
     ],
     chrome: {
@@ -350,8 +364,10 @@ export const EN_TECHNICAL_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPag
           'Yes. GroupMixer also supports keep-together, keep-apart, and attribute-balancing rules.',
       },
       COMMON_FAQS.free,
-      COMMON_FAQS.pricing,
+      COMMON_FAQS.limits,
+      COMMON_FAQS.account,
       COMMON_FAQS.privacy,
+      COMMON_FAQS.offline,
       COMMON_FAQS.workspace,
     ],
     chrome: {
@@ -457,8 +473,10 @@ export const EN_TECHNICAL_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPag
           'Yes. Add keep-together groups and avoid-pairing rules in the advanced options, or use the scenario editor for deeper control.',
       },
       COMMON_FAQS.free,
-      COMMON_FAQS.pricing,
+      COMMON_FAQS.limits,
+      COMMON_FAQS.account,
       COMMON_FAQS.privacy,
+      COMMON_FAQS.offline,
       COMMON_FAQS.workspace,
     ],
     chrome: {

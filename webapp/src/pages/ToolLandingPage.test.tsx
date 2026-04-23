@@ -811,13 +811,15 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(answerPanel).toHaveAttribute('aria-hidden', 'false');
     expect(screen.getByText(/paste your names \(one per line\)/i)).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /how much does groupmixer cost/i }));
+    await user.click(screen.getByRole('button', { name: /is groupmixer free/i }));
 
-    expect(screen.getByText(/groupmixer is absolutely free with no limits/i)).toBeInTheDocument();
+    expect(screen.getByText(/groupmixer is completely free to use/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /donate on github sponsors/i })).toHaveAttribute(
       'href',
       'https://github.com/sponsors/guwidoe',
     );
+
+    expect(screen.getByRole('button', { name: /does it work offline after first load/i })).toBeInTheDocument();
   });
 
   it('keeps results above the hero content on mobile once groups are generated', async () => {

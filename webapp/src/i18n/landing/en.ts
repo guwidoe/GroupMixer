@@ -89,40 +89,63 @@ const ADVANCED_SECTION = {
 
 const FAQS = {
   free: {
-    question: 'Do I need an account?',
+    question: 'Is GroupMixer free?',
     answer:
-      'No. Paste names, adjust the setup, and generate groups right away.',
-  },
-  pricing: {
-    question: 'How much does GroupMixer cost?',
-    answer:
-      'GroupMixer is absolutely free with no limits. If you find it useful and want to support development, you can donate through GitHub Sponsors.',
+      'Yes. GroupMixer is completely free to use. If you find it useful and want to support development, you can donate through GitHub Sponsors.',
     link: {
       label: 'Donate on GitHub Sponsors.',
       href: 'https://github.com/sponsors/guwidoe',
     },
+  },
+  limits: {
+    question: 'Are there any usage limits?',
+    answer:
+      'No. There are no usage limits on GroupMixer.',
+  },
+  account: {
+    question: 'Do I need an account?',
+    answer:
+      'No. You do not need an account or sign-up. Paste names, adjust the setup, and generate groups right away.',
   },
   privacy: {
     question: 'Where is my data processed?',
     answer:
       'In your browser on this device. Your participant list and all other data you enter stays on your device while you work.',
   },
+  offline: {
+    question: 'Does it work offline after first load?',
+    answer:
+      'Yes. After the page has loaded, you can keep using GroupMixer offline in your browser.',
+  },
   constraints: {
-    question: 'Can I add rules like keep-together or keep-apart?',
+    question: 'Can I keep people together or apart?',
     answer:
       'Yes. Open the advanced options to add keep-together groups, avoid-pairing rules, multiple sessions, and attribute balancing.',
   },
+  csvBalance: {
+    question: 'Can I balance by role, skill, gender, or department from CSV?',
+    answer:
+      'Yes. Switch to CSV input mode, add columns such as role, skill, gender, or department, then choose which attribute to balance across groups.',
+  },
+  fixedPeople: {
+    question: 'Can I fix certain people to groups?',
+    answer:
+      'Yes. Use Fixed people in the advanced options to pin specific people to a specific group across all sessions. This is useful for leaders, presenters, or anyone who must stay in a known group.',
+  },
   multiSession: {
-    question: 'Can I create groups for multiple rounds?',
+    question: 'Can I avoid repeat pairings across rounds?',
     answer:
       'Yes. Set the number of sessions and enable "Avoid repeat pairings" to cut down on repeats across rounds.',
   },
   workspace: {
-    question: 'What is the scenario editor?',
+    question: 'When should I use the scenario editor?',
     answer:
-      'The scenario editor gives you more control over sessions, constraints, solver settings, and result analysis.',
+      'Use the scenario editor when the quick setup is not enough. It gives you more control over sessions, constraints, solver settings, previous results, and detailed analysis.',
   },
 };
+
+const CORE_TRUST_FAQS = [FAQS.free, FAQS.limits, FAQS.account, FAQS.privacy, FAQS.offline];
+const CONTROL_FAQS = [FAQS.constraints, FAQS.csvBalance, FAQS.fixedPeople, FAQS.multiSession, FAQS.workspace];
 
 function createContent({
   title,
@@ -188,12 +211,8 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
         answer:
           'Paste your names (one per line) into the text box, set the number of groups or people per group, and click "Generate Groups". Your groups appear instantly.',
       },
-      FAQS.free,
-      FAQS.pricing,
-      FAQS.privacy,
-      FAQS.constraints,
-      FAQS.multiSession,
-      FAQS.workspace,
+      ...CORE_TRUST_FAQS,
+      ...CONTROL_FAQS,
     ],
   }),
   'random-group-generator': createContent({
@@ -217,10 +236,10 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
         answer:
           'Yes. You can either set a fixed number of groups or specify how many people you want per group. GroupMixer handles the math for you.',
       },
-      FAQS.free,
-      FAQS.pricing,
-      FAQS.privacy,
+      ...CORE_TRUST_FAQS,
       FAQS.constraints,
+      FAQS.csvBalance,
+      FAQS.fixedPeople,
     ],
   }),
   'random-team-generator': createContent({
@@ -244,9 +263,9 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
         answer:
           'Yes. Switch to CSV input mode and add columns like "role" or "skill". Then use the balance-by-attribute option to distribute those attributes evenly.',
       },
-      FAQS.free,
-      FAQS.pricing,
-      FAQS.privacy,
+      ...CORE_TRUST_FAQS,
+      FAQS.csvBalance,
+      FAQS.fixedPeople,
       FAQS.multiSession,
     ],
   }),
@@ -271,10 +290,9 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
         answer:
           'Yes. Generate again to reshuffle, or use multiple sessions with avoid-repeat pairings when you want fresh partners across rounds.',
       },
-      FAQS.free,
-      FAQS.pricing,
-      FAQS.privacy,
+      ...CORE_TRUST_FAQS,
       FAQS.multiSession,
+      FAQS.fixedPeople,
     ],
   }),
   'team-shuffle-generator': createContent({
@@ -298,10 +316,10 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
         answer:
           'Yes. You can balance by attributes such as skill, role, or department so the reshuffled teams stay more even.',
       },
-      FAQS.free,
-      FAQS.pricing,
-      FAQS.privacy,
+      ...CORE_TRUST_FAQS,
       FAQS.constraints,
+      FAQS.csvBalance,
+      FAQS.fixedPeople,
     ],
   }),
   'breakout-room-generator': createContent({
@@ -325,10 +343,10 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
         answer:
           'Yes. Set the number of sessions in the advanced options and enable "Avoid repeat pairings" so people meet new faces each round.',
       },
-      FAQS.free,
-      FAQS.pricing,
-      FAQS.privacy,
+      ...CORE_TRUST_FAQS,
       FAQS.constraints,
+      FAQS.fixedPeople,
+      FAQS.multiSession,
     ],
   }),
   'workshop-group-generator': createContent({
@@ -352,10 +370,10 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
         answer:
           'Yes. Use multiple sessions and avoid-repeat pairings to keep workshop participants meeting new people throughout the agenda.',
       },
-      FAQS.free,
-      FAQS.pricing,
-      FAQS.privacy,
+      ...CORE_TRUST_FAQS,
       FAQS.constraints,
+      FAQS.csvBalance,
+      FAQS.multiSession,
     ],
   }),
   'student-group-generator': createContent({
@@ -379,9 +397,9 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
         answer:
           'Yes. Open the advanced options to specify keep-together and avoid-pairing rules. The solver respects these when creating groups.',
       },
-      FAQS.free,
-      FAQS.pricing,
-      FAQS.privacy,
+      ...CORE_TRUST_FAQS,
+      FAQS.csvBalance,
+      FAQS.fixedPeople,
       FAQS.multiSession,
     ],
   }),
@@ -406,10 +424,9 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
         answer:
           'Yes. Set multiple sessions and avoid repeat pairings so people meet different participants across short rounds.',
       },
-      FAQS.free,
-      FAQS.pricing,
-      FAQS.privacy,
+      ...CORE_TRUST_FAQS,
       FAQS.multiSession,
+      FAQS.fixedPeople,
     ],
   }),
   'speed-networking-generator': createContent({
@@ -433,9 +450,8 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
         answer:
           'Yes. Set either the number of groups per round or the people per group. GroupMixer calculates the rest.',
       },
-      FAQS.free,
-      FAQS.pricing,
-      FAQS.privacy,
+      ...CORE_TRUST_FAQS,
+      FAQS.fixedPeople,
       FAQS.workspace,
     ],
   }),
@@ -460,9 +476,9 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
         answer:
           'No. Basic constraints are available right here in the advanced options. The scenario editor adds deeper control for complex planning.',
       },
-      FAQS.free,
-      FAQS.pricing,
-      FAQS.privacy,
+      ...CORE_TRUST_FAQS,
+      FAQS.csvBalance,
+      FAQS.fixedPeople,
       FAQS.workspace,
     ],
   }),
