@@ -20,10 +20,19 @@ const COMMON_FAQS = {
     answer:
       'No. Paste names, adjust the setup, and generate groups right away.',
   },
+  pricing: {
+    question: 'How much does GroupMixer cost?',
+    answer:
+      'GroupMixer is absolutely free with no limits. If you find it useful and want to support development, you can donate through GitHub Sponsors.',
+    link: {
+      label: 'Donate on GitHub Sponsors.',
+      href: 'https://github.com/sponsors/guwidoe',
+    },
+  },
   privacy: {
     question: 'Where is my data processed?',
     answer:
-      'In your browser on this device. Your participant list stays in the page while you work.',
+      'In your browser on this device. Your participant list and all other data you enter stays on your device while you work.',
   },
   workspace: {
     question: 'What is the scenario editor?',
@@ -127,6 +136,7 @@ export const EN_TECHNICAL_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPag
           'Yes. Switch to CSV input, add a column for the attribute, and choose that attribute in the advanced options.',
       },
       COMMON_FAQS.free,
+      COMMON_FAQS.pricing,
       COMMON_FAQS.privacy,
       COMMON_FAQS.workspace,
     ],
@@ -233,6 +243,7 @@ export const EN_TECHNICAL_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPag
           'For many workshop, classroom, and event cases, yes. GroupMixer provides an online interface for common group-assignment constraints without requiring solver code.',
       },
       COMMON_FAQS.free,
+      COMMON_FAQS.pricing,
       COMMON_FAQS.privacy,
       COMMON_FAQS.workspace,
     ],
@@ -339,6 +350,7 @@ export const EN_TECHNICAL_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPag
           'Yes. GroupMixer also supports keep-together, keep-apart, and attribute-balancing rules.',
       },
       COMMON_FAQS.free,
+      COMMON_FAQS.pricing,
       COMMON_FAQS.privacy,
       COMMON_FAQS.workspace,
     ],
@@ -445,6 +457,7 @@ export const EN_TECHNICAL_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPag
           'Yes. Add keep-together groups and avoid-pairing rules in the advanced options, or use the scenario editor for deeper control.',
       },
       COMMON_FAQS.free,
+      COMMON_FAQS.pricing,
       COMMON_FAQS.privacy,
       COMMON_FAQS.workspace,
     ],

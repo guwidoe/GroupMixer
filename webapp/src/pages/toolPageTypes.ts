@@ -26,6 +26,10 @@ export type ToolPageKey =
 export interface ToolPageFaqEntry {
   question: string;
   answer: string;
+  link?: {
+    label: string;
+    href: string;
+  };
 }
 
 export interface ToolPageSeoContent {

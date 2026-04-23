@@ -71,9 +71,24 @@ function assertFaqEntries(value: unknown, path: string): ToolPageFaqEntry[] {
       failConfig(`${path}[${index}] must be an object.`);
     }
 
+    const record = entry as { question?: unknown; answer?: unknown; link?: unknown };
+    const link = record.link;
+
+    if (link !== undefined && (typeof link !== 'object' || link === null)) {
+      failConfig(`${path}[${index}].link must be an object when provided.`);
+    }
+
     return {
-      question: assertNonEmptyString((entry as { question?: unknown }).question, `${path}[${index}].question`),
-      answer: assertNonEmptyString((entry as { answer?: unknown }).answer, `${path}[${index}].answer`),
+      question: assertNonEmptyString(record.question, `${path}[${index}].question`),
+      answer: assertNonEmptyString(record.answer, `${path}[${index}].answer`),
+      ...(link
+        ? {
+            link: {
+              label: assertNonEmptyString((link as { label?: unknown }).label, `${path}[${index}].link.label`),
+              href: assertNonEmptyString((link as { href?: unknown }).href, `${path}[${index}].link.href`),
+            },
+          }
+        : {}),
     };
   });
 }

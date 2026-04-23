@@ -786,7 +786,9 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByTestId('landing-tool-panel')).toHaveClass('order-2');
   });
 
-  it('renders FAQ section for SEO', () => {
+  it('renders FAQ questions collapsed by default', async () => {
+    const user = userEvent.setup();
+
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
@@ -794,7 +796,27 @@ describe('ToolLandingPage SEO wiring', () => {
     );
 
     expect(screen.getByRole('heading', { name: /frequently asked questions/i })).toBeInTheDocument();
-    expect(screen.getByText(/how do i split a list of names into random groups/i)).toBeInTheDocument();
+
+    const question = screen.getByRole('button', { name: /how do i split a list of names into random groups/i });
+    const answerPanel = document.getElementById(question.getAttribute('aria-controls') ?? '');
+
+    expect(answerPanel).not.toBeNull();
+    expect(question).toHaveAttribute('aria-expanded', 'false');
+    expect(answerPanel).toHaveAttribute('aria-hidden', 'true');
+
+    await user.click(question);
+
+    expect(question).toHaveAttribute('aria-expanded', 'true');
+    expect(answerPanel).toHaveAttribute('aria-hidden', 'false');
+    expect(screen.getByText(/paste your names \(one per line\)/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /how much does groupmixer cost/i }));
+
+    expect(screen.getByText(/groupmixer is absolutely free with no limits/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /donate on github sponsors/i })).toHaveAttribute(
+      'href',
+      'https://github.com/sponsors/guwidoe',
+    );
   });
 
   it('keeps results above the hero content on mobile once groups are generated', async () => {
