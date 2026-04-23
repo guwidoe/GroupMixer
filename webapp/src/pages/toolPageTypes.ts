@@ -76,6 +76,7 @@ export interface ToolPageAdvancedSectionContent extends ToolPageSectionContent {
 
 export interface ToolPageQuickSetupUiContent {
   participantsLabel: string;
+  participantsHelp: string;
   nameColumnLabel: string;
   addAttributeLabel: string;
   ghostAttributeDisplayLabel: string;
@@ -88,6 +89,8 @@ export interface ToolPageQuickSetupUiContent {
   switchToNamesLabel: string;
   sampleLabel: string;
   resetLabel: string;
+  clearAllLabel: string;
+  clearAllConfirmMessage: string;
   namesPlaceholder: string;
   csvPlaceholder: string;
   groupingValueGroupCountLabel: string;
@@ -112,14 +115,19 @@ export interface ToolPageAdvancedOptionsUiContent {
   avoidRepeatPairingsLabel: string;
   avoidRepeatPairingsDescription: string;
   keepTogetherLabel: string;
+  keepTogetherHelp: string;
   keepTogetherPlaceholder: string;
   avoidPairingLabel: string;
+  avoidPairingHelp: string;
   avoidPairingPlaceholder: string;
   fullEditorPrompt: string;
   fullEditorButtonLabel: string;
   balanceGroupsByAttributeLabel: string;
+  balanceGroupsByAttributeHelp: string;
+  balanceGroupsEmptyState: string;
   autoDistributeAttributeLabel: string;
   fixedPeopleLabel: string;
+  fixedPeopleHelp: string;
   fixedPeopleDescription: string;
   addFixedPersonLabel: string;
   fixedPersonNameLabel: string;

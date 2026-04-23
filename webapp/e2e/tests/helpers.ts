@@ -21,15 +21,40 @@ export async function openApp(page: Page) {
   await page.evaluate(() => {
     window.localStorage.clear();
     window.sessionStorage.clear();
+    window.localStorage.setItem('groupmixer.advanced-mode.v1', 'true');
   });
   await page.reload();
   await waitForAppShell(page);
   await expect(page).toHaveURL(/\/app\/scenario\/people$/);
 }
 
+export async function openAppRoute(page: Page, path: string, url: RegExp, ready?: Locator) {
+  await dismissNotifications(page);
+  await closeScenarioSetupControls(page);
+  await page.goto(path);
+  await waitForAppShell(page);
+  await expect(page).toHaveURL(url);
+  if (ready) {
+    await expect(ready).toBeVisible();
+  }
+}
+
 export async function closeTransientUi(page: Page) {
   await page.keyboard.press('Escape');
   await expect(page.locator('.modal-content')).toHaveCount(0);
+}
+
+export async function setSliderValue(slider: Locator, value: number) {
+  await expect(slider).toBeVisible();
+
+  const currentValue = Number(await slider.inputValue());
+  const direction = value >= currentValue ? 'ArrowRight' : 'ArrowLeft';
+
+  for (let index = 0; index < Math.abs(value - currentValue); index += 1) {
+    await slider.press(direction);
+  }
+
+  await expect(slider).toHaveValue(String(value));
 }
 
 export async function dismissNotifications(page: Page) {
