@@ -485,6 +485,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByLabelText(/participants/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /generate groups/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /generate groups/i })).toHaveClass('btn-primary');
+    expect(screen.getByRole('textbox', { name: /^participants$/i })).toHaveFocus();
     expect(screen.queryByRole('button', { name: /switch to csv/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /sample/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^reset$/i })).not.toBeInTheDocument();

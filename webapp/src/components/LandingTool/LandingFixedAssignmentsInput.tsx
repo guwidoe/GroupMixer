@@ -34,6 +34,29 @@ const MIN_GROUP_WIDTH = 96;
 const HEADER_HEIGHT = 32;
 const LINE_HEIGHT = 26;
 const BODY_PADDING = 18;
+const COLUMN_SEPARATOR_WIDTH = 12;
+
+function areWidthsApproximatelyEqual(left: [number, number], right: [number, number]) {
+  return Math.abs(left[0] - right[0]) < 0.5 && Math.abs(left[1] - right[1]) < 0.5;
+}
+
+function distributeBalancedWidths(availableWidth: number, minimumWidths: [number, number]): [number, number] {
+  const minimumTotal = minimumWidths[0] + minimumWidths[1];
+  if (availableWidth <= minimumTotal) {
+    return [...minimumWidths] as [number, number];
+  }
+
+  const targetWidth = availableWidth / 2;
+  if (targetWidth >= minimumWidths[0] && targetWidth >= minimumWidths[1]) {
+    return [targetWidth, targetWidth];
+  }
+
+  if (targetWidth < minimumWidths[0]) {
+    return [minimumWidths[0], availableWidth - minimumWidths[0]];
+  }
+
+  return [availableWidth - minimumWidths[1], minimumWidths[1]];
+}
 
 function readEditableValue(element: HTMLDivElement) {
   const rawValue = typeof element.innerText === 'string'
@@ -111,6 +134,8 @@ export function LandingFixedAssignmentsInput({
   const resizeDragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const stopColumnResizeRef = useRef<() => void>(() => {});
   const stopResizeRef = useRef<() => void>(() => {});
+  const columnsContainerRef = useRef<HTMLDivElement | null>(null);
+  const hasCustomColumnWidthsRef = useRef(false);
 
   const participantValues = useMemo(() => serializeFixedAssignmentColumnValues(assignments, 'personId'), [assignments]);
   const groupValues = useMemo(() => serializeFixedAssignmentColumnValues(assignments, 'groupId'), [assignments]);
@@ -122,6 +147,46 @@ export function LandingFixedAssignmentsInput({
     )
   ), [groupValues, participantValues]);
   const contentHeight = Math.max(height - HEADER_HEIGHT - 18, maxLineCount * LINE_HEIGHT + BODY_PADDING);
+
+  useLayoutEffect(() => {
+    if (hasCustomColumnWidthsRef.current) {
+      return undefined;
+    }
+
+    const node = columnsContainerRef.current;
+    if (!node) {
+      return undefined;
+    }
+
+    const measure = () => {
+      if (hasCustomColumnWidthsRef.current) {
+        return;
+      }
+
+      const totalWidth = node.getBoundingClientRect().width;
+      if (totalWidth <= 0) {
+        return;
+      }
+
+      const availableWidth = Math.max(0, totalWidth - COLUMN_SEPARATOR_WIDTH);
+      const nextColumnWidths = distributeBalancedWidths(availableWidth, [MIN_PARTICIPANT_WIDTH, MIN_GROUP_WIDTH]);
+      setColumnWidths((previous) => (areWidthsApproximatelyEqual(previous, nextColumnWidths) ? previous : nextColumnWidths));
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => measure());
+      observer.observe(node);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer?.disconnect();
+    };
+  }, []);
 
   const handleColumnPointerMove = useCallback((event: PointerEvent) => {
     const dragState = dragStateRef.current;
@@ -172,6 +237,7 @@ export function LandingFixedAssignmentsInput({
 
   const startColumnResize = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
+    hasCustomColumnWidthsRef.current = true;
     const leftElement = event.currentTarget.previousElementSibling as HTMLDivElement | null;
     const rightElement = event.currentTarget.nextElementSibling as HTMLDivElement | null;
 
@@ -203,7 +269,7 @@ export function LandingFixedAssignmentsInput({
     <div className="landing-resizable-textarea landing-resizable-textarea--structured rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <div className="theme-scrollbar landing-participant-columns" style={{ height: `${height}px` }}>
         <div className="landing-participant-columns__surface">
-          <div className="landing-participant-columns__columns">
+          <div ref={columnsContainerRef} className="landing-participant-columns__columns">
             <div
               className="landing-participant-columns__column"
               style={{

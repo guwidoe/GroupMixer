@@ -165,7 +165,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const lastNotifiedSolverErrorRef = useRef<string | null>(null);
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
-  const [toolSplitRatio, setToolSplitRatio] = useLocalStorageState<number>(`${LANDING_TOOL_RESIZE_STORAGE_KEY}:${pageKey}`, 0.56);
+  const [toolSplitRatio, setToolSplitRatio] = useLocalStorageState<number>(`${LANDING_TOOL_RESIZE_STORAGE_KEY}:${pageKey}`, 0.5);
   const [toolColumnsWidth, setToolColumnsWidth] = useState(0);
   const [isDraggingToolDivider, setIsDraggingToolDivider] = useState(false);
   const languageOptions = useMemo(

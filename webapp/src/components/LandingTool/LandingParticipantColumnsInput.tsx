@@ -42,6 +42,42 @@ const MIN_ATTRIBUTE_WIDTH = 64;
 const HEADER_HEIGHT = 32;
 const LINE_HEIGHT = 26;
 const BODY_PADDING = 18;
+const COLUMN_SEPARATOR_WIDTH = 12;
+
+function areWidthsApproximatelyEqual(left: number[], right: number[]) {
+  return left.length === right.length && left.every((value, index) => Math.abs(value - right[index]) < 0.5);
+}
+
+function distributeBalancedWidths(availableWidth: number, minimumWidths: number[]) {
+  const minimumTotal = minimumWidths.reduce((sum, width) => sum + width, 0);
+  if (availableWidth <= minimumTotal) {
+    return [...minimumWidths];
+  }
+
+  const widths = Array.from({ length: minimumWidths.length }, () => 0);
+  let remainingWidth = availableWidth;
+  let remainingIndexes = minimumWidths.map((_, index) => index);
+
+  while (remainingIndexes.length > 0) {
+    const targetWidth = remainingWidth / remainingIndexes.length;
+    const constrainedIndexes = remainingIndexes.filter((index) => minimumWidths[index] > targetWidth);
+
+    if (constrainedIndexes.length === 0) {
+      remainingIndexes.forEach((index) => {
+        widths[index] = targetWidth;
+      });
+      break;
+    }
+
+    constrainedIndexes.forEach((index) => {
+      widths[index] = minimumWidths[index];
+      remainingWidth -= minimumWidths[index];
+    });
+    remainingIndexes = remainingIndexes.filter((index) => !constrainedIndexes.includes(index));
+  }
+
+  return widths;
+}
 
 function readEditableValue(element: HTMLDivElement) {
   const rawValue = typeof element.innerText === 'string'
@@ -163,6 +199,10 @@ export function LandingParticipantColumnsInput({
   const lastGhostPointerActivationAtRef = useRef<number | null>(null);
   const headerInputRefs = useRef(new Map<string, HTMLDivElement>());
   const fulfilledFocusRequestTokenRef = useRef<number | null>(null);
+  const columnsContainerRef = useRef<HTMLDivElement | null>(null);
+  const hasCustomColumnWidthsRef = useRef(false);
+  const primaryBodyInputRef = useRef<HTMLDivElement | null>(null);
+  const hasAppliedInitialBodyFocusRef = useRef(false);
 
   const focusColumnHeader = useCallback((columnId: string, token?: number) => {
     if (token != null && fulfilledFocusRequestTokenRef.current === token) {
@@ -196,11 +236,83 @@ export function LandingParticipantColumnsInput({
     headerInputRefs.current.delete(columnId);
   }, [focusColumnHeader, pendingFocusRequest]);
 
+  const focusPrimaryBodyInput = useCallback(() => {
+    if (hasAppliedInitialBodyFocusRef.current) {
+      return true;
+    }
+
+    const element = primaryBodyInputRef.current;
+    if (!element) {
+      return false;
+    }
+
+    const activeElement = document.activeElement;
+    if (activeElement && activeElement !== document.body && activeElement !== document.documentElement && activeElement !== element) {
+      return false;
+    }
+
+    focusEditableAtStart(element);
+    const isFocused = document.activeElement === element;
+    if (isFocused) {
+      hasAppliedInitialBodyFocusRef.current = true;
+    }
+
+    return isFocused;
+  }, []);
+
   const maxLineCount = useMemo(() => (
     Math.max(1, ...columns.map((column) => Math.max(1, splitParticipantColumnValues(column.values).length)))
   ), [columns]);
 
   const contentHeight = Math.max(height - HEADER_HEIGHT - 18, maxLineCount * LINE_HEIGHT + BODY_PADDING);
+
+  useLayoutEffect(() => {
+    if (hasCustomColumnWidthsRef.current) {
+      return undefined;
+    }
+
+    const node = columnsContainerRef.current;
+    if (!node) {
+      return undefined;
+    }
+
+    const measure = () => {
+      if (hasCustomColumnWidthsRef.current) {
+        return;
+      }
+
+      const totalWidth = node.getBoundingClientRect().width;
+      if (totalWidth <= 0) {
+        return;
+      }
+
+      const minimumWidths = columns.map((_, index) => (index === 0 ? MIN_NAME_WIDTH : MIN_ATTRIBUTE_WIDTH));
+      minimumWidths.push(MIN_ATTRIBUTE_WIDTH);
+
+      const availableWidth = Math.max(0, totalWidth - (columns.length * COLUMN_SEPARATOR_WIDTH));
+      const balancedWidths = distributeBalancedWidths(availableWidth, minimumWidths);
+      const nextColumnWidths = balancedWidths.slice(0, columns.length);
+      const nextGhostColumnWidth = balancedWidths[balancedWidths.length - 1] ?? ATTRIBUTE_COLUMN_WIDTH;
+
+      setColumnWidths((previous) => (areWidthsApproximatelyEqual(previous, nextColumnWidths) ? previous : nextColumnWidths));
+      setGhostColumnWidth((previous) => (Math.abs(previous - nextGhostColumnWidth) < 0.5 ? previous : nextGhostColumnWidth));
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => measure());
+      observer.observe(node);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer?.disconnect();
+    };
+  }, [columns.length]);
+
   const getColumnWidth = useCallback(
     (index: number) => columnWidths[index] ?? (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH),
     [columnWidths],
@@ -242,6 +354,7 @@ export function LandingParticipantColumnsInput({
 
   const startColumnResize = useCallback((index: number, event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
+    hasCustomColumnWidthsRef.current = true;
     const rightIsGhost = index === columns.length - 1;
     const leftElement = event.currentTarget.previousElementSibling as HTMLDivElement | null;
     const rightElement = event.currentTarget.nextElementSibling as HTMLDivElement | null;
@@ -315,6 +428,33 @@ export function LandingParticipantColumnsInput({
     };
   }, [focusColumnHeader, pendingFocusRequest]);
 
+  useLayoutEffect(() => {
+    if (hasAppliedInitialBodyFocusRef.current) {
+      return undefined;
+    }
+
+    const timeoutIds: number[] = [];
+    const animationFrameId = window.requestAnimationFrame(() => {
+      focusPrimaryBodyInput();
+    });
+
+    focusPrimaryBodyInput();
+    timeoutIds.push(window.setTimeout(() => {
+      focusPrimaryBodyInput();
+    }, 0));
+    timeoutIds.push(window.setTimeout(() => {
+      focusPrimaryBodyInput();
+    }, 50));
+    timeoutIds.push(window.setTimeout(() => {
+      focusPrimaryBodyInput();
+    }, 150));
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, [focusPrimaryBodyInput]);
+
   const handleResizePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -360,7 +500,7 @@ export function LandingParticipantColumnsInput({
     <div className="landing-resizable-textarea landing-resizable-textarea--structured rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <div className="theme-scrollbar landing-participant-columns" style={{ height: `${height}px` }}>
         <div className="landing-participant-columns__surface">
-          <div className="landing-participant-columns__columns">
+          <div ref={columnsContainerRef} className="landing-participant-columns__columns">
             {columns.map((column, index) => (
               <React.Fragment key={column.id}>
                 <div
@@ -413,6 +553,9 @@ export function LandingParticipantColumnsInput({
                       onChange={(nextValue) => onChangeColumnValues(index, nextValue)}
                       ariaLabel={index === 0 ? label : column.name || `Attribute ${index}`}
                       className="landing-participant-columns__textarea"
+                      inputRef={index === 0 ? (node) => {
+                        primaryBodyInputRef.current = node;
+                      } : undefined}
                       style={{ height: `${contentHeight}px` }}
                       multiline
                       placeholder={index === 0 ? nameColumnPlaceholder : ''}
