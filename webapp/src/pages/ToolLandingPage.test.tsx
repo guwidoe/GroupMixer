@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -543,6 +543,9 @@ describe('ToolLandingPage SEO wiring', () => {
 
     const checkbox = screen.getByRole('checkbox', { name: /minimize repeat pairings/i });
     expect(checkbox).toBeChecked();
+    const sessionsLabelRow = screen.getByText('Sessions').closest('div');
+    expect(sessionsLabelRow).not.toBeNull();
+    expect(within(sessionsLabelRow as HTMLElement).getByRole('button', { name: /show section help/i })).toBeInTheDocument();
 
     await user.click(checkbox);
 

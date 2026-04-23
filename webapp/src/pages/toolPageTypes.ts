@@ -112,6 +112,7 @@ export interface ToolPageAdvancedOptionsUiContent {
   showLabel: string;
   hideLabel: string;
   sessionsLabel: string;
+  sessionsHelp: string;
   avoidRepeatPairingsLabel: string;
   avoidRepeatPairingsDescription: string;
   keepTogetherLabel: string;

@@ -176,14 +176,16 @@ function SectionLabelWithTooltip({
   help,
   htmlFor,
   action,
+  className,
 }: {
   label: string;
   help: string;
   htmlFor?: string;
   action?: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div className={action ? 'relative mb-2 pr-28 sm:pr-32' : 'mb-2'}>
+    <div className={className ?? (action ? 'relative mb-2 pr-28 sm:pr-32' : 'mb-2')}>
       <div className="flex min-w-0 items-center gap-1.5">
         <label htmlFor={htmlFor} className="block text-sm font-medium">
           {label}
@@ -1097,9 +1099,12 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
 
                     <div className="landing-participants-controls__sessions min-w-0 w-full">
                       <div className="mb-[0.86rem] flex items-center justify-between gap-3">
-                        <label className="text-sm font-medium" htmlFor="landing-sessions-slider">
-                          {ui.advancedOptions.sessionsLabel}
-                        </label>
+                        <SectionLabelWithTooltip
+                          htmlFor="landing-sessions-slider"
+                          label={ui.advancedOptions.sessionsLabel}
+                          help={ui.advancedOptions.sessionsHelp}
+                          className="min-w-0"
+                        />
                         <label
                           className="landing-participants-controls__repeat-toggle"
                           style={{ color: 'var(--text-secondary)' }}

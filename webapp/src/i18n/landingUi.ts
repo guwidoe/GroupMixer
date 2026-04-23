@@ -38,6 +38,7 @@ const EN_LANDING_UI: ToolPageSharedUiContent = {
     showLabel: 'Show',
     hideLabel: 'Hide',
     sessionsLabel: 'Sessions',
+    sessionsHelp: 'Use 1 session for a single round of groups. Increase sessions when you want multiple rounds with new group assignments for the same people.',
     avoidRepeatPairingsLabel: 'Minimize repeat pairings',
     avoidRepeatPairingsDescription:
       'Across multiple sessions, tries to avoid placing the same two people together again.',
@@ -134,6 +135,7 @@ const DE_LANDING_UI: ToolPageSharedUiContent = {
     showLabel: 'Anzeigen',
     hideLabel: 'Ausblenden',
     sessionsLabel: 'Runden',
+    sessionsHelp: 'Use 1 session for a single round of groups. Increase sessions when you want multiple rounds with new group assignments for the same people.',
     avoidRepeatPairingsLabel: 'Wiederholte Paarungen vermeiden',
     avoidRepeatPairingsDescription:
       'Verteile Personen über mehrere Runden, damit dieselben Paare seltener wiederholt werden.',
@@ -230,6 +232,7 @@ const ES_LANDING_UI: ToolPageSharedUiContent = {
     showLabel: 'Mostrar',
     hideLabel: 'Ocultar',
     sessionsLabel: 'Sesiones',
+    sessionsHelp: 'Use 1 session for a single round of groups. Increase sessions when you want multiple rounds with new group assignments for the same people.',
     avoidRepeatPairingsLabel: 'Evitar emparejamientos repetidos',
     avoidRepeatPairingsDescription:
       'Reparte a las personas entre sesiones para que las mismas parejas se repitan menos.',
@@ -326,6 +329,7 @@ const FR_LANDING_UI: ToolPageSharedUiContent = {
     showLabel: 'Afficher',
     hideLabel: 'Masquer',
     sessionsLabel: 'Sessions',
+    sessionsHelp: 'Use 1 session for a single round of groups. Increase sessions when you want multiple rounds with new group assignments for the same people.',
     avoidRepeatPairingsLabel: 'Éviter les paires répétées',
     avoidRepeatPairingsDescription:
       'Répartissez les personnes sur plusieurs sessions pour éviter que les mêmes paires se répètent.',
@@ -422,6 +426,7 @@ const JA_LANDING_UI: ToolPageSharedUiContent = {
     showLabel: '表示',
     hideLabel: '非表示',
     sessionsLabel: 'セッション数',
+    sessionsHelp: 'Use 1 session for a single round of groups. Increase sessions when you want multiple rounds with new group assignments for the same people.',
     avoidRepeatPairingsLabel: '同じ組み合わせの繰り返しを避ける',
     avoidRepeatPairingsDescription:
       '複数セッションにまたがって人を分散し、各ラウンドで重複を抑えた組み合わせを作成します。',
@@ -518,6 +523,7 @@ const HI_LANDING_UI: ToolPageSharedUiContent = {
     showLabel: 'दिखाएँ',
     hideLabel: 'छुपाएँ',
     sessionsLabel: 'सत्र',
+    sessionsHelp: 'Use 1 session for a single round of groups. Increase sessions when you want multiple rounds with new group assignments for the same people.',
     avoidRepeatPairingsLabel: 'दोहराई जाने वाली जोड़ियों से बचें',
     avoidRepeatPairingsDescription:
       'लोगों को अलग-अलग सत्रों में फैलाएँ ताकि वही जोड़ी बार-बार कम बने।',
@@ -614,6 +620,7 @@ const ZH_LANDING_UI: ToolPageSharedUiContent = {
     showLabel: '显示',
     hideLabel: '隐藏',
     sessionsLabel: '场次',
+    sessionsHelp: 'Use 1 session for a single round of groups. Increase sessions when you want multiple rounds with new group assignments for the same people.',
     avoidRepeatPairingsLabel: '避免重复配对',
     avoidRepeatPairingsDescription: '在多个场次中分散人员，减少相同配对再次出现的概率。',
     keepTogetherLabel: '保持同组',
