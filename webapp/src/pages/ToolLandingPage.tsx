@@ -1252,7 +1252,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
             <div className="mx-auto max-w-6xl">
               <h2 className="text-2xl font-semibold tracking-tight">More group generator tools</h2>
               <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
-                Choose the version that best matches how people search for the same grouping task.
+                Explore related tools for classrooms, teams, constraints, and multi-round group assignments.
               </p>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
