@@ -476,6 +476,33 @@ fn constraint_scenario_oracle_constructor_returns_cs_scaffold() {
 }
 
 #[test]
+fn constraint_scenario_oracle_constructor_runs_on_mixed_partial_workload() {
+    let mut input = representative_input();
+    input.initial_schedule = None;
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    }
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&state).unwrap();
+    assert_eq!(state.compiled.num_sessions, 3);
+    assert!(!state.compiled.person_participation[state.compiled.person_id_to_idx["p5"]][0]);
+}
+
+#[test]
+fn constraint_scenario_oracle_constructor_declines_when_repeat_pressure_absent() {
+    let mut input = minimal_input();
+    input.objectives.clear();
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    }
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&state).unwrap();
+    assert_eq!(state.compiled.maximize_unique_contacts_weight, 0.0);
+}
+
+#[test]
 fn constraint_scenario_signals_capture_pair_pressure_and_rigidity() {
     let input = minimal_input();
     let compiled = CompiledProblem::compile(&input).unwrap();
