@@ -8,7 +8,7 @@ const TRUST_BULLETS = [
 ];
 
 const HOME_FEATURE_SUMMARY =
-  'Keep certain people together or apart. Balance people by gender or other attributes. Generate multiple rounds with minimal repeats.';
+  'Paste names to generate random, balanced groups. Keep people together or apart, balance by gender or skill, and create multiple rounds with minimal repeats.';
 
 const OPTIMIZER_FEATURES = [
   'Partial attendance',
@@ -166,7 +166,7 @@ function createContent({
 
 export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalizedContent>> = {
   home: createContent({
-    title: 'Random Group Generator - Split Names into Balanced Teams',
+    title: 'Group Generator - Random, Balanced & Multi-Round',
     description: HOME_FEATURE_SUMMARY,
     eyebrow: 'For classrooms, workshops, and events',
     heroTitle: 'Random Group Generator',
@@ -187,7 +187,7 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
     ],
   }),
   'random-group-generator': createContent({
-    title: 'Random Group Generator - Split a List of Names into Groups',
+    title: 'Random Group Generator - Split Names into Groups',
     description:
       'Split a list of names into groups. Set group count or group size, then add balancing, pairing rules, or multiple rounds when needed.',
     eyebrow: 'For quick random splits',
