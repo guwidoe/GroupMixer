@@ -11,6 +11,7 @@ import { useQuickSetup } from '../components/LandingTool/useQuickSetup';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
 import { HomeAnimatedHeroTitle } from '../components/LandingPage/HomeAnimatedHeroTitle';
 import { LandingLanguageSelector } from '../components/LandingPage/LandingLanguageSelector';
+import { NotificationContainer } from '../components/NotificationContainer';
 import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
 import { DemoDataDropdown } from '../components/ScenarioEditor/DemoDataDropdown';
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
@@ -161,6 +162,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const location = useLocation();
   const resultsRef = useRef<HTMLDivElement>(null);
   const toolColumnsRef = useRef<HTMLDivElement>(null);
+  const lastNotifiedSolverErrorRef = useRef<string | null>(null);
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
   const [toolSplitRatio, setToolSplitRatio] = useLocalStorageState<number>(`${LANDING_TOOL_RESIZE_STORAGE_KEY}:${pageKey}`, 0.56);
@@ -259,6 +261,24 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const advancedGridClassName = config.sectionSet === 'technical'
     ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4'
     : 'mt-8 grid gap-4 sm:grid-cols-2';
+
+  useEffect(() => {
+    if (!controller.errorMessage) {
+      lastNotifiedSolverErrorRef.current = null;
+      return;
+    }
+
+    if (lastNotifiedSolverErrorRef.current === controller.errorMessage) {
+      return;
+    }
+
+    lastNotifiedSolverErrorRef.current = controller.errorMessage;
+    addNotification({
+      type: 'error',
+      title: 'Solver Error',
+      message: controller.errorMessage,
+    });
+  }, [addNotification, controller.errorMessage]);
 
   useEffect(() => {
     if (!controller.result?.generatedAt) {
@@ -1127,6 +1147,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         feedbackLabel={config.chrome.feedbackLabel}
         privacyNote={config.chrome.privacyNote}
       />
+      <NotificationContainer />
     </div>
   );
 }

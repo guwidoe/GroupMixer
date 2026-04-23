@@ -258,6 +258,27 @@ describe('ToolLandingPage SEO wiring', () => {
     );
   }, 10000);
 
+  it('surfaces landing solver errors without falling back to draft groups', async () => {
+    const user = userEvent.setup();
+    vi.mocked(solveScenario).mockRejectedValueOnce(
+      new Error("Failed to solve scenario: invalid-input: MustStayApart conflicts with MustStayTogether for ['Alex', 'Sam']"),
+    );
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+        <LocationProbe includeSearch />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+
+    expect(await screen.findByText('Solver Error')).toBeInTheDocument();
+    expect(await screen.findByText(/muststayapart conflicts with muststaytogether/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('landing-results-panel')).not.toBeInTheDocument();
+    expect(screen.getByTestId('location-probe')).toHaveTextContent(/^\/$/);
+  }, 10000);
+
   it('scrolls to the inline results each time groups are generated', async () => {
     const user = userEvent.setup();
 
