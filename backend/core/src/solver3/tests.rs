@@ -29,7 +29,11 @@ use crate::models::{
     SolverConfiguration, SolverParams, StopConditions,
 };
 
-use super::compiled_problem::CompiledProblem;
+use super::compiled_problem::{CompiledProblem, PackedSchedule};
+use super::construction::constraint_scenario_oracle::{
+    build_constraint_scenario_ensemble, extract_constraint_scenario_signals,
+    ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
+};
 use super::moves::{
     analyze_clique_swap, analyze_transfer, apply_clique_swap_runtime_preview,
     apply_swap_runtime_preview, apply_transfer_runtime_preview,
@@ -465,6 +469,42 @@ fn constraint_scenario_oracle_constructor_returns_cs_scaffold() {
     validate_invariants(&state).unwrap();
     assert_eq!(state.compiled.num_sessions, 2);
     assert_eq!(state.compiled.num_people, 4);
+}
+
+#[test]
+fn constraint_scenario_signals_capture_pair_pressure_and_rigidity() {
+    let input = minimal_input();
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let schedule_a: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let schedule_b: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
+    let ensemble = build_constraint_scenario_ensemble(vec![
+        ConstraintScenarioCandidate {
+            schedule: schedule_a,
+            source: ConstraintScenarioCandidateSource::BaselineLegacy,
+            seed: 1,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+        ConstraintScenarioCandidate {
+            schedule: schedule_b,
+            source: ConstraintScenarioCandidateSource::FreedomAwareDeterministic,
+            seed: 2,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+    ])
+    .unwrap();
+
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let pair_01 = compiled.pair_idx(0, 1);
+    assert_eq!(signals.pair_pressure(&compiled, 0, pair_01), 1.0);
+    assert_eq!(signals.pair_pressure(&compiled, 1, pair_01), 0.5);
+    assert_eq!(signals.placement_frequency(&compiled, 1, 1, 0), 0.5);
+    assert_eq!(signals.placement_frequency(&compiled, 1, 1, 1), 0.5);
+    assert!(signals.rigidity(&compiled, 0, 1) > 0.99);
+    assert!(signals.rigidity(&compiled, 1, 1) < 0.01);
 }
 
 #[test]
