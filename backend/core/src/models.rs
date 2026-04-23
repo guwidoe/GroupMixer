@@ -55,6 +55,7 @@ pub type ApiSchedule = HashMap<String, HashMap<String, Vec<String>>>;
 ///             max_iterations: Some(10_000),
 ///             time_limit_seconds: None,
 ///             no_improvement_iterations: None,
+///             stop_on_optimal_score: true,
 ///         },
 ///         solver_params: SolverParams::SimulatedAnnealing(
 ///             SimulatedAnnealingParams {
@@ -241,8 +242,9 @@ pub struct Objective {
 /// - **AttributeBalance**: Maintains desired attribute distributions within groups
 /// - **ImmovablePerson**: Fixes specific people to specific groups in specific sessions
 /// - **MustStayTogether**: Keeps certain people in the same group
+/// - **MustStayApart**: Requires certain people to be in different groups
 /// - **ShouldStayTogether**: Prefers certain people to be in the same group (soft)
-/// - **ShouldNotBeTogether**: Prevents certain people from being in the same group
+/// - **ShouldNotBeTogether**: Discourages certain people from being in the same group (soft)
 ///
 /// # Examples
 ///
@@ -303,6 +305,15 @@ pub enum Constraint {
         #[serde(default)]
         sessions: Option<Vec<u32>>,
     },
+    /// Requires specified people to be in different groups
+    MustStayApart {
+        /// List of person IDs that must stay apart pairwise
+        people: Vec<String>,
+        /// Optional list of session indices where this constraint applies.
+        /// If `None`, applies to all sessions.
+        #[serde(default)]
+        sessions: Option<Vec<u32>>,
+    },
     /// Prefers specified people to be in the same group (soft constraint)
     ShouldStayTogether {
         /// List of person IDs that should be together
@@ -315,7 +326,7 @@ pub enum Constraint {
         #[serde(default)]
         sessions: Option<Vec<u32>>,
     },
-    /// Prevents specified people from being in the same group
+    /// Discourages specified people from being in the same group (soft constraint)
     ShouldNotBeTogether {
         /// List of person IDs that should not be together
         people: Vec<String>,
@@ -518,6 +529,7 @@ pub struct ImmovablePeopleParams {
 ///         max_iterations: Some(50_000),
 ///         time_limit_seconds: Some(60),
 ///         no_improvement_iterations: Some(5_000),
+///         stop_on_optimal_score: true,
 ///     },
 ///     solver_params: SolverParams::SimulatedAnnealing(
 ///         SimulatedAnnealingParams {
@@ -592,11 +604,16 @@ pub struct SolverConfiguration {
 pub enum SolverKind {
     /// The current production solver family backed by the `solver1` simulated annealing engine.
     Solver1,
-    /// Bootstrapped placeholder for the upcoming `solver2` family.
-    Solver2,
     /// Bootstrap scaffold for the `solver3` performance-oriented dense-state solver family.
     /// Solve paths are not yet implemented; registration is truthful metadata only.
     Solver3,
+    /// Dedicated pure-SGP solver family implementing the Triska/Musliu paper: Section 5 complete
+    /// backtracking with patterns, plus Sections 6 and 7 randomized greedy initialization and
+    /// conflict-position local search.
+    Solver4,
+    /// Construction-first pure-SGP solver family that routes instances through explicit
+    /// design-theoretic construction families.
+    Solver5,
 }
 
 /// Default solver family used by current public callers.
@@ -606,16 +623,18 @@ impl SolverKind {
     pub const fn canonical_id(self) -> &'static str {
         match self {
             Self::Solver1 => "solver1",
-            Self::Solver2 => "solver2",
             Self::Solver3 => "solver3",
+            Self::Solver4 => "solver4",
+            Self::Solver5 => "solver5",
         }
     }
 
     pub const fn display_name(self) -> &'static str {
         match self {
             Self::Solver1 => "Solver 1",
-            Self::Solver2 => "Solver 2",
             Self::Solver3 => "Solver 3",
+            Self::Solver4 => "Solver 4",
+            Self::Solver5 => "Solver 5",
         }
     }
 
@@ -627,8 +646,9 @@ impl SolverKind {
                 "simulated_annealing",
                 "SimulatedAnnealing",
             ],
-            Self::Solver2 => &["solver2"],
             Self::Solver3 => &["solver3"],
+            Self::Solver4 => &["solver4"],
+            Self::Solver5 => &["solver5"],
         }
     }
 
@@ -638,11 +658,12 @@ impl SolverKind {
             | "legacy_simulated_annealing"
             | "simulated_annealing"
             | "SimulatedAnnealing" => Ok(Self::Solver1),
-            "solver2" => Ok(Self::Solver2),
             "solver3" => Ok(Self::Solver3),
+            "solver4" => Ok(Self::Solver4),
+            "solver5" => Ok(Self::Solver5),
             other => Err(format!(
                 "Unknown solver type '{other}'. Supported solver IDs: {}",
-                [Self::Solver1, Self::Solver2, Self::Solver3]
+                [Self::Solver1, Self::Solver3, Self::Solver4, Self::Solver5]
                     .iter()
                     .map(|kind| kind.canonical_id())
                     .collect::<Vec<_>>()
@@ -953,48 +974,51 @@ impl StopConditions {
 pub enum SolverParams {
     /// Parameters for the Simulated Annealing algorithm
     SimulatedAnnealing(SimulatedAnnealingParams),
-    /// Parameters for the internal `solver2` family.
-    #[serde(rename = "solver2")]
-    Solver2(Solver2Params),
     /// Parameters for the internal `solver3` family.
     ///
     /// `solver3` is currently a bootstrap scaffold. This parameter type is intentionally
     /// small until explicit tuning knobs are defined during the implementation epics.
     #[serde(rename = "solver3")]
     Solver3(Solver3Params),
+    /// Parameters for the internal `solver4` family.
+    #[serde(rename = "solver4")]
+    Solver4(Solver4Params),
+    /// Parameters for the internal `solver5` family.
+    #[serde(rename = "solver5")]
+    Solver5(Solver5Params),
 }
 
 impl SolverParams {
     pub fn solver_kind(&self) -> SolverKind {
         match self {
             Self::SimulatedAnnealing(_) => SolverKind::Solver1,
-            Self::Solver2(_) => SolverKind::Solver2,
             Self::Solver3(_) => SolverKind::Solver3,
+            Self::Solver4(_) => SolverKind::Solver4,
+            Self::Solver5(_) => SolverKind::Solver5,
         }
     }
 
     pub fn simulated_annealing_params(&self) -> Option<&SimulatedAnnealingParams> {
         match self {
             Self::SimulatedAnnealing(params) => Some(params),
-            Self::Solver2(_) | Self::Solver3(_) => None,
+            Self::Solver3(_) | Self::Solver4(_) | Self::Solver5(_) => None,
         }
     }
 
     pub fn solver3_params(&self) -> Option<&Solver3Params> {
         match self {
             Self::Solver3(params) => Some(params),
-            Self::SimulatedAnnealing(_) | Self::Solver2(_) => None,
+            Self::SimulatedAnnealing(_) | Self::Solver4(_) | Self::Solver5(_) => None,
         }
     }
 }
 
-/// Parameters for the internal `solver2` family.
+/// Parameters for the internal `solver5` family.
 ///
-/// The dedicated directory and typed registry slot allow the new solver architecture to evolve in
-/// parallel. During the current bring-up phase, `solver2` uses a built-in minimal search baseline
-/// and this parameter type remains intentionally small until explicit tuning knobs are ready.
+/// `solver5` is a construction-first pure-SGP solver family. The initial baseline is deliberately
+/// small and grows by adding explicit construction families plus routing/orchestration logic.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
-pub struct Solver2Params {}
+pub struct Solver5Params {}
 
 /// Parameters for the internal `solver3` family.
 ///
@@ -1018,6 +1042,90 @@ pub struct Solver3Params {
     /// Experimental hotspot-guidance controls for proposal-generation research.
     #[serde(default)]
     pub hotspot_guidance: Solver3HotspotGuidanceParams,
+}
+
+/// Explicit algorithm branch selection for `solver4`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver4Mode {
+    /// Paper Sections 6 and 7: randomized greedy initialization plus conflict-position local
+    /// search.
+    #[default]
+    GreedyLocalSearch,
+    /// Paper Section 5: complete backtracking guided by minimal freedom with a configurable
+    /// pattern per group.
+    CompleteBacktracking,
+}
+
+/// Optional diagnostics controls for `solver4`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver4DiagnosticsParams {
+    /// When true, record solver4-specific paper-trace diagnostics in benchmark telemetry.
+    #[serde(default)]
+    pub capture_paper_trace: bool,
+    /// Record at most one trace point every N iterations in greedy-local-search mode.
+    #[serde(default = "default_solver4_trace_every_n_iterations")]
+    pub trace_every_n_iterations: u64,
+    /// When paper-trace capture is enabled, include the greedy initial schedule in telemetry.
+    #[serde(default)]
+    pub include_initial_schedule_in_trace: bool,
+}
+
+impl Default for Solver4DiagnosticsParams {
+    fn default() -> Self {
+        Self {
+            capture_paper_trace: false,
+            trace_every_n_iterations: default_solver4_trace_every_n_iterations(),
+            include_initial_schedule_in_trace: false,
+        }
+    }
+}
+
+/// Parameters for the internal `solver4` family.
+///
+/// `solver4` is intentionally narrow: it targets the pure zero-repeat Social-Golfer family from
+/// the Triska/Musliu paper and now exposes both paper branches:
+/// - Section 5 complete backtracking with pattern-driven minimal-freedom set selection
+/// - Sections 6 and 7 randomized greedy initialization plus conflict-position local search
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver4Params {
+    /// Which paper branch to execute.
+    #[serde(default)]
+    pub mode: Solver4Mode,
+    /// Gamma control for the Section 6/7 GRASP initializer.
+    ///
+    /// With the default value `0.0`, solver4 uses the thesis-documented gamma portfolio
+    /// `[0.0, 0.1, 0.2, rand(0.3..=1.0), rand(0.3..=1.0)]`.
+    ///
+    /// When set explicitly to a non-default value, the override is used for the first GRASP
+    /// candidate while the remaining documented fixed values are retained.
+    #[serde(default = "default_solver4_gamma")]
+    pub gamma: f64,
+    /// Optional Section 5 backtracking pattern such as `3`, `2-2`, `4`, or `3-2-2-1`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backtracking_pattern: Option<String>,
+    /// Optional solver4-specific trace capture.
+    #[serde(default)]
+    pub diagnostics: Solver4DiagnosticsParams,
+}
+
+impl Default for Solver4Params {
+    fn default() -> Self {
+        Self {
+            mode: Solver4Mode::default(),
+            gamma: default_solver4_gamma(),
+            backtracking_pattern: None,
+            diagnostics: Solver4DiagnosticsParams::default(),
+        }
+    }
+}
+
+fn default_solver4_gamma() -> f64 {
+    0.0
+}
+
+fn default_solver4_trace_every_n_iterations() -> u64 {
+    1
 }
 
 /// Construction controls for `solver3`.
@@ -2470,6 +2578,68 @@ pub struct SgpWeekPairTabuBenchmarkTelemetry {
     pub realized_tenure_max: Option<u64>,
 }
 
+/// One recorded solver4 paper-trace sample.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct Solver4PaperTracePoint {
+    #[serde(default)]
+    pub iteration: u64,
+    #[serde(default)]
+    pub elapsed_seconds: f64,
+    #[serde(default)]
+    pub current_conflict_positions: u64,
+    #[serde(default)]
+    pub best_conflict_positions: u64,
+    #[serde(default)]
+    pub conflict_positions_by_week: Vec<u32>,
+}
+
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct Solver4GraspCandidateTrace {
+    #[serde(default)]
+    pub candidate_index: u32,
+    #[serde(default)]
+    pub gamma: f64,
+    #[serde(default)]
+    pub initialization_seconds: f64,
+    #[serde(default)]
+    pub search_seconds: f64,
+    #[serde(default)]
+    pub initial_conflict_positions: u64,
+    #[serde(default)]
+    pub best_conflict_positions: u64,
+    #[serde(default)]
+    pub solved: bool,
+    #[serde(default)]
+    pub iterations_completed: u64,
+    #[serde(default)]
+    pub stop_reason: Option<StopReason>,
+    #[serde(default)]
+    pub selected_for_continuation: bool,
+}
+
+/// Solver4-specific paper-conformance telemetry for trajectory inspection.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Default)]
+pub struct Solver4PaperTrace {
+    #[serde(default)]
+    pub mode: Option<Solver4Mode>,
+    #[serde(default)]
+    pub backtracking_pattern: Option<String>,
+    #[serde(default)]
+    pub initial_schedule: Option<ApiSchedule>,
+    #[serde(default)]
+    pub initial_conflict_positions: Option<u64>,
+    #[serde(default)]
+    pub initial_conflict_positions_by_week: Vec<u32>,
+    #[serde(default)]
+    pub grasp_candidates: Vec<Solver4GraspCandidateTrace>,
+    #[serde(default)]
+    pub continuation_candidate_index: Option<u32>,
+    #[serde(default)]
+    pub continuation_gamma: Option<f64>,
+    #[serde(default)]
+    pub points: Vec<Solver4PaperTracePoint>,
+}
+
 /// End-of-run benchmark telemetry intended for regression / benchmark artifacts.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
 pub struct SolverBenchmarkTelemetry {
@@ -2515,6 +2685,8 @@ pub struct SolverBenchmarkTelemetry {
     #[serde(default)]
     pub multi_root_balanced_session_inheritance:
         Option<MultiRootBalancedSessionInheritanceBenchmarkTelemetry>,
+    #[serde(default)]
+    pub solver4_paper_trace: Option<Solver4PaperTrace>,
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
 }
 
@@ -2568,7 +2740,7 @@ pub type BenchmarkObserver = Box<dyn Fn(&BenchmarkEvent) + Send>;
 /// #     objectives: vec![], constraints: vec![],
 /// #     solver: SolverConfiguration {
 /// #         solver_type: "SimulatedAnnealing".to_string(),
-/// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
+/// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None, stop_on_optimal_score: true },
 /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
 /// #         logging: LoggingOptions::default(),
 /// #         telemetry: Default::default(),
@@ -2667,7 +2839,7 @@ impl SolverResult {
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
-    /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
+    /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None, stop_on_optimal_score: true },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #         telemetry: Default::default(),

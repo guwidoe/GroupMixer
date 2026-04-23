@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Calendar, FlaskConical, Play } from 'lucide-react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceLayout } from './WorkspaceLayout';
 import type { WorkspaceNavGroup } from './types';
 
@@ -40,6 +40,10 @@ const groupedItems: WorkspaceNavGroup[] = [
 ];
 
 describe('WorkspaceLayout', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('renders generic grouped workspace navigation and supports badges/counts', () => {
     render(
       <WorkspaceLayout workspaceLabel="Solver" groupedItems={groupedItems} activeItemId="solver3" onNavigate={vi.fn()}>
@@ -76,5 +80,59 @@ describe('WorkspaceLayout', () => {
     const solver1Button = within(sidebar).getByRole('button', { name: /^solver 1$/i });
     expect(within(solver1Button).getByText('2')).toBeInTheDocument();
     expect(within(sidebar).getByRole('button', { name: 'L' })).toBeInTheDocument();
+  });
+
+  it('persists collapsed sidebar state across remounts', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <WorkspaceLayout
+        workspaceLabel="Solver"
+        groupedItems={groupedItems}
+        activeItemId="run-solver"
+        onNavigate={vi.fn()}
+        collapsedSidebarHeader={<button type="button">L</button>}
+      >
+        <div>Workspace content</div>
+      </WorkspaceLayout>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /collapse solver sidebar/i }));
+    unmount();
+
+    render(
+      <WorkspaceLayout
+        workspaceLabel="Solver"
+        groupedItems={groupedItems}
+        activeItemId="run-solver"
+        onNavigate={vi.fn()}
+        collapsedSidebarHeader={<button type="button">L</button>}
+      >
+        <div>Workspace content</div>
+      </WorkspaceLayout>,
+    );
+
+    expect(screen.getByRole('button', { name: /expand solver sidebar/i })).toBeInTheDocument();
+  });
+
+  it('persists group expansion state across remounts', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(
+      <WorkspaceLayout workspaceLabel="Solver" groupedItems={groupedItems} activeItemId="solver1" onNavigate={vi.fn()}>
+        <div>Workspace content</div>
+      </WorkspaceLayout>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /manual tuning/i }));
+    expect(screen.queryByRole('button', { name: /^solver 1$/i })).not.toBeInTheDocument();
+    unmount();
+
+    render(
+      <WorkspaceLayout workspaceLabel="Solver" groupedItems={groupedItems} activeItemId="solver1" onNavigate={vi.fn()}>
+        <div>Workspace content</div>
+      </WorkspaceLayout>,
+    );
+
+    expect(screen.queryByRole('button', { name: /^solver 1$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /manual tuning/i })).toHaveAttribute('aria-expanded', 'false');
   });
 });

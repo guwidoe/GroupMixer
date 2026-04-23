@@ -9,6 +9,8 @@ interface NumberRangeFilterPanelProps {
 }
 
 export function NumberRangeFilterPanel({ ariaLabel, rangeValue, onChange, onClose }: NumberRangeFilterPanelProps) {
+  // Intentional exception: compact min/max range filters work better as paired raw numeric endpoints
+  // than as the default slider+field NumberField pattern.
   return (
     <div className="grid grid-cols-2 gap-1.5">
       <input

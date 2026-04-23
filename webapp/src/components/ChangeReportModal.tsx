@@ -58,7 +58,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
   const changedByType = buildChangedByType(data.before.compliance, data.after.compliance);
 
   // Hard constraint type set
-  const HARD_TYPES = new Set<string>(['MustStayTogether', 'ImmovablePerson', 'ImmovablePeople']);
+  const HARD_TYPES = new Set<string>(['MustStayTogether', 'MustStayApart', 'ImmovablePerson', 'ImmovablePeople']);
   const entriesAll = Array.from(changedByType.entries());
   const hardEntries = entriesAll.filter(([type]) => HARD_TYPES.has(type));
   const softEntries = entriesAll.filter(([type]) => !HARD_TYPES.has(type));
@@ -252,7 +252,7 @@ const ChangeReportModal: React.FC<Props> = ({ open, onClose, onAccept, onCancel,
         </div>
       );
     }
-    if (type === 'ShouldNotBeTogether') {
+    if (type === 'ShouldNotBeTogether' || type === 'MustStayApart') {
       return (
         <div className="mt-2 space-y-2">
           {added.slice(0, 5).map((d) => (

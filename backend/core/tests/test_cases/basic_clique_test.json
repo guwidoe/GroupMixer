@@ -4,14 +4,12 @@
     "tags": [
       "constraints",
       "clique",
-      "comparison",
-      "solver2"
+      "comparison"
     ],
     "kind": "correctness",
     "tier": "default",
     "solver_families": [
-      "solver1",
-      "solver2"
+      "solver1"
     ],
     "comparison": {
       "category": "bounded_parity",

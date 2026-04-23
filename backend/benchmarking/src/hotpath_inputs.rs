@@ -3,7 +3,7 @@ use gm_core::models::{
     ApiInput, AttributeBalanceMode, AttributeBalanceParams, Constraint, Group,
     ImmovablePersonParams, MoveFamily, MovePolicy, MoveSelectionMode, Objective,
     PairMeetingCountParams, PairMeetingMode, Person, ProblemDefinition, SimulatedAnnealingParams,
-    Solver2Params, Solver3Params, SolverConfiguration, SolverParams, StopConditions,
+    Solver3Params, SolverConfiguration, SolverParams, StopConditions,
 };
 use gm_core::solver1::State;
 use std::collections::{BTreeMap, HashMap};
@@ -24,13 +24,6 @@ pub struct SwapBenchInput {
 }
 
 #[derive(Clone)]
-pub struct Solver2SwapBenchInput {
-    pub input: ApiInput,
-    pub state: gm_core::solver2::RuntimeSolutionState,
-    pub swap: gm_core::solver2::moves::SwapMove,
-}
-
-#[derive(Clone)]
 pub struct Solver3SwapBenchInput {
     pub input: ApiInput,
     pub state: gm_core::solver3::RuntimeState,
@@ -44,13 +37,6 @@ pub struct TransferBenchInput {
     pub person_idx: usize,
     pub from_group: usize,
     pub to_group: usize,
-}
-
-#[derive(Clone)]
-pub struct Solver2TransferBenchInput {
-    pub input: ApiInput,
-    pub state: gm_core::solver2::RuntimeSolutionState,
-    pub transfer: gm_core::solver2::moves::TransferMove,
 }
 
 #[derive(Clone)]
@@ -68,13 +54,6 @@ pub struct CliqueSwapBenchInput {
     pub from_group: usize,
     pub to_group: usize,
     pub target_people: Vec<usize>,
-}
-
-#[derive(Clone)]
-pub struct Solver2CliqueSwapBenchInput {
-    pub input: ApiInput,
-    pub state: gm_core::solver2::RuntimeSolutionState,
-    pub clique_swap: gm_core::solver2::moves::CliqueSwapMove,
 }
 
 #[derive(Clone)]
@@ -220,82 +199,6 @@ pub fn swap_bench_input() -> SwapBenchInput {
     }
 }
 
-pub fn solver2_swap_bench_input(id: &str) -> Option<Solver2SwapBenchInput> {
-    match id {
-        "swap_default_solver2" => {
-            let mut input = make_api_input(
-                ProblemDefinition {
-                    people: vec![
-                        person_with_attr("p0", "role", "eng"),
-                        person_with_attr("p1", "role", "design"),
-                        person_with_attr("p2", "role", "eng"),
-                        person_with_attr("p3", "role", "design"),
-                        person_with_attr("p4", "role", "pm"),
-                        person_with_attr("p5", "role", "pm"),
-                    ],
-                    groups: vec![group("g0", 2), group("g1", 2), group("g2", 2)],
-                    num_sessions: 2,
-                },
-                vec![
-                    Constraint::ShouldNotBeTogether {
-                        people: vec!["p0".to_string(), "p2".to_string()],
-                        penalty_weight: 25.0,
-                        sessions: None,
-                    },
-                    Constraint::PairMeetingCount(PairMeetingCountParams {
-                        people: vec!["p0".to_string(), "p1".to_string()],
-                        sessions: vec![0, 1],
-                        target_meetings: 2,
-                        mode: PairMeetingMode::AtLeast,
-                        penalty_weight: 13.0,
-                    }),
-                    Constraint::AttributeBalance(AttributeBalanceParams {
-                        group_id: "g0".to_string(),
-                        attribute_key: "role".to_string(),
-                        desired_values: hashmap_counts(&[("eng", 1), ("design", 1)]),
-                        penalty_weight: 10.0,
-                        mode: AttributeBalanceMode::Exact,
-                        sessions: None,
-                    }),
-                ],
-                80,
-                151,
-            );
-            input.solver = SolverConfiguration {
-                solver_type: "solver2".to_string(),
-                stop_conditions: StopConditions {
-                    max_iterations: Some(1),
-                    time_limit_seconds: None,
-                    no_improvement_iterations: None,
-                    stop_on_optimal_score: false,
-                },
-                solver_params: SolverParams::Solver2(Solver2Params::default()),
-                logging: Default::default(),
-                telemetry: Default::default(),
-                seed: Some(151),
-                move_policy: None,
-                allowed_sessions: None,
-            };
-            input.initial_schedule = Some(make_initial_schedule(
-                &["g0", "g1", "g2"],
-                vec![
-                    vec![vec!["p0", "p1"], vec!["p2", "p3"], vec!["p4", "p5"]],
-                    vec![vec!["p0", "p2"], vec!["p1", "p4"], vec!["p3", "p5"]],
-                ],
-            ));
-            let state = gm_core::solver2::RuntimeSolutionState::from_input(&input)
-                .expect("solver2 swap state should build");
-            let swap = gm_core::solver2::moves::SwapMove::new(
-                0,
-                state.compiled_problem.person_id_to_idx["p1"],
-                state.compiled_problem.person_id_to_idx["p2"],
-            );
-            Some(Solver2SwapBenchInput { input, state, swap })
-        }
-        _ => None,
-    }
-}
-
 pub fn solver3_swap_bench_input(id: &str) -> Option<Solver3SwapBenchInput> {
     match id {
         "swap_default_solver3" => {
@@ -377,81 +280,6 @@ pub fn transfer_bench_input(id: &str) -> Option<TransferBenchInput> {
     match id {
         "transfer_default" => Some(transfer_default_bench_input()),
         "transfer_pair_constraints_heavy" => Some(transfer_pair_constraints_heavy_bench_input()),
-        _ => None,
-    }
-}
-
-pub fn solver2_transfer_bench_input(id: &str) -> Option<Solver2TransferBenchInput> {
-    match id {
-        "transfer_default_solver2" => {
-            let mut input = make_api_input(
-                ProblemDefinition {
-                    people: vec![
-                        person_with_attr("p0", "role", "eng"),
-                        person_with_attr("p1", "role", "eng"),
-                        person_with_attr("p2", "role", "design"),
-                        person_with_attr("p3", "role", "design"),
-                        person_with_attr("p4", "role", "pm"),
-                    ],
-                    groups: vec![group("g0", 3), group("g1", 2), group("g2", 2)],
-                    num_sessions: 2,
-                },
-                vec![
-                    Constraint::PairMeetingCount(PairMeetingCountParams {
-                        people: vec!["p0".to_string(), "p1".to_string()],
-                        sessions: vec![0, 1],
-                        target_meetings: 2,
-                        mode: PairMeetingMode::AtLeast,
-                        penalty_weight: 13.0,
-                    }),
-                    Constraint::AttributeBalance(AttributeBalanceParams {
-                        group_id: "g0".to_string(),
-                        attribute_key: "role".to_string(),
-                        desired_values: hashmap_counts(&[("eng", 2), ("pm", 1)]),
-                        penalty_weight: 9.0,
-                        mode: AttributeBalanceMode::Exact,
-                        sessions: None,
-                    }),
-                ],
-                80,
-                161,
-            );
-            input.solver = SolverConfiguration {
-                solver_type: "solver2".to_string(),
-                stop_conditions: StopConditions {
-                    max_iterations: Some(1),
-                    time_limit_seconds: None,
-                    no_improvement_iterations: None,
-                    stop_on_optimal_score: false,
-                },
-                solver_params: SolverParams::Solver2(Solver2Params::default()),
-                logging: Default::default(),
-                telemetry: Default::default(),
-                seed: Some(161),
-                move_policy: None,
-                allowed_sessions: None,
-            };
-            input.initial_schedule = Some(make_initial_schedule(
-                &["g0", "g1", "g2"],
-                vec![
-                    vec![vec!["p0", "p1", "p4"], vec!["p2", "p3"], vec![]],
-                    vec![vec!["p0", "p4"], vec!["p1", "p2"], vec!["p3"]],
-                ],
-            ));
-            let state = gm_core::solver2::RuntimeSolutionState::from_input(&input)
-                .expect("solver2 transfer state should build");
-            let transfer = gm_core::solver2::moves::TransferMove::new(
-                1,
-                state.compiled_problem.person_id_to_idx["p1"],
-                state.compiled_problem.group_id_to_idx["g1"],
-                state.compiled_problem.group_id_to_idx["g0"],
-            );
-            Some(Solver2TransferBenchInput {
-                input,
-                state,
-                transfer,
-            })
-        }
         _ => None,
     }
 }
@@ -779,98 +607,6 @@ pub fn clique_swap_bench_input() -> CliqueSwapBenchInput {
         to_group: state.group_id_to_idx["g1"],
         target_people: vec![state.person_id_to_idx["p2"], state.person_id_to_idx["p3"]],
         state,
-    }
-}
-
-pub fn solver2_clique_swap_bench_input(id: &str) -> Option<Solver2CliqueSwapBenchInput> {
-    match id {
-        "clique_swap_default_solver2" => {
-            let mut input = make_api_input(
-                ProblemDefinition {
-                    people: vec![
-                        person_with_attr("p0", "team", "red"),
-                        person_with_attr("p1", "team", "red"),
-                        person_with_attr("p2", "team", "blue"),
-                        person_with_attr("p3", "team", "blue"),
-                        person_with_attr("p4", "team", "red"),
-                        person_with_attr("p5", "team", "blue"),
-                    ],
-                    groups: vec![group("g0", 3), group("g1", 3), group("g2", 1)],
-                    num_sessions: 2,
-                },
-                vec![
-                    Constraint::MustStayTogether {
-                        people: vec!["p0".to_string(), "p1".to_string()],
-                        sessions: None,
-                    },
-                    Constraint::ShouldNotBeTogether {
-                        people: vec!["p0".to_string(), "p5".to_string()],
-                        penalty_weight: 25.0,
-                        sessions: None,
-                    },
-                    Constraint::PairMeetingCount(PairMeetingCountParams {
-                        people: vec!["p0".to_string(), "p5".to_string()],
-                        sessions: vec![0, 1],
-                        target_meetings: 1,
-                        mode: PairMeetingMode::AtLeast,
-                        penalty_weight: 17.0,
-                    }),
-                    Constraint::AttributeBalance(AttributeBalanceParams {
-                        group_id: "g0".to_string(),
-                        attribute_key: "team".to_string(),
-                        desired_values: hashmap_counts(&[("red", 1), ("blue", 2)]),
-                        penalty_weight: 12.0,
-                        sessions: None,
-                        mode: AttributeBalanceMode::Exact,
-                    }),
-                ],
-                60,
-                171,
-            );
-            input.solver = SolverConfiguration {
-                solver_type: "solver2".to_string(),
-                stop_conditions: StopConditions {
-                    max_iterations: Some(1),
-                    time_limit_seconds: None,
-                    no_improvement_iterations: None,
-                    stop_on_optimal_score: false,
-                },
-                solver_params: SolverParams::Solver2(Solver2Params::default()),
-                logging: Default::default(),
-                telemetry: Default::default(),
-                seed: Some(171),
-                move_policy: None,
-                allowed_sessions: None,
-            };
-            input.initial_schedule = Some(make_initial_schedule(
-                &["g0", "g1", "g2"],
-                vec![
-                    vec![vec!["p0", "p1", "p4"], vec!["p2", "p3", "p5"], vec![]],
-                    vec![vec!["p0", "p1", "p4"], vec!["p2", "p3", "p5"], vec![]],
-                ],
-            ));
-            let state = gm_core::solver2::RuntimeSolutionState::from_input(&input)
-                .expect("solver2 clique swap state should build");
-            let clique_idx = state.compiled_problem.person_to_clique_id[0]
-                [state.compiled_problem.person_id_to_idx["p0"]]
-                .expect("p0 should be in a clique");
-            let clique_swap = gm_core::solver2::moves::CliqueSwapMove::new(
-                0,
-                clique_idx,
-                state.compiled_problem.group_id_to_idx["g0"],
-                state.compiled_problem.group_id_to_idx["g1"],
-                vec![
-                    state.compiled_problem.person_id_to_idx["p2"],
-                    state.compiled_problem.person_id_to_idx["p3"],
-                ],
-            );
-            Some(Solver2CliqueSwapBenchInput {
-                input,
-                state,
-                clique_swap,
-            })
-        }
-        _ => None,
     }
 }
 

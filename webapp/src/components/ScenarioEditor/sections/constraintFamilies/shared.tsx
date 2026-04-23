@@ -4,12 +4,13 @@ import { findAttributeDefinition, getAttributeDefinitionName } from '../../../..
 import { useAppStore } from '../../../../store';
 import ConstraintPersonChip from '../../../ConstraintPersonChip';
 import { removePersonFromPeopleConstraint } from '../../../constraints/constraintMutations';
+import { AttributeDistributionField, getAttributeDistributionBuckets } from '../../../ui';
+import { resolveGroupCapacityForSessions } from '../../../modals/attributeBalanceDistribution';
 import {
   SetupCardGrid,
   SetupKeyValueList,
   SetupPeopleNodeList,
   SetupSessionsBadgeList,
-  SetupTagList,
 } from '../../shared/cards';
 import type {
   AttributeBalanceConstraint,
@@ -127,26 +128,55 @@ export function renderPeopleConstraintContent(
   );
 }
 
-export function renderAttributeBalanceContent(constraint: AttributeBalanceConstraint) {
+export function renderAttributeBalanceContent(
+  scenario: Scenario,
+  constraint: AttributeBalanceConstraint,
+  index: number,
+  setScenario: (scenario: Scenario) => void,
+  attributeDefinitions: ReturnType<typeof useAppStore.getState>['attributeDefinitions'],
+) {
+  const targetOptions = getAttributeBalanceTargetOptions(constraint, attributeDefinitions);
+  const selectedSessions = constraint.sessions?.length
+    ? constraint.sessions
+    : Array.from({ length: scenario.num_sessions }, (_, sessionIndex) => sessionIndex);
+  const selectedGroup = scenario.groups.find((group) => group.id === constraint.group_id);
+  const capacityResolution = resolveGroupCapacityForSessions(selectedGroup, selectedSessions);
+
   return (
     <>
-      <SetupKeyValueList
-        items={[
-          { label: 'Group', value: constraint.group_id },
-          { label: 'Attribute', value: constraint.attribute_key },
-        ]}
-      />
-      <SetupTagList
-        items={Object.entries(constraint.desired_values || {}).map(([key, value]) => (
-          <span
-            key={key}
-            className="rounded-full px-2 py-0.5 text-xs font-medium"
-            style={{ backgroundColor: 'var(--bg-tertiary)', color: 'var(--color-accent)', border: '1px solid var(--color-accent)' }}
+      <div className="space-y-2">
+        <SetupKeyValueList
+          items={[
+            { label: 'Group', value: constraint.group_id },
+            { label: 'Attribute', value: constraint.attribute_key },
+            { label: 'Mode', value: constraint.mode ?? 'exact' },
+          ]}
+        />
+        {targetOptions.length > 0 ? (
+          <div
+            onClick={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
           >
-            {key}: {value}
-          </span>
-        ))}
-      />
+            <AttributeDistributionField
+              buckets={getAttributeDistributionBuckets(targetOptions)}
+              value={constraint.desired_values}
+              capacity={capacityResolution.capacity}
+              onChange={(desiredValues) => {
+                setScenario({
+                  ...scenario,
+                  constraints: scenario.constraints.map((candidate, candidateIndex) => (
+                    candidateIndex === index && candidate.type === 'AttributeBalance'
+                      ? { ...candidate, desired_values: desiredValues }
+                      : candidate
+                  )),
+                });
+              }}
+              showSummary={false}
+            />
+          </div>
+        ) : null}
+      </div>
       <SetupSessionsBadgeList sessions={constraint.sessions} />
     </>
   );

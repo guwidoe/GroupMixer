@@ -31,12 +31,15 @@ use crate::models::{
 
 use super::compiled_problem::CompiledProblem;
 use super::moves::{
-    analyze_clique_swap, analyze_transfer, apply_clique_swap_runtime_preview,
+    analyze_clique_swap, analyze_swap, analyze_transfer, apply_clique_swap_runtime_preview,
     apply_swap_runtime_preview, apply_transfer_runtime_preview,
-    preview_clique_swap_oracle_recompute, preview_clique_swap_runtime_lightweight,
-    preview_swap_oracle_recompute, preview_swap_runtime_lightweight,
-    preview_transfer_oracle_recompute, preview_transfer_runtime_lightweight, CliqueSwapFeasibility,
-    CliqueSwapMove, SwapMove, TransferFeasibility, TransferMove,
+    preview_clique_swap_oracle_recompute, preview_clique_swap_runtime_checked,
+    preview_clique_swap_runtime_lightweight, preview_clique_swap_runtime_trusted,
+    preview_swap_oracle_recompute, preview_swap_runtime_checked, preview_swap_runtime_lightweight,
+    preview_swap_runtime_trusted, preview_transfer_oracle_recompute,
+    preview_transfer_runtime_checked, preview_transfer_runtime_lightweight,
+    preview_transfer_runtime_trusted, CliqueSwapFeasibility, CliqueSwapMove, SwapFeasibility,
+    SwapMove, TransferFeasibility, TransferMove,
 };
 use super::oracle::check_drift;
 use super::runtime_state::RuntimeState;
@@ -402,23 +405,68 @@ fn compiled_problem_constraint_adjacency_is_populated() {
     let cp = CompiledProblem::compile(&input).unwrap();
 
     assert_eq!(cp.cliques.len(), 1);
-    assert_eq!(cp.forbidden_pairs.len(), 1);
+    assert_eq!(cp.soft_apart_pairs.len(), 1);
     assert_eq!(cp.should_together_pairs.len(), 1);
     assert_eq!(cp.immovable_assignments.len(), 1);
     assert_eq!(cp.pair_meeting_constraints.len(), 1);
 
-    // Forbidden pair adjacency: p2 and p3 each get one entry.
+    // Soft-apart adjacency: p2 and p3 each get one entry.
     let p2 = cp.person_id_to_idx["p2"];
     let p3 = cp.person_id_to_idx["p3"];
-    assert_eq!(cp.forbidden_pairs_by_person[p2].len(), 1);
-    assert_eq!(cp.forbidden_pairs_by_person[p3].len(), 1);
+    assert_eq!(cp.soft_apart_pairs_by_person[p2].len(), 1);
+    assert_eq!(cp.soft_apart_pairs_by_person[p3].len(), 1);
+}
+
+#[test]
+fn compiled_problem_hard_apart_pairs_expand_and_index_by_person() {
+    let mut input = minimal_input();
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into(), "p2".into()],
+        sessions: Some(vec![1]),
+    }];
+
+    let cp = CompiledProblem::compile(&input).unwrap();
+    let p0 = cp.person_id_to_idx["p0"];
+    let p1 = cp.person_id_to_idx["p1"];
+    let p2 = cp.person_id_to_idx["p2"];
+
+    assert_eq!(cp.hard_apart_pairs.len(), 3);
+    assert_eq!(cp.hard_apart_pairs_by_person[p0].len(), 2);
+    assert_eq!(cp.hard_apart_pairs_by_person[p1].len(), 2);
+    assert_eq!(cp.hard_apart_pairs_by_person[p2].len(), 2);
+    assert!(cp.hard_apart_active(1, p0, p1));
+    assert!(cp.hard_apart_active(1, p0, p2));
+    assert!(cp.hard_apart_active(1, p1, p2));
+    assert!(!cp.hard_apart_active(0, p0, p1));
+}
+
+#[test]
+fn compiled_problem_rejects_hard_apart_conflict_with_clique() {
+    let mut input = minimal_input();
+    input.constraints = vec![
+        Constraint::MustStayTogether {
+            people: vec!["p0".into(), "p1".into()],
+            sessions: Some(vec![0]),
+        },
+        Constraint::MustStayApart {
+            people: vec!["p0".into(), "p1".into()],
+            sessions: Some(vec![0]),
+        },
+    ];
+
+    let err = CompiledProblem::compile(&input).unwrap_err();
+    assert!(
+        err.to_string()
+            .contains("MustStayApart conflicts with MustStayTogether"),
+        "unexpected error: {err}"
+    );
 }
 
 #[test]
 fn compiled_problem_rejects_wrong_solver_kind() {
     let mut input = minimal_input();
-    input.solver.solver_type = "solver2".into();
-    input.solver.solver_params = SolverParams::Solver2(crate::models::Solver2Params::default());
+    input.solver.solver_type = "solver4".into();
+    input.solver.solver_params = SolverParams::Solver4(crate::models::Solver4Params::default());
     let err = CompiledProblem::compile(&input).unwrap_err();
     assert!(
         err.to_string().contains("solver3"),
@@ -487,7 +535,10 @@ fn runtime_state_freedom_aware_mode_respects_seed_and_constraints() {
     let p5 = cp.person_id_to_idx["p5"];
     let g1 = cp.group_id_to_idx["g1"];
 
-    assert_eq!(state.person_location[state.people_slot(1, p1)], state.person_location[state.people_slot(1, p2)]);
+    assert_eq!(
+        state.person_location[state.people_slot(1, p1)],
+        state.person_location[state.people_slot(1, p2)]
+    );
     assert_eq!(state.person_location[state.people_slot(0, p3)], Some(g1));
     assert!(state.person_location[state.people_slot(0, p4)].is_some());
     assert_eq!(state.person_location[state.people_slot(1, p4)], None);
@@ -623,6 +674,56 @@ fn runtime_state_clique_placed_together() {
             sidx
         );
     }
+}
+
+#[test]
+fn runtime_state_construction_respects_must_stay_apart() {
+    let mut input = minimal_input();
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: None,
+    }];
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = &state.compiled;
+    let p0 = cp.person_id_to_idx["p0"];
+    let p1 = cp.person_id_to_idx["p1"];
+
+    for sidx in 0..cp.num_sessions {
+        assert_ne!(
+            state.person_location[state.people_slot(sidx, p0)],
+            state.person_location[state.people_slot(sidx, p1)],
+            "p0 and p1 must stay apart in session {}",
+            sidx
+        );
+    }
+}
+
+#[test]
+fn runtime_state_normalizes_invalid_construction_seed_must_stay_apart_violation() {
+    let mut input = minimal_input();
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: Some(vec![0]),
+    }];
+    input.construction_seed_schedule = Some(HashMap::from([(
+        "session_0".into(),
+        HashMap::from([
+            ("g0".into(), vec!["p0".into(), "p1".into()]),
+            ("g1".into(), Vec::new()),
+        ]),
+    )]));
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = &state.compiled;
+    let p0 = cp.person_id_to_idx["p0"];
+    let p1 = cp.person_id_to_idx["p1"];
+
+    assert_ne!(
+        state.person_location[state.people_slot(0, p0)],
+        state.person_location[state.people_slot(0, p1)],
+        "construction normalization must repair must-stay-apart seed violations"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -922,6 +1023,49 @@ fn invariants_detect_immovable_violation() {
     );
 }
 
+#[test]
+fn invariants_detect_must_stay_apart_violation() {
+    let mut input = minimal_input();
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: Some(vec![0]),
+    }];
+
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let p0 = cp.person_id_to_idx["p0"];
+    let p1 = cp.person_id_to_idx["p1"];
+    let p2 = cp.person_id_to_idx["p2"];
+    let g0 = cp.group_id_to_idx["g0"];
+    let g1 = cp.group_id_to_idx["g1"];
+    let gs0 = state.group_slot(0, g0);
+    let gs1 = state.group_slot(0, g1);
+    let ps1 = state.people_slot(0, p1);
+    let ps2 = state.people_slot(0, p2);
+
+    state.group_members[gs1].retain(|&m| m != p1);
+    state.group_sizes[gs1] = state.group_members[gs1].len();
+    state.group_members[gs0].retain(|&m| m != p2);
+    state.group_sizes[gs0] = state.group_members[gs0].len();
+    state.group_members[gs0].push(p1);
+    state.group_sizes[gs0] += 1;
+    state.group_members[gs1].push(p2);
+    state.group_sizes[gs1] += 1;
+    state.person_location[ps1] = Some(g0);
+    state.person_location[ps2] = Some(g1);
+
+    let err = validate_invariants(&state).unwrap_err();
+    assert!(
+        err.to_string().contains("MustStayApart") || err.to_string().contains("p0"),
+        "expected must-stay-apart violation error, got: {}",
+        err
+    );
+
+    // keep g1 unused references from being optimized away in future edits
+    assert!(g1 != g0);
+    assert!(state.person_location[state.people_slot(0, p0)].is_some());
+}
+
 // ---------------------------------------------------------------------------
 // 8. Arc<CompiledProblem> sharing
 // ---------------------------------------------------------------------------
@@ -1020,8 +1164,8 @@ fn zero_unique_contacts_when_no_pairs_share_groups() {
 }
 
 #[test]
-fn forbidden_pair_penalty_is_scored() {
-    // 2 people, 1 group of 2, 1 session, one forbidden pair constraint.
+fn soft_apart_pair_penalty_is_scored() {
+    // 2 people, 1 group of 2, 1 session, one soft-apart constraint.
     let input = ApiInput {
         problem: ProblemDefinition {
             people: vec![
@@ -1058,8 +1202,45 @@ fn forbidden_pair_penalty_is_scored() {
     // Both people will be placed in the only group.
     assert!(state.constraint_penalty_weighted > 0.0);
     let snap = recompute_oracle_score(&state).unwrap();
-    assert_eq!(snap.forbidden_pair_violations[0], 1);
+    assert_eq!(snap.soft_apart_violations[0], 1);
     assert!((snap.constraint_penalty_weighted - 42.0).abs() < 1e-9);
+}
+
+#[test]
+fn hard_apart_violation_is_tracked_as_raw_only() {
+    let mut input = minimal_input();
+    input.constraints = vec![Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: Some(vec![0]),
+    }];
+
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let p1 = cp.person_id_to_idx["p1"];
+    let p2 = cp.person_id_to_idx["p2"];
+    let g0 = cp.group_id_to_idx["g0"];
+    let g1 = cp.group_id_to_idx["g1"];
+    let gs0 = state.group_slot(0, g0);
+    let gs1 = state.group_slot(0, g1);
+    let ps1 = state.people_slot(0, p1);
+    let ps2 = state.people_slot(0, p2);
+
+    state.group_members[gs1].retain(|&m| m != p1);
+    state.group_sizes[gs1] = state.group_members[gs1].len();
+    state.group_members[gs0].retain(|&m| m != p2);
+    state.group_sizes[gs0] = state.group_members[gs0].len();
+    state.group_members[gs0].push(p1);
+    state.group_sizes[gs0] += 1;
+    state.group_members[gs1].push(p2);
+    state.group_sizes[gs1] += 1;
+    state.person_location[ps1] = Some(g0);
+    state.person_location[ps2] = Some(g1);
+
+    let snap = recompute_oracle_score(&state).unwrap();
+    assert_eq!(snap.hard_apart_violations[0], 1);
+    assert_eq!(snap.constraint_penalty_weighted, 0.0);
+    assert_eq!(snap.constraint_penalty_raw, 1);
+    assert!(g1 != g0);
 }
 
 // ---------------------------------------------------------------------------
@@ -1196,6 +1377,38 @@ fn swap_preview_lightweight_matches_oracle_delta() {
 }
 
 #[test]
+fn trusted_swap_preview_matches_checked_preview_for_sampler_compatible_move() {
+    let input = swap_kernel_input();
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = &state.compiled;
+    let swap = SwapMove::new(0, cp.person_id_to_idx["p1"], cp.person_id_to_idx["p2"]);
+
+    let checked = preview_swap_runtime_checked(&state, &swap).unwrap();
+    let trusted = preview_swap_runtime_trusted(&state, &swap).unwrap();
+
+    assert_eq!(trusted.analysis, checked.analysis);
+    assert_eq!(trusted.patch, checked.patch);
+    assert_close(
+        trusted.delta_score,
+        checked.delta_score,
+        "trusted swap preview should match checked preview",
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn trusted_swap_preview_rejects_selection_assumption_violation() {
+    let state = RuntimeState::from_input(&transfer_restricted_input()).unwrap();
+    let cp = state.compiled.clone();
+    let swap = SwapMove::new(0, cp.person_id_to_idx["p0"], cp.person_id_to_idx["p3"]);
+
+    let err = preview_swap_runtime_trusted(&state, &swap).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trusted swap preview assumptions violated"));
+}
+
+#[test]
 fn swap_apply_runtime_preview_preserves_invariants_and_oracle_alignment() {
     let input = swap_kernel_input();
     let mut state = RuntimeState::from_input(&input).unwrap();
@@ -1249,6 +1462,63 @@ fn sequential_swap_runtime_apply_does_not_drift_from_oracle() {
             &format!("step {} runtime delta/oracle mismatch", step),
         );
     }
+}
+
+#[test]
+fn swap_feasibility_rejects_must_stay_apart_conflict() {
+    let input = ApiInput {
+        problem: ProblemDefinition {
+            people: (0..4)
+                .map(|idx| Person {
+                    id: format!("p{idx}"),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                })
+                .collect(),
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 1,
+        },
+        initial_schedule: Some(HashMap::from([(
+            "session_0".into(),
+            HashMap::from([
+                ("g0".into(), vec!["p0".into(), "p2".into()]),
+                ("g1".into(), vec!["p1".into(), "p3".into()]),
+            ]),
+        )])),
+        construction_seed_schedule: None,
+        objectives: vec![],
+        constraints: vec![Constraint::MustStayApart {
+            people: vec!["p0".into(), "p1".into()],
+            sessions: None,
+        }],
+        solver: solver3_config(),
+    };
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let swap = SwapMove::new(0, cp.person_id_to_idx["p0"], cp.person_id_to_idx["p3"]);
+
+    assert!(matches!(
+        analyze_swap(&state, &swap).unwrap().feasibility,
+        SwapFeasibility::HardApartConflict {
+            person_idx,
+            other_person_idx,
+            target_group_idx
+        } if person_idx == cp.person_id_to_idx["p0"]
+            && other_person_idx == cp.person_id_to_idx["p1"]
+            && target_group_idx == cp.group_id_to_idx["g1"]
+    ));
 }
 
 // ---------------------------------------------------------------------------
@@ -1443,6 +1713,48 @@ fn transfer_preview_lightweight_matches_oracle_delta() {
         oracle_delta,
         "transfer preview delta should match oracle recompute delta",
     );
+}
+
+#[test]
+fn trusted_transfer_preview_matches_checked_preview_for_sampler_compatible_move() {
+    let input = transfer_kernel_input();
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = &state.compiled;
+    let transfer = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p1"],
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+    );
+
+    let checked = preview_transfer_runtime_checked(&state, &transfer).unwrap();
+    let trusted = preview_transfer_runtime_trusted(&state, &transfer).unwrap();
+
+    assert_eq!(trusted.analysis, checked.analysis);
+    assert_eq!(trusted.patch, checked.patch);
+    assert_close(
+        trusted.delta_score,
+        checked.delta_score,
+        "trusted transfer preview should match checked preview",
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn trusted_transfer_preview_rejects_selection_assumption_violation() {
+    let state = RuntimeState::from_input(&transfer_restricted_input()).unwrap();
+    let cp = state.compiled.clone();
+    let transfer = TransferMove::new(
+        1,
+        cp.person_id_to_idx["p4"],
+        cp.group_id_to_idx["g1"],
+        cp.group_id_to_idx["g0"],
+    );
+
+    let err = preview_transfer_runtime_trusted(&state, &transfer).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trusted transfer preview assumptions violated"));
 }
 
 #[test]
@@ -1641,6 +1953,75 @@ fn transfer_feasibility_regressions_report_specific_reasons() {
             person_idx,
             required_group_idx
         } if person_idx == rcp.person_id_to_idx["p4"] && required_group_idx == rcp.group_id_to_idx["g1"]
+    ));
+
+    let hard_apart_input = ApiInput {
+        problem: ProblemDefinition {
+            people: vec![
+                Person {
+                    id: "p0".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p1".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p2".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 1,
+        },
+        initial_schedule: Some(HashMap::from([(
+            "session_0".into(),
+            HashMap::from([
+                ("g0".into(), vec!["p0".into(), "p2".into()]),
+                ("g1".into(), vec!["p1".into()]),
+            ]),
+        )])),
+        construction_seed_schedule: None,
+        objectives: vec![],
+        constraints: vec![Constraint::MustStayApart {
+            people: vec!["p0".into(), "p1".into()],
+            sessions: None,
+        }],
+        solver: solver3_config(),
+    };
+    let hard_apart_state = RuntimeState::from_input(&hard_apart_input).unwrap();
+    let hcp = hard_apart_state.compiled.clone();
+    let hard_apart_transfer = TransferMove::new(
+        0,
+        hcp.person_id_to_idx["p0"],
+        hcp.group_id_to_idx["g0"],
+        hcp.group_id_to_idx["g1"],
+    );
+    assert!(matches!(
+        analyze_transfer(&hard_apart_state, &hard_apart_transfer)
+            .unwrap()
+            .feasibility,
+        TransferFeasibility::HardApartConflict {
+            person_idx,
+            other_person_idx,
+            target_group_idx
+        } if person_idx == hcp.person_id_to_idx["p0"]
+            && other_person_idx == hcp.person_id_to_idx["p1"]
+            && target_group_idx == hcp.group_id_to_idx["g1"]
     ));
 }
 
@@ -1855,6 +2236,55 @@ fn clique_swap_preview_lightweight_matches_oracle_delta() {
 }
 
 #[test]
+fn trusted_clique_swap_preview_matches_checked_preview_for_sampler_compatible_move() {
+    let input = clique_swap_kernel_input();
+    let state = RuntimeState::from_input(&input).unwrap();
+    let cp = state.compiled.clone();
+    let clique_idx = cp.person_to_clique_id[0][cp.person_id_to_idx["p0"]]
+        .expect("p0 should belong to a clique in session 0");
+
+    let clique_swap = CliqueSwapMove::new(
+        0,
+        clique_idx,
+        cp.group_id_to_idx["g0"],
+        cp.group_id_to_idx["g1"],
+        vec![cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]],
+    );
+
+    let checked = preview_clique_swap_runtime_checked(&state, &clique_swap).unwrap();
+    let trusted = preview_clique_swap_runtime_trusted(&state, &clique_swap).unwrap();
+
+    assert_eq!(trusted.analysis, checked.analysis);
+    assert_eq!(trusted.patch, checked.patch);
+    assert_close(
+        trusted.delta_score,
+        checked.delta_score,
+        "trusted clique-swap preview should match checked preview",
+    );
+}
+
+#[cfg(feature = "solver3-oracle-checks")]
+#[test]
+fn trusted_clique_swap_preview_rejects_selection_assumption_violation() {
+    let state = RuntimeState::from_input(&clique_swap_restricted_input()).unwrap();
+    let cp = state.compiled.clone();
+    let clique_idx = cp.person_to_clique_id[0][cp.person_id_to_idx["p0"]]
+        .expect("p0 should belong to clique in session 0");
+    let clique_swap = CliqueSwapMove::new(
+        0,
+        clique_idx,
+        cp.group_id_to_idx["g0"],
+        cp.group_id_to_idx["g1"],
+        vec![cp.person_id_to_idx["p2"], cp.person_id_to_idx["p3"]],
+    );
+
+    let err = preview_clique_swap_runtime_trusted(&state, &clique_swap).unwrap_err();
+    assert!(err
+        .to_string()
+        .contains("trusted clique-swap preview assumptions violated"));
+}
+
+#[test]
 fn sequential_clique_swap_runtime_apply_does_not_drift_from_oracle() {
     let input = clique_swap_kernel_input();
     let mut state = RuntimeState::from_input(&input).unwrap();
@@ -2012,6 +2442,81 @@ fn clique_heavy_feasibility_regressions_report_specific_reasons() {
             .feasibility,
         CliqueSwapFeasibility::TargetPersonNotParticipating { person_idx }
             if person_idx == cp.person_id_to_idx["p6"]
+    ));
+
+    let hard_apart_input = ApiInput {
+        problem: ProblemDefinition {
+            people: vec![
+                person_with_attr("p0", "team", "red"),
+                person_with_attr("p1", "team", "red"),
+                person_with_attr("p2", "team", "blue"),
+                person_with_attr("p3", "team", "blue"),
+                person_with_attr("p4", "team", "red"),
+                person_with_attr("p5", "team", "blue"),
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 3,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g2".into(),
+                    size: 1,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 1,
+        },
+        initial_schedule: Some(HashMap::from([(
+            "session_0".into(),
+            HashMap::from([
+                ("g0".into(), vec!["p0".into(), "p1".into(), "p4".into()]),
+                ("g1".into(), vec!["p2".into(), "p3".into(), "p5".into()]),
+                ("g2".into(), Vec::new()),
+            ]),
+        )])),
+        construction_seed_schedule: None,
+        objectives: vec![],
+        constraints: vec![
+            Constraint::MustStayTogether {
+                people: vec!["p0".into(), "p1".into()],
+                sessions: None,
+            },
+            Constraint::MustStayApart {
+                people: vec!["p0".into(), "p5".into()],
+                sessions: None,
+            },
+        ],
+        solver: solver3_config(),
+    };
+    let hard_apart_state = RuntimeState::from_input(&hard_apart_input).unwrap();
+    let hcp = hard_apart_state.compiled.clone();
+    let hard_apart_clique_idx = hcp.person_to_clique_id[0][hcp.person_id_to_idx["p0"]]
+        .expect("p0 should belong to clique in session 0");
+    let hard_apart_swap = CliqueSwapMove::new(
+        0,
+        hard_apart_clique_idx,
+        hcp.group_id_to_idx["g0"],
+        hcp.group_id_to_idx["g1"],
+        vec![hcp.person_id_to_idx["p2"], hcp.person_id_to_idx["p3"]],
+    );
+    assert!(matches!(
+        analyze_clique_swap(&hard_apart_state, &hard_apart_swap)
+            .unwrap()
+            .feasibility,
+        CliqueSwapFeasibility::HardApartConflict {
+            person_idx,
+            other_person_idx,
+            target_group_idx
+        } if person_idx == hcp.person_id_to_idx["p0"]
+            && other_person_idx == hcp.person_id_to_idx["p5"]
+            && target_group_idx == hcp.group_id_to_idx["g1"]
     ));
 }
 

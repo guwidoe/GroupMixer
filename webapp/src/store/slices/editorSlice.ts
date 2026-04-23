@@ -9,8 +9,14 @@ export const createEditorSlice: StoreSlice<EditorState & EditorActions> = (
 ) => ({
   manualEditorUnsaved: false,
   manualEditorLeaveHook: null,
+  setupGridUnsaved: false,
+  setupGridLeaveHook: null,
 
   setManualEditorUnsaved: (unsaved) => set({ manualEditorUnsaved: unsaved }),
 
   setManualEditorLeaveHook: (hook) => set({ manualEditorLeaveHook: hook }),
+
+  setSetupGridUnsaved: (unsaved) => set({ setupGridUnsaved: unsaved }),
+
+  setSetupGridLeaveHook: (hook) => set({ setupGridLeaveHook: hook }),
 });

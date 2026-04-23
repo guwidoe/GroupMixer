@@ -10,7 +10,7 @@
 //! surface. Phase S3-3/S3-6 add swap + transfer + clique-swap move kernels (typed
 //! moves + runtime preview/apply patch paths + oracle equivalence hooks). Search
 //! paths support all three move families. There is no hidden fallback to `solver1`
-//! or `solver2`.
+//! or the retired intermediate solver family.
 //!
 //! See `backend/core/src/solver3/IMPLEMENTATION_PLAN.md` for the full design and
 //! phased execution plan.

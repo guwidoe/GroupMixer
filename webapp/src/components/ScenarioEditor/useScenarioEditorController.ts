@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../../store';
 import type { Scenario } from '../../types';
@@ -9,6 +9,17 @@ import { useScenarioEditorEntities } from './hooks/useScenarioEditorEntities';
 import { resolveScenarioSetupSection } from './navigation/scenarioSetupNav';
 import type { ScenarioSetupSectionId } from './navigation/scenarioSetupNavTypes';
 import { createScenarioEditorActions } from './scenarioEditorActions';
+import {
+  createGeneratedDemoScenario,
+  formatGeneratedDemoScenarioName,
+  GENERATED_DEMO_CASE_ID,
+  type GeneratedDemoScenarioOptions,
+} from '../../services/demoScenarioGenerator';
+import {
+  buildSessionReductionInvalidations,
+  planSessionCountReduction,
+  type SessionCountReductionPlan,
+} from '../../services/sessionCountMigration';
 
 export type ScenarioEditorSection = ScenarioSetupSectionId;
 
@@ -16,21 +27,28 @@ export function useScenarioEditorController() {
   const {
     scenario,
     setScenario,
+    setScenarioDocument,
     resolveScenario,
     addNotification,
     loadDemoCase,
     loadDemoCaseOverwrite,
     loadDemoCaseNewScenario,
+    loadGeneratedDemoScenario,
+    loadGeneratedDemoScenarioOverwrite,
+    loadGeneratedDemoScenarioNewScenario,
     attributeDefinitions,
     addAttributeDefinition,
     removeAttributeDefinition,
-    setAttributeDefinitions,
     setShowScenarioManager,
     currentScenarioId,
     saveScenario,
     updateCurrentScenario,
     updateScenario,
+    applySessionReductionScenario,
     ui,
+    solution,
+    currentResultId,
+    manualEditorUnsaved,
   } = useAppStore();
 
   const { section } = useParams<{ section: string }>();
@@ -38,16 +56,29 @@ export function useScenarioEditorController() {
   const navigationSection = activeSection;
   const navigate = useNavigate();
 
-  const [sessionsCount, setSessionsCount] = useState(scenario?.num_sessions || 3);
+  const scenarioSessionsCount = scenario?.num_sessions || 3;
+  const [sessionsCountDraft, setSessionsCountDraft] = useState(() => ({
+    scenarioSessionsCount,
+    value: scenarioSessionsCount,
+  }));
+  const sessionsCount = sessionsCountDraft.scenarioSessionsCount === scenarioSessionsCount
+    ? sessionsCountDraft.value
+    : scenarioSessionsCount;
+  const setSessionsCount = useCallback((value: number) => {
+    setSessionsCountDraft({ scenarioSessionsCount, value });
+  }, [scenarioSessionsCount]);
   const [showDemoWarningModal, setShowDemoWarningModal] = useState(false);
+  const [showGeneratedDemoModal, setShowGeneratedDemoModal] = useState(false);
   const [pendingDemoCaseId, setPendingDemoCaseId] = useState<string | null>(null);
   const [pendingDemoCaseName, setPendingDemoCaseName] = useState<string | null>(null);
+  const [pendingGeneratedScenario, setPendingGeneratedScenario] = useState<Scenario | null>(null);
+  const [sessionReductionPlan, setSessionReductionPlan] = useState<SessionCountReductionPlan | null>(null);
 
   const entities = useScenarioEditorEntities({
     scenario,
     attributeDefinitions,
     addAttributeDefinition,
-    setAttributeDefinitions,
+    setScenarioDocument,
     addNotification,
     setScenario,
   });
@@ -65,8 +96,7 @@ export function useScenarioEditorController() {
       scenario,
       attributeDefinitions,
       addNotification,
-      setAttributeDefinitions,
-      setScenario,
+      setScenarioDocument,
     }),
   };
 
@@ -90,20 +120,6 @@ export function useScenarioEditorController() {
     }
     return 1;
   })();
-
-  useEffect(() => {
-    if (scenario && currentScenarioId) {
-      try {
-        updateCurrentScenario(currentScenarioId, scenario);
-      } catch (error) {
-        addNotification({
-          type: 'error',
-          title: 'Auto-save Failed',
-          message: error instanceof Error ? error.message : 'Failed to persist scenario changes.',
-        });
-      }
-    }
-  }, [scenario, currentScenarioId, updateCurrentScenario, addNotification]);
 
   const handleSaveScenario = () => {
     if (!scenario) return;
@@ -129,6 +145,11 @@ export function useScenarioEditorController() {
   };
 
   const handleDemoCaseClick = (demoCaseId: string, demoCaseName: string) => {
+    if (demoCaseId === GENERATED_DEMO_CASE_ID) {
+      setShowGeneratedDemoModal(true);
+      return;
+    }
+
     const currentScenario = scenario;
     const hasContent =
       currentScenario &&
@@ -146,6 +167,15 @@ export function useScenarioEditorController() {
   };
 
   const handleDemoOverwrite = () => {
+    if (pendingGeneratedScenario) {
+      loadGeneratedDemoScenarioOverwrite(pendingGeneratedScenario, pendingDemoCaseName ?? 'Random Demo');
+      setShowDemoWarningModal(false);
+      setPendingGeneratedScenario(null);
+      setPendingDemoCaseId(null);
+      setPendingDemoCaseName(null);
+      return;
+    }
+
     if (pendingDemoCaseId) {
       loadDemoCaseOverwrite(pendingDemoCaseId);
       setShowDemoWarningModal(false);
@@ -155,6 +185,15 @@ export function useScenarioEditorController() {
   };
 
   const handleDemoLoadNew = () => {
+    if (pendingGeneratedScenario) {
+      loadGeneratedDemoScenarioNewScenario(pendingGeneratedScenario, pendingDemoCaseName ?? 'Random Demo');
+      setShowDemoWarningModal(false);
+      setPendingGeneratedScenario(null);
+      setPendingDemoCaseId(null);
+      setPendingDemoCaseName(null);
+      return;
+    }
+
     if (pendingDemoCaseId) {
       loadDemoCaseNewScenario(pendingDemoCaseId);
       setShowDemoWarningModal(false);
@@ -165,29 +204,110 @@ export function useScenarioEditorController() {
 
   const handleDemoCancel = () => {
     setShowDemoWarningModal(false);
+    setShowGeneratedDemoModal(false);
+    setPendingGeneratedScenario(null);
     setPendingDemoCaseId(null);
     setPendingDemoCaseName(null);
   };
 
+  const handleGeneratedDemoSubmit = (options: GeneratedDemoScenarioOptions) => {
+    const generatedScenario = createGeneratedDemoScenario(options);
+    const generatedScenarioName = formatGeneratedDemoScenarioName(options);
+    const currentScenario = scenario;
+    const hasContent =
+      currentScenario &&
+      (currentScenario.people.length > 0 || currentScenario.groups.length > 0 || currentScenario.constraints.length > 0);
+
+    setShowGeneratedDemoModal(false);
+
+    if (hasContent) {
+      setPendingGeneratedScenario(generatedScenario);
+      setPendingDemoCaseId(null);
+      setPendingDemoCaseName(generatedScenarioName);
+      setShowDemoWarningModal(true);
+      return;
+    }
+
+    loadGeneratedDemoScenario(generatedScenario, generatedScenarioName);
+  };
+
   const handleSessionsCountChange = (count: number | null) => {
-    if (count !== null) {
+    if (count === null) {
+      return;
+    }
+
+    const currentScenario = scenario;
+    const previousSessionCount = currentScenario?.num_sessions ?? sessionsCount;
+
+    if (!currentScenario || count >= previousSessionCount) {
       setSessionsCount(count);
 
       const updatedScenario: Scenario = {
-        people: scenario?.people || [],
-        groups: scenario?.groups || [],
+        people: currentScenario?.people || [],
+        groups: currentScenario?.groups || [],
         num_sessions: count,
-        constraints: scenario?.constraints || [],
-        settings: scenario?.settings || getDefaultSolverSettings(),
+        constraints: currentScenario?.constraints || [],
+        settings: currentScenario?.settings || getDefaultSolverSettings(),
       };
 
       setScenario(updatedScenario);
+      return;
     }
+
+    setSessionReductionPlan(planSessionCountReduction({
+      scenario: currentScenario,
+      nextSessionCount: count,
+    }));
+  };
+
+  const handleCancelSessionReduction = () => {
+    setSessionReductionPlan(null);
+  };
+
+  const handleConfirmSessionReduction = () => {
+    if (!sessionReductionPlan?.canApply || !sessionReductionPlan.nextScenario) {
+      return;
+    }
+
+    const summaryParts = [
+      sessionReductionPlan.summary.peopleTrimmed > 0
+        ? `${sessionReductionPlan.summary.peopleTrimmed} people trimmed`
+        : null,
+      sessionReductionPlan.summary.groupsTrimmed > 0
+        ? `${sessionReductionPlan.summary.groupsTrimmed} groups truncated`
+        : null,
+      sessionReductionPlan.summary.constraintsTrimmed > 0
+        ? `${sessionReductionPlan.summary.constraintsTrimmed} constraints trimmed`
+        : null,
+      sessionReductionPlan.summary.constraintsRemoved > 0
+        ? `${sessionReductionPlan.summary.constraintsRemoved} constraints removed`
+        : null,
+    ].filter(Boolean).join(', ');
+
+    setSessionsCount(sessionReductionPlan.nextSessionCount);
+    applySessionReductionScenario(sessionReductionPlan.nextScenario);
+    setSessionReductionPlan(null);
+
+    addNotification({
+      type: 'success',
+      title: 'Sessions Updated',
+      message: summaryParts.length > 0
+        ? `Reduced the scenario from ${sessionReductionPlan.previousSessionCount} sessions to ${sessionReductionPlan.nextSessionCount}; ${summaryParts}.`
+        : `Reduced the scenario from ${sessionReductionPlan.previousSessionCount} sessions to ${sessionReductionPlan.nextSessionCount}.`,
+    });
   };
 
   const navigateToSection = (sectionId: ScenarioSetupSectionId) => {
     navigate(`/app/scenario/${sectionId}`);
   };
+
+  const sessionReductionInvalidations = sessionReductionPlan
+    ? buildSessionReductionInvalidations({
+        hasActiveSolution: Boolean(solution || currentResultId),
+        hasWarmStartSelection: Boolean(ui.warmStartResultId),
+        hasManualEditorState: manualEditorUnsaved,
+      })
+    : [];
 
   return {
     scenario,
@@ -208,6 +328,7 @@ export function useScenarioEditorController() {
     bulk,
     editorActions,
     showDemoWarningModal,
+    showGeneratedDemoModal,
     pendingDemoCaseName,
     handleLoadScenario,
     handleSaveScenario,
@@ -215,7 +336,13 @@ export function useScenarioEditorController() {
     handleDemoOverwrite,
     handleDemoLoadNew,
     handleDemoCancel,
+    handleGeneratedDemoSubmit,
     handleSessionsCountChange,
+    sessionReductionPlan,
+    sessionReductionInvalidations,
+    showSessionReductionReviewModal: sessionReductionPlan !== null,
+    handleCancelSessionReduction,
+    handleConfirmSessionReduction,
     navigateToSection,
   };
 }

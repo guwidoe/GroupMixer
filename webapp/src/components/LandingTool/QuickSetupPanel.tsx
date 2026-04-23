@@ -12,11 +12,18 @@ interface QuickSetupPanelProps {
 
 export function QuickSetupPanel({ pageConfig }: QuickSetupPanelProps) {
   const controller = useQuickSetup(pageConfig);
-  const replaceWorkspace = useAppStore((state) => state.replaceWorkspace);
+  const loadWorkspaceAsNewScenario = useAppStore((state) => state.loadWorkspaceAsNewScenario);
   const navigate = useNavigate();
 
   const openAdvancedWorkspace = () => {
-    replaceWorkspace(controller.buildWorkspaceBridgePayload());
+    const nextScenarioId = loadWorkspaceAsNewScenario({
+      ...controller.buildWorkspaceBridgePayload(),
+      scenarioName: `${pageConfig.hero.title} draft`,
+    });
+    controller.updateDraft((current) => ({
+      ...current,
+      workspaceScenarioId: nextScenarioId,
+    }));
     navigate('/app/scenario/people');
   };
 

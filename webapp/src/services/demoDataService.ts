@@ -1,6 +1,7 @@
 import { Scenario, SolverSettings, AttributeDefinition } from '../types';
 import { createAttributeDefinition, getAttributeDefinitionName } from './scenarioAttributes';
 import { createDefaultSolverSettings, normalizeSolverFamilyId } from './solverUi';
+import { isLandingDemoScenarioCompatible } from '../utils/quickSetup/landingDemo';
 
 export interface DemoCase {
   id: string;
@@ -79,16 +80,6 @@ function convertDemoSolverSettings(rawSolver: any): SolverSettings {
         },
         logging: rawSolver?.logging ?? createDefaultSolverSettings('solver3').logging,
       };
-    case 'solver2':
-      return {
-        ...createDefaultSolverSettings('solver2'),
-        solver_type: 'solver2',
-        stop_conditions: rawSolver?.stop_conditions ?? createDefaultSolverSettings('solver2').stop_conditions,
-        solver_params: {
-          solver_type: 'solver2',
-        },
-        logging: rawSolver?.logging ?? createDefaultSolverSettings('solver2').logging,
-      };
     case 'solver1':
     default: {
       const solverParams = rawSolver?.solver_params ?? {};
@@ -158,6 +149,46 @@ async function loadTestCaseFile(
   }
 }
 
+async function loadTestCaseFileIfLandingCompatible(
+  filename: string,
+): Promise<DemoCaseWithMetrics | null> {
+  try {
+    const response = await fetch(`/test_cases/${filename}`);
+
+    if (!response.ok) {
+      console.warn(
+        `Failed to load test case file: ${filename} - ${response.status} ${response.statusText}`
+      );
+      return null;
+    }
+
+    const testCase = await response.json();
+    if (!testCase.demo_metadata) {
+      return null;
+    }
+
+    const scenario = convertTestCaseToScenario(testCase);
+    if (!isLandingDemoScenarioCompatible(scenario)) {
+      return null;
+    }
+
+    const metadata = testCase.demo_metadata;
+    return {
+      id: metadata.id,
+      name: metadata.display_name,
+      description: metadata.description,
+      category: metadata.category,
+      filename,
+      peopleCount: scenario.people?.length || 0,
+      groupCount: scenario.groups?.length || 0,
+      sessionCount: scenario.num_sessions || 0,
+    };
+  } catch (error) {
+    console.error(`Error loading test case file ${filename}:`, error);
+    return null;
+  }
+}
+
 // Load all demo cases with metrics from test case files
 export async function loadDemoCasesWithMetrics(): Promise<
   DemoCaseWithMetrics[]
@@ -176,6 +207,28 @@ export async function loadDemoCasesWithMetrics(): Promise<
   );
 
   // Sort by category and then by name
+  const categoryOrder: Record<string, number> = {
+    Simple: 1,
+    Intermediate: 2,
+    Advanced: 3,
+    Benchmark: 4,
+  };
+  demoCases.sort((a, b) => {
+    const categoryDiff = categoryOrder[a.category] - categoryOrder[b.category];
+    if (categoryDiff !== 0) return categoryDiff;
+    return a.name.localeCompare(b.name);
+  });
+
+  return demoCases;
+}
+
+export async function loadLandingCompatibleDemoCasesWithMetrics(): Promise<DemoCaseWithMetrics[]> {
+  const testCaseFiles = await discoverTestCaseFiles();
+  const results = await Promise.all(testCaseFiles.map((filename) => loadTestCaseFileIfLandingCompatible(filename)));
+  const demoCases = results.filter(
+    (result): result is DemoCaseWithMetrics => result !== null,
+  );
+
   const categoryOrder: Record<string, number> = {
     Simple: 1,
     Intermediate: 2,
