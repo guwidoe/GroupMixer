@@ -122,6 +122,11 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
           description: 'Use the comparison guide to decide whether simple random grouping, balancing, or constraints fit your setup best.',
           href: '/guides/random-vs-balanced-vs-constrained-groups',
         },
+        {
+          label: 'How to split a class into fair groups',
+          description: 'Use the classroom fairness guide when the question is less about optimization jargon and more about what feels fair in practice.',
+          href: '/guides/split-a-class-into-fair-groups',
+        },
       ],
     },
   },
@@ -244,6 +249,11 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
           description: 'Use the comparison guide when you are deciding between a simple randomizer and a more structured setup.',
           href: '/guides/random-vs-balanced-vs-constrained-groups',
         },
+        {
+          label: 'How to split a class into fair groups',
+          description: 'Use the classroom fairness guide when your concern is fair student-group composition rather than event-style rounds.',
+          href: '/guides/split-a-class-into-fair-groups',
+        },
       ],
     },
   },
@@ -365,6 +375,11 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
           label: 'Random groups vs balanced groups vs constrained groups',
           description: 'Use the comparison guide when you need help deciding whether balancing or classroom constraints are worth the extra setup.',
           href: '/guides/random-vs-balanced-vs-constrained-groups',
+        },
+        {
+          label: 'How to split a class into fair groups',
+          description: 'Use the natural-language classroom guide for teacher workflows centered on fairness and group dynamics.',
+          href: '/guides/split-a-class-into-fair-groups',
         },
       ],
     },
@@ -491,6 +506,133 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
           label: 'How to make balanced student groups',
           description: 'Read this when the main question is classroom balance rather than general grouping strategy.',
           href: '/guides/make-balanced-student-groups',
+        },
+        {
+          label: 'How to split a class into fair groups',
+          description: 'Read this when you want the classroom version of the same decision in more natural teacher language.',
+          href: '/guides/split-a-class-into-fair-groups',
+        },
+      ],
+    },
+  },
+  'split-a-class-into-fair-groups': {
+    key: 'split-a-class-into-fair-groups',
+    slug: 'split-a-class-into-fair-groups',
+    canonicalPath: '/guides/split-a-class-into-fair-groups',
+    seo: {
+      title: 'How to Split a Class Into Fair Groups | GroupMixer Guide',
+      description:
+        'Learn how to split a class into fair groups for projects, discussions, and classroom activities. A practical teacher guide to fairer grouping with GroupMixer.',
+    },
+    hero: {
+      eyebrow: 'Guide for teachers and classroom organizers',
+      title: 'How to split a class into fair groups',
+      intro:
+        'When teachers say they want fair groups, they usually do not mean perfectly random ones. They mean groups that feel workable, balanced enough, and less likely to create the same social or skill imbalance every time. This guide shows how to get there without reorganizing the class by hand.',
+    },
+    problem: {
+      title: 'Fair classroom groups are usually about workable balance, not perfect randomness',
+      body:
+        'A quick random split can be fine for some activities, but many classroom tasks need something better. Fair groups often mean spreading confidence, ability, behavior patterns, or friendship dynamics in a way that gives each group a reasonable chance to work well.',
+      bullets: [
+        'teachers often want groups that feel fair to students, not just mathematically random',
+        'uneven class dynamics can make one random split work much worse than another',
+        'a small amount of structure can avoid repeated manual regrouping',
+      ],
+    },
+    failureModes: {
+      title: 'Why “just randomize it” often falls short in a classroom',
+      cards: [
+        {
+          title: 'The same group can collect too much challenge at once',
+          body:
+            'A random split can accidentally stack several struggling students, dominant students, or close friends into one group, making the task harder to manage.',
+        },
+        {
+          title: 'Fairness is judged by how the groups feel in practice',
+          body:
+            'Students usually notice whether one group looks easier, louder, or more supported than another, even when the grouping was technically random.',
+        },
+        {
+          title: 'Manual adjustments eat the time you were trying to save',
+          body:
+            'Once you start fixing a random result by hand, you lose the speed benefit and still may not end up with a consistent process.',
+        },
+      ],
+    },
+    example: {
+      title: 'Example classroom setup',
+      summary:
+        'Imagine a class of 26 students doing a collaborative project. You want groups of 4 or 5, but you do not want one group to end up with all the strongest speakers, all the close friends, or all the students who need the most support.',
+      details: [
+        '26 students',
+        'groups of 4 or 5',
+        'balance by confidence, reading level, or another classroom attribute when available',
+        'optional apart rules for combinations that consistently derail the activity',
+        'optional pinned people for helpers, leaders, or anchor students',
+      ],
+    },
+    setup: {
+      title: 'Recommended GroupMixer setup',
+      intro:
+        'Start with the student-group flow, then add only the structure that helps this specific class activity feel fairer and easier to run.',
+      steps: [
+        'Paste the class list or switch to CSV input if you want to use classroom attributes for balancing.',
+        'Choose the number of groups or group size that fits the task.',
+        'Use balancing when fairness depends on spreading skill, confidence, or another known attribute across groups.',
+        'Use together/apart rules only for classroom dynamics you already know matter.',
+        'Generate the groups, then review whether the result is fair enough before moving into a more advanced scenario.',
+      ],
+    },
+    advanced: {
+      title: 'When to balance, when to stay random, and when to add rules',
+      body:
+        'Stay with simple random grouping when any reasonable split is fine. Use balancing when you want a more even spread of student strengths or needs. Add together/apart rules or pinned people when you already know certain combinations help or hurt the activity. Move into the scenario editor only when the classroom problem has more constraints than a quick setup can handle cleanly.',
+    },
+    cta: {
+      title: 'Try this setup in the student group generator',
+      body:
+        'Open the classroom-focused tool, start with a quick group split, and add balancing or simple rules only where they improve fairness for the activity.',
+      buttonLabel: 'Open student group generator',
+      href: '/student-group-generator',
+    },
+    relatedTools: {
+      title: 'Related tools',
+      links: [
+        {
+          label: 'Student Group Generator',
+          description: 'Use the classroom-focused entry point for fast teacher workflows with optional balancing and simple rules.',
+          href: '/student-group-generator',
+        },
+        {
+          label: 'Random Group Generator',
+          description: 'Use the simpler random tool when the classroom activity does not need balancing or relationship rules.',
+          href: '/random-group-generator',
+        },
+        {
+          label: 'Group Generator with Constraints',
+          description: 'Use the constraint-focused tool when fairness depends on stronger classroom rules or more involved setup.',
+          href: '/group-generator-with-constraints',
+        },
+      ],
+    },
+    relatedGuides: {
+      title: 'Related guides',
+      links: [
+        {
+          label: 'How to make balanced student groups',
+          description: 'Read this for the more explicitly balance-focused version of the same classroom problem.',
+          href: '/guides/make-balanced-student-groups',
+        },
+        {
+          label: 'Random groups vs balanced groups vs constrained groups',
+          description: 'Read this if you want a broader framework for deciding how much grouping structure your situation needs.',
+          href: '/guides/random-vs-balanced-vs-constrained-groups',
+        },
+        {
+          label: 'How to avoid repeat pairings in workshops',
+          description: 'Read this when the challenge is repeated rounds rather than one classroom grouping pass.',
+          href: '/guides/avoid-repeat-pairings-in-workshops',
         },
       ],
     },
