@@ -455,6 +455,19 @@ fn runtime_state_initialization_is_deterministic() {
 }
 
 #[test]
+fn constraint_scenario_oracle_constructor_returns_cs_scaffold() {
+    let mut input = minimal_input();
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    }
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&state).unwrap();
+    assert_eq!(state.compiled.num_sessions, 2);
+    assert_eq!(state.compiled.num_people, 4);
+}
+
+#[test]
 fn runtime_state_rejects_out_of_range_freedom_aware_gamma() {
     let mut input = minimal_input();
     if let SolverParams::Solver3(params) = &mut input.solver.solver_params {

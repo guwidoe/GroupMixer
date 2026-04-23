@@ -16,9 +16,9 @@
 //! Score aggregates are set once during initialization by the oracle and will be
 //! maintained incrementally by Phase 3 move kernels.
 
-use std::sync::Arc;
-
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Instant;
 
 use crate::models::ApiInput;
 use crate::models::Solver3ConstructionMode;
@@ -35,6 +35,12 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha12Rng;
 
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
+use super::construction::constraint_scenario_oracle::{
+    build_constraint_scenario_ensemble, constraint_scenario_score, repeat_pressure_is_relevant,
+    ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
+    ConstraintScenarioOracleConstructionResult, ConstraintScenarioOracleOutcomeKind,
+    ConstraintScenarioOracleTelemetry, DEFAULT_CONSTRAINT_SCENARIO_RUNS,
+};
 use super::oracle::maybe_cross_check_runtime_state;
 use super::scoring::recompute::recompute_oracle_score;
 
@@ -291,6 +297,15 @@ impl RuntimeState {
         effective_seed: u64,
         construction: ConstructionHeuristicSelection,
     ) -> Result<PackedSchedule, SolverError> {
+        if matches!(
+            construction,
+            ConstructionHeuristicSelection::ConstraintScenarioOracleGuided
+        ) {
+            return Ok(self
+                .build_constraint_scenario_oracle_guided_schedule(effective_seed)?
+                .schedule);
+        }
+
         let mut schedule = self
             .compiled
             .compiled_construction_seed_schedule
@@ -330,14 +345,85 @@ impl RuntimeState {
             ConstructionHeuristicSelection::FreedomAwareRandomized(params) => {
                 apply_freedom_aware_construction_heuristic(&mut construction_context, &params)?;
             }
-            ConstructionHeuristicSelection::ConstraintScenarioOracleGuided => {
-                return Err(SolverError::ValidationError(
-                    "solver3 constraint-scenario oracle-guided construction is scaffolded but not yet implemented".into(),
-                ));
-            }
+            ConstructionHeuristicSelection::ConstraintScenarioOracleGuided => unreachable!(
+                "constraint-scenario oracle-guided construction returns before shared constructor context setup"
+            ),
         }
         self.normalize_invalid_clique_sessions(&mut schedule, effective_seed)?;
         Ok(schedule)
+    }
+
+    fn build_constraint_scenario_oracle_guided_schedule(
+        &self,
+        effective_seed: u64,
+    ) -> Result<ConstraintScenarioOracleConstructionResult, SolverError> {
+        let started_at = Instant::now();
+        if !repeat_pressure_is_relevant(&self.compiled) {
+            let schedule = self.build_constructed_schedule(
+                effective_seed,
+                ConstructionHeuristicSelection::BaselineLegacy,
+            )?;
+            return Ok(ConstraintScenarioOracleConstructionResult {
+                schedule,
+                telemetry: ConstraintScenarioOracleTelemetry {
+                    outcome: ConstraintScenarioOracleOutcomeKind::RepeatIrrelevant,
+                    repeat_relevant: false,
+                    constructor_wall_ms: started_at.elapsed().as_millis(),
+                    ..ConstraintScenarioOracleTelemetry::default()
+                },
+            });
+        }
+
+        let ensemble = self.build_constraint_scenario_ensemble(effective_seed)?;
+        let best = ensemble.best();
+        Ok(ConstraintScenarioOracleConstructionResult {
+            schedule: best.schedule.clone(),
+            telemetry: ConstraintScenarioOracleTelemetry {
+                outcome: ConstraintScenarioOracleOutcomeKind::ConstraintScenarioOnly,
+                repeat_relevant: true,
+                cs_run_count: ensemble.candidates.len(),
+                cs_best_score: Some(best.cs_score),
+                cs_diversity: Some(ensemble.diversity),
+                constructor_wall_ms: started_at.elapsed().as_millis(),
+                ..ConstraintScenarioOracleTelemetry::default()
+            },
+        })
+    }
+
+    fn build_constraint_scenario_ensemble(
+        &self,
+        effective_seed: u64,
+    ) -> Result<
+        super::construction::constraint_scenario_oracle::ConstraintScenarioEnsemble,
+        SolverError,
+    > {
+        let mut candidates = Vec::with_capacity(DEFAULT_CONSTRAINT_SCENARIO_RUNS);
+        for run_idx in 0..DEFAULT_CONSTRAINT_SCENARIO_RUNS {
+            let (source, construction) = constraint_scenario_run_strategy(run_idx);
+            let seed = derive_constraint_scenario_seed(effective_seed, run_idx, source);
+            let schedule = match self.build_constructed_schedule(seed, construction) {
+                Ok(schedule) => schedule,
+                Err(_) => continue,
+            };
+            let snapshot = self.score_constructed_schedule(&schedule)?;
+            candidates.push(ConstraintScenarioCandidate {
+                schedule,
+                source,
+                seed,
+                cs_score: constraint_scenario_score(&self.compiled, &snapshot),
+                real_score: snapshot.total_score,
+            });
+        }
+
+        build_constraint_scenario_ensemble(candidates)
+    }
+
+    fn score_constructed_schedule(
+        &self,
+        schedule: &PackedSchedule,
+    ) -> Result<super::scoring::OracleSnapshot, SolverError> {
+        let state = Self::from_compiled_schedule(Arc::clone(&self.compiled), schedule.clone())?;
+        recompute_oracle_score(&state)
     }
 
     fn normalize_invalid_clique_sessions(
@@ -686,6 +772,48 @@ impl RuntimeState {
 
         schedule
     }
+}
+
+fn constraint_scenario_run_strategy(
+    run_idx: usize,
+) -> (
+    ConstraintScenarioCandidateSource,
+    ConstructionHeuristicSelection,
+) {
+    match run_idx % 3 {
+        0 => (
+            ConstraintScenarioCandidateSource::BaselineLegacy,
+            ConstructionHeuristicSelection::BaselineLegacy,
+        ),
+        1 => (
+            ConstraintScenarioCandidateSource::FreedomAwareDeterministic,
+            ConstructionHeuristicSelection::FreedomAwareRandomized(
+                FreedomAwareConstructionParams { gamma: 0.0 },
+            ),
+        ),
+        _ => (
+            ConstraintScenarioCandidateSource::FreedomAwareRandomized,
+            ConstructionHeuristicSelection::FreedomAwareRandomized(
+                FreedomAwareConstructionParams { gamma: 1.0 },
+            ),
+        ),
+    }
+}
+
+fn derive_constraint_scenario_seed(
+    base_seed: u64,
+    run_idx: usize,
+    source: ConstraintScenarioCandidateSource,
+) -> u64 {
+    let source_salt = match source {
+        ConstraintScenarioCandidateSource::BaselineLegacy => 0x243f_6a88_85a3_08d3,
+        ConstraintScenarioCandidateSource::FreedomAwareDeterministic => 0x1319_8a2e_0370_7344,
+        ConstraintScenarioCandidateSource::FreedomAwareRandomized => 0xa409_3822_299f_31d0,
+    };
+    let mut z = base_seed ^ source_salt ^ ((run_idx as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15));
+    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    z ^ (z >> 31)
 }
 
 fn resolve_construction_selection(
