@@ -11,6 +11,8 @@ interface LandingResizableTextareaProps {
   className?: string;
   style?: React.CSSProperties;
   textareaClassName?: string;
+  clipFieldBorder?: boolean;
+  interactiveSurface?: boolean;
 }
 
 export function LandingResizableTextarea({
@@ -24,9 +26,12 @@ export function LandingResizableTextarea({
   className,
   style,
   textareaClassName,
+  clipFieldBorder = false,
+  interactiveSurface = false,
 }: LandingResizableTextareaProps) {
   const [height, setHeight] = useState(minHeight);
   const dragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const stopResizeRef = useRef<() => void>(() => {});
 
   const handlePointerMove = useCallback((event: PointerEvent) => {
     const dragState = dragStateRef.current;
@@ -41,11 +46,14 @@ export function LandingResizableTextarea({
   const stopResize = useCallback(() => {
     dragStateRef.current = null;
     window.removeEventListener('pointermove', handlePointerMove);
-    window.removeEventListener('pointerup', stopResize);
-    window.removeEventListener('pointercancel', stopResize);
+    window.removeEventListener('pointerup', stopResizeRef.current);
+    window.removeEventListener('pointercancel', stopResizeRef.current);
   }, [handlePointerMove]);
 
-  useEffect(() => stopResize, [stopResize]);
+  useEffect(() => {
+    stopResizeRef.current = stopResize;
+    return stopResize;
+  }, [stopResize]);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -61,7 +69,11 @@ export function LandingResizableTextarea({
 
   return (
     <div
-      className={['landing-resizable-textarea', className].filter(Boolean).join(' ')}
+      className={[
+        'landing-resizable-textarea',
+        interactiveSurface ? 'landing-resizable-textarea--interactive' : null,
+        className,
+      ].filter(Boolean).join(' ')}
       style={style}
     >
       <textarea
@@ -72,7 +84,13 @@ export function LandingResizableTextarea({
         placeholder={placeholder}
         readOnly={readOnly}
         className={['theme-scrollbar landing-resizable-textarea__field', textareaClassName].filter(Boolean).join(' ')}
-        style={{ height: `${height}px` }}
+        style={clipFieldBorder
+          ? {
+            width: 'calc(100% + 2px)',
+            height: `calc(${height}px + 2px)`,
+            margin: '-1px -1px -1px',
+          }
+          : { height: `${height}px` }}
       />
       <div
         className="landing-resizable-textarea__resize-handle"
