@@ -1,8 +1,8 @@
 use gm_core::default_solver_configuration_for;
 use gm_core::models::{ApiInput, SolverKind, SolverResult};
-use gm_core::solver2::scoring::{recompute_full_score, FullScoreSnapshot};
-use gm_core::solver2::validation::invariants::validate_state_invariants;
-use gm_core::solver2::SolutionState;
+use gm_core::solver3::scoring::OracleSnapshot;
+use gm_core::solver3::validation::invariants::validate_invariants;
+use gm_core::solver3::{recompute_oracle_score, RuntimeState};
 use gm_core::solver_support::validation::validate_schedule_as_incumbent;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -115,7 +115,7 @@ pub fn validate_final_solution(
             mismatch_diagnostics: diagnostics,
         };
     }
-    let mut solver_override = default_solver_configuration_for(SolverKind::Solver2);
+    let mut solver_override = default_solver_configuration_for(SolverKind::Solver3);
     solver_override.stop_conditions = validation_input.solver.stop_conditions.clone();
     solver_override.logging = validation_input.solver.logging.clone();
     solver_override.telemetry = validation_input.solver.telemetry.clone();
@@ -124,7 +124,7 @@ pub fn validate_final_solution(
     solver_override.allowed_sessions = validation_input.solver.allowed_sessions.clone();
     validation_input.solver = solver_override;
 
-    let state = match SolutionState::from_input(&validation_input) {
+    let state = match RuntimeState::from_input(&validation_input) {
         Ok(state) => state,
         Err(error) => {
             diagnostics.push(format!(
@@ -158,7 +158,7 @@ pub fn validate_final_solution(
         }
     }
 
-    let invariants_passed = match validate_state_invariants(&state) {
+    let invariants_passed = match validate_invariants(&state) {
         Ok(()) => true,
         Err(error) => {
             diagnostics.push(format!("external invariant validation failed: {error}"));
@@ -166,7 +166,7 @@ pub fn validate_final_solution(
         }
     };
 
-    let snapshot = match recompute_full_score(&state) {
+    let snapshot = match recompute_oracle_score(&state) {
         Ok(snapshot) => snapshot,
         Err(error) => {
             diagnostics.push(format!(
@@ -189,14 +189,14 @@ pub fn validate_final_solution(
     let recomputed = RecomputedScoreBreakdown {
         total_score: snapshot.total_score,
         baseline_score: snapshot.baseline_score,
-        unique_contacts: snapshot.unique_contacts,
-        repetition_penalty: snapshot.repetition_penalty,
+        unique_contacts: snapshot.unique_contacts as i32,
+        repetition_penalty: snapshot.repetition_penalty_raw,
         weighted_repetition_penalty: snapshot.weighted_repetition_penalty,
         attribute_balance_penalty: snapshot.attribute_balance_penalty,
-        constraint_penalty: snapshot.constraint_penalty,
-        weighted_constraint_penalty: snapshot.weighted_constraint_penalty,
+        constraint_penalty: snapshot.constraint_penalty_raw,
+        weighted_constraint_penalty: snapshot.constraint_penalty_weighted,
         clique_violations: snapshot.clique_violations.clone(),
-        forbidden_pair_violations: snapshot.forbidden_pair_violations.clone(),
+        forbidden_pair_violations: snapshot.soft_apart_violations.clone(),
         should_together_violations: snapshot.should_together_violations.clone(),
         immovable_violations: snapshot.immovable_violations,
         pair_meeting_counts: snapshot.pair_meeting_counts.clone(),
@@ -248,7 +248,7 @@ pub fn validation_failure_summary(report: &ExternalValidationReport) -> String {
 
 fn compare_breakdowns(
     reported: &ReportedScoreBreakdown,
-    recomputed: &FullScoreSnapshot,
+    recomputed: &OracleSnapshot,
     diagnostics: &mut Vec<String>,
 ) -> ExternalValidationAgreement {
     let final_score = approx_equal(reported.final_score, recomputed.total_score);
@@ -259,7 +259,7 @@ fn compare_breakdowns(
         ));
     }
 
-    let unique_contacts = reported.unique_contacts == recomputed.unique_contacts;
+    let unique_contacts = reported.unique_contacts == recomputed.unique_contacts as i32;
     if !unique_contacts {
         diagnostics.push(format!(
             "unique_contacts mismatch: solver={} external={}",
@@ -270,11 +270,11 @@ fn compare_breakdowns(
     let repetition_penalty_required = !approx_equal(reported.weighted_repetition_penalty, 0.0)
         || !approx_equal(recomputed.weighted_repetition_penalty, 0.0);
     let repetition_penalty = !repetition_penalty_required
-        || reported.repetition_penalty == recomputed.repetition_penalty;
+        || reported.repetition_penalty == recomputed.repetition_penalty_raw;
     if repetition_penalty_required && !repetition_penalty {
         diagnostics.push(format!(
             "repetition_penalty mismatch: solver={} external={}",
-            reported.repetition_penalty, recomputed.repetition_penalty
+            reported.repetition_penalty, recomputed.repetition_penalty_raw
         ));
     }
 
@@ -289,11 +289,11 @@ fn compare_breakdowns(
         ));
     }
 
-    let constraint_penalty = reported.constraint_penalty == recomputed.constraint_penalty;
+    let constraint_penalty = reported.constraint_penalty == recomputed.constraint_penalty_raw;
     if !constraint_penalty {
         diagnostics.push(format!(
             "constraint_penalty mismatch: solver={} external={}",
-            reported.constraint_penalty, recomputed.constraint_penalty
+            reported.constraint_penalty, recomputed.constraint_penalty_raw
         ));
     }
 
@@ -310,12 +310,12 @@ fn compare_breakdowns(
 
     let weighted_constraint_penalty = approx_equal(
         reported.weighted_constraint_penalty,
-        recomputed.weighted_constraint_penalty,
+        recomputed.constraint_penalty_weighted,
     );
     if !weighted_constraint_penalty {
         diagnostics.push(format!(
             "weighted_constraint_penalty mismatch: solver={} external={}",
-            reported.weighted_constraint_penalty, recomputed.weighted_constraint_penalty
+            reported.weighted_constraint_penalty, recomputed.constraint_penalty_weighted
         ));
     }
 

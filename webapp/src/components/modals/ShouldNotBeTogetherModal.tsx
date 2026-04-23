@@ -3,6 +3,7 @@ import { X, Check } from 'lucide-react';
 import type { Constraint } from '../../types';
 import { getConstraintAddLabel, getConstraintEditLabel } from '../../utils/constraintDisplay';
 import PersonCard from '../PersonCard';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
 import { useAppStore } from '../../store';
 import { SessionScopeField } from '../ScenarioEditor/shared/SessionScopeField';
 import {
@@ -160,17 +161,12 @@ export function ShouldNotBeTogetherModal({ sessionsCount, initial, onCancel, onS
 
           {/* Penalty Weight */}
           <div>
-            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-secondary)' }}>Penalty Weight</label>
-            <input 
-              type="number"
-              value={penaltyWeight ?? ''}
-              onChange={(e) => {
-                const numValue = e.target.value === '' ? null : parseFloat(e.target.value);
-                setPenaltyWeight(numValue);
-              }}
-              className={`input w-full text-base py-3 ${!isPenaltyWeightValid(penaltyWeight) ? 'border-red-500 focus:border-red-500' : ''}`}
-              min="0"
-              step="0.1"
+            <NumberField
+              label="Penalty Weight"
+              value={penaltyWeight}
+              onChange={setPenaltyWeight}
+              error={!isPenaltyWeightValid(penaltyWeight) ? 'Enter a positive weight.' : undefined}
+              {...NUMBER_FIELD_PRESETS.penaltyWeight}
             />
             <p className="text-xs mt-2" style={{ color: 'var(--text-tertiary)' }}>Higher values make the solver prioritize this constraint more.</p>
           </div>

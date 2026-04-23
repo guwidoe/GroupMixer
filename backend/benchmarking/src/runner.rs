@@ -24,6 +24,9 @@ use gm_core::{default_solver_configuration_for, run_solver, solver_descriptor};
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{mpsc, Arc};
+use std::thread;
 use std::time::Instant;
 use uuid::Uuid;
 
@@ -42,6 +45,21 @@ impl Default for RunnerOptions {
     }
 }
 
+fn default_case_parallelism() -> usize {
+    std::thread::available_parallelism()
+        .map(|count| count.get().min(4))
+        .unwrap_or(1)
+        .max(1)
+}
+
+fn resolved_case_parallelism() -> usize {
+    std::env::var("GROUPMIXER_BENCHMARK_JOBS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|&value| value > 0)
+        .unwrap_or_else(default_case_parallelism)
+}
+
 pub fn run_suite_from_manifest(
     manifest_path: impl AsRef<Path>,
     options: &RunnerOptions,
@@ -54,6 +72,7 @@ pub fn run_loaded_suite(
     suite: &LoadedBenchmarkSuite,
     options: &RunnerOptions,
 ) -> Result<RunReport> {
+    let suite_started_at = Instant::now();
     let run_id = format!(
         "{}-{}-{}",
         suite.manifest.suite_id,
@@ -63,33 +82,97 @@ pub fn run_loaded_suite(
     let generated_at = Utc::now().to_rfc3339();
     let git = capture_git_identity();
     let machine = capture_machine_identity(Some(&options.cargo_profile));
+    let case_parallelism = resolved_case_parallelism().min(suite.cases.len().max(1));
 
-    let mut cases = Vec::with_capacity(suite.cases.len());
-    for case in &suite.cases {
-        cases.push(
-            if suite.manifest.benchmark_mode == FULL_SOLVE_BENCHMARK_MODE {
-                run_case(
-                    &run_id,
-                    &generated_at,
-                    suite,
-                    case,
-                    git.clone(),
-                    machine.clone(),
-                )
-            } else {
-                run_hotpath_case_artifact(
-                    &run_id,
-                    &generated_at,
-                    suite,
-                    case,
-                    git.clone(),
-                    machine.clone(),
-                )
-            },
-        );
-    }
+    let cases = if case_parallelism <= 1 || suite.cases.len() <= 1 {
+        let mut cases = Vec::with_capacity(suite.cases.len());
+        for case in &suite.cases {
+            cases.push(
+                if suite.manifest.benchmark_mode == FULL_SOLVE_BENCHMARK_MODE {
+                    run_case(
+                        &run_id,
+                        &generated_at,
+                        suite,
+                        case,
+                        git.clone(),
+                        machine.clone(),
+                    )
+                } else {
+                    run_hotpath_case_artifact(
+                        &run_id,
+                        &generated_at,
+                        suite,
+                        case,
+                        git.clone(),
+                        machine.clone(),
+                    )
+                },
+            );
+        }
+        cases
+    } else {
+        let suite = Arc::new(suite.clone());
+        let git = Arc::new(git.clone());
+        let machine = Arc::new(machine.clone());
+        let run_id = Arc::new(run_id.clone());
+        let generated_at = Arc::new(generated_at.clone());
+        let next_index = Arc::new(AtomicUsize::new(0));
+        let (tx, rx) = mpsc::channel();
 
-    let totals = build_totals(&cases);
+        thread::scope(|scope| {
+            for _ in 0..case_parallelism {
+                let suite = Arc::clone(&suite);
+                let git = Arc::clone(&git);
+                let machine = Arc::clone(&machine);
+                let run_id = Arc::clone(&run_id);
+                let generated_at = Arc::clone(&generated_at);
+                let next_index = Arc::clone(&next_index);
+                let tx = tx.clone();
+                scope.spawn(move || loop {
+                    let index = next_index.fetch_add(1, Ordering::Relaxed);
+                    if index >= suite.cases.len() {
+                        break;
+                    }
+                    let case = &suite.cases[index];
+                    let artifact = if suite.manifest.benchmark_mode == FULL_SOLVE_BENCHMARK_MODE {
+                        run_case(
+                            run_id.as_str(),
+                            generated_at.as_str(),
+                            suite.as_ref(),
+                            case,
+                            (*git).clone(),
+                            (*machine).clone(),
+                        )
+                    } else {
+                        run_hotpath_case_artifact(
+                            run_id.as_str(),
+                            generated_at.as_str(),
+                            suite.as_ref(),
+                            case,
+                            (*git).clone(),
+                            (*machine).clone(),
+                        )
+                    };
+                    let _ = tx.send((index, artifact));
+                });
+            }
+            drop(tx);
+
+            let mut cases = vec![None; suite.cases.len()];
+            for (index, artifact) in rx {
+                cases[index] = Some(artifact);
+            }
+            cases
+                .into_iter()
+                .map(|artifact| {
+                    artifact
+                        .expect("parallel benchmark worker should produce one artifact per case")
+                })
+                .collect::<Vec<_>>()
+        })
+    };
+
+    let totals = build_totals(&cases, suite_started_at.elapsed().as_secs_f64());
     let class_rollups = build_class_rollups(&cases);
 
     Ok(RunReport {
@@ -109,6 +192,7 @@ pub fn run_loaded_suite(
             generated_at,
             git,
             machine,
+            case_parallelism: Some(case_parallelism),
         },
         totals,
         class_rollups,
@@ -292,6 +376,7 @@ fn run_case(
                 multi_root_balanced_session_inheritance: telemetry
                     .multi_root_balanced_session_inheritance
                     .clone(),
+                solver4_paper_trace: telemetry.solver4_paper_trace.clone(),
             });
             let validation = validate_final_solution(&input, &result);
             let score_decomposition =
@@ -704,7 +789,7 @@ fn retarget_input_for_solver_kind(
     retargeted
 }
 
-fn build_totals(cases: &[CaseRunArtifact]) -> RunTotals {
+fn build_totals(cases: &[CaseRunArtifact], wall_runtime_seconds: f64) -> RunTotals {
     RunTotals {
         total_cases: cases.len(),
         successful_cases: cases
@@ -715,7 +800,7 @@ fn build_totals(cases: &[CaseRunArtifact]) -> RunTotals {
             .iter()
             .filter(|case| case.status != CaseRunStatus::Success)
             .count(),
-        total_runtime_seconds: cases.iter().map(|case| case.runtime_seconds).sum(),
+        total_runtime_seconds: wall_runtime_seconds,
     }
 }
 
@@ -985,40 +1070,6 @@ mod tests {
         let baseline = load_baseline_snapshot(&baseline_path).expect("reload baseline");
         assert_eq!(baseline.baseline_name, "path-baseline");
         assert_eq!(baseline.run_report.run.run_id, report.run.run_id);
-    }
-
-    #[test]
-    fn full_solve_suite_can_retarget_cases_to_solver2() {
-        let temp = TempDir::new().expect("temp dir");
-        let options = RunnerOptions {
-            artifacts_dir: temp.path().to_path_buf(),
-            cargo_profile: "test".to_string(),
-        };
-
-        let report = run_suite_from_manifest("suites/path-solver2.yaml", &options)
-            .expect("solver2 path suite should run");
-
-        assert_eq!(report.suite.suite_id, "path-solver2");
-        assert_eq!(report.suite.solver_families, vec!["solver2".to_string()]);
-        assert_eq!(report.totals.failed_cases, 0);
-        assert!(report
-            .cases
-            .iter()
-            .all(|case| case.solver.solver_family == "solver2"));
-        assert!(report
-            .cases
-            .iter()
-            .all(|case| case.solver.solver_config_id == "solver2"));
-        assert!(report.cases.iter().all(|case| {
-            case.external_validation
-                .as_ref()
-                .is_some_and(|validation| validation.validation_passed)
-        }));
-        assert!(report.cases.iter().all(|case| {
-            case.search_telemetry
-                .as_ref()
-                .is_some_and(|telemetry| !telemetry.best_score_timeline.is_empty())
-        }));
     }
 
     #[test]
@@ -1470,73 +1521,6 @@ mod tests {
     }
 
     #[test]
-    fn hotpath_suite_runs_solver2_swap_preview_with_shared_artifacts() {
-        let temp = TempDir::new().expect("temp dir");
-        let suite_dir = temp.path().join("backend/benchmarking/suites");
-        let case_dir = temp.path().join("backend/benchmarking/cases/hotpath");
-        fs::create_dir_all(&suite_dir).expect("mk suite dir");
-        fs::create_dir_all(&case_dir).expect("mk case dir");
-
-        let case_path = case_dir.join("swap_preview_solver2_supported.json");
-        fs::write(
-            &case_path,
-            serde_json::to_string_pretty(&json!({
-                "schema_version": 1,
-                "id": "hotpath.swap-preview.solver2.supported",
-                "class": "representative",
-                "solver_family": "solver2",
-                "title": "Hotpath swap preview for solver2",
-                "description": "Supported solver2 swap preview hotpath lane",
-                "tags": ["hotpath", "swap", "preview", "solver2"],
-                "hotpath_preset": "swap_default_solver2"
-            }))
-            .expect("serialize case"),
-        )
-        .expect("write case");
-
-        let suite_path = suite_dir.join("hotpath-swap-preview-solver2-supported.yaml");
-        fs::write(
-            &suite_path,
-            [
-                "schema_version: 1",
-                "suite_id: hotpath-swap-preview-solver2-supported",
-                "benchmark_mode: swap_preview",
-                "class: representative",
-                "default_iterations: 4",
-                "default_warmup_iterations: 1",
-                "cases:",
-                "  - manifest: ../cases/hotpath/swap_preview_solver2_supported.json",
-            ]
-            .join("\n"),
-        )
-        .expect("write suite");
-
-        let options = RunnerOptions {
-            artifacts_dir: temp.path().join("artifacts"),
-            cargo_profile: "test".to_string(),
-        };
-
-        let report = run_suite_from_manifest(&suite_path, &options)
-            .expect("solver2 hotpath suite should run successfully");
-        assert_eq!(report.suite.solver_families, vec!["solver2".to_string()]);
-        assert_eq!(report.totals.total_cases, 1);
-        assert_eq!(report.totals.successful_cases, 1);
-        assert_eq!(
-            report.cases[0].artifact_kind,
-            BenchmarkArtifactKind::HotPath
-        );
-        assert_eq!(report.cases[0].solver.solver_family, "solver2");
-        assert_eq!(report.cases[0].status, CaseRunStatus::Success);
-        let metrics = report.cases[0]
-            .hotpath_metrics
-            .as_ref()
-            .expect("hotpath metrics should exist");
-        assert_eq!(metrics.benchmark_mode, "swap_preview");
-        assert_eq!(metrics.preset.as_deref(), Some("swap_default_solver2"));
-        assert!(metrics.preview_seconds > 0.0);
-    }
-
-    #[test]
     fn hotpath_suite_runs_solver3_swap_preview_with_shared_artifacts() {
         let temp = TempDir::new().expect("temp dir");
         let suite_dir = temp.path().join("backend/benchmarking/suites");
@@ -1604,68 +1588,6 @@ mod tests {
     }
 
     #[test]
-    fn hotpath_suite_runs_solver2_transfer_preview_with_shared_artifacts() {
-        let temp = TempDir::new().expect("temp dir");
-        let suite_dir = temp.path().join("backend/benchmarking/suites");
-        let case_dir = temp.path().join("backend/benchmarking/cases/hotpath");
-        fs::create_dir_all(&suite_dir).expect("mk suite dir");
-        fs::create_dir_all(&case_dir).expect("mk case dir");
-
-        let case_path = case_dir.join("transfer_preview_solver2_supported.json");
-        fs::write(
-            &case_path,
-            serde_json::to_string_pretty(&json!({
-                "schema_version": 1,
-                "id": "hotpath.transfer-preview.solver2.supported",
-                "class": "representative",
-                "solver_family": "solver2",
-                "title": "Hotpath transfer preview for solver2",
-                "description": "Supported solver2 transfer preview hotpath lane",
-                "tags": ["hotpath", "transfer", "preview", "solver2"],
-                "hotpath_preset": "transfer_default_solver2"
-            }))
-            .expect("serialize case"),
-        )
-        .expect("write case");
-
-        let suite_path = suite_dir.join("hotpath-transfer-preview-solver2-supported.yaml");
-        fs::write(
-            &suite_path,
-            [
-                "schema_version: 1",
-                "suite_id: hotpath-transfer-preview-solver2-supported",
-                "benchmark_mode: transfer_preview",
-                "class: representative",
-                "default_iterations: 4",
-                "default_warmup_iterations: 1",
-                "cases:",
-                "  - manifest: ../cases/hotpath/transfer_preview_solver2_supported.json",
-            ]
-            .join("\n"),
-        )
-        .expect("write suite");
-
-        let options = RunnerOptions {
-            artifacts_dir: temp.path().join("artifacts"),
-            cargo_profile: "test".to_string(),
-        };
-
-        let report = run_suite_from_manifest(&suite_path, &options)
-            .expect("solver2 transfer hotpath suite should run successfully");
-        assert_eq!(report.suite.solver_families, vec!["solver2".to_string()]);
-        assert_eq!(report.totals.successful_cases, 1);
-        assert_eq!(report.cases[0].solver.solver_family, "solver2");
-        assert_eq!(report.cases[0].status, CaseRunStatus::Success);
-        let metrics = report.cases[0]
-            .hotpath_metrics
-            .as_ref()
-            .expect("hotpath metrics should exist");
-        assert_eq!(metrics.benchmark_mode, "transfer_preview");
-        assert_eq!(metrics.preset.as_deref(), Some("transfer_default_solver2"));
-        assert!(metrics.preview_seconds > 0.0);
-    }
-
-    #[test]
     fn hotpath_suite_runs_solver3_transfer_preview_with_shared_artifacts() {
         let temp = TempDir::new().expect("temp dir");
         let suite_dir = temp.path().join("backend/benchmarking/suites");
@@ -1724,71 +1646,6 @@ mod tests {
             .expect("hotpath metrics should exist");
         assert_eq!(metrics.benchmark_mode, "transfer_preview");
         assert_eq!(metrics.preset.as_deref(), Some("transfer_default_solver3"));
-        assert!(metrics.preview_seconds > 0.0);
-    }
-
-    #[test]
-    fn hotpath_suite_runs_solver2_clique_swap_preview_with_shared_artifacts() {
-        let temp = TempDir::new().expect("temp dir");
-        let suite_dir = temp.path().join("backend/benchmarking/suites");
-        let case_dir = temp.path().join("backend/benchmarking/cases/hotpath");
-        fs::create_dir_all(&suite_dir).expect("mk suite dir");
-        fs::create_dir_all(&case_dir).expect("mk case dir");
-
-        let case_path = case_dir.join("clique_swap_preview_solver2_supported.json");
-        fs::write(
-            &case_path,
-            serde_json::to_string_pretty(&json!({
-                "schema_version": 1,
-                "id": "hotpath.clique-swap-preview.solver2.supported",
-                "class": "representative",
-                "solver_family": "solver2",
-                "title": "Hotpath clique swap preview for solver2",
-                "description": "Supported solver2 clique swap preview hotpath lane",
-                "tags": ["hotpath", "clique_swap", "preview", "solver2"],
-                "hotpath_preset": "clique_swap_default_solver2"
-            }))
-            .expect("serialize case"),
-        )
-        .expect("write case");
-
-        let suite_path = suite_dir.join("hotpath-clique-swap-preview-solver2-supported.yaml");
-        fs::write(
-            &suite_path,
-            [
-                "schema_version: 1",
-                "suite_id: hotpath-clique-swap-preview-solver2-supported",
-                "benchmark_mode: clique_swap_preview",
-                "class: representative",
-                "default_iterations: 4",
-                "default_warmup_iterations: 1",
-                "cases:",
-                "  - manifest: ../cases/hotpath/clique_swap_preview_solver2_supported.json",
-            ]
-            .join("\n"),
-        )
-        .expect("write suite");
-
-        let options = RunnerOptions {
-            artifacts_dir: temp.path().join("artifacts"),
-            cargo_profile: "test".to_string(),
-        };
-
-        let report = run_suite_from_manifest(&suite_path, &options)
-            .expect("solver2 clique swap hotpath suite should run successfully");
-        assert_eq!(report.suite.solver_families, vec!["solver2".to_string()]);
-        assert_eq!(report.totals.successful_cases, 1);
-        assert_eq!(report.cases[0].solver.solver_family, "solver2");
-        assert_eq!(report.cases[0].status, CaseRunStatus::Success);
-        let metrics = report.cases[0]
-            .hotpath_metrics
-            .as_ref()
-            .expect("hotpath metrics should exist");
-        assert_eq!(metrics.benchmark_mode, "clique_swap_preview");
-        assert_eq!(
-            metrics.preset.as_deref(),
-            Some("clique_swap_default_solver2")
-        );
         assert!(metrics.preview_seconds > 0.0);
     }
 
@@ -1855,71 +1712,5 @@ mod tests {
             Some("clique_swap_default_solver3")
         );
         assert!(metrics.preview_seconds > 0.0);
-    }
-
-    #[test]
-    fn hotpath_suite_keeps_shared_artifact_flow_for_unimplemented_solver_family_probes() {
-        let temp = TempDir::new().expect("temp dir");
-        let suite_dir = temp.path().join("backend/benchmarking/suites");
-        let case_dir = temp.path().join("backend/benchmarking/cases/hotpath");
-        fs::create_dir_all(&suite_dir).expect("mk suite dir");
-        fs::create_dir_all(&case_dir).expect("mk case dir");
-
-        let case_path = case_dir.join("swap_preview_solver2.json");
-        fs::write(
-            &case_path,
-            serde_json::to_string_pretty(&json!({
-                "schema_version": 1,
-                "id": "hotpath.swap-preview.solver2",
-                "class": "representative",
-                "solver_family": "solver2",
-                "title": "Hotpath swap preview for solver2",
-                "description": "Bootstrapped solver2 hotpath lane",
-                "tags": ["hotpath", "swap", "preview", "solver2"],
-                "hotpath_preset": "swap_default"
-            }))
-            .expect("serialize case"),
-        )
-        .expect("write case");
-
-        let suite_path = suite_dir.join("hotpath-swap-preview-solver2.yaml");
-        fs::write(
-            &suite_path,
-            [
-                "schema_version: 1",
-                "suite_id: hotpath-swap-preview-solver2",
-                "benchmark_mode: swap_preview",
-                "class: representative",
-                "default_iterations: 4",
-                "default_warmup_iterations: 1",
-                "cases:",
-                "  - manifest: ../cases/hotpath/swap_preview_solver2.json",
-            ]
-            .join("\n"),
-        )
-        .expect("write suite");
-
-        let options = RunnerOptions {
-            artifacts_dir: temp.path().join("artifacts"),
-            cargo_profile: "test".to_string(),
-        };
-
-        let report = run_suite_from_manifest(&suite_path, &options)
-            .expect("runner should still produce a shared run report");
-        assert_eq!(report.suite.solver_families, vec!["solver2".to_string()]);
-        assert_eq!(report.totals.total_cases, 1);
-        assert_eq!(report.totals.failed_cases, 1);
-        assert_eq!(
-            report.cases[0].artifact_kind,
-            BenchmarkArtifactKind::HotPath
-        );
-        assert_eq!(report.cases[0].solver.solver_family, "solver2");
-        assert_eq!(report.cases[0].status, CaseRunStatus::SolverError);
-        assert!(report.cases[0]
-            .error_message
-            .as_deref()
-            .is_some_and(|message| {
-                message.contains("solver2") && message.contains("not implemented")
-            }));
     }
 }

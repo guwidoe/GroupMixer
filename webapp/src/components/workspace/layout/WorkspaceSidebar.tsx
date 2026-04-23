@@ -11,6 +11,8 @@ interface WorkspaceSidebarProps {
   activeItemId: string | null;
   isCollapsed: boolean;
   onToggleCollapsed: () => void;
+  expandedGroups: Record<string, boolean>;
+  onToggleGroupExpanded: (groupId: string) => void;
   onNavigate: (itemId: string) => void;
   headerContent?: React.ReactNode;
   collapsedHeaderContent?: React.ReactNode;
@@ -22,6 +24,8 @@ export function WorkspaceSidebar({
   activeItemId,
   isCollapsed,
   onToggleCollapsed,
+  expandedGroups,
+  onToggleGroupExpanded,
   onNavigate,
   headerContent,
   collapsedHeaderContent,
@@ -58,6 +62,8 @@ export function WorkspaceSidebar({
                 group={group}
                 activeItemId={activeItemId}
                 isRailCollapsed={isCollapsed}
+                isExpanded={expandedGroups[group.id] ?? true}
+                onToggleExpanded={onToggleGroupExpanded}
                 onNavigate={onNavigate}
               />
             ))}

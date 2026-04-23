@@ -385,6 +385,7 @@ mod tests {
                     hostname: Some("benchbox.local".to_string()),
                     ..Default::default()
                 },
+                case_parallelism: None,
             },
             totals: RunTotals {
                 total_cases: 2,

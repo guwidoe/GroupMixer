@@ -1,0 +1,386 @@
+schema_version: 1
+suite_id: solver4-paper-anchor-conformance
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: allow_non_canonical
+class: stretch
+title: Solver4 paper-anchor conformance suite
+description: >-
+  Paper-conformance lane for solver4. Uses the paper's anchor instances via GroupMixer's canonical
+  cases: Kirkman 15x5x7 as 5-3-7, social_golfer_32x8x9 as 8-4-9, and social_golfer_32x8x10 as
+  8-4-10. Acceptance gate: external validation must pass on every case, and solver4 should solve
+  the 5-3-7 and 8-4-9 anchors under their paper-style budgets before we describe the implementation
+  as behaviorally faithful. Includes a gamma=0 multiseed sweep plus a small gamma sweep.
+default_solver_family: solver4
+default_solver:
+  solver_type: solver4
+  stop_conditions:
+    max_iterations: 10000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver4
+    gamma: 0.0
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  # 5-3-7 anchor (Kirkman)
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.kirkman_15x5x7.gamma_0.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150507
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.kirkman_15x5x7.gamma_0.seed_2
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150508
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.kirkman_15x5x7.gamma_0.seed_3
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150509
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.kirkman_15x5x7.gamma_0.seed_4
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150510
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.kirkman_15x5x7.gamma_005.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 10000000
+        time_limit_seconds: 60
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        gamma: 0.05
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150507
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.kirkman_15x5x7.gamma_01.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 10000000
+        time_limit_seconds: 60
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        gamma: 0.1
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150507
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.kirkman_15x5x7.gamma_02.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 10000000
+        time_limit_seconds: 60
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        gamma: 0.2
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150507
+    max_iterations: 1500000
+    time_limit_seconds: 10
+
+  # 8-4-9 anchor (helper case with canonical identity linkage)
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x9.gamma_0.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320910
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x9.gamma_0.seed_2
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320911
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x9.gamma_0.seed_3
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320912
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x9.gamma_0.seed_4
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320913
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x9.gamma_005.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 10000000
+        time_limit_seconds: 60
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        gamma: 0.05
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320910
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x9.gamma_01.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 10000000
+        time_limit_seconds: 60
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        gamma: 0.1
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320910
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x9.gamma_02.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 10000000
+        time_limit_seconds: 60
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        gamma: 0.2
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320910
+    max_iterations: 8000000
+    time_limit_seconds: 20
+
+  # 8-4-10 anchor
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x10.gamma_0.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x10.gamma_0.seed_2
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320811
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x10.gamma_0.seed_3
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320812
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x10.gamma_0.seed_4
+    provenance: solver4_paper_anchor_conformance_lane
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320813
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x10.gamma_005.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 10000000
+        time_limit_seconds: 60
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        gamma: 0.05
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x10.gamma_01.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 10000000
+        time_limit_seconds: 60
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        gamma: 0.1
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.solver4.paper_anchor.social_golfer_32x8x10.gamma_02.seed_1
+    provenance: solver4_paper_anchor_conformance_lane
+    solver_family: solver4
+    solver:
+      solver_type: solver4
+      stop_conditions:
+        max_iterations: 10000000
+        time_limit_seconds: 60
+        no_improvement_iterations: null
+      solver_params:
+        solver_type: solver4
+        gamma: 0.2
+      logging: {}
+      telemetry: {}
+      seed: 1
+      move_policy: null
+      allowed_sessions: null
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000
+    time_limit_seconds: 25

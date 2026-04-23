@@ -1,8 +1,59 @@
+const QUICK_RANDOMIZER_DEFAULTS = {
+  inputMode: 'names',
+  groupingMode: 'groupCount',
+  groupingValue: 4,
+  sessions: 1,
+  advancedOpen: false,
+  balanceAttributeKey: null,
+  keepTogetherInput: '',
+  avoidPairingsInput: '',
+};
+
+const NETWORKING_DEFAULTS = {
+  ...QUICK_RANDOMIZER_DEFAULTS,
+  sessions: 3,
+};
+
+const MULTI_ROUND_DEFAULTS = {
+  ...QUICK_RANDOMIZER_DEFAULTS,
+  groupingMode: 'groupSize',
+  groupingValue: 4,
+  sessions: 4,
+  advancedOpen: true,
+};
+
+const TECHNICAL_CSV_DEFAULTS = {
+  ...QUICK_RANDOMIZER_DEFAULTS,
+  inputMode: 'csv',
+  groupingMode: 'groupSize',
+  groupingValue: 4,
+  sessions: 3,
+  advancedOpen: true,
+  balanceAttributeKey: 'role',
+};
+
+const CONSTRAINT_CSV_DEFAULTS = {
+  ...TECHNICAL_CSV_DEFAULTS,
+  keepTogetherInput: 'Alex, Sam',
+  avoidPairingsInput: 'Ella, Jordan',
+};
+
+const SOCIAL_GOLFER_DEFAULTS = {
+  ...QUICK_RANDOMIZER_DEFAULTS,
+  groupingMode: 'groupSize',
+  groupingValue: 4,
+  sessions: 5,
+  advancedOpen: true,
+};
+
 export const TOOL_PAGE_DEFINITIONS_DATA = {
   home: {
     key: 'home',
     slug: '',
+    mode: 'quick-randomizer',
+    sectionSet: 'standard',
     defaultPreset: 'random',
+    quickSetupDefaults: QUICK_RANDOMIZER_DEFAULTS,
     liveLocales: ['en', 'de', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-home-random-group',
@@ -18,7 +69,10 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
   'random-group-generator': {
     key: 'random-group-generator',
     slug: 'random-group-generator',
+    mode: 'quick-randomizer',
+    sectionSet: 'standard',
     defaultPreset: 'random',
+    quickSetupDefaults: QUICK_RANDOMIZER_DEFAULTS,
     liveLocales: ['en', 'de', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-random-group-core',
@@ -34,7 +88,10 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
   'random-team-generator': {
     key: 'random-team-generator',
     slug: 'random-team-generator',
+    mode: 'quick-randomizer',
+    sectionSet: 'standard',
     defaultPreset: 'balanced',
+    quickSetupDefaults: QUICK_RANDOMIZER_DEFAULTS,
     liveLocales: ['en', 'de', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-random-team-balance',
@@ -50,7 +107,10 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
   'random-pair-generator': {
     key: 'random-pair-generator',
     slug: 'random-pair-generator',
+    mode: 'quick-randomizer',
+    sectionSet: 'standard',
     defaultPreset: 'random',
+    quickSetupDefaults: { ...QUICK_RANDOMIZER_DEFAULTS, groupingMode: 'groupSize', groupingValue: 2 },
     liveLocales: ['en'],
     experiment: {
       label: 'english-random-pair-partners',
@@ -66,7 +126,10 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
   'team-shuffle-generator': {
     key: 'team-shuffle-generator',
     slug: 'team-shuffle-generator',
+    mode: 'quick-randomizer',
+    sectionSet: 'standard',
     defaultPreset: 'balanced',
+    quickSetupDefaults: QUICK_RANDOMIZER_DEFAULTS,
     liveLocales: ['en'],
     experiment: {
       label: 'english-team-shuffle-remix',
@@ -82,7 +145,10 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
   'breakout-room-generator': {
     key: 'breakout-room-generator',
     slug: 'breakout-room-generator',
+    mode: 'multi-round',
+    sectionSet: 'standard',
     defaultPreset: 'networking',
+    quickSetupDefaults: NETWORKING_DEFAULTS,
     liveLocales: ['en', 'de', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-breakout-room-rotation',
@@ -98,7 +164,10 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
   'workshop-group-generator': {
     key: 'workshop-group-generator',
     slug: 'workshop-group-generator',
+    mode: 'quick-randomizer',
+    sectionSet: 'standard',
     defaultPreset: 'balanced',
+    quickSetupDefaults: QUICK_RANDOMIZER_DEFAULTS,
     liveLocales: ['en', 'de', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-workshop-groups-facilitator',
@@ -114,7 +183,10 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
   'student-group-generator': {
     key: 'student-group-generator',
     slug: 'student-group-generator',
+    mode: 'quick-randomizer',
+    sectionSet: 'standard',
     defaultPreset: 'balanced',
+    quickSetupDefaults: QUICK_RANDOMIZER_DEFAULTS,
     liveLocales: ['en', 'de', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-student-group-teacher',
@@ -130,7 +202,10 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
   'icebreaker-group-generator': {
     key: 'icebreaker-group-generator',
     slug: 'icebreaker-group-generator',
+    mode: 'quick-randomizer',
+    sectionSet: 'standard',
     defaultPreset: 'networking',
+    quickSetupDefaults: NETWORKING_DEFAULTS,
     liveLocales: ['en'],
     experiment: {
       label: 'english-icebreaker-quick-groups',
@@ -146,7 +221,10 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
   'speed-networking-generator': {
     key: 'speed-networking-generator',
     slug: 'speed-networking-generator',
+    mode: 'multi-round',
+    sectionSet: 'standard',
     defaultPreset: 'networking',
+    quickSetupDefaults: NETWORKING_DEFAULTS,
     liveLocales: ['en', 'de', 'es', 'fr', 'ja', 'hi', 'zh'],
     experiment: {
       label: 'english-speed-networking-rounds',
@@ -162,7 +240,10 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
   'group-generator-with-constraints': {
     key: 'group-generator-with-constraints',
     slug: 'group-generator-with-constraints',
+    mode: 'constraint-optimizer',
+    sectionSet: 'standard',
     defaultPreset: 'balanced',
+    quickSetupDefaults: CONSTRAINT_CSV_DEFAULTS,
     liveLocales: ['en'],
     experiment: {
       label: 'english-constraints-power',
@@ -171,6 +252,82 @@ export const TOOL_PAGE_DEFINITIONS_DATA = {
     inventory: {
       searchIntent: 'group generator with constraints',
       audience: 'facilitators and planners with assignment rules',
+      priority: 'supporting',
+      rolloutStage: 'live',
+    },
+  },
+  'multi-round-group-assignment-tool': {
+    key: 'multi-round-group-assignment-tool',
+    slug: 'multi-round-group-assignment-tool',
+    mode: 'multi-round',
+    sectionSet: 'technical',
+    defaultPreset: 'networking',
+    quickSetupDefaults: MULTI_ROUND_DEFAULTS,
+    liveLocales: ['en'],
+    experiment: {
+      label: 'english-technical-multi-round-assignment',
+      futureVariants: ['constraint-first-hero', 'example-first-section'],
+    },
+    inventory: {
+      searchIntent: 'multi-round group assignment tool with constraints',
+      audience: 'facilitators, instructors, and event planners running repeated sessions',
+      priority: 'supporting',
+      rolloutStage: 'live',
+    },
+  },
+  'group-assignment-optimizer': {
+    key: 'group-assignment-optimizer',
+    slug: 'group-assignment-optimizer',
+    mode: 'constraint-optimizer',
+    sectionSet: 'technical',
+    defaultPreset: 'balanced',
+    quickSetupDefaults: TECHNICAL_CSV_DEFAULTS,
+    liveLocales: ['en'],
+    experiment: {
+      label: 'english-technical-group-assignment-optimizer',
+      futureVariants: ['solver-language-vs-planner-language', 'hard-soft-constraints-copy'],
+    },
+    inventory: {
+      searchIntent: 'group assignment optimizer',
+      audience: 'people who need optimized assignments rather than random shuffles',
+      priority: 'supporting',
+      rolloutStage: 'live',
+    },
+  },
+  'social-golfer-problem-solver': {
+    key: 'social-golfer-problem-solver',
+    slug: 'social-golfer-problem-solver',
+    mode: 'social-golfer',
+    sectionSet: 'technical',
+    defaultPreset: 'networking',
+    quickSetupDefaults: SOCIAL_GOLFER_DEFAULTS,
+    liveLocales: ['en'],
+    experiment: {
+      label: 'english-technical-social-golfer',
+      futureVariants: ['events-language-vs-classic-problem-language', 'minimal-repeat-hero'],
+    },
+    inventory: {
+      searchIntent: 'social golfer problem solver',
+      audience: 'event hosts and organizers planning repeated small-group rounds',
+      priority: 'supporting',
+      rolloutStage: 'live',
+    },
+  },
+  'constraint-based-team-generator': {
+    key: 'constraint-based-team-generator',
+    slug: 'constraint-based-team-generator',
+    mode: 'constraint-optimizer',
+    sectionSet: 'technical',
+    defaultPreset: 'balanced',
+    quickSetupDefaults: CONSTRAINT_CSV_DEFAULTS,
+    liveLocales: ['en'],
+    experiment: {
+      label: 'english-technical-constraint-based-team-generator',
+      futureVariants: ['team-generator-copy', 'constraint-list-above-fold'],
+    },
+    inventory: {
+      searchIntent: 'constraint based team generator',
+      audience: 'teachers, facilitators, and managers balancing teams with rules',
       priority: 'supporting',
       rolloutStage: 'live',
     },

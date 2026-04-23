@@ -116,7 +116,10 @@ impl State {
         for violation in &mut self.clique_violations {
             *violation = 0;
         }
-        for violation in &mut self.forbidden_pair_violations {
+        for violation in &mut self.soft_apart_pair_violations {
+            *violation = 0;
+        }
+        for violation in &mut self.hard_apart_pair_violations {
             *violation = 0;
         }
         for violation in &mut self.should_together_violations {
@@ -124,12 +127,12 @@ impl State {
         }
         self.immovable_violations = 0;
 
-        // Calculate forbidden pair violations
+        // Calculate soft-apart pair violations
         for (day_idx, day_schedule) in self.schedule.iter().enumerate() {
             for group in day_schedule {
-                for (pair_idx, &(p1, p2)) in self.forbidden_pairs.iter().enumerate() {
-                    // Check if this forbidden pair applies to this session
-                    if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+                for (pair_idx, &(p1, p2)) in self.soft_apart_pairs.iter().enumerate() {
+                    // Check if this soft-apart pair applies to this session
+                    if let Some(ref sessions) = self.soft_apart_pair_sessions[pair_idx] {
                         if !sessions.contains(&day_idx) {
                             continue; // Skip this constraint for this session
                         }
@@ -154,8 +157,31 @@ impl State {
                         }
                     }
                     if p1_in && p2_in {
-                        self.forbidden_pair_violations[pair_idx] += 1;
+                        self.soft_apart_pair_violations[pair_idx] += 1;
                     }
+                }
+            }
+        }
+
+        // Calculate hard-apart pair raw violations
+        for (day_idx, _day_schedule) in self.schedule.iter().enumerate() {
+            for (pair_idx, &(p1, p2)) in self.hard_apart_pairs.iter().enumerate() {
+                if let Some(ref sessions) = self.hard_apart_pair_sessions[pair_idx] {
+                    if !sessions.contains(&day_idx) {
+                        continue;
+                    }
+                }
+
+                if !self.person_participation[p1][day_idx]
+                    || !self.person_participation[p2][day_idx]
+                {
+                    continue;
+                }
+
+                let (g1, _) = self.locations[day_idx][p1];
+                let (g2, _) = self.locations[day_idx][p2];
+                if g1 == g2 {
+                    self.hard_apart_pair_violations[pair_idx] += 1;
                 }
             }
         }
@@ -259,7 +285,8 @@ impl State {
 
     #[inline]
     pub(crate) fn _update_constraint_penalty_total(&mut self) {
-        self.constraint_penalty = self.forbidden_pair_violations.iter().sum::<i32>()
+        self.constraint_penalty = self.soft_apart_pair_violations.iter().sum::<i32>()
+            + self.hard_apart_pair_violations.iter().sum::<i32>()
             + self.clique_violations.iter().sum::<i32>()
             + self.should_together_violations.iter().sum::<i32>()
             + self.immovable_violations

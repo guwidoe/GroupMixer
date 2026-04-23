@@ -413,6 +413,27 @@ describe('runSolver', () => {
     );
   });
 
+  it('sanitizes person ids in solver error messages before surfacing them', async () => {
+    const args = createArgs();
+    vi.mocked(solveScenario).mockRejectedValue(
+      new Error("Constraint violation: warm start places must-stay-apart pair ['p1', 'p2'] together"),
+    );
+
+    await runSolver(args);
+
+    expect(args.setSolverState).toHaveBeenCalledWith({
+      isRunning: false,
+      error: "Constraint violation: warm start places must-stay-apart pair ['Alice', 'Bob'] together",
+    });
+    expect(args.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'error',
+        title: 'Solver Error',
+        message: "Constraint violation: warm start places must-stay-apart pair ['Alice', 'Bob'] together",
+      }),
+    );
+  });
+
   it('resumes via the runtime warm-start path after a save-and-resume completion', async () => {
     vi.useFakeTimers();
     const runtime = createRuntimeMock({

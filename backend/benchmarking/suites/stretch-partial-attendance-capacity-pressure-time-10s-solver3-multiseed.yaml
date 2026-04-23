@@ -1,0 +1,64 @@
+schema_version: 1
+suite_id: stretch-partial-attendance-capacity-pressure-time-10s-solver3-multiseed
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Synthetic partial-attendance capacity-pressure stretch 10s benchmark for solver3 (4 seeds)
+description: Synthetic planted-feasible partial-attendance/session-capacity stress workload under a 10-second wall-clock budget using solver3 with no early plateau stop across four explicit seeds.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 10000000
+    time_limit_seconds: 10
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+  logging: {}
+  telemetry: {}
+  seed: 152605
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: objective_target.stretch.synthetic_partial_attendance_capacity_pressure_152p.fixed_time_10s.seed_152605
+    provenance: generated_by_tools/benchmarking/generate_partial_attendance_capacity_case.py_using_a_deterministic_planted_feasible_builder
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 10
+    seed: 152605
+    max_iterations: 10000000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: objective_target.stretch.synthetic_partial_attendance_capacity_pressure_152p.fixed_time_10s.seed_152606
+    provenance: generated_by_tools/benchmarking/generate_partial_attendance_capacity_case.py_using_a_deterministic_planted_feasible_builder
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 10
+    seed: 152606
+    max_iterations: 10000000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: objective_target.stretch.synthetic_partial_attendance_capacity_pressure_152p.fixed_time_10s.seed_152607
+    provenance: generated_by_tools/benchmarking/generate_partial_attendance_capacity_case.py_using_a_deterministic_planted_feasible_builder
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 10
+    seed: 152607
+    max_iterations: 10000000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: objective_target.stretch.synthetic_partial_attendance_capacity_pressure_152p.fixed_time_10s.seed_152608
+    provenance: generated_by_tools/benchmarking/generate_partial_attendance_capacity_case.py_using_a_deterministic_planted_feasible_builder
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 10
+    seed: 152608
+    max_iterations: 10000000
+    time_limit_seconds: 10
+default_time_limit_seconds: 10

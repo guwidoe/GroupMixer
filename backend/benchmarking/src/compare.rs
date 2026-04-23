@@ -14,6 +14,7 @@ use crate::{BaselineSnapshot, CaseRunArtifact, ClassRollup, RunReport};
 use anyhow::{Context, Result};
 use chrono::Utc;
 use gm_core::models::MoveFamilyBenchmarkTelemetry;
+use sha2::{Digest, Sha256};
 use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -301,18 +302,37 @@ pub fn persist_comparison_report(
             comparison_dir.display()
         )
     })?;
-    let filename = format!(
-        "{}__{}__{}.json",
-        sanitize_filename(&report.suite_id),
-        sanitize_filename(&report.baseline_name),
-        sanitize_filename(&report.current_run_id)
-    );
+    let filename = comparison_report_filename(report);
     let path = comparison_dir.join(filename);
     let contents =
         serde_json::to_string_pretty(report).context("failed to serialize comparison report")?;
     fs::write(&path, contents)
         .with_context(|| format!("failed to write comparison report {}", path.display()))?;
     Ok(path)
+}
+
+fn comparison_report_filename(report: &ComparisonReport) -> String {
+    let direct = format!(
+        "{}__{}__{}.json",
+        sanitize_filename(&report.suite_id),
+        sanitize_filename(&report.baseline_name),
+        sanitize_filename(&report.current_run_id)
+    );
+    if direct.len() <= 220 {
+        return direct;
+    }
+
+    let suite = sanitize_filename(&report.suite_id);
+    let digest = Sha256::digest(format!(
+        "{}\n{}\n{}",
+        report.suite_id, report.baseline_name, report.current_run_id
+    ));
+    let suffix = digest[..8]
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect::<String>();
+    let suite_prefix = suite.chars().take(80).collect::<String>();
+    format!("{}__{}.json", suite_prefix, suffix)
 }
 
 fn compare_case(current: &CaseRunArtifact, baseline: &CaseRunArtifact) -> CaseComparison {

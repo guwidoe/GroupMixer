@@ -278,7 +278,7 @@ fn accepted_clique_swap_matches_full_recalculation() {
 }
 
 #[test]
-fn forbidden_pair_clique_swap_matches_apply_and_recalculation() {
+fn soft_apart_pair_clique_swap_matches_apply_and_recalculation() {
     let mut state = richer_clique_state(
         vec![
             person("p0"),
@@ -304,12 +304,46 @@ fn forbidden_pair_clique_swap_matches_apply_and_recalculation() {
 
     let before = state.clone();
     let delta = state.calculate_clique_swap_cost_delta(0, 0, 0, 1, &[2, 3]);
-    assert!(delta > 0.0, "expected forbidden-pair violation increase");
+    assert!(delta > 0.0, "expected soft-apart pair violation increase");
 
     state.apply_clique_swap(0, 0, 0, 1, &[2, 3]);
 
-    assert_eq!(state.forbidden_pair_violations, vec![1]);
+    assert_eq!(state.soft_apart_pair_violations, vec![1]);
     assert_delta_matches_after(&before, &state, delta);
+}
+
+#[test]
+fn hard_apart_clique_swap_is_rejected() {
+    let mut state = richer_clique_state(
+        vec![
+            person("p0"),
+            person("p1"),
+            person("p2"),
+            person("p3"),
+            person("p4"),
+            person("p5"),
+        ],
+        vec![
+            Constraint::MustStayTogether {
+                people: vec!["p0".to_string(), "p1".to_string()],
+                sessions: None,
+            },
+            Constraint::MustStayApart {
+                people: vec!["p0".to_string(), "p5".to_string()],
+                sessions: None,
+            },
+        ],
+        1,
+    );
+
+    let before = state.clone();
+    let delta = state.calculate_clique_swap_cost_delta(0, 0, 0, 1, &[2, 3]);
+    assert!(delta.is_infinite());
+
+    state.apply_clique_swap(0, 0, 0, 1, &[2, 3]);
+
+    assert_eq!(state.schedule, before.schedule);
+    assert_eq!(state.current_cost, before.current_cost);
 }
 
 #[test]

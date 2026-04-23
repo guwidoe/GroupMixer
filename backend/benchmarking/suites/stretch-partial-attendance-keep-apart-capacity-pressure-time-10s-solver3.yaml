@@ -1,0 +1,34 @@
+schema_version: 1
+suite_id: stretch-partial-attendance-keep-apart-capacity-pressure-time-10s-solver3
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Synthetic partial-attendance keep-apart capacity-pressure stretch 10s benchmark for solver3
+description: Synthetic planted-feasible partial-attendance/session-capacity stress workload with additional hard Keep Apart windows under a 10-second wall-clock budget using solver3 with no early plateau stop.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 10000000
+    time_limit_seconds: 10
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+  logging: {}
+  telemetry: {}
+  seed: 152705
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/synthetic_partial_attendance_keep_apart_capacity_pressure_152p.json
+    case_role: canonical
+    purpose: objective_target.stretch.synthetic_partial_attendance_keep_apart_capacity_pressure_152p.fixed_time_10s
+    provenance: generated_by_tools/benchmarking/generate_partial_attendance_keep_apart_case.py_using_the_deterministic_planted_feasible_partial_attendance_builder
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 10
+    seed: 152705
+    max_iterations: 10000000
+    time_limit_seconds: 10
+default_time_limit_seconds: 10

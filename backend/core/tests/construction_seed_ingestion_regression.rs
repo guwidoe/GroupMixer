@@ -52,11 +52,7 @@ fn all_solver_families_complete_partial_construction_seed() {
         HashMap::from([("g0".to_string(), vec!["p0".to_string()])]),
     )]);
 
-    for kind in [
-        SolverKind::Solver1,
-        SolverKind::Solver2,
-        SolverKind::Solver3,
-    ] {
+    for kind in [SolverKind::Solver1, SolverKind::Solver3] {
         let mut input = base_input(kind);
         input.construction_seed_schedule = Some(seed.clone());
 
@@ -109,11 +105,7 @@ fn all_solver_families_reject_both_incumbent_and_construction_seed() {
         HashMap::from([("g0".to_string(), vec!["p0".to_string()])]),
     )]);
 
-    for kind in [
-        SolverKind::Solver1,
-        SolverKind::Solver2,
-        SolverKind::Solver3,
-    ] {
+    for kind in [SolverKind::Solver1, SolverKind::Solver3] {
         let mut input = base_input(kind);
         input.initial_schedule = Some(incumbent.clone());
         input.construction_seed_schedule = Some(seed.clone());
@@ -138,11 +130,7 @@ fn construction_seed_truthfully_rejects_immediate_overfill() {
         )]),
     )]);
 
-    for kind in [
-        SolverKind::Solver1,
-        SolverKind::Solver2,
-        SolverKind::Solver3,
-    ] {
+    for kind in [SolverKind::Solver1, SolverKind::Solver3] {
         let mut input = base_input(kind);
         input.construction_seed_schedule = Some(seed.clone());
         let error = run_solver(&input)

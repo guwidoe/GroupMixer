@@ -324,6 +324,11 @@ async fn solver_catalog_endpoints_expose_registered_solver_families() {
         .as_array()
         .unwrap()
         .iter()
+        .any(|solver| solver["canonical_id"] == "solver3"));
+    assert!(!list_body["solvers"]
+        .as_array()
+        .unwrap()
+        .iter()
         .any(|solver| solver["canonical_id"] == "solver2"));
 
     let descriptor_response = app
@@ -340,21 +345,6 @@ async fn solver_catalog_endpoints_expose_registered_solver_families() {
     assert_eq!(descriptor_response.status(), StatusCode::OK);
     let descriptor_body: serde_json::Value = json_response(descriptor_response).await;
     assert_eq!(descriptor_body["canonical_id"], "solver1");
-
-    let solver2_response = app
-        .clone()
-        .oneshot(
-            Request::builder()
-                .method("GET")
-                .uri("/api/v1/solvers/solver2")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-    assert_eq!(solver2_response.status(), StatusCode::OK);
-    let solver2_body: serde_json::Value = json_response(solver2_response).await;
-    assert_eq!(solver2_body["canonical_id"], "solver2");
 
     let bad_response = app
         .oneshot(

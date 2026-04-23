@@ -1,11 +1,12 @@
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ScenarioDataGrid } from './ScenarioDataGrid';
 import { createOptionalSessionScopeColumn } from './sessionScopeColumn';
 import type { ScenarioDataGridWorkspaceMode } from './types';
 import { createJsonRawCodec, validateStringNumberRecordValue } from './model/rawCodec';
+import { useAppStore } from '../../../../store';
 
 const rows = [
   { id: 'a', name: 'Beta', weight: 20 },
@@ -542,6 +543,246 @@ describe('ScenarioDataGrid', () => {
     expect(onCommit).toHaveBeenCalledWith(rows[0], 'Beta Prime');
   });
 
+  it('can hide browse mode while keeping edit and csv workspace flows active', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    function WorkspaceHarness() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('edit');
+      const [committedRows, setCommittedRows] = React.useState([{ id: 'row-a', name: 'Beta' }]);
+
+      return (
+        <ScenarioDataGrid
+          rows={committedRows}
+          rowKey={(row) => row.id}
+          columns={[
+            {
+              kind: 'primitive',
+              id: 'name',
+              header: 'Name',
+              primitive: 'string',
+              getValue: (row) => row.name,
+              setValue: (row, value) => ({ ...row, name: value ?? '' }),
+            },
+          ]}
+          workspace={{
+            mode,
+            onModeChange: setMode,
+            browseModeEnabled: false,
+            draft: {
+              onApply: (nextRows) => {
+                setCommittedRows(nextRows);
+                onApply(nextRows);
+              },
+            },
+          }}
+        />
+      );
+    }
+
+    render(<WorkspaceHarness />);
+
+    expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
+    const tableSurface = screen.getByTestId('scenario-grid-table-surface');
+    expect(tableSurface).toBeVisible();
+
+    const nameInput = screen.getByRole('textbox', { name: /edit name for row row-a/i });
+    await user.clear(nameInput);
+    await user.type(nameInput, 'Beta Prime');
+    await user.tab();
+
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApply).toHaveBeenCalledWith([{ id: 'row-a', name: 'Beta Prime' }]);
+    expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('textbox', { name: /edit name for row row-a/i })).toHaveValue('Beta Prime');
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    expect(screen.getByTestId('scenario-grid-table-surface')).toBe(tableSurface);
+    expect(tableSurface).not.toBeVisible();
+    expect(screen.getByRole('textbox', { name: /inline csv editor/i })).toBeInTheDocument();
+    expect(screen.getByTestId('scenario-grid-csv-surface')).toBeVisible();
+    expect(within(tableSurface).getByText('Beta Prime')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    expect(screen.getByRole('textbox', { name: /inline csv editor/i })).toBeInTheDocument();
+    expect(tableSurface).not.toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+    expect(screen.getByTestId('scenario-grid-table-surface')).toBe(tableSurface);
+    expect(tableSurface).toBeVisible();
+    expect(screen.getByRole('textbox', { name: /edit name for row row-a/i })).toHaveValue('Beta Prime');
+  });
+
+  it('shows a preparing loader before mounting large edit grids on cold entry', async () => {
+    const largeRows = Array.from({ length: 60 }, (_, index) => ({
+      id: `row-${index + 1}`,
+      name: `Person ${index + 1}`,
+    }));
+
+    render(
+      <ScenarioDataGrid
+        rows={largeRows}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            kind: 'primitive',
+            id: 'name',
+            header: 'Name',
+            primitive: 'string',
+            getValue: (row) => row.name,
+            setValue: (row, value) => ({ ...row, name: value ?? '' }),
+          },
+        ]}
+        workspace={{
+          mode: 'edit',
+          onModeChange: vi.fn(),
+          browseModeEnabled: false,
+          draft: {
+            onApply: vi.fn(),
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByTestId('scenario-grid-preparing-loader')).toBeInTheDocument();
+    expect(screen.getByText(/preparing editable table/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('scenario-grid-table-surface')).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scenario-grid-table-surface')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('scenario-grid-preparing-loader')).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /^edit name for row row-1$/i })).toBeInTheDocument();
+  });
+
+  it('blocks external leave attempts with unapplied grid edits and can apply before leaving', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    function LeaveHarness() {
+      const [left, setLeft] = React.useState(false);
+
+      if (left) {
+        return <div>Left page</div>;
+      }
+
+      return (
+        <>
+          <button type="button" onClick={() => useAppStore.getState().setupGridLeaveHook?.(() => setLeft(true))}>Leave page</button>
+          <ScenarioDataGrid
+            rows={[{ id: 'row-a', name: 'Beta' }]}
+            rowKey={(row) => row.id}
+            columns={[
+              {
+                kind: 'primitive',
+                id: 'name',
+                header: 'Name',
+                primitive: 'string',
+                getValue: (row) => row.name,
+                setValue: (row, value) => ({ ...row, name: value ?? '' }),
+              },
+            ]}
+            workspace={{
+              mode: 'edit',
+              onModeChange: vi.fn(),
+              browseModeEnabled: false,
+              draft: {
+                onApply,
+              },
+            }}
+          />
+        </>
+      );
+    }
+
+    render(<LeaveHarness />);
+
+    const input = screen.getByRole('textbox', { name: /edit name for row row-a/i });
+    await user.clear(input);
+    await user.type(input, 'Beta Prime');
+    await user.tab();
+
+    await user.click(screen.getByRole('button', { name: /leave page/i }));
+
+    expect(screen.getByRole('dialog', { name: /unapplied grid changes/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /apply and leave/i }));
+
+    expect(onApply).toHaveBeenCalledWith([{ id: 'row-a', name: 'Beta Prime' }]);
+    expect(screen.getByText('Left page')).toBeInTheDocument();
+  });
+
+  it('keeps the user on the current page when apply-and-leave hits invalid csv', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    function CsvLeaveHarness() {
+      const [mode, setMode] = React.useState<ScenarioDataGridWorkspaceMode>('edit');
+      const [left, setLeft] = React.useState(false);
+
+      if (left) {
+        return <div>Left page</div>;
+      }
+
+      return (
+        <>
+          <button type="button" onClick={() => useAppStore.getState().setupGridLeaveHook?.(() => setLeft(true))}>Leave page</button>
+          <ScenarioDataGrid
+            rows={[{ id: 'row-a', name: 'Beta', weight: 20 }]}
+            rowKey={(row) => row.id}
+            columns={[
+              {
+                kind: 'primitive',
+                id: 'name',
+                header: 'Name',
+                primitive: 'string',
+                getValue: (row) => row.name,
+                setValue: (row, value) => ({ ...row, name: value ?? '' }),
+              },
+              {
+                kind: 'primitive',
+                id: 'weight',
+                header: 'Weight',
+                primitive: 'number',
+                getValue: (row) => row.weight,
+                setValue: (row, value) => ({ ...row, weight: value ?? 0 }),
+              },
+            ]}
+            workspace={{
+              mode,
+              onModeChange: setMode,
+              browseModeEnabled: false,
+              draft: {
+                onApply,
+                csv: {
+                  ariaLabel: 'Grid CSV editor',
+                },
+              },
+            }}
+          />
+        </>
+      );
+    }
+
+    render(<CsvLeaveHarness />);
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    fireEvent.change(screen.getByRole('textbox', { name: /grid csv editor/i }), {
+      target: { value: 'Name,Weight\nBroken,nope' },
+    });
+
+    await user.click(screen.getByRole('button', { name: /leave page/i }));
+    await user.click(screen.getByRole('button', { name: /apply and leave/i }));
+
+    expect(screen.getByText(/csv validation errors/i)).toBeInTheDocument();
+    expect(screen.getByText(/expected a number for weight/i)).toBeInTheDocument();
+    expect(screen.queryByText('Left page')).not.toBeInTheDocument();
+    expect(onApply).not.toHaveBeenCalled();
+  });
+
   it('round-trips typed primitive columns through shared draft edit mode', async () => {
     const user = userEvent.setup();
     const onApply = vi.fn();
@@ -594,6 +835,82 @@ describe('ScenarioDataGrid', () => {
 
     expect(onApply).toHaveBeenCalledWith([
       { id: 'row-a', name: 'Beta Prime', weight: 25 },
+    ]);
+  });
+
+  it('uses searchable checkbox multiselect editors and visible select dropdown affordances in shared draft edit mode', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    render(
+      <ScenarioDataGrid
+        rows={[
+          { id: 'row-a', tags: ['zulu'], team: 'failboat' },
+        ]}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            kind: 'primitive',
+            id: 'tags',
+            header: 'Tags',
+            primitive: 'array',
+            itemType: 'string',
+            options: [
+              { value: 'zulu', label: 'Zulu' },
+              { value: 'alpha', label: 'Alpha' },
+              { value: 'mike', label: 'Mike' },
+            ],
+            getValue: (row) => row.tags,
+            setValue: (row, value) => ({ ...row, tags: Array.isArray(value) ? value.map(String) : [] }),
+          },
+          {
+            kind: 'primitive',
+            id: 'team',
+            header: 'Team',
+            primitive: 'enum',
+            options: [
+              { value: 'support', label: 'Support' },
+              { value: 'failboat', label: 'Failboat' },
+            ],
+            getValue: (row) => row.team,
+            setValue: (row, value) => ({ ...row, team: value ?? 'failboat' }),
+          },
+        ]}
+        workspace={{
+          mode: 'edit',
+          onModeChange: vi.fn(),
+          draft: {
+            onApply,
+          },
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /edit tags for row row-a/i }));
+
+    const multiSelectSearch = screen.getByRole('textbox', { name: /search edit tags for row row-a options/i });
+    const checkboxLabels = screen.getAllByRole('checkbox').map((checkbox) => checkbox.parentElement?.textContent?.trim());
+    expect(checkboxLabels).toEqual(['Zulu', 'Alpha', 'Mike']);
+
+    await user.type(multiSelectSearch, 'mi');
+    expect(screen.getByRole('checkbox', { name: 'Mike' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Alpha' })).not.toBeInTheDocument();
+
+    await user.clear(multiSelectSearch);
+    await user.click(screen.getByRole('checkbox', { name: 'Alpha' }));
+
+    const checkboxLabelsAfterSelection = screen.getAllByRole('checkbox').map((checkbox) => checkbox.parentElement?.textContent?.trim());
+    expect(checkboxLabelsAfterSelection).toEqual(['Alpha', 'Zulu', 'Mike']);
+
+    const teamSelect = screen.getByRole('combobox', { name: /edit team for row row-a/i });
+    await user.selectOptions(teamSelect, 'support');
+
+    expect(teamSelect.parentElement?.querySelector('.lucide-chevron-down')).not.toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApply).toHaveBeenCalledWith([
+      { id: 'row-a', tags: ['alpha', 'zulu'], team: 'support' },
     ]);
   });
 
@@ -1132,5 +1449,227 @@ describe('ScenarioDataGrid', () => {
 
     await user.click(screen.getByRole('button', { name: /next/i }));
     expect(screen.getByText('Person 75')).toBeInTheDocument();
+  });
+
+  it('keeps the rows-per-page control visible when all rows fit on one page but smaller page sizes remain possible', async () => {
+    const user = userEvent.setup();
+    const largeRows = Array.from({ length: 120 }, (_, index) => ({
+      id: `row-${index + 1}`,
+      name: `Person ${index + 1}`,
+      weight: index + 1,
+    }));
+
+    render(
+      <ScenarioDataGrid
+        rows={largeRows}
+        rowKey={(row) => row.id}
+        pageSize={50}
+        pageSizeOptions={[50, 100, 250, 500]}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+          },
+        ]}
+      />,
+    );
+
+    await user.selectOptions(screen.getByRole('combobox', { name: /rows per page/i }), '250');
+
+    expect(screen.getByRole('combobox', { name: /rows per page/i })).toHaveValue('250');
+    expect(screen.queryByText(/page 1 of 1/i)).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByRole('combobox', { name: /rows per page/i }), '50');
+
+    expect(screen.getByRole('combobox', { name: /rows per page/i })).toHaveValue('50');
+    expect(screen.getByText(/page 1 of 3/i)).toBeInTheDocument();
+  });
+
+  it('allows resizing the data-grid viewport by dragging the resize handle', () => {
+    render(
+      <ScenarioDataGrid
+        rows={Array.from({ length: 120 }, (_, index) => ({
+          id: `row-${index + 1}`,
+          name: `Person ${index + 1}`,
+          weight: index + 1,
+        }))}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+          },
+        ]}
+      />,
+    );
+
+    const bodyRegion = screen.getByRole('region', { name: /data grid rows/i });
+    Object.defineProperty(bodyRegion, 'clientHeight', {
+      configurable: true,
+      value: 360,
+    });
+    bodyRegion.getBoundingClientRect = () => ({
+      x: 0,
+      y: 120,
+      width: 800,
+      height: 360,
+      top: 120,
+      right: 800,
+      bottom: 480,
+      left: 0,
+      toJSON: () => '',
+    });
+
+    fireEvent.pointerDown(screen.getByRole('separator', { name: /resize grid height/i }), { button: 0, clientY: 300 });
+    fireEvent.pointerMove(window, { clientY: 420 });
+    fireEvent.pointerUp(window);
+
+    expect(bodyRegion).toHaveStyle({ height: '480px', maxHeight: 'none' });
+  });
+
+  it('renders session editor popovers outside the grid viewport to avoid clipping', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <ScenarioDataGrid
+        defaultEditMode
+        rows={[{ id: 'rule-1', sessions: undefined as number[] | undefined }]}
+        rowKey={(row) => row.id}
+        columns={[
+          createOptionalSessionScopeColumn({
+            totalSessions: 5,
+            getSessions: (row) => row.sessions,
+            setSessions: (row, sessions) => ({ ...row, sessions }),
+          }),
+        ]}
+      />,
+    );
+
+    const bodyRegion = await screen.findByRole('region', { name: /data grid rows/i });
+
+    await user.click(screen.getByRole('button', { name: /edit sessions/i }));
+
+    const popover = screen.getByRole('button', { name: /close edit sessions/i }).closest('[data-grid-popover="true"]');
+    expect(popover).toBeInTheDocument();
+    expect(bodyRegion.contains(popover)).toBe(false);
+    expect(screen.getByRole('radio', { name: /only selected sessions/i })).toBeInTheDocument();
+  });
+
+  it('shows compact session numbers in edit mode without the selected prefix', () => {
+    render(
+      <ScenarioDataGrid
+        defaultEditMode
+        rows={[{ id: 'rule-1', sessions: [0] as number[] | undefined }]}
+        rowKey={(row) => row.id}
+        columns={[
+          createOptionalSessionScopeColumn({
+            totalSessions: 5,
+            getSessions: (row) => row.sessions,
+            setSessions: (row, sessions) => ({ ...row, sessions }),
+          }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: /edit sessions/i })).toHaveTextContent(/^1$/);
+    expect(screen.queryByText(/^Selected:/i)).not.toBeInTheDocument();
+  });
+
+  it('virtualizes edit-mode rows and mounts scrolled editors on demand', async () => {
+    render(
+      <ScenarioDataGrid
+        rows={Array.from({ length: 120 }, (_, index) => ({
+          id: `row-${index + 1}`,
+          name: `Person ${index + 1}`,
+        }))}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            kind: 'primitive',
+            id: 'name',
+            header: 'Name',
+            primitive: 'string',
+            getValue: (row) => row.name,
+            setValue: (row, value) => ({ ...row, name: value ?? '' }),
+          },
+        ]}
+        workspace={{
+          mode: 'edit',
+          onModeChange: vi.fn(),
+          draft: {
+            onApply: vi.fn(),
+          },
+        }}
+      />,
+    );
+
+    const bodyRegion = await screen.findByRole('region', { name: /data grid rows/i });
+    expect(screen.getByRole('textbox', { name: /^edit name for row row-1$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /^edit name for row row-80$/i })).not.toBeInTheDocument();
+
+    Object.defineProperty(bodyRegion, 'clientHeight', {
+      configurable: true,
+      value: 240,
+    });
+    bodyRegion.scrollTop = 52 * 70;
+    fireEvent.scroll(bodyRegion);
+
+    expect(await screen.findByRole('textbox', { name: /^edit name for row row-80$/i })).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: /^edit name for row row-1$/i })).not.toBeInTheDocument();
+  });
+
+  it('resets a manual viewport resize when escape is pressed on the handle', () => {
+    render(
+      <ScenarioDataGrid
+        rows={Array.from({ length: 120 }, (_, index) => ({
+          id: `row-${index + 1}`,
+          name: `Person ${index + 1}`,
+          weight: index + 1,
+        }))}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            id: 'name',
+            header: 'Name',
+            cell: (row) => row.name,
+            sortValue: (row) => row.name,
+            searchValue: (row) => row.name,
+          },
+        ]}
+      />,
+    );
+
+    const bodyRegion = screen.getByRole('region', { name: /data grid rows/i });
+    Object.defineProperty(bodyRegion, 'clientHeight', {
+      configurable: true,
+      value: 360,
+    });
+    bodyRegion.getBoundingClientRect = () => ({
+      x: 0,
+      y: 120,
+      width: 800,
+      height: 360,
+      top: 120,
+      right: 800,
+      bottom: 480,
+      left: 0,
+      toJSON: () => '',
+    });
+
+    const handle = screen.getByRole('separator', { name: /resize grid height/i });
+    fireEvent.pointerDown(handle, { button: 0, clientY: 300 });
+    fireEvent.pointerMove(window, { clientY: 420 });
+    fireEvent.pointerUp(window);
+    expect(bodyRegion).toHaveStyle({ height: '480px' });
+
+    fireEvent.keyDown(handle, { key: 'Escape' });
+    expect(bodyRegion).not.toHaveStyle({ height: '480px' });
+    expect(bodyRegion.style.height).toBe('');
   });
 });

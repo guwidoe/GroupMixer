@@ -134,3 +134,20 @@ fn incumbent_validator_rejects_immovable_violation() {
         .to_string();
     assert!(error.contains("immovable person 'p0'"), "{error}");
 }
+
+#[test]
+fn incumbent_validator_rejects_must_stay_apart_violation() {
+    let mut input = base_input();
+    input.constraints.push(Constraint::MustStayApart {
+        people: vec!["p0".to_string(), "p1".to_string()],
+        sessions: Some(vec![0]),
+    });
+
+    let error = validate_schedule_as_incumbent(&input, &valid_schedule())
+        .expect_err("must-stay-apart violation should be rejected")
+        .to_string();
+    assert!(
+        error.contains("must-stay-apart pair ['p0', 'p1']"),
+        "{error}"
+    );
+}

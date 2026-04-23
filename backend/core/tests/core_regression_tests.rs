@@ -625,20 +625,25 @@ fn score_breakdown_reports_clean_and_violating_states() {
     let clean_breakdown = clean_state.format_score_breakdown();
     assert!(clean_breakdown.contains("Constraints: All satisfied"));
 
-    let mut violating_input = basic_input();
-    violating_input
-        .constraints
-        .push(Constraint::ShouldNotBeTogether {
-            people: vec!["p0".to_string(), "p1".to_string()],
-            penalty_weight: 25.0,
-            sessions: None,
-        });
-    let mut violating_state = State::new(&violating_input).unwrap();
-    violating_state.forbidden_pair_violations[0] = 1;
+    let mut violating_state = State::new(&basic_input()).unwrap();
+    let p0 = violating_state.person_id_to_idx["p0"];
+    let p1 = violating_state.person_id_to_idx["p1"];
+    let p2 = violating_state.person_id_to_idx["p2"];
+    let p3 = violating_state.person_id_to_idx["p3"];
+
+    violating_state.soft_apart_pairs.push((p0, p1));
+    violating_state.soft_apart_pair_sessions.push(None);
+    violating_state.soft_apart_pair_weights.push(25.0);
+    violating_state.soft_apart_pair_violations.push(1);
+
+    violating_state.hard_apart_pairs.push((p2, p3));
+    violating_state.hard_apart_pair_sessions.push(None);
+    violating_state.hard_apart_pair_violations.push(1);
     violating_state.current_cost = 42.0;
 
     let breakdown = violating_state.format_score_breakdown();
     assert!(breakdown.contains("ShouldNotBeTogether[0]: 1 (weight: 25.0)"));
+    assert!(breakdown.contains("MustStayApart[0]: 1 (hard, raw)"));
     assert!(breakdown.contains("Total: 42.00"));
 }
 
@@ -655,13 +660,18 @@ fn score_breakdown_omits_zero_violations_for_all_constraint_types() {
         penalty_weight: 15.0,
         sessions: None,
     });
+    input.constraints.push(Constraint::MustStayApart {
+        people: vec!["p0".to_string(), "p1".to_string()],
+        sessions: None,
+    });
     input.constraints.push(Constraint::MustStayTogether {
         people: vec!["p0".to_string(), "p2".to_string()],
         sessions: None,
     });
 
     let mut state = State::new(&input).unwrap();
-    state.forbidden_pair_violations.fill(0);
+    state.soft_apart_pair_violations.fill(0);
+    state.hard_apart_pair_violations.fill(0);
     state.should_together_violations.fill(0);
     state.clique_violations.fill(0);
     state.immovable_violations = 0;
@@ -670,6 +680,7 @@ fn score_breakdown_omits_zero_violations_for_all_constraint_types() {
 
     assert!(breakdown.contains("Constraints: All satisfied"));
     assert!(!breakdown.contains("ShouldNotBeTogether[0]"));
+    assert!(!breakdown.contains("MustStayApart[0]"));
     assert!(!breakdown.contains("ShouldStayTogether[0]"));
     assert!(!breakdown.contains("MustStayTogether[0]"));
     assert!(!breakdown.contains("ImmovablePerson:"));
@@ -688,13 +699,18 @@ fn score_breakdown_includes_positive_violations_for_all_constraint_types() {
         penalty_weight: 15.0,
         sessions: None,
     });
+    input.constraints.push(Constraint::MustStayApart {
+        people: vec!["p0".to_string(), "p1".to_string()],
+        sessions: None,
+    });
     input.constraints.push(Constraint::MustStayTogether {
         people: vec!["p0".to_string(), "p2".to_string()],
         sessions: None,
     });
 
     let mut state = State::new(&input).unwrap();
-    state.forbidden_pair_violations[0] = 1;
+    state.soft_apart_pair_violations[0] = 1;
+    state.hard_apart_pair_violations[0] = 1;
     state.should_together_violations[0] = 1;
     state.clique_violations[0] = 1;
     state.immovable_violations = 1;
@@ -703,10 +719,30 @@ fn score_breakdown_includes_positive_violations_for_all_constraint_types() {
     let breakdown = state.format_score_breakdown();
 
     assert!(breakdown.contains("ShouldNotBeTogether[0]: 1 (weight: 25.0)"));
+    assert!(breakdown.contains("MustStayApart[0]: 1 (hard, raw)"));
     assert!(breakdown.contains("ShouldStayTogether[0]: 1 (weight: 15.0)"));
     assert!(breakdown.contains("MustStayTogether[0]: 1 (hard)"));
     assert!(breakdown.contains("ImmovablePerson: 1 (weight: 1000.0)"));
     assert!(!breakdown.contains("Constraints: All satisfied"));
+}
+
+#[test]
+fn validate_hard_constraints_reports_must_stay_apart_violation() {
+    let mut input = basic_input();
+    input.constraints.push(Constraint::MustStayApart {
+        people: vec!["p0".to_string(), "p1".to_string()],
+        sessions: None,
+    });
+
+    let mut state = State::new(&input).unwrap();
+    state.schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
+    state._recalculate_locations_from_schedule();
+
+    let error = state
+        .validate_hard_constraints()
+        .expect_err("must-stay-apart violation should be detected")
+        .to_string();
+    assert!(error.contains("MustStayApart violation"), "{error}");
 }
 
 #[test]

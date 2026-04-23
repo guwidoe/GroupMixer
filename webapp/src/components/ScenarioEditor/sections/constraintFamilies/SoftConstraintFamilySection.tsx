@@ -55,7 +55,7 @@ export function SoftConstraintFamilySection({
   const { scenario, setScenario, attributeDefinitions, addNotification, isLoading } = useConstraintScenario();
   const [search, setSearch] = React.useState('');
   const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('list');
-  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('browse');
+  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('edit');
   const [selectedShouldIndices, setSelectedShouldIndices] = React.useState<number[]>([]);
   const [isSelectingShould, setIsSelectingShould] = React.useState(false);
   const [showPairConvert, setShowPairConvert] = React.useState(false);
@@ -66,7 +66,7 @@ export function SoftConstraintFamilySection({
       setSelectedShouldIndices((current) => (current.length === 0 ? current : []));
     }
     if (nextMode !== 'list') {
-      setGridWorkspaceMode('browse');
+      setGridWorkspaceMode('edit');
     }
   }, []);
 
@@ -77,6 +77,10 @@ export function SoftConstraintFamilySection({
   const copy = SOFT_SECTION_COPY[family];
   const items = getIndexedConstraints(scenario, family);
   const searchValue = search.trim().toLowerCase();
+  const getGroupMaxCapacity = (groupId?: string) => {
+    const group = scenario.groups.find((entry) => entry.id === groupId);
+    return group ? Math.max(group.size, ...(group.session_sizes ?? [])) : undefined;
+  };
 
   const filteredItems = viewMode === 'cards'
     ? items.filter(({ constraint }) => {
@@ -101,7 +105,9 @@ export function SoftConstraintFamilySection({
         }
 
         if (constraint.type === 'PairMeetingCount') {
-          const sessionText = (constraint.sessions ?? []).map((session) => String(session + 1)).join(' ');
+          const sessionText = constraint.sessions?.length
+            ? constraint.sessions.map((session) => String(session + 1)).join(' ')
+            : 'all sessions';
           return [
             formatPersonSearchList(scenario.people, constraint.people),
             String(constraint.target_meetings),
@@ -137,7 +143,7 @@ export function SoftConstraintFamilySection({
         constraint: {
           type: 'PairMeetingCount',
           people: ['', ''],
-          sessions: Array.from({ length: scenario.num_sessions }, (_, index) => index),
+          sessions: undefined,
           target_meetings: 1,
           mode: 'at_least',
           penalty_weight: 10,
@@ -186,9 +192,10 @@ export function SoftConstraintFamilySection({
         }
 
         const normalizedSessions = constraint.sessions?.length
-          ? Array.from(new Set(constraint.sessions.map((session) => Math.max(0, Math.round(Number(session) || 0))))).sort((left, right) => left - right)
-          : Array.from({ length: scenario.num_sessions }, (_, index) => index);
-        const maxMeetings = normalizedSessions.length;
+          ? normalizeSessionSelection(constraint.sessions, scenario.num_sessions)
+          : undefined;
+        const effectiveSessions = normalizedSessions ?? Array.from({ length: scenario.num_sessions }, (_, index) => index);
+        const maxMeetings = effectiveSessions.length;
 
         return [{
           ...constraint,
@@ -302,6 +309,7 @@ export function SoftConstraintFamilySection({
                   }
                   onOpen={() => onEdit(constraint, index)}
                   openLabel={`Edit ${copy.title.toLowerCase()} constraint`}
+                  allowInteractiveChildren={constraint.type === 'AttributeBalance'}
                   actions={
                     <>
                       {family === 'ShouldStayTogether' && isSelectingShould ? (
@@ -318,7 +326,9 @@ export function SoftConstraintFamilySection({
                   {constraint.type === 'ShouldNotBeTogether' || constraint.type === 'ShouldStayTogether'
                     ? renderPeopleConstraintContent(scenario, constraint, index, setScenario)
                     : null}
-                  {constraint.type === 'AttributeBalance' ? renderAttributeBalanceContent(constraint) : null}
+                  {constraint.type === 'AttributeBalance'
+                    ? renderAttributeBalanceContent(scenario, constraint, index, setScenario, attributeDefinitions)
+                    : null}
                   {constraint.type === 'PairMeetingCount' ? renderPairMeetingCountContent(scenario, constraint) : null}
                 </SetupItemCard>
               )}
@@ -336,6 +346,7 @@ export function SoftConstraintFamilySection({
                 ? {
                     mode: gridWorkspaceMode,
                     onModeChange: setGridWorkspaceMode,
+                    browseModeEnabled: false,
                     draft: {
                       onApply: applyLocalGridRows,
                       createRow: createLocalGridRow,
@@ -440,10 +451,11 @@ export function SoftConstraintFamilySection({
                             disabled={disabled}
                             options={getAttributeBalanceTargetOptions(row.constraint, attributeDefinitions)}
                             value={(value as Record<string, number> | undefined) ?? {}}
+                            maxValue={getGroupMaxCapacity(row.constraint.group_id)}
                             onCommit={onCommit}
                           />
                         ),
-                        width: 260,
+                        width: 360,
                       },
                       {
                         kind: 'primitive' as const,
@@ -604,40 +616,17 @@ export function SoftConstraintFamilySection({
                       }),
                     })]
                   : family === 'PairMeetingCount'
-                    ? [{
-                        kind: 'primitive' as const,
-                        id: 'sessions',
-                        header: 'Sessions',
-                        primitive: 'array' as const,
-                        itemType: 'number' as const,
-                        options: Array.from({ length: scenario.num_sessions }, (_, index) => ({
-                          value: String(index + 1),
-                          label: String(index + 1),
-                        })),
-                        getValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.sessions?.length
-                          ? item.constraint.sessions.map((session) => session + 1)
-                          : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
-                        setValue: (item: IndexedConstraint<PairMeetingCountConstraint>, value) => {
-                          const normalized = Array.isArray(value)
-                            ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
-                            : [];
-
-                          return {
-                            ...item,
-                            constraint: {
-                              ...item.constraint,
-                              sessions: (normalized.length > 0
-                                ? normalized
-                                : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1)).map((session) => session - 1),
-                            },
-                          };
-                        },
-                        renderValue: (value: unknown) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
-                          ? value.join(', ')
-                          : 'All sessions',
-                        searchText: (_value: unknown, item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.sessions.join(' '),
-                        width: 220,
-                      }]
+                    ? [createOptionalSessionScopeColumn<IndexedConstraint<PairMeetingCountConstraint>>({
+                        totalSessions: scenario.num_sessions,
+                        getSessions: (item) => item.constraint.sessions,
+                        setSessions: (item, sessions) => ({
+                          ...item,
+                          constraint: {
+                            ...item.constraint,
+                            sessions,
+                          },
+                        }),
+                      })]
                     : [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>>({
                         totalSessions: scenario.num_sessions,
                         getSessions: (item) => item.constraint.sessions,

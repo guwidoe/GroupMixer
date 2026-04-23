@@ -1,5 +1,6 @@
 import type { Person } from '../../types';
 import type { QuickSetupDraft } from '../../components/LandingTool/types';
+import { normalizeParticipantColumns, splitParticipantColumnValues } from './participantColumns';
 
 export interface ParsedParticipantInput {
   people: Person[];
@@ -35,8 +36,39 @@ function parseCsv(text: string) {
   return { headers, rows };
 }
 
-export function parseParticipantInput(draft: Pick<QuickSetupDraft, 'participantInput' | 'inputMode'>): ParsedParticipantInput {
+export function parseParticipantInput(draft: Pick<QuickSetupDraft, 'participantInput' | 'inputMode' | 'participantColumns'>): ParsedParticipantInput {
   const seenIds = new Map<string, number>();
+
+  if (draft.participantColumns && draft.participantColumns.length > 0) {
+    const columns = normalizeParticipantColumns(draft);
+    const [nameColumn, ...attributeColumns] = columns;
+    const nameValues = splitParticipantColumnValues(nameColumn.values);
+    const attributeKeys = attributeColumns
+      .map((column) => column.name.trim())
+      .filter(Boolean);
+    const attributeValueRows = attributeColumns.map((column) => splitParticipantColumnValues(column.values));
+    const rowCount = Math.max(nameValues.length, ...attributeValueRows.map((values) => values.length), 0);
+
+    const people = Array.from({ length: rowCount }, (_, rowIndex) => {
+      const name = nameValues[rowIndex]?.trim();
+      if (!name) {
+        return null;
+      }
+
+      const id = dedupeId(name, seenIds);
+      const attributes = attributeKeys.reduce<Record<string, string>>((acc, key, keyIndex) => {
+        const value = attributeValueRows[keyIndex][rowIndex]?.trim();
+        if (value) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+
+      return { id, attributes } satisfies Person;
+    }).filter((person): person is Person => Boolean(person));
+
+    return { people, attributeKeys, nameColumn: nameColumn.name };
+  }
 
   if (draft.inputMode === 'csv') {
     const { headers, rows } = parseCsv(draft.participantInput);

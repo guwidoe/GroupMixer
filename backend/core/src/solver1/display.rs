@@ -36,7 +36,7 @@ impl State {
     ///
     /// CONSTRAINT VIOLATIONS:
     ///   Clique 0 (['Alice', 'Bob']): 1 violations (Weight: 1000.0)
-    ///   Forbidden Pair 0 ('Charlie' - 'Diana'): 0 violations (Weight: 500.0)
+    ///   Soft-Apart Pair 0 ('Charlie' - 'Diana'): 0 violations (Weight: 500.0)
     ///   Immovable Person Violations: 1
     ///
     /// REPETITION BREAKDOWN:
@@ -59,7 +59,7 @@ impl State {
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
-    /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
+    /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None, stop_on_optimal_score: true },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #         telemetry: Default::default(),
@@ -130,7 +130,7 @@ impl State {
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
     /// #         stop_conditions: StopConditions {
-    /// #             max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None,
+    /// #             max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None, stop_on_optimal_score: true,
     /// #         },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams {
     /// #             initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0)
@@ -173,12 +173,22 @@ impl State {
         let mut has_constraints = false;
 
         // Forbidden pair violations
-        for (pair_idx, &violation_count) in self.forbidden_pair_violations.iter().enumerate() {
+        for (pair_idx, &violation_count) in self.soft_apart_pair_violations.iter().enumerate() {
             if violation_count > 0 {
-                let weight = self.forbidden_pair_weights[pair_idx];
+                let weight = self.soft_apart_pair_weights[pair_idx];
                 breakdown.push_str(&format!(
                     "\n  ShouldNotBeTogether[{}]: {} (weight: {:.1})",
                     pair_idx, violation_count, weight
+                ));
+                has_constraints = true;
+            }
+        }
+
+        for (pair_idx, &violation_count) in self.hard_apart_pair_violations.iter().enumerate() {
+            if violation_count > 0 {
+                breakdown.push_str(&format!(
+                    "\n  MustStayApart[{}]: {} (hard, raw)",
+                    pair_idx, violation_count
                 ));
                 has_constraints = true;
             }
