@@ -16,6 +16,7 @@
 //! phased execution plan.
 
 pub mod compiled_problem;
+pub mod construction;
 pub mod moves;
 pub mod oracle;
 pub mod runtime_state;

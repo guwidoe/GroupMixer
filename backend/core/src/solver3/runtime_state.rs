@@ -44,6 +44,7 @@ const DEFAULT_BASELINE_CONSTRUCTION_SEED: u64 = 42;
 enum ConstructionHeuristicSelection {
     BaselineLegacy,
     FreedomAwareRandomized(FreedomAwareConstructionParams),
+    ConstraintScenarioOracleGuided,
 }
 
 // ---------------------------------------------------------------------------
@@ -328,6 +329,11 @@ impl RuntimeState {
             }
             ConstructionHeuristicSelection::FreedomAwareRandomized(params) => {
                 apply_freedom_aware_construction_heuristic(&mut construction_context, &params)?;
+            }
+            ConstructionHeuristicSelection::ConstraintScenarioOracleGuided => {
+                return Err(SolverError::ValidationError(
+                    "solver3 constraint-scenario oracle-guided construction is scaffolded but not yet implemented".into(),
+                ));
             }
         }
         self.normalize_invalid_clique_sessions(&mut schedule, effective_seed)?;
@@ -704,6 +710,9 @@ fn resolve_construction_selection(
             Ok(ConstructionHeuristicSelection::FreedomAwareRandomized(
                 FreedomAwareConstructionParams { gamma },
             ))
+        }
+        Solver3ConstructionMode::ConstraintScenarioOracleGuided => {
+            Ok(ConstructionHeuristicSelection::ConstraintScenarioOracleGuided)
         }
     }
 }

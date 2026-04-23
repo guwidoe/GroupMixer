@@ -1253,6 +1253,8 @@ pub enum Solver3ConstructionMode {
     BaselineLegacy,
     /// Use the SGP-oriented freedom-aware randomized greedy constructor.
     FreedomAwareRandomized,
+    /// Use the automatic repeat-aware constraint-scenario + oracle-guided constructor.
+    ConstraintScenarioOracleGuided,
 }
 
 /// Parameters for the freedom-aware randomized greedy constructor.
