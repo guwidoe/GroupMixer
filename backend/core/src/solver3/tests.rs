@@ -32,8 +32,8 @@ use crate::models::{
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::construction::constraint_scenario_oracle::{
     build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
-    extract_constraint_scenario_signals, ConstraintScenarioCandidate,
-    ConstraintScenarioCandidateSource,
+    extract_constraint_scenario_signals, select_oracleizable_flexible_block,
+    ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
 };
 use super::moves::{
     analyze_clique_swap, analyze_transfer, apply_clique_swap_runtime_preview,
@@ -550,6 +550,62 @@ fn constraint_scenario_scaffold_mask_protects_rigid_and_immovable_placements() {
         mask.rigid_placement_count + mask.flexible_placement_count,
         8
     );
+}
+
+#[test]
+fn oracle_block_selector_finds_flexible_pure_sgp_block() {
+    let input = minimal_input();
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let schedule_a: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let schedule_b: PackedSchedule =
+        vec![vec![vec![2, 3], vec![0, 1]], vec![vec![2, 3], vec![0, 1]]];
+    let ensemble = build_constraint_scenario_ensemble(vec![
+        ConstraintScenarioCandidate {
+            schedule: schedule_a.clone(),
+            source: ConstraintScenarioCandidateSource::BaselineLegacy,
+            seed: 1,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+        ConstraintScenarioCandidate {
+            schedule: schedule_b,
+            source: ConstraintScenarioCandidateSource::FreedomAwareRandomized,
+            seed: 2,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+    ])
+    .unwrap();
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &schedule_a, &signals);
+
+    let block = select_oracleizable_flexible_block(&compiled, &schedule_a, &signals, &mask)
+        .expect("expected flexible oracle block");
+    assert_eq!(block.num_people(), 4);
+    assert_eq!(block.num_sessions(), 2);
+    assert_eq!(block.num_groups, 2);
+    assert_eq!(block.group_size, 2);
+}
+
+#[test]
+fn oracle_block_selector_declines_frozen_scaffold() {
+    let input = minimal_input();
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let schedule_a: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let ensemble = build_constraint_scenario_ensemble(vec![ConstraintScenarioCandidate {
+        schedule: schedule_a.clone(),
+        source: ConstraintScenarioCandidateSource::BaselineLegacy,
+        seed: 1,
+        cs_score: 0.0,
+        real_score: 0.0,
+    }])
+    .unwrap();
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &schedule_a, &signals);
+
+    assert!(select_oracleizable_flexible_block(&compiled, &schedule_a, &signals, &mask).is_none());
 }
 
 #[test]

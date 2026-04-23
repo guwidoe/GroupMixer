@@ -197,6 +197,35 @@ impl ConstraintScenarioScaffoldMask {
     }
 }
 
+/// A flexible subproblem that can be handed to a pure SGP/contact-structure oracle.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct OracleizableFlexibleBlock {
+    /// Real solver3 people included in the oracle block.
+    pub(crate) people: Vec<usize>,
+    /// Real solver3 sessions included in the oracle block.
+    pub(crate) sessions: Vec<usize>,
+    /// For each selected real session, the real groups that provide the pure block capacity.
+    pub(crate) groups_by_session: Vec<Vec<usize>>,
+    /// Pure oracle group count.
+    pub(crate) num_groups: usize,
+    /// Pure oracle group size.
+    pub(crate) group_size: usize,
+    /// Heuristic selector score; larger is better.
+    pub(crate) score: f64,
+    pub(crate) flexible_placement_count: usize,
+    pub(crate) scaffold_disruption_risk: f64,
+}
+
+impl OracleizableFlexibleBlock {
+    pub(crate) fn num_people(&self) -> usize {
+        self.people.len()
+    }
+
+    pub(crate) fn num_sessions(&self) -> usize {
+        self.sessions.len()
+    }
+}
+
 /// Returns whether repeat/contact pressure is relevant enough to use this constructor family.
 pub(crate) fn repeat_pressure_is_relevant(compiled: &CompiledProblem) -> bool {
     let repeat_penalty_relevant = compiled
@@ -340,6 +369,264 @@ pub(crate) fn build_constraint_scenario_scaffold_mask(
         rigid_placement_count,
         flexible_placement_count,
     }
+}
+
+/// Selects the most useful flexible pure-SGP block from the CS scaffold.
+///
+/// This selector is intentionally automatic. It looks for a common flexible participant set over
+/// a window of real sessions, verifies that each selected session has enough flexible group slots
+/// to host the same pure `g-q` shape, and scores candidates by contact opportunity, CS pair
+/// pressure, flexibility, and scaffold-disruption risk. Returning `None` is an explicit heuristic
+/// decline: the caller should keep the CS scaffold rather than force oracle injection.
+pub(crate) fn select_oracleizable_flexible_block(
+    compiled: &CompiledProblem,
+    scaffold: &PackedSchedule,
+    signals: &ConstraintScenarioSignals,
+    mask: &ConstraintScenarioScaffoldMask,
+) -> Option<OracleizableFlexibleBlock> {
+    let mut best: Option<OracleizableFlexibleBlock> = None;
+
+    for start_session in 0..compiled.num_sessions {
+        for end_session in (start_session + 2)..=compiled.num_sessions {
+            let sessions = (start_session..end_session).collect::<Vec<_>>();
+            if let Some(candidate) =
+                build_oracle_block_for_sessions(compiled, scaffold, signals, mask, &sessions)
+            {
+                let replace = best
+                    .as_ref()
+                    .map(|incumbent| oracle_block_better(&candidate, incumbent))
+                    .unwrap_or(true);
+                if replace {
+                    best = Some(candidate);
+                }
+            }
+        }
+    }
+
+    best
+}
+
+fn build_oracle_block_for_sessions(
+    compiled: &CompiledProblem,
+    scaffold: &PackedSchedule,
+    signals: &ConstraintScenarioSignals,
+    mask: &ConstraintScenarioScaffoldMask,
+    sessions: &[usize],
+) -> Option<OracleizableFlexibleBlock> {
+    let mut common_flexible_people = (0..compiled.num_people)
+        .filter(|&person_idx| {
+            sessions.iter().all(|&session_idx| {
+                compiled.person_participation[person_idx][session_idx]
+                    && !mask.is_frozen(compiled, session_idx, person_idx)
+            })
+        })
+        .collect::<Vec<_>>();
+    if common_flexible_people.len() < 4 {
+        return None;
+    }
+
+    common_flexible_people.sort_by(|&left, &right| {
+        let left_score = person_oracle_block_priority(compiled, signals, sessions, left);
+        let right_score = person_oracle_block_priority(compiled, signals, sessions, right);
+        right_score
+            .partial_cmp(&left_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+            .then_with(|| left.cmp(&right))
+    });
+
+    let flexible_slots_by_session = sessions
+        .iter()
+        .map(|&session_idx| flexible_group_slots(compiled, scaffold, mask, session_idx))
+        .collect::<Vec<_>>();
+    if flexible_slots_by_session
+        .iter()
+        .any(|slots| slots.iter().filter(|(_, capacity)| *capacity >= 2).count() < 2)
+    {
+        return None;
+    }
+
+    let max_groups = flexible_slots_by_session
+        .iter()
+        .map(|slots| slots.iter().filter(|(_, capacity)| *capacity >= 2).count())
+        .min()
+        .unwrap_or(0)
+        .min(compiled.num_groups);
+    let mut best: Option<OracleizableFlexibleBlock> = None;
+
+    for num_groups in 2..=max_groups {
+        let selected_groups_by_session = flexible_slots_by_session
+            .iter()
+            .map(|slots| {
+                let mut slots = slots.clone();
+                slots
+                    .sort_by_key(|&(group_idx, capacity)| (std::cmp::Reverse(capacity), group_idx));
+                slots
+                    .into_iter()
+                    .filter(|(_, capacity)| *capacity >= 2)
+                    .take(num_groups)
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        if selected_groups_by_session
+            .iter()
+            .any(|groups| groups.len() < num_groups)
+        {
+            continue;
+        }
+        let max_group_size = selected_groups_by_session
+            .iter()
+            .flat_map(|groups| groups.iter().map(|(_, capacity)| *capacity))
+            .min()
+            .unwrap_or(0)
+            .min(common_flexible_people.len() / num_groups);
+        for group_size in 2..=max_group_size {
+            let num_people = num_groups * group_size;
+            if num_people > common_flexible_people.len() {
+                continue;
+            }
+            let people = common_flexible_people[..num_people].to_vec();
+            let groups_by_session = selected_groups_by_session
+                .iter()
+                .map(|groups| {
+                    groups
+                        .iter()
+                        .take(num_groups)
+                        .map(|(group_idx, _)| *group_idx)
+                        .collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>();
+            let flexible_placement_count = sessions.len() * num_people;
+            let scaffold_disruption_risk = people
+                .iter()
+                .flat_map(|&person_idx| {
+                    sessions.iter().map(move |&session_idx| {
+                        signals.rigidity(compiled, session_idx, person_idx)
+                    })
+                })
+                .sum::<f64>();
+            let score = oracle_block_score(
+                compiled,
+                signals,
+                sessions,
+                &people,
+                num_groups,
+                group_size,
+                scaffold_disruption_risk,
+            );
+            let candidate = OracleizableFlexibleBlock {
+                people,
+                sessions: sessions.to_vec(),
+                groups_by_session,
+                num_groups,
+                group_size,
+                score,
+                flexible_placement_count,
+                scaffold_disruption_risk,
+            };
+            let replace = best
+                .as_ref()
+                .map(|incumbent| oracle_block_better(&candidate, incumbent))
+                .unwrap_or(true);
+            if replace {
+                best = Some(candidate);
+            }
+        }
+    }
+
+    best
+}
+
+fn flexible_group_slots(
+    compiled: &CompiledProblem,
+    scaffold: &PackedSchedule,
+    mask: &ConstraintScenarioScaffoldMask,
+    session_idx: usize,
+) -> Vec<(usize, usize)> {
+    (0..compiled.num_groups)
+        .map(|group_idx| {
+            let flexible_count = scaffold[session_idx][group_idx]
+                .iter()
+                .filter(|&&person_idx| !mask.is_frozen(compiled, session_idx, person_idx))
+                .count()
+                .min(compiled.group_capacity(session_idx, group_idx));
+            (group_idx, flexible_count)
+        })
+        .collect()
+}
+
+fn person_oracle_block_priority(
+    compiled: &CompiledProblem,
+    signals: &ConstraintScenarioSignals,
+    sessions: &[usize],
+    person_idx: usize,
+) -> f64 {
+    let flexibility = sessions
+        .iter()
+        .map(|&session_idx| 1.0 - signals.rigidity(compiled, session_idx, person_idx))
+        .sum::<f64>();
+    let pair_pressure = (0..compiled.num_people)
+        .filter(|&other| other != person_idx)
+        .map(|other| {
+            let pair_idx = compiled.pair_idx(person_idx, other);
+            sessions
+                .iter()
+                .map(|&session_idx| signals.pair_pressure(compiled, session_idx, pair_idx))
+                .sum::<f64>()
+        })
+        .sum::<f64>();
+    flexibility + pair_pressure / compiled.num_people.max(1) as f64
+}
+
+fn oracle_block_score(
+    compiled: &CompiledProblem,
+    signals: &ConstraintScenarioSignals,
+    sessions: &[usize],
+    people: &[usize],
+    num_groups: usize,
+    group_size: usize,
+    scaffold_disruption_risk: f64,
+) -> f64 {
+    let contact_opportunity = sessions.len() as f64 * num_groups as f64 * binomial2(group_size);
+    let pair_pressure = people
+        .iter()
+        .enumerate()
+        .flat_map(|(idx, &left)| people.iter().skip(idx + 1).map(move |&right| (left, right)))
+        .map(|(left, right)| {
+            let pair_idx = compiled.pair_idx(left, right);
+            sessions
+                .iter()
+                .map(|&session_idx| signals.pair_pressure(compiled, session_idx, pair_idx))
+                .sum::<f64>()
+        })
+        .sum::<f64>();
+    let shape_bonus = (people.len() as f64).sqrt() + sessions.len() as f64;
+    contact_opportunity + pair_pressure + shape_bonus - scaffold_disruption_risk
+}
+
+fn binomial2(value: usize) -> f64 {
+    (value.saturating_sub(1) * value / 2) as f64
+}
+
+fn oracle_block_better(
+    candidate: &OracleizableFlexibleBlock,
+    incumbent: &OracleizableFlexibleBlock,
+) -> bool {
+    candidate.score > incumbent.score
+        || (candidate.score == incumbent.score
+            && (
+                candidate.num_sessions(),
+                candidate.num_people(),
+                candidate.num_groups,
+            ) > (
+                incumbent.num_sessions(),
+                incumbent.num_people(),
+                incumbent.num_groups,
+            ))
+        || (candidate.score == incumbent.score
+            && candidate.num_sessions() == incumbent.num_sessions()
+            && candidate.num_people() == incumbent.num_people()
+            && candidate.num_groups == incumbent.num_groups
+            && candidate.sessions < incumbent.sessions)
 }
 
 fn participates_in_active_clique(

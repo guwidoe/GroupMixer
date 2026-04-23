@@ -38,9 +38,10 @@ use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::construction::constraint_scenario_oracle::{
     build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
     constraint_scenario_score, extract_constraint_scenario_signals, repeat_pressure_is_relevant,
-    ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
-    ConstraintScenarioOracleConstructionResult, ConstraintScenarioOracleOutcomeKind,
-    ConstraintScenarioOracleTelemetry, DEFAULT_CONSTRAINT_SCENARIO_RUNS,
+    select_oracleizable_flexible_block, ConstraintScenarioCandidate,
+    ConstraintScenarioCandidateSource, ConstraintScenarioOracleConstructionResult,
+    ConstraintScenarioOracleOutcomeKind, ConstraintScenarioOracleTelemetry,
+    DEFAULT_CONSTRAINT_SCENARIO_RUNS,
 };
 use super::oracle::maybe_cross_check_runtime_state;
 use super::scoring::recompute::recompute_oracle_score;
@@ -380,6 +381,12 @@ impl RuntimeState {
         let best = ensemble.best();
         let scaffold_mask =
             build_constraint_scenario_scaffold_mask(&self.compiled, &best.schedule, &signals);
+        let oracle_block = select_oracleizable_flexible_block(
+            &self.compiled,
+            &best.schedule,
+            &signals,
+            &scaffold_mask,
+        );
         Ok(ConstraintScenarioOracleConstructionResult {
             schedule: best.schedule.clone(),
             telemetry: ConstraintScenarioOracleTelemetry {
@@ -390,6 +397,18 @@ impl RuntimeState {
                 cs_diversity: Some(ensemble.diversity),
                 rigid_placement_count: scaffold_mask.rigid_placement_count,
                 flexible_placement_count: scaffold_mask.flexible_placement_count,
+                oracle_block_people: oracle_block
+                    .as_ref()
+                    .map(|block| block.num_people())
+                    .unwrap_or(0),
+                oracle_block_sessions: oracle_block
+                    .as_ref()
+                    .map(|block| block.num_sessions())
+                    .unwrap_or(0),
+                oracle_block_groups: oracle_block
+                    .as_ref()
+                    .map(|block| block.num_groups)
+                    .unwrap_or(0),
                 constructor_wall_ms: started_at.elapsed().as_millis(),
                 ..ConstraintScenarioOracleTelemetry::default()
             },
