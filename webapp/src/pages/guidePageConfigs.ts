@@ -191,7 +191,7 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         'Set the group size or number of groups for each round.',
         'Set the number of sessions to the number of networking rounds you plan to run.',
         'Enable “Avoid repeat pairings” so the schedule favors fresh conversations in later rounds.',
-        'If needed, add fixed people or simple together/apart rules before generating the rounds.',
+        'If needed, add pinned people or simple together/apart rules before generating the rounds.',
       ],
     },
     advanced: {
@@ -317,9 +317,9 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       ],
     },
     advanced: {
-      title: 'When to use together/apart rules, fixed people, or the scenario editor',
+      title: 'When to use together/apart rules, pinned people, or the scenario editor',
       body:
-        'Use together/apart rules when you already know some student combinations help or hurt the activity. Use fixed people when a leader, helper, or anchor student should stay in a known group. Move into the scenario editor when the class grouping problem becomes more complex than a single quick setup pass.',
+        'Use together/apart rules when you already know some student combinations help or hurt the activity. Use pinned people when a leader, helper, or anchor student should stay in a known group. Move into the scenario editor when the class grouping problem becomes more complex than a single quick setup pass.',
     },
     cta: {
       title: 'Try this setup in the student group generator',
@@ -432,7 +432,7 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       steps: [
         'Choose simple random grouping when any valid split is acceptable and speed matters most.',
         'Choose balanced grouping when you want a stronger mix across groups based on skills, roles, or other attributes.',
-        'Choose constrained grouping when there are rules such as keep-together, keep-apart, fixed people, or facilitator assignments.',
+        'Choose constrained grouping when there are rules such as keep-together, keep-apart, pinned people, or facilitator assignments.',
         'Add multiple sessions and avoid-repeat pairings when the challenge spans several rounds instead of one grouping pass.',
         'Use the scenario editor only when the quick setup no longer captures the real constraints of the event or class.',
       ],

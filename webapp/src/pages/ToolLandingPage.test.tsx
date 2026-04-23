@@ -490,7 +490,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.queryByRole('button', { name: /sample/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^reset$/i })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument();
-    expect(screen.getByText(/^fixed people$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^pinned people$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/balance groups by attribute/i).length).toBeGreaterThan(0);
     // Advanced options are expanded by default and the deeper CTA still exists below the tool.
     expect(screen.getByLabelText(/keep together/i)).toBeInTheDocument();
@@ -527,7 +527,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('checkbox', { name: /minimize repeat pairings/i })).toBeChecked();
     expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/fixed people/i).compareDocumentPosition(screen.getByText(/balance groups by attribute/i))
+      screen.getByText(/pinned people/i).compareDocumentPosition(screen.getByText(/balance groups by attribute/i))
         & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
@@ -618,8 +618,8 @@ describe('ToolLandingPage SEO wiring', () => {
     });
     expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('team');
     expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Ada - Grace');
-    expect(screen.getByRole('textbox', { name: /fixed people: name/i })).toHaveTextContent('Ada');
-    expect(screen.getByRole('textbox', { name: /fixed people: group/i })).toHaveTextContent('1');
+    expect(screen.getByRole('textbox', { name: /pinned people: name/i })).toHaveTextContent('Ada');
+    expect(screen.getByRole('textbox', { name: /pinned people: group/i })).toHaveTextContent('1');
   });
 
   it('confirms before clearing existing landing inputs', async () => {
@@ -673,7 +673,7 @@ describe('ToolLandingPage SEO wiring', () => {
     confirmSpy.mockRestore();
   });
 
-  it('lets users enter fixed people assignments from the landing tool', async () => {
+  it('lets users enter pinned people assignments from the landing tool', async () => {
     const user = userEvent.setup();
 
     render(
@@ -682,8 +682,8 @@ describe('ToolLandingPage SEO wiring', () => {
       </MemoryRouter>,
     );
 
-    const fixedNames = screen.getByRole('textbox', { name: /fixed people: name/i });
-    const fixedGroups = screen.getByRole('textbox', { name: /fixed people: group/i });
+    const fixedNames = screen.getByRole('textbox', { name: /pinned people: name/i });
+    const fixedGroups = screen.getByRole('textbox', { name: /pinned people: group/i });
 
     expect(fixedGroups).toHaveAttribute('data-placeholder', '1\n2');
 

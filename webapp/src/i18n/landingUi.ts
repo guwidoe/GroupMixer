@@ -54,7 +54,7 @@ const EN_LANDING_UI: ToolPageSharedUiContent = {
     balanceGroupsByAttributeHelp: 'Set target counts for each attribute value inside each group. Keep auto distribute enabled for fair automatic targets, or edit the counts manually when you need exact control.',
     balanceGroupsEmptyState: 'Add an attribute in the participants list to use this section.',
     autoDistributeAttributeLabel: 'Auto Distribute Attribute',
-    fixedPeopleLabel: 'Fixed people',
+    fixedPeopleLabel: 'Pinned people',
     fixedPeopleHelp: 'Pin specific people to a specific group across all sessions. Enter one name and one group number per row. This is useful for leaders, presenters, or anyone who must stay in a known group.',
     fixedPeopleDescription: 'Keep selected people in a specific group across all sessions.',
     addFixedPersonLabel: 'Add fixed person',

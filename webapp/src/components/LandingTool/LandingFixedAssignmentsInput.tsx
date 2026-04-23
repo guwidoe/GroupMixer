@@ -337,7 +337,7 @@ export function LandingFixedAssignmentsInput({
         onPointerDown={handleResizePointerDown}
         role="separator"
         aria-orientation="horizontal"
-        aria-label="Resize fixed people input"
+        aria-label="Resize pinned people input"
       />
     </div>
   );

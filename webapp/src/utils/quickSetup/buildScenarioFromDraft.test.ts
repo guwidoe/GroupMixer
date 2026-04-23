@@ -180,7 +180,7 @@ describe('quick setup scenario mapping', () => {
     ).toHaveLength(3);
   });
 
-  it('maps fixed people assignments into immovable constraints', () => {
+  it('maps pinned people assignments into immovable constraints', () => {
     const { scenario } = buildScenarioFromDraft(
       makeDraft({
         fixedAssignments: [

@@ -130,7 +130,7 @@ const FAQS = {
   fixedPeople: {
     question: 'Can I fix certain people to groups?',
     answer:
-      'Yes. Use Fixed people in the advanced options to pin specific people to a specific group across all sessions. This is useful for leaders, presenters, or anyone who must stay in a known group.',
+      'Yes. Use Pinned people in the advanced options to pin specific people to a specific group across all sessions. This is useful for leaders, presenters, or anyone who must stay in a known group.',
   },
   multiSession: {
     question: 'Can I avoid repeat pairings across rounds?',

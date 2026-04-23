@@ -135,7 +135,7 @@ describe('demoDataService', () => {
           demo_metadata: {
             id: 'fixed-ok',
             display_name: 'Fixed OK',
-            description: 'Has all-session fixed people constraints',
+            description: 'Has all-session pinned people constraints',
             category: 'Simple',
           },
           input: {
