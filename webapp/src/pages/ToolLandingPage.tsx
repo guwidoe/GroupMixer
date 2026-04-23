@@ -3,7 +3,7 @@ import { ArrowRight, Users } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
-import { LandingToolSection } from '../components/LandingTool/LandingToolSection';
+import { EmbeddableGroupTool } from '../components/LandingTool/EmbeddableGroupTool';
 import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { useQuickSetup } from '../components/LandingTool/useQuickSetup';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
@@ -599,7 +599,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               ) : null}
             </div>
 
-            <LandingToolSection
+            <EmbeddableGroupTool
               config={config}
               ui={ui}
               controller={controller}

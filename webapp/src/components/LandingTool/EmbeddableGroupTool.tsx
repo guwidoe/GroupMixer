@@ -25,7 +25,7 @@ interface LandingToolDisplaySession {
   }>;
 }
 
-interface LandingToolSectionProps {
+interface EmbeddableGroupToolProps {
   config: ToolPageConfig;
   ui: ToolPageSharedUiContent;
   controller: QuickSetupController;
@@ -99,7 +99,7 @@ function SectionLabelWithTooltip({
   );
 }
 
-export function LandingToolSection({
+export function EmbeddableGroupTool({
   config,
   ui,
   controller,
@@ -132,7 +132,7 @@ export function LandingToolSection({
   onGenerateGroups,
   onChangeResultFormat,
   onCopyActiveResult,
-}: LandingToolSectionProps) {
+}: EmbeddableGroupToolProps) {
   const { draft } = controller;
   const solvedSolution = controller.workspacePayload.solution ?? null;
 
