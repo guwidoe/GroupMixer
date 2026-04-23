@@ -74,10 +74,6 @@ describe('ToolLandingPage SEO wiring', () => {
       }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
-    if (config.hero.audienceSummary) {
-      expect(screen.getByText(config.hero.audienceSummary)).toBeInTheDocument();
-    }
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(document.title).toBe(config.seo.title);
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(config.seo.description);
@@ -121,7 +117,6 @@ describe('ToolLandingPage SEO wiring', () => {
     );
 
     expect(await screen.findByRole('heading', { level: 1, name: config.hero.title })).toBeInTheDocument();
-    expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
     expect(screen.getByText(config.useCasesSection.title)).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('es');
     expect(document.title).toBe(config.seo.title);
@@ -178,7 +173,6 @@ describe('ToolLandingPage SEO wiring', () => {
     );
 
     expect(await screen.findByRole('heading', { level: 1, name: config.hero.title })).toBeInTheDocument();
-    expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('zh-Hans');
     expect(document.title).toBe(config.seo.title);
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
@@ -497,17 +491,12 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument();
     expect(screen.getByText(/^fixed people$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/balance groups by attribute/i).length).toBeGreaterThan(0);
-    
-    expect(screen.getByText(
-      'Keep certain people together or apart. Balance people by gender or other attributes. Generate multiple rounds with minimal repeats.',
-    )).toBeInTheDocument();
-
     // Advanced options are expanded by default and the deeper CTA still exists below the tool.
     expect(screen.getByLabelText(/keep together/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/keep apart/i)).toBeInTheDocument();
-    expect(screen.getByText(/want to do better than random/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /use the full group optimizer/i })).toBeInTheDocument();
-    expect(screen.getByText(/your inputs from this page come with you/i)).toBeInTheDocument();
+    expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /open the full scenario editor/i })).toBeInTheDocument();
+    expect(screen.getByText(/bring this setup with you, then fine-tune partial attendance/i)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /open scenario editor/i }).some((button) => button.className.includes('btn-primary'))).toBe(true);
   }, 10000);
 
@@ -815,24 +804,6 @@ describe('ToolLandingPage SEO wiring', () => {
 
     expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-4');
     expect(screen.getByTestId('landing-hero')).toHaveClass('order-1');
-    expect(screen.getByTestId('landing-secondary-copy')).toHaveClass('order-5');
-  });
-
-  it('renders the eyebrow and supporting copy below the results section', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <MemoryRouter>
-        <ToolLandingPage pageKey="home" locale="en" />
-      </MemoryRouter>,
-    );
-
-    await user.click(screen.getByRole('button', { name: /generate groups/i }));
-
-    const results = await screen.findByTestId('landing-results-panel');
-    const secondaryCopy = screen.getByTestId('landing-secondary-copy');
-
-    expect(results.compareDocumentPosition(secondaryCopy) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('uses consistent comma-separated helper text for advanced constraint inputs', () => {

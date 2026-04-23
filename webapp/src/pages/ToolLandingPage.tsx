@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { ArrowRight, ChevronDown, CircleHelp, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, CircleHelp, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
@@ -1034,46 +1034,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
 
             {resultsSection}
 
-            <div data-testid="landing-secondary-copy" className="order-5 max-w-4xl">
-              <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
-                {config.hero.eyebrow}
-              </div>
-              <p className="mt-5 text-base leading-7 sm:text-lg sm:leading-8" style={{ color: 'var(--text-secondary)' }}>
-                {config.hero.subhead}
-              </p>
-              {config.hero.audienceSummary && (
-                <p className="mt-3 max-w-2xl text-sm leading-6 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
-                  {config.hero.audienceSummary}
-                </p>
-              )}
-
-              {config.hero.trustBullets.length > 0 && (
-                <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                  {config.hero.trustBullets.map((bullet, index) => (
-                    <span key={bullet} className="contents">
-                      {index > 0 && (
-                        <span aria-hidden="true" className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                          {' | '}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1.5">
-                        <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ backgroundColor: 'var(--color-accent)' }} />
-                        {bullet}
-                      </span>
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {!controller.result && (
-                <div className="mt-8 hidden text-sm lg:block" style={{ color: 'var(--text-secondary)' }}>
-                  <span className="flex items-center gap-1">
-                    <ChevronDown className="h-4 w-4" />
-                    {config.chrome.scrollHint}
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
         </section>
 

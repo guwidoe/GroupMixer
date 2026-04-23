@@ -11,13 +11,12 @@ const HOME_FEATURE_SUMMARY =
   'Keep certain people together or apart. Balance people by gender or other attributes. Generate multiple rounds with minimal repeats.';
 
 const OPTIMIZER_FEATURES = [
-  'Keep together',
-  'Avoid pairings',
-  'Multiple rounds',
-  'Maximize mixing',
-  'Balance genders',
-  'Balance any attribute',
-  'Tweak results',
+  'Partial attendance',
+  'Session-specific groups',
+  'Session-specific rules',
+  'Hard + soft constraints',
+  'Advanced attribute balancing',
+  'Solver tuning',
 ];
 
 const CHROME = {
@@ -151,11 +150,12 @@ function createContent({
       trustBullets,
     },
     optimizerCta: optimizerCta ?? {
-      eyebrow: 'Want to do better than random?',
-      title: 'Use the full group optimizer.',
+      eyebrow: 'Need even more control?',
+      title: 'Open the full scenario editor.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Open scenario editor',
-      supportingText: 'Your inputs from this page come with you.',
+      supportingText:
+        'Bring this setup with you, then fine-tune partial attendance, session-specific groups and constraints, hard vs. soft rules, and solver details.',
     },
     faqEntries,
     chrome: CHROME,
