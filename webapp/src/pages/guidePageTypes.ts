@@ -1,4 +1,8 @@
-export type GuidePageKey = 'avoid-repeat-pairings-in-workshops' | 'run-speed-networking-rounds' | 'make-balanced-student-groups';
+export type GuidePageKey =
+  | 'avoid-repeat-pairings-in-workshops'
+  | 'run-speed-networking-rounds'
+  | 'make-balanced-student-groups'
+  | 'random-vs-balanced-vs-constrained-groups';
 
 export interface GuidePageLink {
   label: string;

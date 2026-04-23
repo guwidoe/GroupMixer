@@ -117,6 +117,11 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
           description: 'Use the classroom-focused guide when balancing matters more than a plain random split.',
           href: '/guides/make-balanced-student-groups',
         },
+        {
+          label: 'Random groups vs balanced groups vs constrained groups',
+          description: 'Use the comparison guide to decide whether simple random grouping, balancing, or constraints fit your setup best.',
+          href: '/guides/random-vs-balanced-vs-constrained-groups',
+        },
       ],
     },
   },
@@ -234,6 +239,11 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
           description: 'Use the classroom-focused guide when you need fairer group composition, not just new contacts.',
           href: '/guides/make-balanced-student-groups',
         },
+        {
+          label: 'Random groups vs balanced groups vs constrained groups',
+          description: 'Use the comparison guide when you are deciding between a simple randomizer and a more structured setup.',
+          href: '/guides/random-vs-balanced-vs-constrained-groups',
+        },
       ],
     },
   },
@@ -350,6 +360,137 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
           label: 'How to run speed networking rounds without repeat conversations',
           description: 'Use the networking-focused guide when the main challenge is repeated short rounds instead of classroom balance.',
           href: '/guides/run-speed-networking-rounds',
+        },
+        {
+          label: 'Random groups vs balanced groups vs constrained groups',
+          description: 'Use the comparison guide when you need help deciding whether balancing or classroom constraints are worth the extra setup.',
+          href: '/guides/random-vs-balanced-vs-constrained-groups',
+        },
+      ],
+    },
+  },
+  'random-vs-balanced-vs-constrained-groups': {
+    key: 'random-vs-balanced-vs-constrained-groups',
+    slug: 'random-vs-balanced-vs-constrained-groups',
+    canonicalPath: '/guides/random-vs-balanced-vs-constrained-groups',
+    seo: {
+      title: 'Random Groups vs Balanced Groups vs Constrained Groups | GroupMixer Guide',
+      description:
+        'Learn when to use random groups, balanced groups, or constrained groups. A practical guide to choosing the right GroupMixer setup for your event or classroom.',
+    },
+    hero: {
+      eyebrow: 'Guide for teachers, facilitators, and event organizers',
+      title: 'Random groups vs balanced groups vs constrained groups',
+      intro:
+        'Not every grouping problem needs the same level of control. This guide explains when a simple random split is enough, when balancing gives better outcomes, and when you should use constraints because logistics or relationships matter more than speed.',
+    },
+    problem: {
+      title: 'Most people do not need more features — they need the right grouping mode for the job',
+      body:
+        'A plain randomizer is fast, but it is not always the right answer. The real question is whether your situation needs speed, fairness, or rule-aware scheduling. Once that is clear, choosing the right GroupMixer flow becomes much easier.',
+      bullets: [
+        'random grouping is best when speed matters more than composition',
+        'balanced grouping helps when fairness or mix quality matters',
+        'constrained grouping is for cases where real rules must be respected',
+      ],
+    },
+    failureModes: {
+      title: 'Why people choose the wrong grouping approach',
+      cards: [
+        {
+          title: 'They use random groups for non-random goals',
+          body:
+            'If you care about skill mix, fairness, or relationship rules, a pure random split can create predictable problems that then need manual fixing.',
+        },
+        {
+          title: 'They overcomplicate simple cases',
+          body:
+            'Sometimes a quick random split is exactly right. Adding unnecessary rules can slow you down without improving the outcome.',
+        },
+        {
+          title: 'They wait too long to add constraints',
+          body:
+            'When facilitators, classroom dynamics, or operational rules matter, forcing those needs into a simple random flow usually causes more work later.',
+        },
+      ],
+    },
+    example: {
+      title: 'Three common examples',
+      summary:
+        'Use random groups when you just need a fast split, balanced groups when composition quality matters, and constrained groups when specific rules have to be respected.',
+      details: [
+        'Random: a quick icebreaker where any valid group is fine',
+        'Balanced: a classroom task where you want stronger and weaker students spread across groups',
+        'Constrained: a workshop where facilitators are fixed and some people must stay together or apart',
+        'Use multiple sessions and avoid-repeat settings when the challenge includes repeated rounds',
+      ],
+    },
+    setup: {
+      title: 'How to choose the right GroupMixer setup',
+      intro:
+        'Start with the simplest setup that actually matches your real objective. If the goal changes, move up from random to balanced or constrained grouping only when that extra control solves a real problem.',
+      steps: [
+        'Choose simple random grouping when any valid split is acceptable and speed matters most.',
+        'Choose balanced grouping when you want a stronger mix across groups based on skills, roles, or other attributes.',
+        'Choose constrained grouping when there are rules such as keep-together, keep-apart, fixed people, or facilitator assignments.',
+        'Add multiple sessions and avoid-repeat pairings when the challenge spans several rounds instead of one grouping pass.',
+        'Use the scenario editor only when the quick setup no longer captures the real constraints of the event or class.',
+      ],
+    },
+    advanced: {
+      title: 'When advanced setup is worth it',
+      body:
+        'Advanced setup is worth using when the cost of a bad grouping is high enough that manual fixes become annoying, unfair, or operationally risky. If the only goal is a quick split, stay simple. If fairness, repeated rounds, or non-negotiable rules matter, the extra setup usually pays for itself.',
+    },
+    cta: {
+      title: 'Start with the main group generator',
+      body:
+        'If you are still deciding, start with the main tool entry point. From there, you can stay with a simple setup or move into balancing and constraints as needed.',
+      buttonLabel: 'Open GroupMixer',
+      href: '/',
+    },
+    relatedTools: {
+      title: 'Related tools',
+      links: [
+        {
+          label: 'GroupMixer home',
+          description: 'Start from the main tool when you want the simplest path and decide on complexity as you go.',
+          href: '/',
+        },
+        {
+          label: 'Random Group Generator',
+          description: 'Use the random-focused entry point when speed matters more than balancing or rules.',
+          href: '/random-group-generator',
+        },
+        {
+          label: 'Student Group Generator',
+          description: 'Use the classroom-focused entry point when balance and fairness matter for student groups.',
+          href: '/student-group-generator',
+        },
+        {
+          label: 'Group Generator with Constraints',
+          description: 'Use the constraint-focused entry point when grouping rules or logistics must be respected.',
+          href: '/group-generator-with-constraints',
+        },
+      ],
+    },
+    relatedGuides: {
+      title: 'Related guides',
+      links: [
+        {
+          label: 'How to avoid repeat pairings in workshops',
+          description: 'Read this when your main challenge is repeated workshop rounds rather than one-time grouping.',
+          href: '/guides/avoid-repeat-pairings-in-workshops',
+        },
+        {
+          label: 'How to run speed networking rounds without repeat conversations',
+          description: 'Read this when the format is built around repeated short networking rounds.',
+          href: '/guides/run-speed-networking-rounds',
+        },
+        {
+          label: 'How to make balanced student groups',
+          description: 'Read this when the main question is classroom balance rather than general grouping strategy.',
+          href: '/guides/make-balanced-student-groups',
         },
       ],
     },
