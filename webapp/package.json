@@ -80,7 +80,7 @@
     "globals": "17.4.0",
     "jsdom": "^29.0.1",
     "playwright": "^1.59.1",
-    "postcss": "^8.5.8",
+    "postcss": "^8.5.10",
     "storybook": "^10.2.19",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
