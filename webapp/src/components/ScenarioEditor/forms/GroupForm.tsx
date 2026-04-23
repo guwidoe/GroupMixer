@@ -174,8 +174,6 @@ const GroupForm: React.FC<GroupFormProps> = ({
                           });
                         }}
                         error={hasInvalidSessionSize ? 'Enter 0 or greater.' : undefined}
-                        variant="compact"
-                        showSlider={false}
                         {...NUMBER_FIELD_PRESETS.groupCapacity}
                         className="w-full"
                       />

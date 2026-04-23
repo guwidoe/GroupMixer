@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ScenarioEditor } from './ScenarioEditor';
@@ -50,9 +50,8 @@ vi.mock('./useDeferredScenarioSectionContent', () => ({
 }));
 
 vi.mock('./layout/ScenarioSetupLayout', () => ({
-  ScenarioSetupLayout: ({ headerContent, children }: { headerContent?: React.ReactNode; children: React.ReactNode }) => (
+  ScenarioSetupLayout: ({ children }: { children: React.ReactNode }) => (
     <div>
-      {headerContent}
       <div>{children}</div>
     </div>
   ),
@@ -219,23 +218,6 @@ describe('ScenarioEditor history shortcuts', () => {
     mockPastCount = 0;
     mockFutureCount = 0;
     mockUseScenarioEditorController.mockReturnValue(createController());
-  });
-
-  it('renders undo/redo controls with disabled states from history availability', () => {
-    render(
-      <MemoryRouter initialEntries={['/app/scenario/people']}>
-        <Routes>
-          <Route path="/app/scenario/:section" element={<ScenarioEditor />} />
-        </Routes>
-      </MemoryRouter>,
-    );
-
-    act(() => {
-      vi.runAllTimers();
-    });
-
-    expect(screen.getByRole('button', { name: /undo scenario setup change/i })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /redo scenario setup change/i })).toBeDisabled();
   });
 
   it('handles undo/redo keyboard shortcuts when history is available', () => {

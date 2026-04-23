@@ -1,5 +1,6 @@
 import { RotateCcw, Sparkles } from 'lucide-react';
 import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../ui';
+import { LandingResizableTextarea } from './LandingResizableTextarea';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupBasicFormProps {
@@ -68,12 +69,14 @@ export function QuickSetupBasicForm({ controller }: QuickSetupBasicFormProps) {
           ))}
         </div>
 
-        <textarea
+        <LandingResizableTextarea
           id="participantInput"
           value={draft.participantInput}
-          onChange={(event) => controller.updateDraft((current) => ({ ...current, participantInput: event.target.value }))}
+          onChange={(value) => controller.updateDraft((current) => ({ ...current, participantInput: value }))}
           placeholder={draft.inputMode === 'csv' ? 'name,team,role\nAlex,Blue,Engineer' : 'One name per line'}
-          className="min-h-[180px] w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-shadow focus:ring-2"
+          minHeight={180}
+          className="rounded-2xl"
+          textareaClassName="px-4 py-3 text-sm outline-none transition-shadow"
           style={{
             borderColor: 'var(--border-primary)',
             backgroundColor: 'var(--bg-secondary)',

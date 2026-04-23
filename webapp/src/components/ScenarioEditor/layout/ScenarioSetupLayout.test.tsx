@@ -32,6 +32,7 @@ function createScenario(): Scenario {
 
 describe('ScenarioSetupLayout', () => {
   beforeEach(() => {
+    localStorage.clear();
     useAppStore.getState().reset();
     useAppStore.getState().setAdvancedModeEnabled(true);
   });

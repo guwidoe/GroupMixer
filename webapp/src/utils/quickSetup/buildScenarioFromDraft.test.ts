@@ -11,12 +11,16 @@ function makeDraft(overrides: Partial<QuickSetupDraft> = {}): QuickSetupDraft {
     groupingMode: 'groupCount',
     groupingValue: 2,
     sessions: 1,
+    avoidRepeatPairings: true,
     preset: 'balanced',
     keepTogetherInput: '',
     avoidPairingsInput: '',
     inputMode: 'names',
+    fixedAssignments: [],
     balanceAttributeKey: null,
+    balanceTargets: {},
     advancedOpen: false,
+    workspaceScenarioId: null,
     ...overrides,
   };
 }
@@ -83,7 +87,7 @@ describe('quick setup scenario mapping', () => {
           people: ['Alice', 'Cara'],
         }),
         expect.objectContaining({
-          type: 'ShouldNotBeTogether',
+          type: 'MustStayApart',
           people: ['Bob', 'Dan'],
         }),
         expect.objectContaining({
@@ -96,5 +100,109 @@ describe('quick setup scenario mapping', () => {
       createAttributeDefinition('department', ['Engineering', 'Sales'], attributeDefinitions[0]?.id),
       createAttributeDefinition('level', ['Junior', 'Senior'], attributeDefinitions[1]?.id),
     ]);
+  });
+
+  it('maps structured participant columns into people attributes and balance keys', () => {
+    const { scenario, attributeDefinitions } = buildScenarioFromDraft(
+      makeDraft({
+        participantInput: 'Alice\nBob\nCara\nDan',
+        participantColumns: [
+          { id: 'name', name: 'Name', values: 'Alice\nBob\nCara\nDan' },
+          { id: 'attr-1', name: 'gender', values: 'F\nM\nF\nM' },
+        ],
+        balanceAttributeKey: 'gender',
+      }),
+    );
+
+    expect(scenario.people).toEqual([
+      { id: 'Alice', attributes: { gender: 'F' } },
+      { id: 'Bob', attributes: { gender: 'M' } },
+      { id: 'Cara', attributes: { gender: 'F' } },
+      { id: 'Dan', attributes: { gender: 'M' } },
+    ]);
+    expect(scenario.constraints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'AttributeBalance',
+          attribute_key: 'gender',
+        }),
+      ]),
+    );
+    expect(attributeDefinitions).toEqual([
+      createAttributeDefinition('gender', ['F', 'M'], attributeDefinitions[0]?.id),
+    ]);
+  });
+
+  it('maps manual attribute balance targets for each group and attribute', () => {
+    const { scenario } = buildScenarioFromDraft(
+      makeDraft({
+        participantColumns: [
+          { id: 'name', name: 'Name', values: 'Alice\nBob\nCara\nDan' },
+          { id: 'attr-1', name: 'gender', values: 'F\nM\nF\nM' },
+          { id: 'attr-2', name: 'team', values: 'Red\nBlue\nRed\nBlue' },
+        ],
+        balanceTargets: {
+          gender: {
+            'Group 1': { F: 1, M: 1 },
+            'Group 2': { F: 1, M: 1 },
+          },
+          team: {
+            'Group 1': { Red: 2, Blue: 0 },
+          },
+        },
+      }),
+    );
+
+    expect(scenario.constraints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'AttributeBalance',
+          group_id: 'Group 1',
+          attribute_key: 'gender',
+          desired_values: { F: 1, M: 1 },
+        }),
+        expect.objectContaining({
+          type: 'AttributeBalance',
+          group_id: 'Group 2',
+          attribute_key: 'gender',
+          desired_values: { F: 1, M: 1 },
+        }),
+        expect.objectContaining({
+          type: 'AttributeBalance',
+          group_id: 'Group 1',
+          attribute_key: 'team',
+          desired_values: { Red: 2, Blue: 0 },
+        }),
+      ]),
+    );
+    expect(
+      scenario.constraints.filter((constraint) => constraint.type === 'AttributeBalance'),
+    ).toHaveLength(3);
+  });
+
+  it('maps fixed people assignments into immovable constraints', () => {
+    const { scenario } = buildScenarioFromDraft(
+      makeDraft({
+        fixedAssignments: [
+          { personId: 'Alice', groupId: 'Group 1' },
+          { personId: 'Dan', groupId: 'Group 2' },
+        ],
+      }),
+    );
+
+    expect(scenario.constraints).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          type: 'ImmovablePeople',
+          people: ['Alice'],
+          group_id: 'Group 1',
+        }),
+        expect.objectContaining({
+          type: 'ImmovablePeople',
+          people: ['Dan'],
+          group_id: 'Group 2',
+        }),
+      ]),
+    );
   });
 });

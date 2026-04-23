@@ -90,6 +90,20 @@ function normalizeNumber(value: number, {
   return roundToStep(bounded, step, min ?? 0, kind);
 }
 
+function getSliderPercent(value: number, min: number, max: number) {
+  if (!Number.isFinite(value) || max <= min) {
+    return 0;
+  }
+
+  return ((clamp(value, min, max) - min) / (max - min)) * 100;
+}
+
+function getSliderLabelOffsetRem(percent: number) {
+  const thumbRadiusRem = 1.05 / 2;
+  const normalizedPercent = clamp(percent, 0, 100) / 100;
+  return thumbRadiusRem * (1 - (2 * normalizedPercent));
+}
+
 export function NumberField({
   value,
   onChange,
@@ -123,6 +137,9 @@ export function NumberField({
   const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
   const [draft, setDraft] = useState(() => formatValue(value, kind, step));
   const [isFocused, setIsFocused] = useState(false);
+  const [isSliderFocused, setIsSliderFocused] = useState(false);
+  const [sliderTypingBuffer, setSliderTypingBuffer] = useState<string | null>(null);
+  const [sliderTypingSelected, setSliderTypingSelected] = useState(false);
   const displayValue = isFocused ? draft : formatValue(value, kind, step);
 
   const parsedDraft = useMemo(() => parseDraft(draft, kind), [draft, kind]);
@@ -138,6 +155,32 @@ export function NumberField({
     ? clamp(value ?? sliderMin, sliderMin, effectiveSoftMax)
     : undefined;
   const isOverflowing = sliderEnabled && typeof effectiveSoftMax === 'number' && value != null && value > effectiveSoftMax;
+  const sliderPercent = sliderEnabled && typeof sliderValue === 'number' && typeof effectiveSoftMax === 'number'
+    ? getSliderPercent(sliderValue, sliderMin, effectiveSoftMax)
+    : 0;
+  const sliderLabelOffsetRem = getSliderLabelOffsetRem(sliderPercent);
+  const sliderDisplayValue = isSliderFocused && sliderTypingBuffer != null
+    ? sliderTypingBuffer
+    : formatValue(value ?? sliderValue ?? null, kind, step);
+
+  const clearSliderTypingBuffer = () => {
+    setSliderTypingBuffer(null);
+    setSliderTypingSelected(false);
+  };
+
+  const applySliderTypedValue = (nextRaw: string) => {
+    setSliderTypingBuffer(nextRaw);
+    setSliderTypingSelected(false);
+
+    const parsed = parseDraft(nextRaw, kind);
+    if (parsed === null || Number.isNaN(parsed)) {
+      return;
+    }
+
+    const normalized = normalizeNumber(parsed, { kind, step, min, max });
+    onChange(normalized);
+    setDraft(formatValue(normalized, kind, step));
+  };
 
   const commitDraft = () => {
     if (disabled) return;
@@ -198,6 +241,8 @@ export function NumberField({
                 const next = normalizeNumber(Number(event.target.value), { kind, step, min: sliderMin, max: effectiveSoftMax });
                 onChange(next);
                 setDraft(formatValue(next, kind, step));
+                setSliderTypingBuffer(formatValue(next, kind, step));
+                setSliderTypingSelected(true);
               }}
               onMouseUp={(event) => {
                 const next = normalizeNumber(Number((event.currentTarget as HTMLInputElement).value), { kind, step, min: sliderMin, max: effectiveSoftMax });
@@ -207,15 +252,69 @@ export function NumberField({
                 const next = normalizeNumber(Number((event.currentTarget as HTMLInputElement).value), { kind, step, min: sliderMin, max: effectiveSoftMax });
                 onCommit?.(next);
               }}
+              onFocus={() => {
+                setIsSliderFocused(true);
+                setSliderTypingBuffer(formatValue(value ?? sliderValue ?? null, kind, step));
+                setSliderTypingSelected(true);
+              }}
+              onBlur={() => {
+                setIsSliderFocused(false);
+                clearSliderTypingBuffer();
+              }}
+              onKeyDown={(event) => {
+                const isDigit = /^\d$/.test(event.key);
+                const isDecimalPoint = kind === 'float' && event.key === '.';
+                const isLeadingMinus = event.key === '-' && (min == null || min < 0);
+
+                if (isDigit || isDecimalPoint || isLeadingMinus) {
+                  event.preventDefault();
+                  const nextRaw = sliderTypingSelected
+                    ? event.key
+                    : `${sliderTypingBuffer ?? ''}${event.key}`;
+                  applySliderTypedValue(nextRaw);
+                  return;
+                }
+
+                if (event.key === 'Backspace') {
+                  event.preventDefault();
+                  const nextRaw = (sliderTypingBuffer ?? formatValue(value ?? sliderValue ?? null, kind, step)).slice(0, -1);
+                  setSliderTypingSelected(false);
+                  setSliderTypingBuffer(nextRaw);
+                  if (nextRaw === '') {
+                    return;
+                  }
+                  applySliderTypedValue(nextRaw);
+                  return;
+                }
+
+                if (event.key === 'Escape') {
+                  clearSliderTypingBuffer();
+                  setSliderTypingBuffer(formatValue(value ?? sliderValue ?? null, kind, step));
+                  setSliderTypingSelected(true);
+                }
+              }}
             />
-            <div className="number-field__scale" aria-hidden="true">
-              <span>{sliderMin}</span>
-              <span>{isOverflowing ? `${effectiveSoftMax}+` : effectiveSoftMax}</span>
-            </div>
+            {showInput ? (
+              <div className="number-field__slider-value-track" aria-hidden="true">
+                <span
+                  className={[
+                    'number-field__slider-value',
+                    isSliderFocused ? 'number-field__slider-value--focused' : null,
+                  ].filter(Boolean).join(' ')}
+                  style={{
+                    '--number-field-slider-value-position': `${sliderPercent}%`,
+                    '--number-field-slider-value-offset': `${sliderLabelOffsetRem}rem`,
+                  } as React.CSSProperties}
+                >
+                  {sliderDisplayValue}
+                  {isSliderFocused ? <span className="number-field__slider-value-caret" /> : null}
+                </span>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
-        {showInput ? (
+        {showInput && !sliderEnabled ? (
           <input
             id={inputId}
             name={name}

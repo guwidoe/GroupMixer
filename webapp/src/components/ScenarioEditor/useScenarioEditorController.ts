@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../../store';
 import type { Scenario } from '../../types';
@@ -56,7 +56,17 @@ export function useScenarioEditorController() {
   const navigationSection = activeSection;
   const navigate = useNavigate();
 
-  const [sessionsCount, setSessionsCount] = useState(scenario?.num_sessions || 3);
+  const scenarioSessionsCount = scenario?.num_sessions || 3;
+  const [sessionsCountDraft, setSessionsCountDraft] = useState(() => ({
+    scenarioSessionsCount,
+    value: scenarioSessionsCount,
+  }));
+  const sessionsCount = sessionsCountDraft.scenarioSessionsCount === scenarioSessionsCount
+    ? sessionsCountDraft.value
+    : scenarioSessionsCount;
+  const setSessionsCount = useCallback((value: number) => {
+    setSessionsCountDraft({ scenarioSessionsCount, value });
+  }, [scenarioSessionsCount]);
   const [showDemoWarningModal, setShowDemoWarningModal] = useState(false);
   const [showGeneratedDemoModal, setShowGeneratedDemoModal] = useState(false);
   const [pendingDemoCaseId, setPendingDemoCaseId] = useState<string | null>(null);
@@ -110,10 +120,6 @@ export function useScenarioEditorController() {
     }
     return 1;
   })();
-
-  useEffect(() => {
-    setSessionsCount(scenario?.num_sessions || 3);
-  }, [scenario?.num_sessions]);
 
   const handleSaveScenario = () => {
     if (!scenario) return;

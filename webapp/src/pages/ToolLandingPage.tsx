@@ -1,16 +1,23 @@
 /* eslint-disable max-lines */
-import { ArrowRight, ChevronDown, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, ChevronDown, CircleHelp, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
+import { LandingParticipantColumnsInput } from '../components/LandingTool/LandingParticipantColumnsInput';
+import { LandingResizableTextarea } from '../components/LandingTool/LandingResizableTextarea';
 import { QuickSetupAdvancedOptions } from '../components/LandingTool/QuickSetupAdvancedOptions';
 import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { useQuickSetup } from '../components/LandingTool/useQuickSetup';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
+import { HomeAnimatedHeroTitle } from '../components/LandingPage/HomeAnimatedHeroTitle';
 import { LandingLanguageSelector } from '../components/LandingPage/LandingLanguageSelector';
+import { NotificationContainer } from '../components/NotificationContainer';
 import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
+import { DemoDataDropdown } from '../components/ScenarioEditor/DemoDataDropdown';
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
+import { Tooltip } from '../components/Tooltip';
 import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../components/ui';
+import { useLocalStorageState } from '../hooks/useLocalStorageState';
 import { interpolate } from '../i18n/interpolate';
 import { getLandingUiContent } from '../i18n/landingUi';
 import { Seo } from '../components/Seo';
@@ -21,7 +28,9 @@ import {
   readTelemetryAttributionFromSearch,
   trackLandingEvent,
 } from '../services/landingInstrumentation';
+import { loadDemoCase, loadLandingCompatibleDemoCasesWithMetrics } from '../services/demoDataService';
 import { useAppStore } from '../store';
+import { nextAttributeColumnId, normalizeParticipantColumns, withParticipantColumns } from '../utils/quickSetup/participantColumns';
 import {
   buildToolPagePath,
   getLocaleDisplayName,
@@ -45,6 +54,13 @@ interface DisplaySession {
     members: string[];
   }>;
 }
+
+const LANDING_TOOL_RESIZE_STORAGE_KEY = 'landing:tool-split';
+const LANDING_TOOL_RESIZE_HANDLE_WIDTH = 22;
+const LANDING_TOOL_LEFT_MIN_WIDTH = 400;
+const LANDING_TOOL_RIGHT_MIN_WIDTH = 340;
+const LANDING_TOOL_RESIZE_MIN_WIDTH = LANDING_TOOL_LEFT_MIN_WIDTH + LANDING_TOOL_RIGHT_MIN_WIDTH + LANDING_TOOL_RESIZE_HANDLE_WIDTH;
+const HOME_ANIMATED_HERO_STATIC_TITLE = 'Random Group Generator';
 
 function buildDisplaySessions(
   sharedSessionData: Array<{ sessionIndex: number; groups: Array<{ id: string; people: Array<{ id: string }> }> }>,
@@ -98,16 +114,60 @@ async function copyText(value: string) {
   }
 }
 
+function SectionLabelWithTooltip({
+  label,
+  help,
+  htmlFor,
+  action,
+}: {
+  label: string;
+  help: string;
+  htmlFor?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className={action ? 'relative mb-2 pr-28 sm:pr-32' : 'mb-2'}>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <label htmlFor={htmlFor} className="block text-sm font-medium">
+          {label}
+        </label>
+        <Tooltip content={help} offset={6} maxWidth={360}>
+          <button
+            type="button"
+            aria-label="Show section help"
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-full text-[0.7rem] font-medium leading-none"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
+            <CircleHelp className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
+      </div>
+      {action ? (
+        <div className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center">
+          {action}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProps) {
   const config = getToolPageConfig(pageKey, locale);
   const ui = getLandingUiContent(locale);
+  const usesAnimatedHomeTitle = config.key === 'home' && config.locale === 'en' && config.hero.title === HOME_ANIMATED_HERO_STATIC_TITLE;
   const controller = useQuickSetup(config);
   const loadWorkspaceAsNewScenario = useAppStore((state) => state.loadWorkspaceAsNewScenario);
+  const addNotification = useAppStore((state) => state.addNotification);
   const navigate = useNavigate();
   const location = useLocation();
   const resultsRef = useRef<HTMLDivElement>(null);
+  const toolColumnsRef = useRef<HTMLDivElement>(null);
+  const lastNotifiedSolverErrorRef = useRef<string | null>(null);
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
+  const [toolSplitRatio, setToolSplitRatio] = useLocalStorageState<number>(`${LANDING_TOOL_RESIZE_STORAGE_KEY}:${pageKey}`, 0.56);
+  const [toolColumnsWidth, setToolColumnsWidth] = useState(0);
+  const [isDraggingToolDivider, setIsDraggingToolDivider] = useState(false);
   const languageOptions = useMemo(
     () =>
       config.liveLocales.map((liveLocale) => ({
@@ -174,10 +234,68 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const resultCsv = useMemo(() => buildResultCsv(displaySessions, ui.results), [displaySessions, ui.results]);
   const activeResultFormat = controller.result ? resultFormat : 'cards';
   const activeCopiedFormat = controller.result ? copiedFormat : null;
+  const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
+  const participantColumns = normalizeParticipantColumns(draft);
+  const displayedGroupCount = Math.max(1, estimatedGroupCount);
+  const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
+  const canResizeToolColumns = toolColumnsWidth >= LANDING_TOOL_RESIZE_MIN_WIDTH;
+  const resolvedToolSplitRatio = Math.min(0.72, Math.max(0.4, toolSplitRatio));
+  const resizableTrackWidth = Math.max(0, toolColumnsWidth - LANDING_TOOL_RESIZE_HANDLE_WIDTH);
+  const leftColumnWidth = canResizeToolColumns
+    ? Math.min(
+        Math.max(resizableTrackWidth * resolvedToolSplitRatio, LANDING_TOOL_LEFT_MIN_WIDTH),
+        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, resizableTrackWidth - LANDING_TOOL_RIGHT_MIN_WIDTH),
+      )
+    : null;
+  const rightColumnWidth = canResizeToolColumns && leftColumnWidth != null
+    ? Math.max(LANDING_TOOL_RIGHT_MIN_WIDTH, resizableTrackWidth - leftColumnWidth)
+    : null;
+  const toolColumnsStyle = canResizeToolColumns && leftColumnWidth != null && rightColumnWidth != null
+    ? {
+        gridTemplateColumns: `minmax(0, ${leftColumnWidth}px) ${LANDING_TOOL_RESIZE_HANDLE_WIDTH}px minmax(${LANDING_TOOL_RIGHT_MIN_WIDTH}px, ${rightColumnWidth}px)`,
+      }
+    : undefined;
+  const useCasesGridClassName = config.sectionSet === 'technical'
+    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3'
+    : 'mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+  const advancedGridClassName = config.sectionSet === 'technical'
+    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4'
+    : 'mt-8 grid gap-4 sm:grid-cols-2';
+
+  useEffect(() => {
+    if (!controller.errorMessage) {
+      lastNotifiedSolverErrorRef.current = null;
+      return;
+    }
+
+    if (lastNotifiedSolverErrorRef.current === controller.errorMessage) {
+      return;
+    }
+
+    lastNotifiedSolverErrorRef.current = controller.errorMessage;
+    addNotification({
+      type: 'error',
+      title: 'Solver Error',
+      message: controller.errorMessage,
+    });
+  }, [addNotification, controller.errorMessage]);
 
   useEffect(() => {
     if (!controller.result?.generatedAt) {
       return;
+    }
+
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('view') !== 'results') {
+      searchParams.set('view', 'results');
+      navigate(
+        {
+          pathname: location.pathname,
+          search: searchParams.toString(),
+          hash: location.hash,
+        },
+        { replace: false },
+      );
     }
 
     const scrollToResults = () => {
@@ -191,7 +309,65 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       window.cancelAnimationFrame(animationFrameId);
       window.clearTimeout(timeoutId);
     };
-  }, [controller.result?.generatedAt]);
+  }, [controller.result?.generatedAt, location.hash, location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    const node = toolColumnsRef.current;
+    if (!node) {
+      return undefined;
+    }
+
+    const measure = () => {
+      const nextWidth = node.getBoundingClientRect().width;
+      setToolColumnsWidth((previous) => (Math.abs(previous - nextWidth) < 0.5 ? previous : nextWidth));
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => measure());
+      observer.observe(node);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer?.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isDraggingToolDivider || !canResizeToolColumns) {
+      return undefined;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const bounds = toolColumnsRef.current?.getBoundingClientRect();
+      if (!bounds) {
+        return;
+      }
+
+      const nextLeftWidth = Math.min(
+        Math.max(event.clientX - bounds.left - (LANDING_TOOL_RESIZE_HANDLE_WIDTH / 2), LANDING_TOOL_LEFT_MIN_WIDTH),
+        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, bounds.width - LANDING_TOOL_RESIZE_HANDLE_WIDTH - LANDING_TOOL_RIGHT_MIN_WIDTH),
+      );
+      const nextRatio = nextLeftWidth / Math.max(1, bounds.width - LANDING_TOOL_RESIZE_HANDLE_WIDTH);
+      setToolSplitRatio(Math.min(0.72, Math.max(0.4, nextRatio)));
+    };
+
+    const stopDragging = () => setIsDraggingToolDivider(false);
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopDragging);
+    window.addEventListener('pointercancel', stopDragging);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopDragging);
+      window.removeEventListener('pointercancel', stopDragging);
+    };
+  }, [canResizeToolColumns, isDraggingToolDivider, setToolSplitRatio]);
 
   const navigateToAdvancedWorkspace = (target: 'results' | 'people') => {
     const nextScenarioId = loadWorkspaceAsNewScenario({
@@ -229,26 +405,53 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     navigateToAdvancedWorkspace(target);
   };
 
-  const { draft, participantCount, estimatedGroupCount, estimatedGroupSize, updateDraft } = controller;
-  const displayedGroupCount = Math.max(1, estimatedGroupCount);
-  const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
-  const heroOrderClass = controller.result ? 'order-3 lg:order-1' : 'order-2 lg:order-1';
+  const optimizerCtaCard = !controller.result ? (
+    <div
+      className="rounded-2xl border p-5 sm:p-6"
+      style={{
+        borderColor: 'var(--border-primary)',
+        backgroundColor: 'var(--bg-primary)',
+      }}
+    >
+      <div className="max-w-3xl">
+        <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
+          {config.optimizerCta.eyebrow}
+        </div>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
+          {config.optimizerCta.title}
+        </h2>
 
-  useEffect(() => {
-    if (draft.inputMode !== 'names') {
-      updateDraft((current) => ({
-        ...current,
-        inputMode: 'names',
-        balanceAttributeKey: null,
-      }));
-    }
-  }, [draft.inputMode, updateDraft]);
+        <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+          {config.optimizerCta.featureBullets.map((feature) => (
+            <span key={feature} className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              {feature}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
+            className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
+          >
+            <Users className="h-4 w-4" />
+            {config.optimizerCta.buttonLabel}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {config.optimizerCta.supportingText}
+          </span>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   const resultsSection = controller.result ? (
     <div
       ref={resultsRef}
       data-testid="landing-results-panel"
-      className="order-2 border-t pt-8 lg:order-3 lg:col-span-2"
+      className="order-4 border-t pt-8"
       style={{ borderColor: 'var(--border-primary)' }}
     >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
@@ -409,11 +612,13 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {ui.results.plainTextDescription}
           </p>
-          <textarea
-            aria-label={ui.results.textResultsAriaLabel}
+          <LandingResizableTextarea
+            ariaLabel={ui.results.textResultsAriaLabel}
             readOnly
             value={resultText}
-            className="min-h-[260px] w-full rounded-xl border px-4 py-3 text-sm outline-none"
+            minHeight={260}
+            className="rounded-xl"
+            textareaClassName="px-4 py-3 text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
           />
         </div>
@@ -424,17 +629,48 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {ui.results.csvDescription}
           </p>
-          <textarea
-            aria-label={ui.results.csvResultsAriaLabel}
+          <LandingResizableTextarea
+            ariaLabel={ui.results.csvResultsAriaLabel}
             readOnly
             value={resultCsv}
-            className="min-h-[260px] w-full rounded-xl border px-4 py-3 font-mono text-sm outline-none"
+            minHeight={260}
+            className="rounded-xl"
+            textareaClassName="px-4 py-3 font-mono text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
           />
         </div>
       )}
     </div>
   ) : null;
+
+  const handleLandingDemoCaseClick = async (demoCaseId: string) => {
+    try {
+      const scenario = await loadDemoCase(demoCaseId);
+      const loaded = controller.loadScenarioDraft(scenario);
+      if (!loaded) {
+        addNotification({
+          type: 'error',
+          title: 'Demo case not supported here',
+          message: 'This demo uses session-aware settings that require the advanced workspace.',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to load landing demo case:', error);
+      addNotification({
+        type: 'error',
+        title: 'Failed to load demo data',
+        message: 'Please try again or open the advanced workspace.',
+      });
+    }
+  };
+
+  const handleClearAllInputs = () => {
+    if (controller.hasAnyInputData && !window.confirm(ui.quickSetup.clearAllConfirmMessage)) {
+      return;
+    }
+
+    controller.clearDraft();
+  };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
@@ -450,6 +686,8 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       <AppHeader
         homeTo={getLocaleHomePath(config.locale)}
         logoAlt="GroupMixer logo"
+        titleAs="div"
+        desktopBreakpoint="landing"
         renderDesktopActions={() => (
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
@@ -491,15 +729,315 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       />
 
       <main>
-        <section className="px-4 pb-10 pt-8 sm:px-6 lg:pb-16 lg:pt-12">
-          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1fr_minmax(340px,420px)] lg:items-start lg:gap-12">
-            <div data-testid="landing-hero" className={`${heroOrderClass} max-w-xl pt-2`}>
+        <section className="px-4 pb-8 pt-4 sm:px-6 lg:pb-14 lg:pt-6">
+          <div className="mx-auto grid max-w-7xl gap-5 lg:gap-6">
+            <div data-testid="landing-hero" className="order-1 min-w-0 max-w-4xl">
+              <h1
+                aria-label={usesAnimatedHomeTitle ? config.hero.title : undefined}
+                className={[
+                  'block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-bold leading-[1.08] tracking-normal sm:text-4xl lg:leading-[1.15]',
+                  usesAnimatedHomeTitle
+                    ? 'text-base min-[340px]:text-[1.08rem] min-[390px]:text-xl'
+                    : 'text-[1.15rem] min-[340px]:text-[1.38rem] min-[390px]:text-2xl',
+                ].join(' ')}
+              >
+                {usesAnimatedHomeTitle ? <HomeAnimatedHeroTitle /> : config.hero.title}
+              </h1>
+            </div>
+
+            <div
+              data-testid="landing-tool-panel"
+              className="order-2"
+            >
+              <div
+                ref={toolColumnsRef}
+                className={[
+                  'grid gap-5 lg:gap-5',
+                  canResizeToolColumns ? null : 'lg:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.92fr)]',
+                ].filter(Boolean).join(' ')}
+                style={toolColumnsStyle}
+              >
+                <div className="landing-participants-pane min-w-0">
+                  <SectionLabelWithTooltip
+                    label={ui.quickSetup.participantsLabel}
+                    help={ui.quickSetup.participantsHelp}
+                    action={(
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleClearAllInputs}
+                          className="ui-button ui-button--ghost ui-button--sm min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
+                        >
+                          {ui.quickSetup.clearAllLabel}
+                        </button>
+                        <DemoDataDropdown
+                          onDemoCaseClick={(demoCaseId) => {
+                            void handleLandingDemoCaseClick(demoCaseId);
+                          }}
+                          variant="default"
+                          triggerLabel="Example data"
+                          triggerButtonSize="sm"
+                          triggerClassName="landing-example-data-trigger min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
+                          loadCases={loadLandingCompatibleDemoCasesWithMetrics}
+                          includeGeneratedDemo={false}
+                        />
+                      </div>
+                    )}
+                  />
+                  <LandingParticipantColumnsInput
+                    label={ui.quickSetup.participantsLabel}
+                    nameColumnLabel={ui.quickSetup.nameColumnLabel}
+                    nameColumnPlaceholder={ui.quickSetup.namesPlaceholder}
+                    addAttributeLabel={ui.quickSetup.addAttributeLabel}
+                    ghostAttributeDisplayLabel={ui.quickSetup.ghostAttributeDisplayLabel}
+                    attributeNamePlaceholder={ui.quickSetup.attributeNamePlaceholder}
+                    ghostAttributeValuesPreview={ui.quickSetup.ghostAttributeValuesPreview}
+                    removeAttributeLabel={ui.quickSetup.removeAttributeLabel}
+                    columns={participantColumns}
+                    minHeight={130}
+                    onAddAttribute={() => {
+                      let newColumnId: string | null = null;
+
+                      controller.updateDraft((current) => {
+                        const columns = normalizeParticipantColumns(current);
+                        newColumnId = nextAttributeColumnId(columns);
+
+                        return withParticipantColumns(current, [
+                          ...columns,
+                          {
+                            id: newColumnId,
+                            name: '',
+                            values: '',
+                          },
+                        ]);
+                      });
+
+                      return newColumnId;
+                    }}
+                    onChangeColumnName={(index, value) => {
+                      controller.updateDraft((current) => {
+                        const columns = normalizeParticipantColumns(current);
+                        const nextColumns = columns.map((column, columnIndex) => {
+                          if (columnIndex !== index) {
+                            return column;
+                          }
+
+                          return {
+                            ...column,
+                            name: value,
+                          };
+                        });
+
+                        const previousName = columns[index]?.name ?? '';
+                        const nextDraft = withParticipantColumns(current, nextColumns);
+                        return previousName.trim() !== '' && current.balanceAttributeKey === previousName
+                          ? { ...nextDraft, balanceAttributeKey: value.trim() || null }
+                          : nextDraft;
+                      });
+                    }}
+                    onChangeColumnValues={(index, value) => {
+                      controller.updateDraft((current) => {
+                        const columns = normalizeParticipantColumns(current);
+                        return withParticipantColumns(
+                          current,
+                          columns.map((column, columnIndex) => (
+                            columnIndex === index
+                              ? { ...column, values: value }
+                              : column
+                          )),
+                        );
+                      });
+                    }}
+                    onRemoveAttribute={(index) => {
+                      const columnToRemove = participantColumns[index];
+                      const hasValues = Boolean(columnToRemove?.values.trim());
+
+                      if (hasValues) {
+                        const columnName = columnToRemove.name.trim() || `${ui.quickSetup.attributeColumnDefaultLabel} ${index}`;
+                        const confirmed = window.confirm(
+                          ui.quickSetup.removeAttributeConfirmMessage.replace('{name}', columnName),
+                        );
+
+                        if (!confirmed) {
+                          return;
+                        }
+                      }
+
+                      controller.updateDraft((current) => {
+                        const columns = normalizeParticipantColumns(current);
+                        return withParticipantColumns(
+                          current,
+                          columns.filter((_, columnIndex) => columnIndex !== index),
+                        );
+                      });
+                    }}
+                  />
+
+                  <div className="landing-participants-controls mt-4">
+                    <div>
+                      <NumberField
+                        label={ui.quickSetup.groupingValueGroupCountLabel}
+                        value={displayedGroupCount}
+                        onChange={(value) =>
+                          controller.updateDraft((current) => ({
+                            ...current,
+                            groupingMode: 'groupCount',
+                            groupingValue: Math.max(1, value ?? 1),
+                          }))
+                        }
+                        {...withContextualMax(NUMBER_FIELD_PRESETS.groupCount, participantCount > 0 ? participantCount : undefined)}
+                      />
+                    </div>
+
+                    <div>
+                      <NumberField
+                        label={ui.quickSetup.groupingValueGroupSizeLabel}
+                        value={displayedPeoplePerGroup}
+                        onChange={(value) =>
+                          controller.updateDraft((current) => ({
+                            ...current,
+                            groupingMode: 'groupSize',
+                            groupingValue: Math.max(1, value ?? 1),
+                          }))
+                        }
+                        {...withContextualMax(NUMBER_FIELD_PRESETS.groupSize, participantCount > 0 ? participantCount : undefined)}
+                      />
+                    </div>
+
+                    <div className="landing-participants-controls__sessions min-w-0 w-full">
+                      <div className="mb-[0.86rem] flex items-center justify-between gap-3">
+                        <label className="text-sm font-medium" htmlFor="landing-sessions-slider">
+                          {ui.advancedOptions.sessionsLabel}
+                        </label>
+                        <label
+                          className="landing-participants-controls__repeat-toggle"
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          <input
+                            type="checkbox"
+                            className="shrink-0"
+                            checked={draft.avoidRepeatPairings}
+                            onChange={(event) =>
+                              controller.updateDraft((current) => ({
+                                ...current,
+                                avoidRepeatPairings: event.target.checked,
+                              }))}
+                          />
+                          <Tooltip
+                            content={(
+                              <span>
+                                <strong>{ui.advancedOptions.avoidRepeatPairingsLabel}.</strong>{' '}
+                                {ui.advancedOptions.avoidRepeatPairingsDescription}
+                              </span>
+                            )}
+                            className="min-w-0 flex-1"
+                          >
+                            <span className="block min-w-0 truncate whitespace-nowrap">{ui.advancedOptions.avoidRepeatPairingsLabel}</span>
+                          </Tooltip>
+                        </label>
+                      </div>
+                      <NumberField
+                        id="landing-sessions-slider"
+                        className="w-full"
+                        value={draft.sessions}
+                        onChange={(value) =>
+                          controller.updateDraft((current) => ({
+                            ...current,
+                            sessions: Math.max(1, value ?? 1),
+                          }))
+                        }
+                        {...NUMBER_FIELD_PRESETS.sessionCount}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl px-3 py-2.5 text-center text-sm" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+                    <div>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.peopleStatLabel}</div>
+                      <div className="text-lg font-semibold">{participantCount}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.groupsStatLabel}</div>
+                      <div className="text-lg font-semibold">{estimatedGroupCount}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.approxSizeStatLabel}</div>
+                      <div className="text-lg font-semibold">{estimatedGroupSize}</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        trackLandingEvent('landing_generate_clicked', {
+                          preset: draft.preset,
+                          participantCount,
+                          groupingMode: draft.groupingMode,
+                        });
+                        controller.generateGroups();
+                      }}
+                      disabled={!controller.canGenerate || controller.isSolving}
+                      className="btn-primary inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
+                    </button>
+                    {controller.result && (
+                      <button
+                        type="button"
+                        onClick={controller.reshuffle}
+                        disabled={controller.isSolving}
+                        className="landing-action-button inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                        style={{ borderColor: 'var(--border-primary)' }}
+                        title={ui.quickSetup.reshuffleLabel}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {controller.result && (
+                    <p className="mt-3 text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
+                      {ui.quickSetup.resultsGeneratedHint}
+                    </p>
+                  )}
+                </div>
+
+                {canResizeToolColumns ? (
+                  <button
+                    type="button"
+                    aria-label="Resize landing tool columns"
+                    aria-orientation="vertical"
+                    className="flex w-[22px] cursor-col-resize items-center justify-center rounded-full border-0 bg-transparent p-0"
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.currentTarget.setPointerCapture?.(event.pointerId);
+                      setIsDraggingToolDivider(true);
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-full min-h-16 w-px rounded-full transition-colors"
+                      style={{ backgroundColor: isDraggingToolDivider ? 'var(--color-accent)' : 'var(--border-primary)' }}
+                    />
+                  </button>
+                ) : null}
+
+                <div className={canResizeToolColumns ? 'pl-2' : undefined}>
+                  <QuickSetupAdvancedOptions controller={controller} onOpenFullEditor={() => openAdvancedWorkspace('people')} />
+                </div>
+              </div>
+            </div>
+
+            {optimizerCtaCard && <div className="order-4">{optimizerCtaCard}</div>}
+
+            {resultsSection}
+
+            <div data-testid="landing-secondary-copy" className="order-5 max-w-4xl">
               <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
                 {config.hero.eyebrow}
               </div>
-              <h1 className="mt-7 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl lg:leading-[1.15]">
-                {config.hero.title}
-              </h1>
               <p className="mt-5 text-base leading-7 sm:text-lg sm:leading-8" style={{ color: 'var(--text-secondary)' }}>
                 {config.hero.subhead}
               </p>
@@ -527,48 +1065,8 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 </div>
               )}
 
-              <div
-                className="mt-8 rounded-2xl border p-5 sm:p-6"
-                style={{
-                  borderColor: 'var(--border-primary)',
-                  backgroundColor: 'var(--bg-primary)',
-                }}
-              >
-                <div className="max-w-lg">
-                  <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
-                    {config.optimizerCta.eyebrow}
-                  </div>
-                  <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
-                    {config.optimizerCta.title}
-                  </h2>
-
-                  <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-                    {config.optimizerCta.featureBullets.map((feature) => (
-                      <span key={feature} className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                        {feature}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
-                      className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
-                    >
-                      <Users className="h-4 w-4" />
-                      {config.optimizerCta.buttonLabel}
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                    <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {config.optimizerCta.supportingText}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
               {!controller.result && (
-                <div className="mt-10 hidden text-sm lg:block" style={{ color: 'var(--text-secondary)' }}>
+                <div className="mt-8 hidden text-sm lg:block" style={{ color: 'var(--text-secondary)' }}>
                   <span className="flex items-center gap-1">
                     <ChevronDown className="h-4 w-4" />
                     {config.chrome.scrollHint}
@@ -576,142 +1074,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 </div>
               )}
             </div>
-
-            <div
-              data-testid="landing-tool-panel"
-              className="order-1 rounded-2xl border p-5 shadow-sm sm:p-6 lg:order-2"
-              style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-            >
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <label htmlFor="participantInput" className="text-sm font-medium">
-                    {ui.quickSetup.participantsLabel}
-                  </label>
-                  <div className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                    <button
-                      type="button"
-                      className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
-                      style={{ borderColor: 'var(--border-primary)' }}
-                      onClick={controller.loadSampleData}
-                    >
-                      {ui.quickSetup.sampleLabel}
-                    </button>
-                    <button
-                      type="button"
-                      className="landing-action-button inline-flex items-center rounded-lg border px-2.5 py-1.5 font-medium"
-                      style={{ borderColor: 'var(--border-primary)' }}
-                      onClick={controller.resetDraft}
-                    >
-                      {ui.quickSetup.resetLabel}
-                    </button>
-                  </div>
-                </div>
-                <textarea
-                  id="participantInput"
-                  value={draft.participantInput}
-                  onChange={(event) =>
-                    controller.updateDraft((current) => ({ ...current, participantInput: event.target.value }))
-                  }
-                  placeholder={ui.quickSetup.namesPlaceholder}
-                  className="min-h-[130px] w-full rounded-xl border px-3 py-2.5 text-sm leading-relaxed outline-none transition-shadow focus:ring-2"
-                  style={{
-                    borderColor: 'var(--border-primary)',
-                    backgroundColor: 'var(--bg-secondary)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-              </div>
-
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <NumberField
-                    label={ui.quickSetup.groupingValueGroupCountLabel}
-                    value={displayedGroupCount}
-                    onChange={(value) =>
-                      controller.updateDraft((current) => ({
-                        ...current,
-                        groupingMode: 'groupCount',
-                        groupingValue: Math.max(1, value ?? 1),
-                      }))
-                    }
-                    {...withContextualMax(NUMBER_FIELD_PRESETS.groupCount, participantCount > 0 ? participantCount : undefined)}
-                  />
-                </div>
-
-                <div>
-                  <NumberField
-                    label={ui.quickSetup.groupingValueGroupSizeLabel}
-                    value={displayedPeoplePerGroup}
-                    onChange={(value) =>
-                      controller.updateDraft((current) => ({
-                        ...current,
-                        groupingMode: 'groupSize',
-                        groupingValue: Math.max(1, value ?? 1),
-                      }))
-                    }
-                    {...withContextualMax(NUMBER_FIELD_PRESETS.groupSize, participantCount > 0 ? participantCount : undefined)}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl px-3 py-2.5 text-center text-sm" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-                <div>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.peopleStatLabel}</div>
-                  <div className="text-lg font-semibold">{participantCount}</div>
-                </div>
-                <div>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.groupsStatLabel}</div>
-                  <div className="text-lg font-semibold">{estimatedGroupCount}</div>
-                </div>
-                <div>
-                  <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.approxSizeStatLabel}</div>
-                  <div className="text-lg font-semibold">{estimatedGroupSize}</div>
-                </div>
-              </div>
-
-              <div className="mt-5 flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    trackLandingEvent('landing_generate_clicked', {
-                      preset: draft.preset,
-                      participantCount,
-                      groupingMode: draft.groupingMode,
-                    });
-                    controller.generateGroups();
-                  }}
-                  disabled={!controller.canGenerate || controller.isSolving}
-                  className="btn-primary inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
-                </button>
-                {controller.result && (
-                  <button
-                    type="button"
-                    onClick={controller.reshuffle}
-                    disabled={controller.isSolving}
-                    className="landing-action-button inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-3 text-sm font-medium transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-                    style={{ borderColor: 'var(--border-primary)' }}
-                    title={ui.quickSetup.reshuffleLabel}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                  </button>
-                )}
-              </div>
-
-              {controller.result && (
-                <p className="mt-3 text-sm font-medium" style={{ color: 'var(--color-accent)' }}>
-                  {ui.quickSetup.resultsGeneratedHint}
-                </p>
-              )}
-
-              <div className="mt-4">
-                <QuickSetupAdvancedOptions controller={controller} onOpenFullEditor={() => openAdvancedWorkspace('people')} />
-              </div>
-            </div>
-
-            {resultsSection}
           </div>
         </section>
 
@@ -722,7 +1084,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               {config.useCasesSection.description}
             </p>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className={useCasesGridClassName}>
               {config.useCasesSection.cards.map((item) => (
                 <div key={item.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
                   <h3 className="text-base font-semibold">{item.title}</h3>
@@ -742,7 +1104,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
               {config.advancedSection.description}
             </p>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className={advancedGridClassName}>
               {config.advancedSection.cards.map((item) => (
                 <div key={item.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
                   <h3 className="text-base font-semibold">{item.title}</h3>
@@ -785,6 +1147,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         feedbackLabel={config.chrome.feedbackLabel}
         privacyNote={config.chrome.privacyNote}
       />
+      <NotificationContainer />
     </div>
   );
 }

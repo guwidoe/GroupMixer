@@ -1,4 +1,5 @@
 import type { ToolPageKey, ToolPageLocalizedContent } from '../../pages/toolPageTypes';
+import { EN_TECHNICAL_TOOL_PAGE_CONTENT } from './enTechnical';
 
 const TRUST_BULLETS = [
   'Keep together or apart',
@@ -123,6 +124,9 @@ function createContent({
   subhead,
   audienceSummary,
   trustBullets = TRUST_BULLETS,
+  optimizerCta,
+  useCasesSection = USE_CASES_SECTION,
+  advancedSection = ADVANCED_SECTION,
   faqEntries,
 }: {
   title: string;
@@ -132,6 +136,9 @@ function createContent({
   subhead: string;
   audienceSummary: string;
   trustBullets?: string[];
+  optimizerCta?: ToolPageLocalizedContent['optimizerCta'];
+  useCasesSection?: ToolPageLocalizedContent['useCasesSection'];
+  advancedSection?: ToolPageLocalizedContent['advancedSection'];
   faqEntries: ToolPageLocalizedContent['faqEntries'];
 }): ToolPageLocalizedContent {
   return {
@@ -143,7 +150,7 @@ function createContent({
       audienceSummary,
       trustBullets,
     },
-    optimizerCta: {
+    optimizerCta: optimizerCta ?? {
       eyebrow: 'Want to do better than random?',
       title: 'Use the full group optimizer.',
       featureBullets: OPTIMIZER_FEATURES,
@@ -152,12 +159,12 @@ function createContent({
     },
     faqEntries,
     chrome: CHROME,
-    useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
+    useCasesSection,
+    advancedSection,
   };
 }
 
-export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent> = {
+export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalizedContent>> = {
   home: createContent({
     title: 'Random Group Generator - Split Names into Balanced Teams',
     description: HOME_FEATURE_SUMMARY,
@@ -439,4 +446,5 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
       FAQS.workspace,
     ],
   }),
+  ...EN_TECHNICAL_TOOL_PAGE_CONTENT,
 };
