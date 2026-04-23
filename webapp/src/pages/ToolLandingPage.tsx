@@ -46,7 +46,7 @@ interface ToolLandingPageProps {
   locale: SupportedLocale;
 }
 
-type ResultFormat = 'cards' | 'list' | 'text' | 'csv';
+type ResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
 interface DisplaySession {
   sessionNumber: number;
@@ -133,6 +133,22 @@ function buildResultText(sessions: DisplaySession[], labels: ReturnType<typeof g
         interpolate(labels.sessionHeadingTemplate, { number: session.sessionNumber }),
         ...session.groups.map((group) => `${group.id}: ${group.members.join(', ') || labels.noAssignmentsLabel}`),
       ].join('\n'),
+    )
+    .join('\n\n');
+}
+
+function buildResultLineText(sessions: DisplaySession[], labels: ReturnType<typeof getLandingUiContent>['results']) {
+  return sessions
+    .map((session) =>
+      [
+        interpolate(labels.sessionHeadingTemplate, { number: session.sessionNumber }),
+        ...session.groups.map((group) =>
+          [
+            group.id,
+            ...(group.members.length > 0 ? group.members : [labels.noAssignmentsLabel]),
+          ].join('\n'),
+        ),
+      ].join('\n\n'),
     )
     .join('\n\n');
 }
@@ -298,6 +314,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     [controller.result?.sessions, sharedSessionData],
   );
   const resultText = useMemo(() => buildResultText(displaySessions, ui.results), [displaySessions, ui.results]);
+  const resultLineText = useMemo(() => buildResultLineText(displaySessions, ui.results), [displaySessions, ui.results]);
   const resultCsv = useMemo(() => buildResultCsv(displaySessions, ui.results), [displaySessions, ui.results]);
   const activeResultFormat = controller.result ? resultFormat : 'cards';
   const activeCopiedFormat = controller.result ? copiedFormat : null;
@@ -638,7 +655,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
         <div className="flex flex-wrap gap-2" role="tablist" aria-label={ui.results.resultFormatsAriaLabel}>
-          {(['cards', 'list', 'text', 'csv'] as ResultFormat[]).map((format) => (
+          {(['cards', 'list', 'text', 'lines', 'csv'] as ResultFormat[]).map((format) => (
             <button
               key={format}
               type="button"
@@ -658,18 +675,20 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     ? ui.results.listFormatLabel
                     : format === 'text'
                       ? ui.results.textFormatLabel
-                      : ui.results.csvFormatLabel
+                      : format === 'lines'
+                        ? ui.results.linesFormatLabel
+                        : ui.results.csvFormatLabel
               }
             </button>
           ))}
         </div>
 
-        {(activeResultFormat === 'text' || activeResultFormat === 'csv') && (
+        {(activeResultFormat === 'text' || activeResultFormat === 'lines' || activeResultFormat === 'csv') && (
           <button
             type="button"
             onClick={async () => {
               const formatToCopy = activeResultFormat;
-              await copyText(formatToCopy === 'csv' ? resultCsv : resultText);
+              await copyText(formatToCopy === 'csv' ? resultCsv : formatToCopy === 'lines' ? resultLineText : resultText);
               setCopiedFormat(formatToCopy);
               window.setTimeout(() => setCopiedFormat((current) => (current === formatToCopy ? null : current)), 1200);
             }}
@@ -739,7 +758,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       )}
 
       {activeResultFormat === 'list' && (
-        <div className="space-y-5">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,24rem),1fr))] gap-5">
           {displaySessions.map((session) => (
             <div key={session.sessionNumber} className="rounded-xl border p-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
               <h3 className="text-base font-semibold">
@@ -770,6 +789,23 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
             readOnly
             value={resultText}
             minHeight={260}
+            className="rounded-xl"
+            textareaClassName="px-4 py-3 text-sm outline-none"
+            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+          />
+        </div>
+      )}
+
+      {activeResultFormat === 'lines' && (
+        <div className="space-y-3">
+          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {ui.results.lineTextDescription}
+          </p>
+          <LandingResizableTextarea
+            ariaLabel={ui.results.lineTextResultsAriaLabel}
+            readOnly
+            value={resultLineText}
+            minHeight={300}
             className="rounded-xl"
             textareaClassName="px-4 py-3 text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}

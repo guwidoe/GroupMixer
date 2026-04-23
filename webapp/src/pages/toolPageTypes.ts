@@ -147,6 +147,7 @@ export interface ToolPageResultsUiContent {
   cardsFormatLabel: string;
   listFormatLabel: string;
   textFormatLabel: string;
+  linesFormatLabel: string;
   csvFormatLabel: string;
   copiedLabel: string;
   copyTextLabel: string;
@@ -156,8 +157,10 @@ export interface ToolPageResultsUiContent {
   groupPeopleCountTemplate: string;
   noAssignmentsLabel: string;
   plainTextDescription: string;
+  lineTextDescription: string;
   csvDescription: string;
   textResultsAriaLabel: string;
+  lineTextResultsAriaLabel: string;
   csvResultsAriaLabel: string;
   csvHeaderSession: string;
   csvHeaderGroup: string;

@@ -838,10 +838,20 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(await screen.findByRole('tab', { name: 'grid' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'list' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'text' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'lines' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'csv' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'text' }));
     expect((screen.getByRole('textbox', { name: /text results/i }) as HTMLTextAreaElement).value).toContain('Session 1');
+    expect(screen.getByRole('button', { name: /copy text/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'list' }));
+    expect(document.querySelector('.grid-cols-\\[repeat\\(auto-fit\\,minmax\\(min\\(100\\%\\,24rem\\)\\,1fr\\)\\)\\]')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'lines' }));
+    expect((screen.getByRole('textbox', { name: /line-by-line text results/i }) as HTMLTextAreaElement).value).toMatch(
+      /Session 1\n\nGroup 1\n/,
+    );
     expect(screen.getByRole('button', { name: /copy text/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'csv' }));
