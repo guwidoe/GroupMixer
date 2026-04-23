@@ -112,6 +112,11 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
           description: 'Use the networking-focused guide when the format is built around repeated short conversations.',
           href: '/guides/run-speed-networking-rounds',
         },
+        {
+          label: 'How to make balanced student groups',
+          description: 'Use the classroom-focused guide when balancing matters more than a plain random split.',
+          href: '/guides/make-balanced-student-groups',
+        },
       ],
     },
   },
@@ -223,6 +228,128 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
           label: 'How to avoid repeat pairings in workshops',
           description: 'Use the workshop-focused guide for repeated small-group sessions beyond networking events.',
           href: '/guides/avoid-repeat-pairings-in-workshops',
+        },
+        {
+          label: 'How to make balanced student groups',
+          description: 'Use the classroom-focused guide when you need fairer group composition, not just new contacts.',
+          href: '/guides/make-balanced-student-groups',
+        },
+      ],
+    },
+  },
+  'make-balanced-student-groups': {
+    key: 'make-balanced-student-groups',
+    slug: 'make-balanced-student-groups',
+    canonicalPath: '/guides/make-balanced-student-groups',
+    seo: {
+      title: 'How to Make Balanced Student Groups | GroupMixer Guide',
+      description:
+        'Learn how to make balanced student groups for classroom activities and projects. A practical guide to fairer grouping with GroupMixer.',
+    },
+    hero: {
+      eyebrow: 'Guide for teachers and classroom facilitators',
+      title: 'How to make balanced student groups',
+      intro:
+        'Balanced student groups often work better than a fully random split, especially when you want a healthier mix of skill levels, roles, behavior patterns, or social dynamics. This guide shows when balancing helps and how to set it up with GroupMixer.',
+    },
+    problem: {
+      title: 'In classrooms, fair groups usually matter more than perfectly random ones',
+      body:
+        'A random split is fast, but it can easily cluster the same skill level, confidence level, or social dynamic in one group. The real goal is usually to create groups that feel workable, fair, and useful for the task in front of students.',
+      bullets: [
+        'teachers often need stronger mixes than pure randomness gives',
+        'group quality affects participation, workload balance, and classroom energy',
+        'simple balancing can save manual fixing after every regrouping',
+      ],
+    },
+    failureModes: {
+      title: 'Why plain random grouping is often not enough',
+      cards: [
+        {
+          title: 'Skills can cluster by accident',
+          body:
+            'A random split can easily place several strong or struggling students in the same group, even when that is not what you want for the activity.',
+        },
+        {
+          title: 'Social dynamics can dominate a group',
+          body:
+            'Some groups become unbalanced because friends, dominant personalities, or disengaged students land together by chance.',
+        },
+        {
+          title: 'Manual repair takes time every round',
+          body:
+            'If you keep adjusting random groups by hand, you lose the speed advantage that made random grouping attractive in the first place.',
+        },
+      ],
+    },
+    example: {
+      title: 'Example classroom setup',
+      summary:
+        'Imagine a class of 28 students preparing for a project activity. You want groups of 4, and you want each group to include a healthier mix of confidence levels and subject strengths instead of relying on a pure shuffle.',
+      details: [
+        '28 students',
+        'groups of 4',
+        'balance by a CSV column such as reading level, confidence, or subject strength',
+        'optional together/apart rules for classroom dynamics',
+        'optional fixed students for group leaders or anchor roles',
+      ],
+    },
+    setup: {
+      title: 'Recommended GroupMixer setup',
+      intro:
+        'For balanced classroom groups, start simple and only add the inputs that actually improve the outcome for the activity you are running.',
+      steps: [
+        'Paste the class roster or switch to CSV input if you want to balance by a classroom attribute.',
+        'Choose the number of groups or group size for the activity.',
+        'If you have balancing data, select the attribute you want to spread more evenly across the groups.',
+        'Add together/apart rules if there are classroom dynamics you already know you need to manage.',
+        'Generate the groups, then move into the scenario editor only if the classroom setup has deeper constraints.',
+      ],
+    },
+    advanced: {
+      title: 'When to use together/apart rules, fixed people, or the scenario editor',
+      body:
+        'Use together/apart rules when you already know some student combinations help or hurt the activity. Use fixed people when a leader, helper, or anchor student should stay in a known group. Move into the scenario editor when the class grouping problem becomes more complex than a single quick setup pass.',
+    },
+    cta: {
+      title: 'Try this setup in the student group generator',
+      body:
+        'Start with the classroom-focused tool, then add balancing or simple pairing rules only where they improve the activity outcome.',
+      buttonLabel: 'Open student group generator',
+      href: '/student-group-generator',
+    },
+    relatedTools: {
+      title: 'Related tools',
+      links: [
+        {
+          label: 'Student Group Generator',
+          description: 'Use the classroom-focused tool entry point for fast roster-based grouping with optional balancing.',
+          href: '/student-group-generator',
+        },
+        {
+          label: 'Random Group Generator',
+          description: 'Use the simpler random entry point when the activity does not need balancing or classroom rules.',
+          href: '/random-group-generator',
+        },
+        {
+          label: 'Group Generator with Constraints',
+          description: 'Use the constraint-focused tool when classroom relationships or balancing requirements are more demanding.',
+          href: '/group-generator-with-constraints',
+        },
+      ],
+    },
+    relatedGuides: {
+      title: 'Related guides',
+      links: [
+        {
+          label: 'How to avoid repeat pairings in workshops',
+          description: 'Use the workshop-focused guide when your grouping problem is about repeated rounds rather than classroom balancing.',
+          href: '/guides/avoid-repeat-pairings-in-workshops',
+        },
+        {
+          label: 'How to run speed networking rounds without repeat conversations',
+          description: 'Use the networking-focused guide when the main challenge is repeated short rounds instead of classroom balance.',
+          href: '/guides/run-speed-networking-rounds',
         },
       ],
     },
