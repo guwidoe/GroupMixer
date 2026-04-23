@@ -650,6 +650,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       <AppHeader
         homeTo={getLocaleHomePath(config.locale)}
         logoAlt="GroupMixer logo"
+        desktopBreakpoint="landing"
         renderDesktopActions={() => (
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
