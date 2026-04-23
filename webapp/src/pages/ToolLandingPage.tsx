@@ -229,6 +229,33 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const resultCsv = useMemo(() => buildResultCsv(displaySessions, ui.results), [displaySessions, ui.results]);
   const activeResultFormat = controller.result ? resultFormat : 'cards';
   const activeCopiedFormat = controller.result ? copiedFormat : null;
+  const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
+  const participantColumns = normalizeParticipantColumns(draft);
+  const displayedGroupCount = Math.max(1, estimatedGroupCount);
+  const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
+  const canResizeToolColumns = toolColumnsWidth >= LANDING_TOOL_RESIZE_MIN_WIDTH;
+  const resolvedToolSplitRatio = Math.min(0.72, Math.max(0.4, toolSplitRatio));
+  const resizableTrackWidth = Math.max(0, toolColumnsWidth - LANDING_TOOL_RESIZE_HANDLE_WIDTH);
+  const leftColumnWidth = canResizeToolColumns
+    ? Math.min(
+        Math.max(resizableTrackWidth * resolvedToolSplitRatio, LANDING_TOOL_LEFT_MIN_WIDTH),
+        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, resizableTrackWidth - LANDING_TOOL_RIGHT_MIN_WIDTH),
+      )
+    : null;
+  const rightColumnWidth = canResizeToolColumns && leftColumnWidth != null
+    ? Math.max(LANDING_TOOL_RIGHT_MIN_WIDTH, resizableTrackWidth - leftColumnWidth)
+    : null;
+  const toolColumnsStyle = canResizeToolColumns && leftColumnWidth != null && rightColumnWidth != null
+    ? {
+        gridTemplateColumns: `minmax(0, ${leftColumnWidth}px) ${LANDING_TOOL_RESIZE_HANDLE_WIDTH}px minmax(${LANDING_TOOL_RIGHT_MIN_WIDTH}px, ${rightColumnWidth}px)`,
+      }
+    : undefined;
+  const useCasesGridClassName = config.sectionSet === 'technical'
+    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3'
+    : 'mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+  const advancedGridClassName = config.sectionSet === 'technical'
+    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4'
+    : 'mt-8 grid gap-4 sm:grid-cols-2';
 
   useEffect(() => {
     if (!controller.result?.generatedAt) {
@@ -304,7 +331,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       window.removeEventListener('pointerup', stopDragging);
       window.removeEventListener('pointercancel', stopDragging);
     };
-  }, [isDraggingToolDivider, setToolSplitRatio]);
+  }, [canResizeToolColumns, isDraggingToolDivider, setToolSplitRatio]);
 
   const navigateToAdvancedWorkspace = (target: 'results' | 'people') => {
     const nextScenarioId = loadWorkspaceAsNewScenario({
@@ -342,33 +369,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     navigateToAdvancedWorkspace(target);
   };
 
-  const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
-  const participantColumns = normalizeParticipantColumns(draft);
-  const displayedGroupCount = Math.max(1, estimatedGroupCount);
-  const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
-  const canResizeToolColumns = toolColumnsWidth >= LANDING_TOOL_RESIZE_MIN_WIDTH;
-  const resolvedToolSplitRatio = Math.min(0.72, Math.max(0.4, toolSplitRatio));
-  const resizableTrackWidth = Math.max(0, toolColumnsWidth - LANDING_TOOL_RESIZE_HANDLE_WIDTH);
-  const leftColumnWidth = canResizeToolColumns
-    ? Math.min(
-        Math.max(resizableTrackWidth * resolvedToolSplitRatio, LANDING_TOOL_LEFT_MIN_WIDTH),
-        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, resizableTrackWidth - LANDING_TOOL_RIGHT_MIN_WIDTH),
-      )
-    : null;
-  const rightColumnWidth = canResizeToolColumns && leftColumnWidth != null
-    ? Math.max(LANDING_TOOL_RIGHT_MIN_WIDTH, resizableTrackWidth - leftColumnWidth)
-    : null;
-  const toolColumnsStyle = canResizeToolColumns && leftColumnWidth != null && rightColumnWidth != null
-    ? {
-        gridTemplateColumns: `minmax(0, ${leftColumnWidth}px) ${LANDING_TOOL_RESIZE_HANDLE_WIDTH}px minmax(${LANDING_TOOL_RIGHT_MIN_WIDTH}px, ${rightColumnWidth}px)`,
-      }
-    : undefined;
-  const useCasesGridClassName = config.sectionSet === 'technical'
-    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3'
-    : 'mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
-  const advancedGridClassName = config.sectionSet === 'technical'
-    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4'
-    : 'mt-8 grid gap-4 sm:grid-cols-2';
   const optimizerCtaCard = !controller.result ? (
     <div
       className="rounded-2xl border p-5 sm:p-6"
@@ -650,6 +650,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       <AppHeader
         homeTo={getLocaleHomePath(config.locale)}
         logoAlt="GroupMixer logo"
+        titleAs="div"
         desktopBreakpoint="landing"
         renderDesktopActions={() => (
           <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -692,17 +693,17 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       />
 
       <main>
-        <section className="px-4 pb-10 pt-6 sm:px-6 lg:pb-16 lg:pt-8">
-          <div className="mx-auto grid max-w-7xl gap-6 lg:gap-8">
-            <div data-testid="landing-hero" className="order-2 max-w-4xl pt-2 lg:order-1 lg:pt-0">
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl lg:leading-[1.15]">
+        <section className="px-4 pb-8 pt-4 sm:px-6 lg:pb-14 lg:pt-6">
+          <div className="mx-auto grid max-w-7xl gap-5 lg:gap-6">
+            <div data-testid="landing-hero" className="order-1 min-w-0 max-w-4xl">
+              <h1 className="block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-[1.15rem] font-bold leading-[1.08] tracking-normal min-[340px]:text-[1.38rem] min-[390px]:text-2xl sm:text-4xl lg:leading-[1.15]">
                 {config.hero.title}
               </h1>
             </div>
 
             <div
               data-testid="landing-tool-panel"
-              className="order-1 lg:order-2"
+              className="order-2"
             >
               <div
                 ref={toolColumnsRef}

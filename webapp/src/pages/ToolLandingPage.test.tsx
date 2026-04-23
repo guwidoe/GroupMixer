@@ -77,6 +77,7 @@ describe('ToolLandingPage SEO wiring', () => {
     if (config.hero.audienceSummary) {
       expect(screen.getByText(config.hero.audienceSummary)).toBeInTheDocument();
     }
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(document.title).toBe(config.seo.title);
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(config.seo.description);
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
@@ -728,15 +729,19 @@ describe('ToolLandingPage SEO wiring', () => {
     confirmSpy.mockRestore();
   });
 
-  it('stacks the generator above the hero content on mobile while preserving desktop order classes', () => {
+  it('renders the page heading above the generator across breakpoints', () => {
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId('landing-tool-panel')).toHaveClass('order-1', 'lg:order-2');
-    expect(screen.getByTestId('landing-hero')).toHaveClass('order-2', 'lg:order-1');
+    expect(screen.getByTestId('landing-hero')).toHaveClass('order-1', 'min-w-0');
+    expect(screen.getByRole('heading', { level: 1, name: 'Random Group Generator' })).toHaveClass(
+      'max-w-full',
+      'whitespace-nowrap',
+    );
+    expect(screen.getByTestId('landing-tool-panel')).toHaveClass('order-2');
   });
 
   it('renders FAQ section for SEO', () => {
@@ -762,7 +767,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(screen.getByRole('button', { name: /generate groups/i }));
 
     expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-4');
-    expect(screen.getByTestId('landing-hero')).toHaveClass('order-2', 'lg:order-1');
+    expect(screen.getByTestId('landing-hero')).toHaveClass('order-1');
     expect(screen.getByTestId('landing-secondary-copy')).toHaveClass('order-5');
   });
 

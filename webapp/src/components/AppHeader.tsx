@@ -13,6 +13,7 @@ import { getButtonClassName } from './ui';
 interface AppHeaderProps {
   homeTo?: string;
   title?: string;
+  titleAs?: 'h1' | 'div';
   logoAlt?: string;
   desktopBreakpoint?: 'sm' | 'md' | 'lg' | 'landing';
   hideDesktopUtilityRail?: boolean;
@@ -29,6 +30,7 @@ interface AppHeaderProps {
 export function AppHeader({
   homeTo = '/',
   title = 'GroupMixer',
+  titleAs = 'h1',
   logoAlt = 'GroupMixer Logo',
   desktopBreakpoint = 'sm',
   hideDesktopUtilityRail = false,
@@ -51,6 +53,7 @@ export function AppHeader({
   const mobileActions = renderMobileActions?.({ closeMobileMenu });
   const desktopUtilityActions = renderDesktopUtilityActions?.();
   const mobileUtilityActions = renderMobileUtilityActions?.({ closeMobileMenu });
+  const BrandTitle = titleAs;
   const responsiveClasses = {
     sm: {
       headerLayout: 'flex flex-col gap-3 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-4',
@@ -97,9 +100,9 @@ export function AppHeader({
             <Link to={homeTo} className="flex items-center space-x-3 group min-w-0">
               <div className="flex items-center space-x-2 min-w-0">
                 <img src={assetBaseUrl + 'logo.svg'} alt={logoAlt} className="h-8 w-8" />
-                <h1 className="truncate text-[1.85rem] font-semibold tracking-[-0.03em] transition-colors" style={{ color: 'var(--text-primary)' }}>
+                <BrandTitle className="truncate text-[1.85rem] font-semibold tracking-[-0.03em] transition-colors" style={{ color: 'var(--text-primary)' }}>
                   {title}
-                </h1>
+                </BrandTitle>
               </div>
             </Link>
 
