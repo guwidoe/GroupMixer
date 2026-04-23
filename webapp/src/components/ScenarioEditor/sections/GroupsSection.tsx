@@ -40,6 +40,7 @@ function renderGroupContent(
         workspace={{
           mode: gridWorkspaceMode,
           onModeChange: setGridWorkspaceMode,
+          browseModeEnabled: false,
           draft: {
             onApply: onApplyGridGroups,
             createRow: createGridGroupRow,
@@ -172,7 +173,7 @@ export function GroupsSection({
   const groups = useMemo(() => scenario?.groups ?? [], [scenario?.groups]);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('list');
-  const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('browse');
+  const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('edit');
   const searchValue = search.trim().toLowerCase();
 
   const filteredGroups = useMemo(() => {
@@ -212,7 +213,7 @@ export function GroupsSection({
       onViewModeChange={(nextMode) => {
         setViewMode(nextMode);
         if (nextMode !== 'list') {
-          setGridWorkspaceMode('browse');
+          setGridWorkspaceMode('edit');
         }
       }}
       toolbarLeading={(activeViewMode) =>

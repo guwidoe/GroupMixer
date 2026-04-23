@@ -36,6 +36,7 @@ export interface CardData extends BaseCardData {
 
 export const typeLabels: Partial<Record<ConstraintType, string>> = {
   RepeatEncounter: getConstraintDisplayName('RepeatEncounter'),
+  MustStayApart: getConstraintDisplayName('MustStayApart'),
   ShouldNotBeTogether: getConstraintDisplayName('ShouldNotBeTogether'),
   ShouldStayTogether: getConstraintDisplayName('ShouldStayTogether'),
   MustStayTogether: getConstraintDisplayName('MustStayTogether'),

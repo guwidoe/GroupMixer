@@ -1,6 +1,7 @@
 import React from 'react';
 import { Tooltip } from '../../Tooltip';
 import type { SolverFormInputs } from '../../SolverPanel/SettingsPanel/types';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../../ui';
 
 interface RecommendedSettingsPanelProps {
   solverFormInputs: SolverFormInputs;
@@ -27,6 +28,7 @@ export function RecommendedSettingsPanel({
   supportsRecommendedSettings,
   solverDisplayName,
 }: RecommendedSettingsPanelProps) {
+  void solverFormInputs;
   if (solverCatalogStatus !== 'ready') {
     return (
       <div
@@ -76,26 +78,19 @@ export function RecommendedSettingsPanel({
       </div>
       <div className="flex items-end gap-2">
         <div className="flex-grow">
-          <label htmlFor="recommended-desired-runtime" className="mb-1 block text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-            Desired Runtime (s)
-          </label>
-          <input
-            id="recommended-desired-runtime"
-            type="number"
-            value={solverFormInputs.desiredRuntimeSettings ?? desiredRuntimeSettings.toString()}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeSettings: e.target.value }))
-            }
-            onBlur={() => {
-              const inputValue = solverFormInputs.desiredRuntimeSettings || desiredRuntimeSettings.toString();
-              const numValue = Number.parseInt(inputValue, 10);
-              if (!Number.isNaN(numValue) && numValue >= 1) {
-                setDesiredRuntimeSettings(numValue);
+          <NumberField
+            label="Desired Runtime (s)"
+            value={desiredRuntimeSettings}
+            onChange={() => {}}
+            onCommit={(value) => {
+              if (value != null && value >= 1) {
+                setDesiredRuntimeSettings(Math.round(value));
                 setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeSettings: undefined }));
               }
             }}
             disabled={isRunning}
-            className="input w-24 md:w-32"
+            {...NUMBER_FIELD_PRESETS.runtimeSeconds}
+            className="w-full md:w-[20rem]"
           />
         </div>
         <Tooltip content={<span>Run a short trial to estimate solver parameters for the specified runtime.</span>}>

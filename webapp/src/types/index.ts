@@ -46,7 +46,7 @@ export interface ImmovablePersonParams {
 export interface ImmovablePeopleParams {
   people: string[];
   group_id: string;
-  sessions: number[];
+  sessions?: number[]; // Optional: if undefined, applies to all sessions
 }
 
 // Constraint union type matching gm-core's tagged enum structure
@@ -57,6 +57,11 @@ export type Constraint =
   | ({ type: "ImmovablePeople" } & ImmovablePeopleParams)
   | {
       type: "MustStayTogether";
+      people: string[];
+      sessions?: number[]; // Optional: if undefined, applies to all sessions
+    }
+  | {
+      type: "MustStayApart";
       people: string[];
       sessions?: number[]; // Optional: if undefined, applies to all sessions
     }
@@ -75,8 +80,8 @@ export type Constraint =
   | {
       type: "PairMeetingCount";
       people: [string, string];
-      sessions: number[]; // fixed subset to consider
-      target_meetings: number; // 0..sessions.length
+      sessions?: number[]; // Optional: if undefined, applies to all sessions
+      target_meetings: number; // 0..effective sessions.length
       mode?: "at_least" | "exact" | "at_most"; // default at_least
       penalty_weight: number; // linear per unit deviation based on mode
     };
@@ -97,6 +102,18 @@ export interface Scenario {
   objectives?: Objective[];
   constraints: Constraint[];
   settings: SolverSettings;
+}
+
+/**
+ * Frontend editor aggregate for the scenario workspace.
+ *
+ * `Scenario` above is the solver-facing DTO that matches gm-core.
+ * `ScenarioDocument` is the real GUI editing surface and is the
+ * intended source of truth for Scenario Setup state.
+ */
+export interface ScenarioDocument {
+  scenario: Scenario;
+  attributeDefinitions: AttributeDefinition[];
 }
 
 export interface SolverSettings {
@@ -181,9 +198,8 @@ export interface StopConditions {
 
 export interface SolverParams {
   SimulatedAnnealing?: SimulatedAnnealingParams;
-  solver2?: Solver2Params;
   solver3?: Solver3Params;
-  solver_type?: 'SimulatedAnnealing' | 'solver2' | 'solver3' | string;
+  solver_type?: 'SimulatedAnnealing' | 'solver3' | string;
   initial_temperature?: number;
   final_temperature?: number;
   cooling_schedule?: 'geometric' | 'linear' | string;
@@ -191,8 +207,6 @@ export interface SolverParams {
   reheat_after_no_improvement?: number;
   correctness_lane?: Solver3CorrectnessLaneParams;
 }
-
-export type Solver2Params = Record<string, never>;
 
 // Webapp-facing solver3 settings intentionally expose only the production/default surface.
 // Research-only search drivers and hotspot/recombination controls stay behind Rust compile-time
@@ -359,6 +373,12 @@ export interface ScenarioSummary {
 
 // UI State types
 export interface AppState {
+  /**
+   * Canonical editor document for the active Scenario Setup workspace.
+   * The legacy `scenario` and `attributeDefinitions` fields below are kept
+   * for compatibility while the UI migrates to the explicit document model.
+   */
+  scenarioDocument: ScenarioDocument | null;
   scenario: Scenario | null;
   solution: Solution | null;
   solverState: SolverState;
@@ -375,6 +395,8 @@ export interface AppState {
 
   ui: {
     activeTab: "scenario" | "solver" | "results" | "manage";
+    advancedModeEnabled?: boolean;
+    showWorkflowGuideButton?: boolean;
     isLoading: boolean;
     notifications: Notification[];
     showScenarioManager: boolean;

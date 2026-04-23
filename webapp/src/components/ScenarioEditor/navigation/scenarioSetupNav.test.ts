@@ -44,11 +44,11 @@ describe('scenarioSetupNav', () => {
       'attributes',
       'people',
     ]);
-    expect(grouped[1]?.sections.map((section) => section.id)).toEqual(['immovable-people', 'must-stay-together']);
+    expect(grouped[1]?.sections.map((section) => section.id)).toEqual(['immovable-people', 'must-stay-together', 'must-stay-apart']);
     expect(grouped[2]?.sections.map((section) => section.id)).toEqual([
       'repeat-encounter',
-      'should-not-be-together',
       'should-stay-together',
+      'should-not-be-together',
       'attribute-balance',
       'pair-meeting-count',
     ]);
@@ -68,11 +68,13 @@ describe('scenarioSetupNav', () => {
   it('computes count badges from context via schema helpers', () => {
     const repeatEncounterSection = getScenarioSetupSectionById('repeat-encounter');
     const mustStayTogetherSection = getScenarioSetupSectionById('must-stay-together');
+    const mustStayApartSection = getScenarioSetupSectionById('must-stay-apart');
     const attributesSection = getScenarioSetupSectionById('attributes');
     const objectivesSection = getScenarioSetupSectionById('objectives');
 
     expect(repeatEncounterSection).toBeDefined();
     expect(mustStayTogetherSection).toBeDefined();
+    expect(mustStayApartSection).toBeDefined();
     expect(attributesSection).toBeDefined();
     expect(objectivesSection).toBeDefined();
 
@@ -86,6 +88,7 @@ describe('scenarioSetupNav', () => {
           { type: 'ShouldStayTogether', people: ['a', 'b'], penalty_weight: 5 },
           { type: 'ImmovablePeople', people: ['a'], group_id: 'g1' },
           { type: 'MustStayTogether', people: ['a', 'b'] },
+          { type: 'MustStayApart', people: ['b', 'c'] },
         ],
         settings: {
           max_iterations: 1000,
@@ -101,6 +104,7 @@ describe('scenarioSetupNav', () => {
 
     expect(getScenarioSetupSectionCount(repeatEncounterSection!, context)).toBe(1);
     expect(getScenarioSetupSectionCount(mustStayTogetherSection!, context)).toBe(1);
+    expect(getScenarioSetupSectionCount(mustStayApartSection!, context)).toBe(1);
     expect(getScenarioSetupSectionCount(attributesSection!, context)).toBe(1);
     expect(getScenarioSetupSectionCount(objectivesSection!, context)).toBe(1);
   });
@@ -126,6 +130,12 @@ describe('scenarioSetupNav', () => {
       expect.objectContaining({
         shortLabel: 'Keep Together',
         tooltipDescription: 'Require people to share a group.',
+      }),
+    );
+    expect(getScenarioSetupSectionById('must-stay-apart')).toEqual(
+      expect.objectContaining({
+        shortLabel: 'Keep Apart',
+        tooltipDescription: 'Require people to stay in different groups.',
       }),
     );
     expect(getScenarioSetupSectionById('repeat-encounter')).toEqual(

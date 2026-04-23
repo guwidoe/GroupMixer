@@ -1,7 +1,6 @@
 import React from 'react';
 import type { Person } from '../../../types';
 import { getPersonDisplayName } from '../../../services/scenarioAttributes';
-import { Tooltip } from '../../Tooltip';
 
 export function resolvePersonDisplay(people: Person[], personId: string) {
   const person = people.find((candidate) => candidate.id === personId);
@@ -41,15 +40,7 @@ export function SetupPersonName({
     </span>
   );
 
-  if (!person.hasDistinctId) {
-    return content;
-  }
-
-  return (
-    <Tooltip content={person.stableId}>
-      {content}
-    </Tooltip>
-  );
+  return content;
 }
 
 export function SetupPersonListText({

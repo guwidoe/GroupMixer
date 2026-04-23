@@ -35,6 +35,7 @@ pub(crate) struct BaselineConstructionContext<'a> {
     pub immovable_people: &'a HashMap<(usize, usize), usize>,
     pub cliques: &'a [Vec<usize>],
     pub clique_sessions: &'a [Option<Vec<usize>>],
+    pub hard_apart_partners_by_person_session: &'a [Vec<usize>],
     pub schedule: &'a mut Vec<Vec<Vec<usize>>>,
 }
 
@@ -48,6 +49,95 @@ impl BaselineConstructionContext<'_> {
     fn people_count(&self) -> usize {
         self.person_idx_to_id.len()
     }
+
+    #[inline]
+    fn person_session_slot(&self, day: usize, person_idx: usize) -> usize {
+        day * self.people_count() + person_idx
+    }
+
+    #[inline]
+    fn hard_apart_partners(&self, day: usize, person_idx: usize) -> &[usize] {
+        &self.hard_apart_partners_by_person_session[self.person_session_slot(day, person_idx)]
+    }
+
+    fn group_has_hard_apart_conflict(
+        &self,
+        day: usize,
+        person_idx: usize,
+        group_members: &[usize],
+    ) -> bool {
+        let partners = self.hard_apart_partners(day, person_idx);
+        !partners.is_empty() && group_members.iter().any(|member| partners.contains(member))
+    }
+
+    fn block_has_hard_apart_conflict(
+        &self,
+        day: usize,
+        block: &[usize],
+        group_members: &[usize],
+    ) -> bool {
+        block.iter().any(|&person_idx| {
+            self.group_has_hard_apart_conflict(day, person_idx, group_members)
+                || block.iter().any(|&other_idx| {
+                    other_idx != person_idx
+                        && self
+                            .hard_apart_partners(day, person_idx)
+                            .contains(&other_idx)
+                })
+        })
+    }
+}
+
+fn hard_apart_partners<'a>(
+    hard_apart_partners_by_person_session: &'a [Vec<usize>],
+    people_count: usize,
+    day: usize,
+    person_idx: usize,
+) -> &'a [usize] {
+    &hard_apart_partners_by_person_session[day * people_count + person_idx]
+}
+
+fn group_has_hard_apart_conflict(
+    hard_apart_partners_by_person_session: &[Vec<usize>],
+    people_count: usize,
+    day: usize,
+    person_idx: usize,
+    group_members: &[usize],
+) -> bool {
+    let partners = hard_apart_partners(
+        hard_apart_partners_by_person_session,
+        people_count,
+        day,
+        person_idx,
+    );
+    !partners.is_empty() && group_members.iter().any(|member| partners.contains(member))
+}
+
+fn block_has_hard_apart_conflict(
+    hard_apart_partners_by_person_session: &[Vec<usize>],
+    people_count: usize,
+    day: usize,
+    block: &[usize],
+    group_members: &[usize],
+) -> bool {
+    block.iter().any(|&person_idx| {
+        group_has_hard_apart_conflict(
+            hard_apart_partners_by_person_session,
+            people_count,
+            day,
+            person_idx,
+            group_members,
+        ) || block.iter().any(|&other_idx| {
+            other_idx != person_idx
+                && hard_apart_partners(
+                    hard_apart_partners_by_person_session,
+                    people_count,
+                    day,
+                    person_idx,
+                )
+                .contains(&other_idx)
+        })
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -70,6 +160,99 @@ pub(crate) fn apply_construction_seed_schedule(
     };
     let validated = validate_schedule_as_construction_seed(input, construction_seed_schedule)?;
     *context.schedule = validated.schedule;
+    validate_seeded_hard_constraints(context)?;
+
+    Ok(())
+}
+
+fn validate_seeded_hard_constraints(
+    context: &BaselineConstructionContext<'_>,
+) -> Result<(), SolverError> {
+    let people_count = context.people_count();
+    let num_sessions = context.schedule.len();
+
+    let mut assigned_group_by_person = vec![vec![None; people_count]; num_sessions];
+    for (day, groups) in context.schedule.iter().enumerate() {
+        for (group_idx, members) in groups.iter().enumerate() {
+            for &person_idx in members {
+                assigned_group_by_person[day][person_idx] = Some(group_idx);
+            }
+        }
+    }
+
+    for ((person_idx, session_idx), &required_group_idx) in context.immovable_people.iter() {
+        if let Some(actual_group_idx) = assigned_group_by_person[*session_idx][*person_idx] {
+            if actual_group_idx != required_group_idx {
+                return Err(SolverError::ValidationError(format!(
+                    "construction seed places immovable person '{}' in group '{}' instead of '{}' for session {}",
+                    context.person_idx_to_id[*person_idx],
+                    context.group_idx_to_id[actual_group_idx],
+                    context.group_idx_to_id[required_group_idx],
+                    session_idx
+                )));
+            }
+        }
+    }
+
+    for (clique_idx, clique) in context.cliques.iter().enumerate() {
+        for day in 0..num_sessions {
+            if let Some(sessions) = &context.clique_sessions[clique_idx] {
+                if !sessions.contains(&day) {
+                    continue;
+                }
+            }
+
+            let assigned_members = clique
+                .iter()
+                .copied()
+                .filter(|&person_idx| context.person_participation[person_idx][day])
+                .filter_map(|person_idx| {
+                    assigned_group_by_person[day][person_idx].map(|group_idx| (person_idx, group_idx))
+                })
+                .collect::<Vec<_>>();
+
+            if assigned_members.len() < 2 {
+                continue;
+            }
+
+            let first_group = assigned_members[0].1;
+            if assigned_members
+                .iter()
+                .any(|&(_, group_idx)| group_idx != first_group)
+            {
+                let members = assigned_members
+                    .iter()
+                    .map(|&(person_idx, _)| context.person_idx_to_id[person_idx].clone())
+                    .collect::<Vec<_>>();
+                return Err(SolverError::ValidationError(format!(
+                    "construction seed splits must-stay-together clique {:?} across multiple groups in session {}",
+                    members, day
+                )));
+            }
+        }
+    }
+
+    for (day, groups) in context.schedule.iter().enumerate() {
+        for (group_idx, members) in groups.iter().enumerate() {
+            for (pos, &person_idx) in members.iter().enumerate() {
+                let others = [&members[..pos], &members[(pos + 1)..]].concat();
+                if let Some(&other_idx) = others.iter().find(|&&other_idx| {
+                    context
+                        .hard_apart_partners(day, person_idx)
+                        .binary_search(&other_idx)
+                        .is_ok()
+                }) {
+                    return Err(SolverError::ValidationError(format!(
+                        "construction seed places must-stay-apart pair ['{}', '{}'] together in group '{}' for session {}",
+                        context.person_idx_to_id[person_idx],
+                        context.person_idx_to_id[other_idx],
+                        context.group_idx_to_id[group_idx],
+                        day
+                    )));
+                }
+            }
+        }
+    }
 
     Ok(())
 }
@@ -79,6 +262,7 @@ pub(crate) fn apply_baseline_construction_heuristic(
 ) -> Result<(), SolverError> {
     let people_count = context.people_count();
     let group_count = context.group_count();
+    let hard_apart_partners_by_person_session = context.hard_apart_partners_by_person_session;
 
     // Preserve the legacy solver1 construction heuristic exactly.
     let mut rng = ChaCha12Rng::seed_from_u64(derive_phase_seed(
@@ -123,6 +307,20 @@ pub(crate) fn apply_baseline_construction_heuristic(
                 )));
             }
 
+            if group_has_hard_apart_conflict(
+                hard_apart_partners_by_person_session,
+                people_count,
+                day,
+                person_idx,
+                &day_schedule[group_idx],
+            ) {
+                return Err(SolverError::ValidationError(format!(
+                    "Cannot place immovable person: group {} would violate MustStayApart for {}",
+                    context.group_idx_to_id[group_idx],
+                    context.person_idx_to_id[person_idx]
+                )));
+            }
+
             day_schedule[group_idx].push(person_idx);
             group_cursors[group_idx] += 1;
             assigned_in_day[person_idx] = true;
@@ -155,7 +353,15 @@ pub(crate) fn apply_baseline_construction_heuristic(
                 let group_size = context.effective_group_capacities[day * group_count + group_idx];
                 let available_space = group_size - group_cursors[group_idx];
 
-                if available_space >= clique.len() {
+                if available_space >= clique.len()
+                    && !block_has_hard_apart_conflict(
+                        hard_apart_partners_by_person_session,
+                        people_count,
+                        day,
+                        clique,
+                        &day_schedule[group_idx],
+                    )
+                {
                     for &member in clique {
                         day_schedule[group_idx].push(member);
                         assigned_in_day[member] = true;
@@ -189,7 +395,15 @@ pub(crate) fn apply_baseline_construction_heuristic(
             potential_groups.shuffle(&mut rng);
             for group_idx in potential_groups {
                 let group_size = context.effective_group_capacities[day * group_count + group_idx];
-                if group_cursors[group_idx] < group_size {
+                if group_cursors[group_idx] < group_size
+                    && !group_has_hard_apart_conflict(
+                        hard_apart_partners_by_person_session,
+                        people_count,
+                        day,
+                        person_idx,
+                        &day_schedule[group_idx],
+                    )
+                {
                     day_schedule[group_idx].push(person_idx);
                     group_cursors[group_idx] += 1;
                     assigned_in_day[person_idx] = true;
@@ -291,7 +505,11 @@ pub(crate) fn is_paper_compatible_social_golfer_case(
     if !context.immovable_people.is_empty() || !context.cliques.is_empty() {
         return false;
     }
-    if context.clique_sessions.iter().any(|sessions| sessions.is_some()) {
+    if context
+        .clique_sessions
+        .iter()
+        .any(|sessions| sessions.is_some())
+    {
         return false;
     }
     if context
@@ -318,10 +536,7 @@ pub(crate) fn is_paper_compatible_social_golfer_case(
         && rest.iter().all(|&capacity| capacity == first_capacity)
 }
 
-fn initialize_group_cursors(
-    context: &BaselineConstructionContext<'_>,
-    day: usize,
-) -> Vec<usize> {
+fn initialize_group_cursors(context: &BaselineConstructionContext<'_>, day: usize) -> Vec<usize> {
     let mut group_cursors = vec![0; context.group_count()];
     for (group_idx, members) in context.schedule[day].iter().enumerate() {
         group_cursors[group_idx] = members.len();
@@ -370,6 +585,14 @@ fn place_immovables_for_day(
             )));
         }
 
+        if context.group_has_hard_apart_conflict(day, person_idx, &context.schedule[day][group_idx]) {
+            return Err(SolverError::ValidationError(format!(
+                "Cannot place immovable person: group {} would violate MustStayApart for {}",
+                context.group_idx_to_id[group_idx],
+                context.person_idx_to_id[person_idx]
+            )));
+        }
+
         context.schedule[day][group_idx].push(person_idx);
         group_cursors[group_idx] += 1;
         assigned_in_day[person_idx] = true;
@@ -393,7 +616,10 @@ fn place_active_cliques_for_day(
         if clique.iter().any(|&member| assigned_in_day[member]) {
             continue;
         }
-        if !clique.iter().all(|&member| context.person_participation[member][day]) {
+        if !clique
+            .iter()
+            .all(|&member| context.person_participation[member][day])
+        {
             continue;
         }
         if let Some(sessions) = &context.clique_sessions[clique_idx] {
@@ -406,6 +632,11 @@ fn place_active_cliques_for_day(
             .filter(|&group_idx| {
                 let group_size = context.effective_group_capacities[day * group_count + group_idx];
                 group_cursors[group_idx] + clique.len() <= group_size
+                    && !context.block_has_hard_apart_conflict(
+                        day,
+                        clique,
+                        &context.schedule[day][group_idx],
+                    )
             })
             .collect();
 
@@ -457,12 +688,14 @@ fn fill_remaining_people_for_day(
         let fill_mode = pair_fill_mode_for_anchor(anchor_occupancy[group_idx]);
 
         while group_cursors[group_idx] + 2 <= capacity {
-            let unassigned_people = remaining_unassigned_people(participating_people, assigned_in_day);
+            let unassigned_people =
+                remaining_unassigned_people(participating_people, assigned_in_day);
             if unassigned_people.len() < 2 {
                 break;
             }
 
             let Some((left, right)) = choose_best_pair_for_group(
+                context,
                 &context.schedule[day][group_idx],
                 &unassigned_people,
                 day,
@@ -475,8 +708,7 @@ fn fill_remaining_people_for_day(
             ) else {
                 return Err(SolverError::ValidationError(format!(
                     "Could not place a pair into group {} for day {}",
-                    context.group_idx_to_id[group_idx],
-                    day
+                    context.group_idx_to_id[group_idx], day
                 )));
             };
 
@@ -488,12 +720,14 @@ fn fill_remaining_people_for_day(
         }
 
         if group_cursors[group_idx] < capacity {
-            let unassigned_people = remaining_unassigned_people(participating_people, assigned_in_day);
+            let unassigned_people =
+                remaining_unassigned_people(participating_people, assigned_in_day);
             if unassigned_people.is_empty() {
                 continue;
             }
 
             let Some(person_idx) = choose_best_candidate_for_group(
+                context,
                 &context.schedule[day][group_idx],
                 &unassigned_people,
                 day,
@@ -504,8 +738,7 @@ fn fill_remaining_people_for_day(
             ) else {
                 return Err(SolverError::ValidationError(format!(
                     "Could not place remaining participants into group {} for day {}",
-                    context.group_idx_to_id[group_idx],
-                    day
+                    context.group_idx_to_id[group_idx], day
                 )));
             };
 
@@ -569,7 +802,13 @@ fn choose_best_group_for_block(
         .iter()
         .map(|&group_idx| ScoredGroup {
             group_idx,
-            freedom: freedom_of_union(&day_schedule[group_idx], block, day, future_overlap, met_before),
+            freedom: freedom_of_union(
+                &day_schedule[group_idx],
+                block,
+                day,
+                future_overlap,
+                met_before,
+            ),
         })
         .collect::<Vec<_>>();
 
@@ -584,16 +823,12 @@ fn choose_best_group_for_block(
             .then(left.group_idx.cmp(&right.group_idx))
     });
 
-    choose_from_max_freedom_prefix(
-        &scored,
-        |candidate| candidate.freedom,
-        params.gamma,
-        rng,
-    )
-    .map(|candidate| candidate.group_idx)
+    choose_from_max_freedom_prefix(&scored, |candidate| candidate.freedom, params.gamma, rng)
+        .map(|candidate| candidate.group_idx)
 }
 
 fn choose_best_pair_for_group(
+    context: &BaselineConstructionContext<'_>,
     group_members: &[usize],
     unassigned_people: &[usize],
     day: usize,
@@ -617,6 +852,12 @@ fn choose_best_pair_for_group(
         for right_idx in (left_idx + 1)..unassigned_people.len() {
             let left = unassigned_people[left_idx];
             let right = unassigned_people[right_idx];
+            if context.group_has_hard_apart_conflict(day, left, group_members)
+                || context.group_has_hard_apart_conflict(day, right, group_members)
+                || context.hard_apart_partners(day, left).contains(&right)
+            {
+                continue;
+            }
             let raw_freedom = pair_slot_freedom(
                 group_members,
                 left,
@@ -626,12 +867,8 @@ fn choose_best_pair_for_group(
                 met_before,
                 fill_mode,
             );
-            let adjusted_freedom = adjusted_pair_freedom(
-                left,
-                right,
-                raw_freedom,
-                selected_pair_penalties,
-            );
+            let adjusted_freedom =
+                adjusted_pair_freedom(left, right, raw_freedom, selected_pair_penalties);
             scored.push(ScoredPair {
                 left,
                 right,
@@ -665,6 +902,7 @@ fn choose_best_pair_for_group(
 }
 
 fn choose_best_candidate_for_group(
+    context: &BaselineConstructionContext<'_>,
     group_members: &[usize],
     unassigned_people: &[usize],
     day: usize,
@@ -681,9 +919,18 @@ fn choose_best_candidate_for_group(
 
     let mut scored = unassigned_people
         .iter()
+        .filter(|&&person_idx| {
+            !context.group_has_hard_apart_conflict(day, person_idx, group_members)
+        })
         .map(|&person_idx| ScoredCandidate {
             person_idx,
-            freedom: freedom_of_union(group_members, &[person_idx], day, future_overlap, met_before),
+            freedom: freedom_of_union(
+                group_members,
+                &[person_idx],
+                day,
+                future_overlap,
+                met_before,
+            ),
         })
         .collect::<Vec<_>>();
 
@@ -698,13 +945,8 @@ fn choose_best_candidate_for_group(
             .then(left.person_idx.cmp(&right.person_idx))
     });
 
-    choose_from_max_freedom_prefix(
-        &scored,
-        |candidate| candidate.freedom,
-        params.gamma,
-        rng,
-    )
-    .map(|candidate| candidate.person_idx)
+    choose_from_max_freedom_prefix(&scored, |candidate| candidate.freedom, params.gamma, rng)
+        .map(|candidate| candidate.person_idx)
 }
 
 fn choose_from_max_adjusted_prefix<T: Copy>(
@@ -759,10 +1001,16 @@ fn pair_slot_freedom(
     fill_mode: PairFillMode,
 ) -> usize {
     match fill_mode {
-        PairFillMode::PaperPairSlots => paper_freedom_of_set(&[left, right], day, future_overlap, met_before),
-        PairFillMode::ResidualExtended => {
-            freedom_of_union(group_members, &[left, right], day, future_overlap, met_before)
+        PairFillMode::PaperPairSlots => {
+            paper_freedom_of_set(&[left, right], day, future_overlap, met_before)
         }
+        PairFillMode::ResidualExtended => freedom_of_union(
+            group_members,
+            &[left, right],
+            day,
+            future_overlap,
+            met_before,
+        ),
     }
 }
 
@@ -806,8 +1054,7 @@ fn adjusted_pair_freedom(
     raw_freedom: usize,
     selected_pair_penalties: &[Vec<usize>],
 ) -> i64 {
-    raw_freedom as i64
-        - (selected_pair_penalties[left][right] as i64 * PAPER_PAIR_REPEAT_PENALTY)
+    raw_freedom as i64 - (selected_pair_penalties[left][right] as i64 * PAPER_PAIR_REPEAT_PENALTY)
 }
 
 fn note_selected_pair_penalties_for_day(
@@ -903,6 +1150,10 @@ mod tests {
         let immovable_people = Box::leak(Box::new(HashMap::new()));
         let cliques = Box::leak(Box::new(Vec::new()));
         let clique_sessions = Box::leak(Box::new(Vec::new()));
+        let hard_apart_partners_by_person_session = Box::leak(Box::new(vec![
+            Vec::new();
+            num_sessions * person_participation.len()
+        ]));
         let schedule = Box::leak(Box::new(schedule));
         BaselineConstructionContext {
             effective_seed: 7,
@@ -913,34 +1164,60 @@ mod tests {
             immovable_people,
             cliques,
             clique_sessions,
+            hard_apart_partners_by_person_session,
             schedule,
         }
     }
 
     #[test]
     fn future_overlap_only_counts_future_sessions() {
-        let person_participation = vec![vec![true, false, false], vec![true, true, false], vec![false, true, true]];
+        let person_participation = vec![
+            vec![true, false, false],
+            vec![true, true, false],
+            vec![false, true, true],
+        ];
         let matrix = build_future_overlap_matrix(&person_participation, 3);
 
-        assert!(matrix[0][1][2], "day 0 should see session 1 future overlap for p1/p2");
-        assert!(!matrix[1][0][1], "day 1 should not count day 0 as future overlap");
+        assert!(
+            matrix[0][1][2],
+            "day 0 should see session 1 future overlap for p1/p2"
+        );
+        assert!(
+            !matrix[1][0][1],
+            "day 1 should not count day 0 as future overlap"
+        );
         assert!(!matrix[2][1][2], "last day should have no future overlap");
     }
 
     #[test]
     fn paper_freedom_excludes_already_met_people() {
-        let future_overlap = build_future_overlap_matrix(&vec![vec![true, true], vec![true, true], vec![true, true]], 2);
+        let future_overlap = build_future_overlap_matrix(
+            &vec![vec![true, true], vec![true, true], vec![true, true]],
+            2,
+        );
         let mut met_before = vec![vec![false; 3]; 3];
         met_before[0][2] = true;
         met_before[2][0] = true;
 
         let freedom = paper_freedom_of_set(&[0, 1], 0, &future_overlap, &met_before);
-        assert_eq!(freedom, 0, "candidate p2 should be excluded because p0 already met p2");
+        assert_eq!(
+            freedom, 0,
+            "candidate p2 should be excluded because p0 already met p2"
+        );
     }
 
     #[test]
     fn paper_pair_slot_scoring_ignores_existing_group_members() {
-        let future_overlap = build_future_overlap_matrix(&vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true], vec![true, true]], 2);
+        let future_overlap = build_future_overlap_matrix(
+            &vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
+            2,
+        );
         let mut met_before = vec![vec![false; 5]; 5];
         met_before[0][4] = true;
         met_before[4][0] = true;
@@ -971,7 +1248,12 @@ mod tests {
     #[test]
     fn pair_penalty_dominates_raw_pair_freedom() {
         let future_overlap = build_future_overlap_matrix(
-            &vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]],
+            &vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
             2,
         );
         let met_before = vec![vec![false; 4]; 4];
@@ -998,15 +1280,31 @@ mod tests {
     #[test]
     fn gamma_zero_picks_lexicographically_smallest_max_pair() {
         let future_overlap = build_future_overlap_matrix(
-            &vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]],
+            &vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
             2,
         );
         let met_before = vec![vec![false; 4]; 4];
         let selected_pair_penalties = vec![vec![0usize; 4]; 4];
         let params = FreedomAwareConstructionParams { gamma: 0.0 };
         let mut rng = ChaCha12Rng::seed_from_u64(3);
+        let context = context_with_schedule(
+            vec![vec![vec![], vec![]], vec![vec![], vec![]]],
+            vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
+            vec![2, 2, 2, 2],
+        );
 
         let pair = choose_best_pair_for_group(
+            &context,
             &[],
             &[0, 1, 2, 3],
             0,
@@ -1025,17 +1323,33 @@ mod tests {
     #[test]
     fn gamma_one_randomizes_only_within_equal_max_pairs() {
         let future_overlap = build_future_overlap_matrix(
-            &vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]],
+            &vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
             2,
         );
         let met_before = vec![vec![false; 4]; 4];
         let selected_pair_penalties = vec![vec![0usize; 4]; 4];
         let params = FreedomAwareConstructionParams { gamma: 1.0 };
         let mut saw_non_lexicographic = false;
+        let context = context_with_schedule(
+            vec![vec![vec![], vec![]], vec![vec![], vec![]]],
+            vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
+            vec![2, 2, 2, 2],
+        );
 
         for seed in 0..32 {
             let mut rng = ChaCha12Rng::seed_from_u64(seed);
             let pair = choose_best_pair_for_group(
+                &context,
                 &[],
                 &[0, 1, 2, 3],
                 0,
@@ -1047,7 +1361,10 @@ mod tests {
                 &mut rng,
             )
             .unwrap();
-            assert!(matches!(pair, (0, 1) | (0, 2) | (0, 3) | (1, 2) | (1, 3) | (2, 3)));
+            assert!(matches!(
+                pair,
+                (0, 1) | (0, 2) | (0, 3) | (1, 2) | (1, 3) | (2, 3)
+            ));
             if pair != (0, 1) {
                 saw_non_lexicographic = true;
             }
@@ -1060,14 +1377,24 @@ mod tests {
     fn paper_compatibility_detector_requires_uniform_even_unseeded_case() {
         let context = context_with_schedule(
             vec![vec![vec![], vec![]], vec![vec![], vec![]]],
-            vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]],
+            vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
             vec![2, 2, 2, 2],
         );
         assert!(is_paper_compatible_social_golfer_case(&context));
 
         let seeded_context = context_with_schedule(
             vec![vec![vec![0], vec![]], vec![vec![], vec![]]],
-            vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]],
+            vec![
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+                vec![true, true],
+            ],
             vec![2, 2, 2, 2],
         );
         assert!(!is_paper_compatible_social_golfer_case(&seeded_context));
@@ -1076,9 +1403,18 @@ mod tests {
     #[test]
     fn freedom_aware_constructor_is_deterministic_for_fixed_seed() {
         let schedule = vec![vec![vec![], vec![]], vec![vec![], vec![]]];
-        let person_participation = vec![vec![true, true], vec![true, true], vec![true, true], vec![true, true]];
+        let person_participation = vec![
+            vec![true, true],
+            vec![true, true],
+            vec![true, true],
+            vec![true, true],
+        ];
         let capacities = vec![2, 2, 2, 2];
-        let mut left_context = context_with_schedule(schedule.clone(), person_participation.clone(), capacities.clone());
+        let mut left_context = context_with_schedule(
+            schedule.clone(),
+            person_participation.clone(),
+            capacities.clone(),
+        );
         let mut right_context = context_with_schedule(schedule, person_participation, capacities);
         let params = FreedomAwareConstructionParams { gamma: 0.0 };
 

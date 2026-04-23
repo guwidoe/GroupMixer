@@ -24,6 +24,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --project=chromium --ignore-snapshots --grep-invert \"Visual Regression|Workflow coverage\"",
     "test:e2e:workflows": "playwright test --ignore-snapshots --grep-invert \"Visual Regression\"",
+    "test:e2e:perf": "RUN_GRID_PERF=1 playwright test e2e/tests/grid-performance.spec.ts --project=chromium --workers=1",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:visual": "playwright test visual-regression.spec.ts",
@@ -35,7 +36,7 @@
   "dependencies": {
     "@react-sigma/core": "^5.0.6",
     "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.5.0",
+    "@react-three/fiber": "^9.6.0",
     "@tanstack/react-table": "^8.21.3",
     "@vercel/analytics": "^2.0.1",
     "graphology": "^0.26.0",
@@ -47,6 +48,7 @@
     "react-router-dom": "^7.13.2",
     "three": "^0.183.2",
     "three-stdlib": "^2.36.1",
+    "zundo": "^2.3.0",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

@@ -23,10 +23,48 @@ Primary entrypoint:
 
 The wrapper builds and launches `gm-cli benchmark ...` through `tools/benchmark_runner.py`.
 
+### Solver3 development wrapper
+
+For ongoing `solver3` work, use the checked-in bundle wrapper instead of re-assembling ad hoc test and manifest lists:
+
+```bash
+./tools/solver3_development_bundle.sh checks
+./tools/solver3_development_bundle.sh record
+./tools/solver3_development_bundle.sh full
+./tools/solver3_development_bundle.sh record-targeted-multiseed
+./tools/solver3_development_bundle.sh full-targeted-multiseed
+./tools/solver3_development_bundle.sh compare-last-two
+```
+
+The wrapper intentionally composes the existing framework layers into one reusable solver3 lane:
+
+- shared semantic guardrails (`data_driven_tests`, `property_tests`, move/search regression suites)
+- solver3 correctness/debug checks (`solver3-oracle-checks` lane)
+- benchmark metadata/validation checks in `gm-benchmarking`
+- a durable benchmark recording bundle covering:
+  - representative solve smoke
+  - correctness-edge intertwined coverage
+  - canonical objective adversarial + stretch solver3 bundles
+  - fixed-iteration diagnostic adversarial + stretch solver3 bundles
+  - large Sailing Trip hotpath lanes
+  - targeted Sailing Trip real + synthetic partial-attendance stability lanes (`10s` and `1M`), including the keep-apart variant
+
+Use this wrapper as the default local solver3 development bundle; use the remote same-machine benchmark lane when timing interpretation needs to be authoritative.
+
+For stochasticity checks on the six targeted Sailing Trip / partial-attendance lanes, use the checked-in multiseed manifests via:
+
+```bash
+./tools/solver3_development_bundle.sh record-targeted-multiseed
+./tools/solver3_development_bundle.sh full-targeted-multiseed
+```
+
+Those commands run four explicit seeds per targeted lane and set `GROUPMIXER_BENCHMARK_JOBS=4` by default so the four seed cases execute in parallel within each suite.
+
 Safety knobs:
 
 - `GROUPMIXER_BENCH_BUILD_JOBS=1` keeps release builds memory-bounded by default
 - `GROUPMIXER_BENCH_PYTHON_BIN=/usr/bin/python3` forces a known-safe interpreter when needed
+- `GROUPMIXER_BENCHMARK_JOBS=4` controls benchmark case parallelism; the targeted multiseed wrapper commands default this to `4`
 - `./tools/benchmark_workflow.sh doctor` reports the selected interpreter and refuses intercepted wrappers
 
 ## Remote async workflow

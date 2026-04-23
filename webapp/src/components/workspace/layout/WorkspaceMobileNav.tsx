@@ -8,6 +8,8 @@ interface WorkspaceMobileNavProps {
   workspaceLabel: string;
   groupedItems: WorkspaceNavGroup[];
   activeItemId: string | null;
+  expandedGroups: Record<string, boolean>;
+  onToggleGroupExpanded: (groupId: string) => void;
   onNavigate: (itemId: string) => void;
   headerContent?: React.ReactNode;
 }
@@ -16,6 +18,8 @@ export function WorkspaceMobileNav({
   workspaceLabel,
   groupedItems,
   activeItemId,
+  expandedGroups,
+  onToggleGroupExpanded,
   onNavigate,
   headerContent,
 }: WorkspaceMobileNavProps) {
@@ -97,6 +101,8 @@ export function WorkspaceMobileNav({
                   group={group}
                   activeItemId={activeItemId}
                   isRailCollapsed={false}
+                  isExpanded={expandedGroups[group.id] ?? true}
+                  onToggleExpanded={onToggleGroupExpanded}
                   onNavigate={(itemId) => {
                     onNavigate(itemId);
                     setIsOpen(false);

@@ -12,14 +12,21 @@ interface QuickSetupResultsProps {
 
 export function QuickSetupResults({ controller }: QuickSetupResultsProps) {
   const { result } = controller;
-  const replaceWorkspace = useAppStore((state) => state.replaceWorkspace);
+  const loadWorkspaceAsNewScenario = useAppStore((state) => state.loadWorkspaceAsNewScenario);
   const navigate = useNavigate();
   const workspacePayload = controller.buildWorkspaceBridgePayload();
   const solvedSolution = workspacePayload.solution ?? null;
   const sharedSessionData = solvedSolution ? buildResultsSessionData(workspacePayload.scenario, solvedSolution) : [];
 
   const openAdvancedWorkspace = () => {
-    replaceWorkspace(controller.buildWorkspaceBridgePayload());
+    const nextScenarioId = loadWorkspaceAsNewScenario({
+      ...controller.buildWorkspaceBridgePayload(),
+      scenarioName: 'Quick setup draft',
+    });
+    controller.updateDraft((current) => ({
+      ...current,
+      workspaceScenarioId: nextScenarioId,
+    }));
     navigate(result ? '/app/results' : '/app/scenario/people');
   };
 

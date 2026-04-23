@@ -4,9 +4,10 @@
 
 Initial intertwined-constraints correctness corpus is now checked in as a dedicated benchmark suite.
 
-Suite manifest:
+Suite manifests:
 
 - `backend/benchmarking/suites/correctness-edge-intertwined-v1.yaml`
+- `backend/benchmarking/suites/correctness-edge-intertwined-solver3-v1.yaml`
 
 ## Scope and intent
 
@@ -31,6 +32,7 @@ That configuration is deliberate: this lane is a correctness corpus, not the can
 | `adversarial.correctness-late-arrivals-early-departures` | `backend/benchmarking/cases/adversarial/correctness_late_arrivals_early_departures.json` | `backend/core/tests/test_cases/late_arrivals_early_departures_test.json` | Partial participation + session scoping + immovable anchors |
 | `adversarial.correctness-session-aware-group-capacities` | `backend/benchmarking/cases/adversarial/correctness_session_aware_group_capacities.json` | `backend/core/tests/test_cases/session_aware_group_capacities.json` | Tight per-session capacities with availability asymmetry |
 | `adversarial.correctness-session-specific-constraints` | `backend/benchmarking/cases/adversarial/correctness_session_specific_constraints.json` | `backend/core/tests/test_cases/session_specific_constraints_test.json` | Overlapping session windows for must/should-not constraints |
+| `adversarial.correctness-partial-attendance-keep-apart-stress` | `backend/benchmarking/cases/adversarial/correctness_partial_attendance_keep_apart_stress.json` | `backend/core/tests/test_cases/constraint_must_stay_apart_partial_attendance_stress_solver3.json` | Large partial-attendance/session-capacity workload with additional hard Keep Apart windows (solver3-specific correctness extension) |
 
 ## Run command
 

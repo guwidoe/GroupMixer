@@ -6,6 +6,8 @@ import { Tooltip } from '../Tooltip';
 import type { DemoCaseWithMetrics } from './types';
 import { useOutsideClick } from '../../hooks';
 import { getButtonClassName } from '../ui';
+import type { ButtonSize } from '../ui';
+import { GENERATED_DEMO_CASE_ID, GENERATED_DEMO_CASE_NAME } from '../../services/demoScenarioGenerator';
 
 interface DemoDataDropdownProps {
   onDemoCaseClick: (demoCaseId: string, demoCaseName: string) => void;
@@ -13,7 +15,11 @@ interface DemoDataDropdownProps {
   placement?: 'bottom' | 'right';
   collapsed?: boolean;
   triggerLabel?: string;
+  triggerButtonSize?: ButtonSize;
+  triggerClassName?: string;
   popupOwnerId?: string;
+  loadCases?: () => Promise<DemoCaseWithMetrics[]>;
+  includeGeneratedDemo?: boolean;
 }
 
 interface DropdownPosition {
@@ -29,7 +35,11 @@ export function DemoDataDropdown({
   placement = 'bottom',
   collapsed = false,
   triggerLabel = 'Demo Data',
+  triggerButtonSize,
+  triggerClassName,
   popupOwnerId,
+  loadCases,
+  includeGeneratedDemo = true,
 }: DemoDataDropdownProps) {
   const addNotification = useAppStore((state) => state.addNotification);
   const demoDropdownRef = useRef<HTMLDivElement>(null);
@@ -107,8 +117,9 @@ export function DemoDataDropdown({
   useEffect(() => {
     if (isOpen && demoCasesWithMetrics.length === 0 && !loadingDemoMetrics) {
       setLoadingDemoMetrics(true);
-      import('../../services/demoDataService')
-        .then((module) => module.loadDemoCasesWithMetrics())
+      (loadCases
+        ? loadCases()
+        : import('../../services/demoDataService').then((module) => module.loadDemoCasesWithMetrics()))
         .then((cases) => {
           setDemoCasesWithMetrics(cases);
         })
@@ -124,7 +135,7 @@ export function DemoDataDropdown({
           setLoadingDemoMetrics(false);
         });
     }
-  }, [isOpen, demoCasesWithMetrics.length, loadingDemoMetrics, addNotification]);
+  }, [isOpen, demoCasesWithMetrics.length, loadingDemoMetrics, addNotification, loadCases]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -191,7 +202,13 @@ export function DemoDataDropdown({
       onMouseLeave={() => setIsTriggerHovered(false)}
       className={variant === 'menu'
         ? 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors'
-        : getButtonClassName({ variant: variant === 'header' ? 'toolbar' : 'secondary', size: variant === 'header' ? 'md' : 'lg' })}
+        : [
+          getButtonClassName({
+            variant: variant === 'header' ? 'toolbar' : 'secondary',
+            size: triggerButtonSize ?? (variant === 'header' ? 'md' : 'lg'),
+          }),
+          triggerClassName,
+        ].filter(Boolean).join(' ')}
       style={{
         outline: 'none',
         boxShadow: 'none',
@@ -261,6 +278,37 @@ export function DemoDataDropdown({
             </div>
           ) : (
             <>
+              {includeGeneratedDemo ? (
+                <div className="border-b" style={{ borderColor: 'var(--border-primary)' }}>
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      onDemoCaseClick(GENERATED_DEMO_CASE_ID, GENERATED_DEMO_CASE_NAME);
+                    }}
+                    className="flex w-full flex-col gap-1 px-3 py-3 text-left transition-colors"
+                    style={{
+                      color: 'var(--text-primary)',
+                      backgroundColor: 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--bg-secondary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                    role="menuitem"
+                  >
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Zap className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+                      <span>{GENERATED_DEMO_CASE_NAME}</span>
+                    </div>
+                    <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
+                      Pick groups, people per group, and sessions. We will generate random people and group names with one repeat-pairing constraint.
+                    </p>
+                  </button>
+                </div>
+              ) : null}
+
               {(['Simple', 'Intermediate', 'Advanced', 'Benchmark'] as const).map((category) => {
                 const casesInCategory = demoCasesWithMetrics.filter((c) => c.category === category);
                 if (casesInCategory.length === 0) return null;

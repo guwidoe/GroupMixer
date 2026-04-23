@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAttributeDefinition } from '../../../services/scenarioAttributes';
@@ -17,6 +17,7 @@ function createScenario(): Scenario {
     num_sessions: 3,
     constraints: [
       { type: 'ImmovablePeople', people: ['p1'], group_id: 'g1', sessions: [0] },
+      { type: 'MustStayApart', people: ['p1', 'p3'], sessions: [1] },
       { type: 'ShouldStayTogether', people: ['p2', 'p3'], penalty_weight: 20, sessions: [0, 1] },
       {
         type: 'AttributeBalance',
@@ -82,12 +83,62 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('columnheader', { name: /group/i })).toBeInTheDocument();
     expect(screen.getByText('Alex')).toBeInTheDocument();
     expect(screen.queryByText('p1')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
-
-    await user.click(screen.getByText('Alex'));
-    expect(onEdit).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
   }, 10000);
+
+  it('offers symmetric hard-to-soft conversion for keep-apart constraints', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <HardConstraintFamilySection family="MustStayApart" onAdd={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    expect(screen.getByRole('heading', { name: /keep apart/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /people/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    await user.click(screen.getByRole('button', { name: /select cards/i }));
+    await user.click(screen.getByRole('button', { name: /select keep apart item/i }));
+    await user.click(screen.getByRole('button', { name: /^actions$/i }));
+
+    expect(screen.getByRole('button', { name: /convert selected to prefer apart/i })).toBeInTheDocument();
+  });
+
+  it('uses the shared session scope editor for fixed placements in list edit mode', async () => {
+    const user = userEvent.setup();
+
+    useAppStore.setState((state) => ({
+      ...state,
+      resolveScenario: () => ({
+        ...createScenario(),
+        constraints: [
+          { type: 'ImmovablePeople', people: ['p1'], group_id: 'g1' },
+          { type: 'ImmovablePeople', people: ['p2'], group_id: 'g1', sessions: [0, 1, 2] },
+        ],
+      }),
+    }));
+
+    render(
+      <HardConstraintFamilySection family="ImmovablePeople" onAdd={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    expect(screen.getByText('All sessions')).toBeInTheDocument();
+    expect(screen.getByText('1, 2, 3')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+
+    expect(screen.queryByText('Only selected sessions')).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: /edit sessions/i })[0]);
+
+    expect(screen.getAllByText('All sessions').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Only selected sessions').length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('radio', { name: /only selected sessions/i }));
+    expect(screen.getByRole('checkbox', { name: '1' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '2' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '3' })).toBeInTheDocument();
+  });
 
   it('renders soft constraint family conversion affordances without the old family tabs', async () => {
     const user = userEvent.setup();
@@ -110,6 +161,53 @@ describe('ConstraintFamilySections', () => {
     await user.click(screen.getByRole('button', { name: /select prefer together item/i }));
     await user.click(screen.getByRole('button', { name: /^actions$/i }));
     expect(screen.getByRole('button', { name: /convert selected to pair encounters/i })).toBeInTheDocument();
+  });
+
+  it('uses the shared session scope editor for pair encounters in list edit mode', async () => {
+    const user = userEvent.setup();
+
+    useAppStore.setState((state) => ({
+      ...state,
+      resolveScenario: () => ({
+        ...createScenario(),
+        constraints: [
+          {
+            type: 'PairMeetingCount',
+            people: ['p1', 'p2'],
+            target_meetings: 1,
+            mode: 'exact',
+            penalty_weight: 10,
+          },
+          {
+            type: 'PairMeetingCount',
+            people: ['p2', 'p3'],
+            sessions: [0, 1, 2],
+            target_meetings: 2,
+            mode: 'at_least',
+            penalty_weight: 20,
+          },
+        ],
+      }),
+    }));
+
+    render(
+      <SoftConstraintFamilySection family="PairMeetingCount" onAdd={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    expect(screen.getByText('All sessions')).toBeInTheDocument();
+    expect(screen.getByText('1, 2, 3')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+
+    expect(screen.queryByText('Only selected sessions')).not.toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: /edit sessions/i })[0]);
+
+    expect(screen.getAllByText('All sessions').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Only selected sessions').length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('radio', { name: /only selected sessions/i }));
+    expect(screen.getByRole('checkbox', { name: '1' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '2' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: '3' })).toBeInTheDocument();
   });
 
   it('uses attribute names plus a single targets column for attribute balance list editing and csv', async () => {
@@ -139,16 +237,15 @@ describe('ConstraintFamilySections', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('columnheader', { name: /targets/i })).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /female/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /^male /i })).not.toBeInTheDocument();
-    expect(screen.getByText('gender')).toBeInTheDocument();
-    expect(screen.getByText(/female: 2 · male: 1/i)).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /edit table/i }));
-    expect(screen.getByRole('spinbutton', { name: /target for female/i })).toHaveValue(2);
-    expect(screen.getByRole('spinbutton', { name: /target for male/i })).toHaveValue(1);
+    expect(screen.getByLabelText('female count')).toHaveValue('2');
+    expect(screen.getByLabelText('male count')).toHaveValue('1');
+    expect(screen.getByRole('button', { name: /disable target for female/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /disable target for male/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /adjust boundary between female and male/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /balance attributes csv/i });
@@ -170,6 +267,84 @@ describe('ConstraintFamilySections', () => {
         }),
       }),
     ]);
+  });
+
+  it('shows the attribute-balance mode on cards', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <SoftConstraintFamilySection
+        family="AttributeBalance"
+        onAdd={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+
+    expect(screen.getByText('Mode')).toBeInTheDocument();
+    expect(screen.getByText('exact')).toBeInTheDocument();
+    expect(screen.getByLabelText('female count')).toHaveValue('2');
+  });
+
+  it('allows inline attribute-balance editing on cards', async () => {
+    const user = userEvent.setup();
+    const setScenario = vi.fn();
+
+    useAppStore.setState({
+      ...useAppStore.getState(),
+      setScenario,
+    });
+
+    render(
+      <SoftConstraintFamilySection
+        family="AttributeBalance"
+        onAdd={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+
+    const femaleInput = screen.getByLabelText('female count');
+    fireEvent.change(femaleInput, { target: { value: '3' } });
+
+    await waitFor(() => {
+      expect(setScenario).toHaveBeenCalledWith(
+        expect.objectContaining({
+          constraints: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'AttributeBalance',
+              desired_values: { female: 3, male: 1 },
+            }),
+          ]),
+        }),
+      );
+    });
+  });
+
+  it('keeps background card clicks opening the attribute-balance modal', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+
+    render(
+      <SoftConstraintFamilySection
+        family="AttributeBalance"
+        onAdd={vi.fn()}
+        onEdit={onEdit}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    await user.click(screen.getByRole('button', { name: /edit balance attributes constraint/i }));
+
+    expect(onEdit).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'AttributeBalance' }),
+      expect.any(Number),
+    );
   });
 
   it('validates attribute-balance target JSON keys against the selected attribute options', async () => {

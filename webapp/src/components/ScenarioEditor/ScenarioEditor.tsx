@@ -1,6 +1,8 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { DemoDataWarningModal } from '../modals/DemoDataWarningModal';
+import { GeneratedDemoDataModal } from '../modals/GeneratedDemoDataModal';
+import { ReduceSessionsReviewModal } from '../modals/ReduceSessionsReviewModal';
 import { ConstraintFormModal } from './ConstraintFormModal';
 import { ScenarioSetupLayout } from './layout/ScenarioSetupLayout';
 import { ScenarioEditorConstraintModals } from './ScenarioEditorConstraintModals';
@@ -10,7 +12,7 @@ import { getScenarioSetupLegacyRedirect, resolveScenarioSetupSection } from './n
 import type { ScenarioSetupSectionId } from './navigation/scenarioSetupNavTypes';
 import { useDeferredScenarioSectionContent, useDeferredScenarioSetupSummary } from './useDeferredScenarioSectionContent';
 import { useScenarioEditorController, type ScenarioEditorSection } from './useScenarioEditorController';
-import { useAppStore } from '../../store';
+import { useAppStore, useScenarioDocumentHistory } from '../../store';
 
 function ScenarioEditorLoadingState({ label, message }: { label: string; message: string }) {
   return (
@@ -44,6 +46,17 @@ function resolveRouteSection(section: string | undefined): {
 
 function ScenarioEditorShell({ activeSection, navigationSection }: { activeSection: ScenarioEditorSection; navigationSection: ScenarioSetupSectionId }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const handleNavigate = React.useCallback((sectionId: ScenarioSetupSectionId) => {
+    const nextPath = `/app/scenario/${sectionId}`;
+    const { setupGridUnsaved, setupGridLeaveHook } = useAppStore.getState();
+    if (setupGridUnsaved && setupGridLeaveHook && nextPath !== location.pathname) {
+      setupGridLeaveHook(() => navigate(nextPath));
+      return;
+    }
+
+    navigate(nextPath);
+  }, [location.pathname, navigate]);
 
   return (
     <div className="space-y-6 md:flex md:h-full md:min-h-0 md:flex-col md:space-y-0">
@@ -52,7 +65,7 @@ function ScenarioEditorShell({ activeSection, navigationSection }: { activeSecti
         attributeDefinitions={[]}
         objectiveCount={0}
         activeSection={navigationSection}
-        onNavigate={(sectionId) => navigate(`/app/scenario/${sectionId}`)}
+        onNavigate={handleNavigate}
       >
         <ScenarioEditorLoadingState
           label={activeSection}
@@ -63,8 +76,41 @@ function ScenarioEditorShell({ activeSection, navigationSection }: { activeSecti
   );
 }
 
+function isEditableShortcutTarget(target: EventTarget | null) {
+  const element = target instanceof HTMLElement ? target : null;
+  if (!element) {
+    return false;
+  }
+
+  if (element.isContentEditable) {
+    return true;
+  }
+
+  const tagName = element.tagName.toLowerCase();
+  return tagName === 'input' || tagName === 'textarea' || tagName === 'select';
+}
+
 function ScenarioEditorLoaded() {
   const controller = useScenarioEditorController();
+  const pastCount = useScenarioDocumentHistory((state) => state.pastStates.length);
+  const futureCount = useScenarioDocumentHistory((state) => state.futureStates.length);
+  const undoScenarioDocument = useAppStore((state) => state.undoScenarioDocument);
+  const redoScenarioDocument = useAppStore((state) => state.redoScenarioDocument);
+  const canUndo = pastCount > 0;
+  const canRedo = futureCount > 0;
+  const handleNavigateToSection = React.useCallback((sectionId: ScenarioSetupSectionId) => {
+    if (sectionId === controller.navigationSection) {
+      return;
+    }
+
+    const { setupGridUnsaved, setupGridLeaveHook } = useAppStore.getState();
+    if (setupGridUnsaved && setupGridLeaveHook) {
+      setupGridLeaveHook(() => controller.navigateToSection(sectionId));
+      return;
+    }
+
+    controller.navigateToSection(sectionId);
+  }, [controller]);
   const deferredSection = useDeferredScenarioSectionContent(
     controller.activeSection,
     controller.scenario ?? null,
@@ -84,6 +130,34 @@ function ScenarioEditorLoaded() {
     ? 'The setup shell is ready. Scenario data is loading asynchronously to keep navigation responsive.'
     : 'The setup shell is ready. Large scenario content is loading asynchronously to keep navigation responsive.';
 
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || isEditableShortcutTarget(event.target)) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+      const wantsRedo = key === 'y' || (key === 'z' && event.shiftKey);
+      const wantsUndo = key === 'z' && !event.shiftKey;
+
+      if (wantsUndo && canUndo) {
+        event.preventDefault();
+        undoScenarioDocument();
+        return;
+      }
+
+      if (wantsRedo && canRedo) {
+        event.preventDefault();
+        redoScenarioDocument();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [canRedo, canUndo, redoScenarioDocument, undoScenarioDocument]);
+
   return (
     <div className="space-y-6 md:flex md:h-full md:min-h-0 md:flex-col md:space-y-0">
       <ScenarioSetupLayout
@@ -91,7 +165,7 @@ function ScenarioEditorLoaded() {
         attributeDefinitions={deferredSummary.summaryAttributeDefinitions}
         objectiveCount={deferredSummary.summaryObjectiveCount}
         activeSection={controller.navigationSection}
-        onNavigate={controller.navigateToSection}
+        onNavigate={handleNavigateToSection}
       >
         {showSectionLoadingState ? (
           <ScenarioEditorLoadingState label={sectionLoadingLabel} message={sectionLoadingMessage} />
@@ -170,6 +244,8 @@ function ScenarioEditorLoaded() {
           setShowShouldStayTogetherModal={controller.constraints.setShowShouldStayTogetherModal}
           showMustStayTogetherModal={controller.constraints.showMustStayTogetherModal}
           setShowMustStayTogetherModal={controller.constraints.setShowMustStayTogetherModal}
+          showMustStayApartModal={controller.constraints.showMustStayApartModal}
+          setShowMustStayApartModal={controller.constraints.setShowMustStayApartModal}
           showPairMeetingCountModal={controller.constraints.showPairMeetingCountModal}
           setShowPairMeetingCountModal={controller.constraints.setShowPairMeetingCountModal}
           editingConstraintIndex={controller.constraints.editingConstraintIndex}
@@ -184,8 +260,49 @@ function ScenarioEditorLoaded() {
         onLoadNew={controller.handleDemoLoadNew}
         demoCaseName={controller.pendingDemoCaseName || 'Demo Case'}
       />
+
+      <GeneratedDemoDataModal
+        isOpen={controller.showGeneratedDemoModal}
+        onClose={controller.handleDemoCancel}
+        onGenerate={controller.handleGeneratedDemoSubmit}
+      />
+
+      <ReduceSessionsReviewModal
+        isOpen={controller.showSessionReductionReviewModal}
+        plan={controller.sessionReductionPlan}
+        people={controller.scenario?.people ?? []}
+        invalidations={controller.sessionReductionInvalidations}
+        onClose={controller.handleCancelSessionReduction}
+        onConfirm={controller.handleConfirmSessionReduction}
+      />
     </div>
   );
+}
+
+function DeferredScenarioEditorMount({
+  activeSection,
+  navigationSection,
+}: {
+  activeSection: ScenarioEditorSection;
+  navigationSection: ScenarioSetupSectionId;
+}) {
+  const [shouldMountController, setShouldMountController] = React.useState(false);
+
+  React.useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setShouldMountController(true);
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, []);
+
+  if (!shouldMountController) {
+    return <ScenarioEditorShell activeSection={activeSection} navigationSection={navigationSection} />;
+  }
+
+  return <ScenarioEditorLoaded />;
 }
 
 export function ScenarioEditor() {
@@ -193,7 +310,6 @@ export function ScenarioEditor() {
   const navigate = useNavigate();
   const setLastScenarioSetupSection = useAppStore((state) => state.setLastScenarioSetupSection);
   const { activeSection, navigationSection } = resolveRouteSection(section);
-  const [shouldMountController, setShouldMountController] = React.useState(false);
 
   React.useEffect(() => {
     const redirectSection = getScenarioSetupLegacyRedirect(section);
@@ -206,20 +322,11 @@ export function ScenarioEditor() {
     setLastScenarioSetupSection(navigationSection);
   }, [navigationSection, setLastScenarioSetupSection]);
 
-  React.useEffect(() => {
-    setShouldMountController(false);
-    const timeoutId = window.setTimeout(() => {
-      setShouldMountController(true);
-    }, 0);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [section]);
-
-  if (!shouldMountController) {
-    return <ScenarioEditorShell activeSection={activeSection} navigationSection={navigationSection} />;
-  }
-
-  return <ScenarioEditorLoaded />;
+  return (
+    <DeferredScenarioEditorMount
+      key={navigationSection}
+      activeSection={activeSection}
+      navigationSection={navigationSection}
+    />
+  );
 }

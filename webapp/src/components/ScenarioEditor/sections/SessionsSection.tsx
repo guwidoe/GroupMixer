@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../../ui';
 import { SetupSectionHeader } from '../shared/SetupSectionHeader';
 
 interface SessionsSectionProps {
@@ -7,14 +8,11 @@ interface SessionsSectionProps {
 }
 
 export function SessionsSection({ sessionsCount, onChangeSessionsCount }: SessionsSectionProps) {
-  const [inputValue, setInputValue] = useState<string | undefined>(undefined);
+  const [draftSessions, setDraftSessions] = useState<number | null>(sessionsCount);
 
-  const isInvalid = (() => {
-    if (inputValue !== undefined) {
-      return inputValue === '' || isNaN(parseInt(inputValue)) || parseInt(inputValue) < 1;
-    }
-    return sessionsCount < 1;
-  })();
+  useEffect(() => {
+    setDraftSessions(sessionsCount);
+  }, [sessionsCount]);
 
   return (
     <div className="space-y-5">
@@ -32,24 +30,12 @@ export function SessionsSection({ sessionsCount, onChangeSessionsCount }: Sessio
       <div className="rounded-2xl border px-6 py-6" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
         <div className="space-y-4">
           <div>
-            <label className="mb-2 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Number of Sessions
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={inputValue ?? sessionsCount.toString()}
-              onChange={(event) => setInputValue(event.target.value)}
-              onBlur={() => {
-                const countValue = inputValue ?? sessionsCount.toString();
-                const count = parseInt(countValue);
-                if (!isNaN(count) && count >= 1) {
-                  onChangeSessionsCount(count);
-                  setInputValue(undefined);
-                }
-              }}
-              className={`input w-32 ${isInvalid ? 'border-red-500 focus:border-red-500' : ''}`}
+            <NumberField
+              label="Number of Sessions"
+              value={draftSessions}
+              onChange={(value) => setDraftSessions(value ?? sessionsCount)}
+              onCommit={(value) => onChangeSessionsCount(Math.max(1, value ?? sessionsCount))}
+              {...NUMBER_FIELD_PRESETS.sessionCount}
             />
             <p className="mt-2 text-xs" style={{ color: 'var(--text-tertiary)' }}>
               The solver will distribute people into groups across {sessionsCount} session{sessionsCount === 1 ? '' : 's'}.

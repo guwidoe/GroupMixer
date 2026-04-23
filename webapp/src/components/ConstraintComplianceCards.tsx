@@ -34,6 +34,7 @@ const ConstraintComplianceCards: React.FC<Props> = ({ scenario, solution }) => {
         return [constraint.person_id];
       case 'ImmovablePeople':
         return constraint.people;
+      case 'MustStayApart':
       case 'MustStayTogether':
       case 'ShouldStayTogether':
       case 'ShouldNotBeTogether':
