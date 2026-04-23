@@ -188,6 +188,7 @@ export function LandingFixedAssignmentsInput({
 
   const handleResizePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     resizeDragStateRef.current = {
       startY: event.clientY,
       startHeight: height,

@@ -657,6 +657,9 @@
     height: 0.625rem;
     cursor: ns-resize;
     background: transparent;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .landing-resizable-textarea__resize-handle::before {
@@ -671,6 +674,16 @@
 
   .landing-resizable-textarea__resize-handle:hover::before {
     background: color-mix(in srgb, var(--text-secondary) 70%, transparent);
+  }
+
+  @media (pointer: coarse) {
+    .landing-resizable-textarea__resize-handle {
+      height: 0.625rem;
+    }
+
+    .landing-resizable-textarea__resize-handle::before {
+      margin-top: 0.38rem;
+    }
   }
 
   .landing-resizable-textarea--structured .landing-resizable-textarea__resize-handle::after {
@@ -1361,6 +1374,9 @@
     padding: 0;
     z-index: 1;
     min-height: 0 !important;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
   }
 
   .attribute-distribution__handle:disabled {
@@ -1370,6 +1386,18 @@
 
   .attribute-distribution__handle:focus-visible {
     outline: none;
+  }
+
+  @media (pointer: coarse) {
+    .attribute-distribution__handle {
+      width: 1.5rem;
+      height: calc(var(--attribute-distribution-track-height) + 0.55rem);
+    }
+
+    .attribute-distribution__handle-line {
+      top: 0.45rem;
+      bottom: 0.45rem;
+    }
   }
 
   .attribute-distribution__handle-line {
