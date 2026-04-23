@@ -732,7 +732,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                           variant="default"
                           triggerLabel="Example data"
                           triggerButtonSize="sm"
-                          triggerClassName="min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
+                          triggerClassName="landing-example-data-trigger min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
                           loadCases={loadLandingCompatibleDemoCasesWithMetrics}
                           includeGeneratedDemo={false}
                         />

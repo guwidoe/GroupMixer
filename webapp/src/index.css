@@ -1019,6 +1019,15 @@
     font-weight: 500;
   }
 
+  @media (max-width: 639px) {
+    .landing-example-data-trigger {
+      min-height: 1.95rem !important;
+      padding-top: 0.2rem !important;
+      padding-bottom: 0.2rem !important;
+      border-radius: 0.7rem !important;
+    }
+  }
+
   @container (min-width: 28rem) {
     .landing-participants-controls {
       grid-template-columns: repeat(2, minmax(0, 1fr));
