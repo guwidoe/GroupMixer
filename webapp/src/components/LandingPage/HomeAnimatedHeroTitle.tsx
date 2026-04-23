@@ -26,7 +26,11 @@ function usePrefersReducedMotion() {
   return prefersReducedMotion;
 }
 
-export function HomeAnimatedHeroTitle() {
+interface HomeAnimatedHeroTitleProps {
+  suffix?: string;
+}
+
+export function HomeAnimatedHeroTitle({ suffix = 'Group Generator' }: HomeAnimatedHeroTitleProps) {
   const prefersReducedMotion = usePrefersReducedMotion();
   const wordFrameRef = useRef<HTMLSpanElement>(null);
   const measureRefs = useRef<Array<HTMLSpanElement | null>>([]);
@@ -97,7 +101,7 @@ export function HomeAnimatedHeroTitle() {
           ))}
         </span>
       </span>
-      <span>Group Generator</span>
+      {suffix.trim().length > 0 ? <span>{suffix}</span> : null}
     </span>
   );
 }

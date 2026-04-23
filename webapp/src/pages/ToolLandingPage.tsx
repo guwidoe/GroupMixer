@@ -61,7 +61,7 @@ const LANDING_TOOL_RESIZE_HANDLE_WIDTH = 22;
 const LANDING_TOOL_LEFT_MIN_WIDTH = 400;
 const LANDING_TOOL_RIGHT_MIN_WIDTH = 340;
 const LANDING_TOOL_RESIZE_MIN_WIDTH = LANDING_TOOL_LEFT_MIN_WIDTH + LANDING_TOOL_RIGHT_MIN_WIDTH + LANDING_TOOL_RESIZE_HANDLE_WIDTH;
-const HOME_ANIMATED_HERO_STATIC_TITLE = 'Random Group Generator';
+const HOME_ANIMATED_HERO_STATIC_TITLE = 'Group Generator - Random, Balanced & Multi-Round';
 const RELATED_TOOL_PAGE_KEYS: ToolPageKey[] = [
   'home',
   'random-group-generator',
@@ -213,7 +213,8 @@ function SectionLabelWithTooltip({
 export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProps) {
   const config = getToolPageConfig(pageKey, locale);
   const ui = getLandingUiContent(locale);
-  const usesAnimatedHomeTitle = config.key === 'home' && config.locale === 'en' && config.hero.title === HOME_ANIMATED_HERO_STATIC_TITLE;
+  const usesAnimatedHomeTitle = config.key === 'home' && config.locale === 'en';
+  const heroHeadingText = usesAnimatedHomeTitle ? HOME_ANIMATED_HERO_STATIC_TITLE : config.hero.title;
   const controller = useQuickSetup(config);
   const loadWorkspaceAsNewScenario = useAppStore((state) => state.loadWorkspaceAsNewScenario);
   const addNotification = useAppStore((state) => state.addNotification);
@@ -925,16 +926,24 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
           <div className="mx-auto grid max-w-7xl gap-5 lg:gap-6">
             <div data-testid="landing-hero" className="order-1 min-w-0 max-w-4xl">
               <h1
-                aria-label={usesAnimatedHomeTitle ? config.hero.title : undefined}
                 className={[
-                  'block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-bold leading-[1.08] tracking-normal sm:text-4xl lg:leading-[1.15]',
+                  'block w-full max-w-full overflow-hidden text-ellipsis font-bold leading-[1.08] tracking-normal sm:text-4xl lg:leading-[1.15]',
                   usesAnimatedHomeTitle
-                    ? 'text-base min-[340px]:text-[1.08rem] min-[390px]:text-xl'
-                    : 'text-[1.15rem] min-[340px]:text-[1.38rem] min-[390px]:text-2xl',
+                    ? 'whitespace-normal text-[1.15rem] min-[340px]:text-[1.38rem] min-[390px]:text-2xl'
+                    : 'whitespace-nowrap text-[1.15rem] min-[340px]:text-[1.38rem] min-[390px]:text-2xl',
                 ].join(' ')}
               >
-                {usesAnimatedHomeTitle ? <HomeAnimatedHeroTitle /> : config.hero.title}
+                {heroHeadingText}
               </h1>
+              {usesAnimatedHomeTitle ? (
+                <div
+                  data-testid="landing-home-hero-animation"
+                  className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] sm:text-base"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  <HomeAnimatedHeroTitle suffix="" />
+                </div>
+              ) : null}
             </div>
 
             <div

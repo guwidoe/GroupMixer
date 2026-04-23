@@ -11,6 +11,14 @@ const ROUTE_CASES = TOOL_PAGE_ROUTES.map((route) => ({
   config: getToolPageConfig(route.key, route.locale),
 }));
 
+function getExpectedHeadingName(routeKey: string, locale: string, fallback: string) {
+  if (routeKey === 'home' && locale === 'en') {
+    return 'Group Generator - Random, Balanced & Multi-Round';
+  }
+
+  return fallback;
+}
+
 describe('ToolLandingPage route inventory', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -40,7 +48,7 @@ describe('ToolLandingPage route inventory', () => {
     expect(
       await screen.findByRole('heading', {
         level: 1,
-        name: config.hero.title,
+        name: getExpectedHeadingName(route.key, route.locale, config.hero.title),
       }),
     ).toBeInTheDocument();
 
