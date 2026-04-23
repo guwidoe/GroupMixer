@@ -35,8 +35,7 @@ test.describe('Results', () => {
 
   test('navigation between saved results and current result works', async ({ page }) => {
     await openAppRoute(page, '/app/history', /\/app\/history/);
-    await openAppRoute(page, '/app/results', /\/app\/results/);
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /editor|manual editor/i }), /\/app\/editor/);
+    await clickAndWaitForUrl(page, page.getByRole('link', { name: /results/i }), /\/app\/results/);
 
     await expect(page.locator('main')).toBeVisible();
   });

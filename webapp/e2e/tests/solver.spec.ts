@@ -39,9 +39,10 @@ test.describe('Solver', () => {
     await expect(page.locator('main')).toBeVisible();
   });
 
-  test('manual editor tab is accessible', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /editor|manual editor/i }), /\/app\/editor/);
+  test('manual editor route is accessible', async ({ page }) => {
+    await openAppRoute(page, '/app/editor', /\/app\/editor/);
 
     await expect(page.locator('main')).toBeVisible();
+    await expect(page.getByText(/select a result first/i)).toBeVisible();
   });
 });

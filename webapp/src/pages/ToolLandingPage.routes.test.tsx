@@ -44,11 +44,9 @@ describe('ToolLandingPage route inventory', () => {
       }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
-    if (config.hero.audienceSummary) {
-      expect(screen.getByText(config.hero.audienceSummary)).toBeInTheDocument();
-    }
+    expect(screen.getByText(config.optimizerCta.eyebrow)).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: config.optimizerCta.title })).toBeInTheDocument();
+    expect(screen.getByText(config.optimizerCta.supportingText)).toBeInTheDocument();
     expect(document.title).toBe(config.seo.title);
     expect(document.documentElement.lang).toBe(getLocaleHrefLang(route.locale));
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(config.seo.description);
