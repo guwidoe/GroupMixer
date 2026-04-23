@@ -239,7 +239,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(await screen.findByText('Group 1')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /export csv/i })).toBeInTheDocument();
     expect(await screen.findByText(/results generated below/i)).toBeInTheDocument();
-    expect(screen.getByTestId('location-probe')).toHaveTextContent('/?view=results');
+    await waitFor(() => expect(screen.getByTestId('location-probe')).toHaveTextContent('/?view=results'));
     expect(scrollIntoViewMock).toHaveBeenCalled();
 
     // Can transition to scenario editor
