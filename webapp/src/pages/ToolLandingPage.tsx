@@ -9,6 +9,7 @@ import {
 import { EmbeddableTool, type EmbeddableToolHandle } from '../components/LandingTool/EmbeddableTool';
 import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
+import { LandingGuidesSection } from '../components/LandingPage/LandingGuidesSection';
 import { HomeAnimatedHeroTitle } from '../components/LandingPage/HomeAnimatedHeroTitle';
 import { LandingLanguageSelector } from '../components/LandingPage/LandingLanguageSelector';
 import { NotificationContainer } from '../components/NotificationContainer';
@@ -22,14 +23,12 @@ import {
 } from '../services/landingInstrumentation';
 import {
   buildToolPagePath,
-  DEFAULT_LOCALE,
   getLocaleDisplayName,
   getLocaleHomePath,
   getToolPageConfig,
   type SupportedLocale,
   type ToolPageKey,
 } from './toolPageConfigs';
-import { GUIDE_PAGE_ROUTES, getGuidePageConfig } from './guidePageConfigs';
 
 interface ToolLandingPageProps {
   pageKey: ToolPageKey;
@@ -53,21 +52,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       })),
     [config.liveLocales, config.slug, location.search, pageKey],
   );
-  const guideLinks = useMemo(() => {
-    if (config.locale !== DEFAULT_LOCALE) {
-      return [];
-    }
-
-    return GUIDE_PAGE_ROUTES.map((route) => {
-      const guideConfig = getGuidePageConfig(route.key);
-      return {
-        key: route.key,
-        href: guideConfig.canonicalPath,
-        title: guideConfig.hero.title,
-        description: guideConfig.hero.intro,
-      };
-    });
-  }, [config.locale]);
   const telemetryAttribution = useMemo(
     () =>
       readTelemetryAttributionFromSearch({
@@ -258,32 +242,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
           </div>
         </section>
 
-        {guideLinks.length > 0 ? (
-          <section className="border-t px-4 pb-12 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
-            <div className="mx-auto max-w-6xl">
-              <h2 className="text-2xl font-semibold tracking-tight">Guides</h2>
-              <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
-                Practical playbooks for workshops, classrooms, and repeated group assignments.
-              </p>
-
-              <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {guideLinks.map((link) => (
-                  <a
-                    key={link.key}
-                    href={link.href}
-                    className="rounded-xl border p-5 transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2"
-                    style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                  >
-                    <h3 className="text-base font-semibold">{link.title}</h3>
-                    <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-                      {link.description}
-                    </p>
-                  </a>
-                ))}
-              </div>
-            </div>
-          </section>
-        ) : null}
+        <LandingGuidesSection locale={config.locale} />
 
         <section className="border-t px-4 pb-14 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
           <div className="mx-auto max-w-3xl">

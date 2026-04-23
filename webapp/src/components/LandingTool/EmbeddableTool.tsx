@@ -302,7 +302,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
       const leftRect = leftPane.getBoundingClientRect();
       const inputRect = participantInput.getBoundingClientRect();
       const rightRect = rightPane.getBoundingClientRect();
-      if (leftRect.width <= 0 || inputRect.height <= 0 || rightRect.width <= 0) {
+      if (leftRect.width <= 0 || inputRect.width <= 0 || inputRect.height <= 0 || rightRect.width <= 0) {
         return;
       }
 
@@ -323,7 +323,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
         return;
       }
 
-      const nextOuterHeight = inputRect.height + heightDelta;
+      const nextOuterHeight = Math.min(inputRect.height + heightDelta, inputRect.width);
       setParticipantInputAutoOuterHeight((previous) => (
         previous != null && Math.abs(previous - nextOuterHeight) < 0.5 ? previous : nextOuterHeight
       ));

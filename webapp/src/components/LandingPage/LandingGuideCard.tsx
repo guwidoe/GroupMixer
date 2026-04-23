@@ -1,0 +1,85 @@
+import { ArrowRight, GitBranch, GraduationCap, Network, Shuffle, UsersRound } from 'lucide-react';
+import { type ComponentType, type CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
+import type { GuidePageKey } from '../../pages/guidePageConfigs';
+
+export interface LandingGuideCardLink {
+  key: GuidePageKey;
+  href: string;
+  title: string;
+  description: string;
+}
+
+const GUIDE_ICON_BY_KEY: Record<GuidePageKey, ComponentType<{ className?: string }>> = {
+  'avoid-repeat-pairings-in-workshops': Network,
+  'run-speed-networking-rounds': UsersRound,
+  'make-balanced-student-groups': GraduationCap,
+  'random-vs-balanced-vs-constrained-groups': GitBranch,
+  'split-a-class-into-fair-groups': Shuffle,
+};
+
+interface LandingGuideCardProps {
+  guide: LandingGuideCardLink;
+  featured?: boolean;
+}
+
+export function LandingGuideCard({ guide, featured = false }: LandingGuideCardProps) {
+  const Icon = GUIDE_ICON_BY_KEY[guide.key];
+
+  return (
+    <Link
+      to={guide.href}
+      className={[
+        'group relative min-w-0 overflow-hidden rounded-lg border p-5 transition',
+        'focus:outline-none focus:ring-2 focus:ring-offset-2',
+        featured ? 'lg:col-span-2 lg:p-6' : '',
+      ].join(' ')}
+      style={{
+        borderColor: 'var(--border-primary)',
+        backgroundColor: featured ? 'var(--bg-secondary)' : 'var(--bg-primary)',
+        color: 'var(--text-primary)',
+        boxShadow: 'var(--shadow)',
+        '--tw-ring-color': 'var(--color-accent)',
+        '--tw-ring-offset-color': 'var(--bg-primary)',
+      } as CSSProperties}
+    >
+      <span
+        className="absolute inset-x-0 top-0 h-1"
+        style={{ backgroundColor: 'var(--color-accent)' }}
+        aria-hidden="true"
+      />
+      <div className={featured ? 'flex h-full flex-col' : ''}>
+        <div className="flex items-start justify-between gap-4">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border"
+            style={{
+              borderColor: 'color-mix(in srgb, var(--color-accent) 28%, var(--border-primary) 72%)',
+              backgroundColor: 'color-mix(in srgb, var(--color-accent) 8%, var(--bg-primary) 92%)',
+              color: 'var(--color-accent)',
+            }}
+            aria-hidden="true"
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+          <ArrowRight
+            className="mt-1 h-4 w-4 shrink-0 transition group-hover:translate-x-0.5"
+            style={{ color: 'var(--text-tertiary)' }}
+            aria-hidden="true"
+          />
+        </div>
+        <h3 className={featured ? 'mt-5 text-xl font-semibold leading-tight' : 'mt-4 text-base font-semibold leading-tight'}>
+          {guide.title}
+        </h3>
+        <p className={featured ? 'mt-3 text-sm leading-7' : 'mt-2 text-sm leading-6'} style={{ color: 'var(--text-secondary)' }}>
+          {guide.description}
+        </p>
+        <span
+          className={featured ? 'mt-6 inline-flex text-sm font-semibold' : 'mt-4 inline-flex text-sm font-semibold'}
+          style={{ color: 'var(--color-accent)' }}
+        >
+          Read guide
+        </span>
+      </div>
+    </Link>
+  );
+}

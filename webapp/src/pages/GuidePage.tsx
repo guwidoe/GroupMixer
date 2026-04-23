@@ -1,6 +1,20 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  ArrowRight,
+  BookOpenText,
+  CheckCircle2,
+  ClipboardList,
+  Compass,
+  Layers3,
+  Link2,
+  Sparkles,
+  Target,
+  Wrench,
+} from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
+import { GuideRelatedLinkGrid } from '../components/GuidePage/GuideRelatedLinkGrid';
+import { GuideSectionIcon } from '../components/GuidePage/GuideSectionIcon';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
 import { Seo } from '../components/Seo';
 import type { GuidePageKey } from './guidePageConfigs';
@@ -12,6 +26,7 @@ interface GuidePageProps {
 
 export default function GuidePage({ pageKey }: GuidePageProps) {
   const config = getGuidePageConfig(pageKey);
+  const relatedGuideLinks = config.relatedGuides?.links ?? [];
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
@@ -24,174 +39,238 @@ export default function GuidePage({ pageKey }: GuidePageProps) {
 
       <AppHeader homeTo="/" titleAs="div" hideDesktopUtilityRail title="GroupMixer" />
 
-      <main className="px-4 py-10 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-5xl space-y-6">
-          <section
-            className="rounded-2xl border p-6 sm:p-8"
-            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-          >
-            <p className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
-              {config.hero.eyebrow}
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">{config.hero.title}</h1>
-            <p className="mt-4 max-w-3xl text-sm leading-7 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
-              {config.hero.intro}
-            </p>
-          </section>
-
-          <section
-            className="rounded-2xl border p-6 sm:p-8"
-            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-          >
-            <h2 className="text-2xl font-semibold tracking-tight">{config.problem.title}</h2>
-            <p className="mt-3 text-sm leading-7 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
-              {config.problem.body}
-            </p>
-            <ul className="mt-5 space-y-3 text-sm leading-6 sm:text-base">
-              {config.problem.bullets.map((bullet) => (
-                <li key={bullet} className="flex gap-3">
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: 'var(--color-accent)' }} />
-                  <span>{bullet}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section
-            className="rounded-2xl border p-6 sm:p-8"
-            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-          >
-            <h2 className="text-2xl font-semibold tracking-tight">{config.failureModes.title}</h2>
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              {config.failureModes.cards.map((card) => (
-                <div
-                  key={card.title}
-                  className="rounded-xl border p-5"
-                  style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
-                >
-                  <h3 className="text-base font-semibold">{card.title}</h3>
-                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-                    {card.body}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section
-            className="rounded-2xl border p-6 sm:p-8"
-            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-          >
-            <h2 className="text-2xl font-semibold tracking-tight">{config.example.title}</h2>
-            <p className="mt-3 text-sm leading-7 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
-              {config.example.summary}
-            </p>
-            <div className="mt-6 rounded-2xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
-              <p className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
-                Example workflow
+      <main>
+        <section className="border-b px-4 py-10 sm:px-6 lg:px-8 lg:py-14" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+          <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-end">
+            <div className="min-w-0">
+              <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-tertiary)' }}>
+                <BookOpenText className="h-4 w-4" aria-hidden="true" />
+                {config.hero.eyebrow}
               </p>
-              <ul className="mt-4 grid gap-3 sm:grid-cols-2">
-                {config.example.details.map((detail) => (
-                  <li key={detail} className="rounded-lg border px-4 py-3 text-sm" style={{ borderColor: 'var(--border-primary)' }}>
-                    {detail}
+              <h1 className="mt-4 max-w-4xl text-3xl font-semibold leading-tight tracking-normal sm:text-5xl">
+                {config.hero.title}
+              </h1>
+              <p className="mt-5 max-w-3xl text-base leading-8 sm:text-lg" style={{ color: 'var(--text-secondary)' }}>
+                {config.hero.intro}
+              </p>
+            </div>
+            <aside
+              className="rounded-lg border p-5"
+              style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
+              aria-label="Guide summary"
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border"
+                  style={{
+                    borderColor: 'color-mix(in srgb, var(--color-accent) 32%, var(--border-primary) 68%)',
+                    backgroundColor: 'color-mix(in srgb, var(--color-accent) 9%, var(--bg-primary) 91%)',
+                    color: 'var(--color-accent)',
+                  }}
+                  aria-hidden="true"
+                >
+                  <Compass className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Guide format</p>
+                  <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Problem, setup, and next steps</p>
+                </div>
+              </div>
+              <div className="mt-5 grid grid-cols-3 divide-x divide-[var(--border-primary)] rounded-lg border text-center" style={{ borderColor: 'var(--border-primary)' }}>
+                <div className="px-2 py-3">
+                  <div className="text-base font-semibold">{config.failureModes.cards.length}</div>
+                  <div className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>risks</div>
+                </div>
+                <div className="px-2 py-3">
+                  <div className="text-base font-semibold">{config.setup.steps.length}</div>
+                  <div className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>steps</div>
+                </div>
+                <div className="px-2 py-3">
+                  <div className="text-base font-semibold">{config.example.details.length}</div>
+                  <div className="mt-0.5 text-xs" style={{ color: 'var(--text-secondary)' }}>inputs</div>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:px-8 lg:py-14">
+          <aside className="hidden lg:block">
+            <nav className="sticky top-24 space-y-2 text-sm" aria-label="Guide sections">
+              {[
+                ['Problem', '#problem'],
+                ['Pitfalls', '#pitfalls'],
+                ['Example', '#example'],
+                ['Setup', '#setup'],
+                ['Advanced', '#advanced'],
+                ['Next', '#next'],
+              ].map(([label, href]) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="block rounded-md px-3 py-2 transition hover:bg-[var(--bg-primary)]"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  {label}
+                </a>
+              ))}
+            </nav>
+          </aside>
+
+          <article className="min-w-0 space-y-12">
+            <section id="problem" className="grid scroll-mt-24 gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(17rem,0.72fr)]">
+              <div>
+                <div className="flex items-center gap-3">
+                  <GuideSectionIcon icon={<Target className="h-5 w-5" />} />
+                  <p className="text-sm font-semibold uppercase tracking-[0.16em]" style={{ color: 'var(--text-tertiary)' }}>Core problem</p>
+                </div>
+                <h2 className="mt-4 text-2xl font-semibold leading-tight tracking-normal sm:text-3xl">{config.problem.title}</h2>
+                <p className="mt-4 text-base leading-8" style={{ color: 'var(--text-secondary)' }}>
+                  {config.problem.body}
+                </p>
+              </div>
+              <ul className="space-y-3">
+                {config.problem.bullets.map((bullet) => (
+                  <li
+                    key={bullet}
+                    className="flex gap-3 rounded-lg border p-4 text-sm leading-6"
+                    style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+                  >
+                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0" style={{ color: 'var(--color-accent)' }} aria-hidden="true" />
+                    <span>{bullet}</span>
                   </li>
                 ))}
               </ul>
-            </div>
-          </section>
+            </section>
 
-          <section
-            className="rounded-2xl border p-6 sm:p-8"
-            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-          >
-            <h2 className="text-2xl font-semibold tracking-tight">{config.setup.title}</h2>
-            <p className="mt-3 text-sm leading-7 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
-              {config.setup.intro}
-            </p>
-            <ol className="mt-6 space-y-4">
-              {config.setup.steps.map((step, index) => (
-                <li key={step} className="flex gap-4 rounded-xl border p-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold" style={{ backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-primary)' }}>
-                    {index + 1}
-                  </div>
-                  <p className="text-sm leading-6 sm:text-base">{step}</p>
-                </li>
-              ))}
-            </ol>
-          </section>
-
-          <section
-            className="rounded-2xl border p-6 sm:p-8"
-            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-          >
-            <h2 className="text-2xl font-semibold tracking-tight">{config.advanced.title}</h2>
-            <p className="mt-3 text-sm leading-7 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
-              {config.advanced.body}
-            </p>
-          </section>
-
-          <section
-            className="rounded-2xl border p-6 sm:p-8"
-            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-          >
-            <h2 className="text-2xl font-semibold tracking-tight">{config.cta.title}</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-7 sm:text-base" style={{ color: 'var(--text-secondary)' }}>
-              {config.cta.body}
-            </p>
-            <Link
-              to={config.cta.href}
-              className="btn-primary mt-6 inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
-            >
-              {config.cta.buttonLabel}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </section>
-
-          <section
-            className="rounded-2xl border p-6 sm:p-8"
-            style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-          >
-            <h2 className="text-2xl font-semibold tracking-tight">{config.relatedTools.title}</h2>
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              {config.relatedTools.links.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  className="rounded-xl border p-5 transition hover:-translate-y-0.5 hover:shadow-lg"
-                  style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
-                >
-                  <h3 className="text-base font-semibold">{link.label}</h3>
-                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-                    {link.description}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          {config.relatedGuides && config.relatedGuides.links.length > 0 ? (
-            <section
-              className="rounded-2xl border p-6 sm:p-8"
-              style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-            >
-              <h2 className="text-2xl font-semibold tracking-tight">{config.relatedGuides.title}</h2>
-              <div className="mt-6 grid gap-4 md:grid-cols-2">
-                {config.relatedGuides.links.map((link) => (
-                  <Link
-                    key={link.href}
-                    to={link.href}
-                    className="rounded-xl border p-5 transition hover:-translate-y-0.5 hover:shadow-lg"
-                    style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
+            <section id="pitfalls" className="scroll-mt-24 border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
+              <div className="flex items-center gap-3">
+                <GuideSectionIcon icon={<AlertTriangle className="h-5 w-5" />} />
+                <h2 className="text-2xl font-semibold tracking-normal">{config.failureModes.title}</h2>
+              </div>
+              <div className="mt-6 grid gap-4 md:grid-cols-3">
+                {config.failureModes.cards.map((card) => (
+                  <div
+                    key={card.title}
+                    className="rounded-lg border p-5"
+                    style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)', boxShadow: 'var(--shadow)' }}
                   >
-                    <h3 className="text-base font-semibold">{link.label}</h3>
-                    <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-                      {link.description}
+                    <h3 className="text-base font-semibold">{card.title}</h3>
+                    <p className="mt-3 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+                      {card.body}
                     </p>
-                  </Link>
+                  </div>
                 ))}
               </div>
             </section>
-          ) : null}
+
+            <section id="example" className="scroll-mt-24 border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
+              <div className="grid gap-6 lg:grid-cols-[minmax(0,0.82fr)_minmax(18rem,1fr)] lg:items-start">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <GuideSectionIcon icon={<ClipboardList className="h-5 w-5" />} />
+                    <h2 className="text-2xl font-semibold tracking-normal">{config.example.title}</h2>
+                  </div>
+                  <p className="mt-4 text-base leading-8" style={{ color: 'var(--text-secondary)' }}>
+                    {config.example.summary}
+                  </p>
+                </div>
+                <div className="rounded-lg border" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+                  <div className="border-b px-5 py-4" style={{ borderColor: 'var(--border-primary)' }}>
+                    <p className="text-sm font-semibold">Example workflow</p>
+                  </div>
+                  <ul className="divide-y divide-[var(--border-primary)]">
+                    {config.example.details.map((detail) => (
+                      <li key={detail} className="flex items-start gap-3 px-5 py-3 text-sm leading-6">
+                        <Sparkles className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--color-accent)' }} aria-hidden="true" />
+                        <span>{detail}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            <section id="setup" className="scroll-mt-24 border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
+              <div className="max-w-3xl">
+                <div className="flex items-center gap-3">
+                  <GuideSectionIcon icon={<Layers3 className="h-5 w-5" />} />
+                  <h2 className="text-2xl font-semibold tracking-normal">{config.setup.title}</h2>
+                </div>
+                <p className="mt-4 text-base leading-8" style={{ color: 'var(--text-secondary)' }}>
+                  {config.setup.intro}
+                </p>
+              </div>
+              <ol className="mt-7 space-y-4">
+                {config.setup.steps.map((step, index) => (
+                  <li key={step} className="grid gap-4 sm:grid-cols-[3rem_minmax(0,1fr)]">
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-lg border text-sm font-semibold"
+                      style={{
+                        borderColor: 'color-mix(in srgb, var(--color-accent) 35%, var(--border-primary) 65%)',
+                        backgroundColor: 'var(--bg-primary)',
+                        color: 'var(--color-accent)',
+                      }}
+                    >
+                      {index + 1}
+                    </div>
+                    <p
+                      className="rounded-lg border p-4 text-sm leading-6 sm:text-base"
+                      style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+                    >
+                      {step}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+            </section>
+
+            <section id="advanced" className="scroll-mt-24 border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
+              <div className="rounded-lg border p-6 sm:p-7" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+                <div className="flex items-center gap-3">
+                  <GuideSectionIcon icon={<Wrench className="h-5 w-5" />} />
+                  <h2 className="text-2xl font-semibold tracking-normal">{config.advanced.title}</h2>
+                </div>
+                <p className="mt-4 max-w-4xl text-base leading-8" style={{ color: 'var(--text-secondary)' }}>
+                  {config.advanced.body}
+                </p>
+              </div>
+            </section>
+
+            <section id="next" className="scroll-mt-24 border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
+              <div className="rounded-lg border p-6 sm:p-8" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+                <h2 className="text-2xl font-semibold tracking-normal">{config.cta.title}</h2>
+                <p className="mt-4 max-w-3xl text-base leading-8" style={{ color: 'var(--text-secondary)' }}>
+                  {config.cta.body}
+                </p>
+                <Link
+                  to={config.cta.href}
+                  className="btn-primary mt-6 inline-flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold"
+                >
+                  {config.cta.buttonLabel}
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </div>
+            </section>
+
+            <section className="border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
+              <div className="flex items-center gap-3">
+                <GuideSectionIcon icon={<Link2 className="h-5 w-5" />} />
+                <h2 className="text-2xl font-semibold tracking-normal">{config.relatedTools.title}</h2>
+              </div>
+              <GuideRelatedLinkGrid links={config.relatedTools.links} columns="three" />
+            </section>
+
+            {relatedGuideLinks.length > 0 ? (
+              <section className="border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
+                <div className="flex items-center gap-3">
+                  <GuideSectionIcon icon={<BookOpenText className="h-5 w-5" />} />
+                  <h2 className="text-2xl font-semibold tracking-normal">{config.relatedGuides?.title}</h2>
+                </div>
+                <GuideRelatedLinkGrid links={relatedGuideLinks} columns="two" />
+              </section>
+            ) : null}
+          </article>
         </div>
       </main>
 
