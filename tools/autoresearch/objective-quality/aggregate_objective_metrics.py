@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import json
 import sys
+from collections import defaultdict
 from pathlib import Path
-from statistics import mean
+from statistics import mean, pstdev
 
 
 def load_json(path: str):
@@ -10,15 +11,19 @@ def load_json(path: str):
         return json.load(f)
 
 
-def index_cases(reports):
-    cases = {}
+def group_cases(reports):
+    cases = defaultdict(list)
     for report in reports:
         for case in report["cases"]:
             case_id = case["case_id"]
-            if case_id in cases:
-                raise SystemExit(f"duplicate case id in reports: {case_id}")
-            cases[case_id] = case
+            cases[case_id].append(case)
     return cases
+
+
+def sample_stddev(values):
+    if len(values) <= 1:
+        return 0.0
+    return pstdev(values)
 
 
 def external_validation_failures(cases):
@@ -52,10 +57,10 @@ def slugify(case_id: str) -> str:
     return case_id.replace(".", "_").replace("-", "_")
 
 
-def compute_lane_metrics(metric_config, case_map):
+def compute_lane_metrics(metric_config, case_groups):
     configured_ids = [entry["case_id"] for entry in metric_config["cases"]]
-    missing = [case_id for case_id in configured_ids if case_id not in case_map]
-    extra = [case_id for case_id in case_map.keys() if case_id not in configured_ids]
+    missing = [case_id for case_id in configured_ids if case_id not in case_groups]
+    extra = [case_id for case_id in case_groups.keys() if case_id not in configured_ids]
 
     if missing:
         raise SystemExit(f"metric config missing run results for cases: {missing}")
@@ -67,37 +72,73 @@ def compute_lane_metrics(metric_config, case_map):
     raw_scores = []
     runtimes = []
     resolved_cases = []
+    raw_cases = []
     per_case_metrics = {}
     metric_scale = float(metric_config.get("metric_scale", 1.0))
+    allow_duplicate_case_ids = bool(metric_config.get("allow_duplicate_case_ids", False))
+    expected_replicates_per_case = metric_config.get("expected_replicates_per_case")
+    if expected_replicates_per_case is not None:
+        expected_replicates_per_case = int(expected_replicates_per_case)
+        if expected_replicates_per_case <= 0:
+            raise SystemExit("expected_replicates_per_case must be positive")
 
     for entry in metric_config["cases"]:
-        case = case_map[entry["case_id"]]
-        final_score = case.get("final_score")
-        if final_score is None:
-            raise SystemExit(f"case {entry['case_id']} has no final_score")
+        case_id = entry["case_id"]
+        cases = case_groups[case_id]
+        if len(cases) != 1 and not allow_duplicate_case_ids:
+            raise SystemExit(f"duplicate case id in reports: {case_id}")
+        if expected_replicates_per_case is not None and len(cases) != expected_replicates_per_case:
+            raise SystemExit(
+                f"case {case_id} expected {expected_replicates_per_case} replicates, got {len(cases)}"
+            )
+
+        final_scores = []
+        runtime_values = []
+        for case in cases:
+            final_score = case.get("final_score")
+            if final_score is None:
+                raise SystemExit(f"case {case_id} has no final_score")
+            final_scores.append(float(final_score))
+            runtime_values.append(float(case.get("runtime_seconds") or 0.0))
+
+        final_score = mean(final_scores)
         reference_final_score = float(entry["reference_final_score"])
         if reference_final_score <= 0.0:
             raise SystemExit(
-                f"case {entry['case_id']} has non-positive reference_final_score"
+                f"case {case_id} has non-positive reference_final_score"
             )
         weight = float(entry["weight"])
         if weight <= 0.0:
-            raise SystemExit(f"case {entry['case_id']} has non-positive weight")
+            raise SystemExit(f"case {case_id} has non-positive weight")
 
-        final_score = float(final_score)
         normalized_case_score = final_score / reference_final_score
         weighted_contribution = normalized_case_score * weight
 
         weighted_sum += weighted_contribution
         total_weight += weight
         raw_scores.append(final_score)
-        runtimes.append(float(case.get("runtime_seconds") or 0.0))
-        resolved_cases.append(case)
+        runtimes.append(mean(runtime_values))
+        resolved_cases.append(
+            {
+                "case_id": case_id,
+                "final_score": final_score,
+                "runtime_seconds": mean(runtime_values),
+            }
+        )
+        raw_cases.extend(cases)
 
-        slug = slugify(entry["case_id"])
+        slug = slugify(case_id)
         per_case_metrics[f"{slug}_final_score"] = final_score
         per_case_metrics[f"{slug}_reference_final_score"] = reference_final_score
         per_case_metrics[f"{slug}_weight"] = weight
+        per_case_metrics[f"{slug}_replicate_count"] = float(len(cases))
+        per_case_metrics[f"{slug}_final_score_min"] = min(final_scores)
+        per_case_metrics[f"{slug}_final_score_max"] = max(final_scores)
+        per_case_metrics[f"{slug}_final_score_stddev"] = sample_stddev(final_scores)
+        per_case_metrics[f"{slug}_runtime_seconds_mean"] = mean(runtime_values)
+        per_case_metrics[f"{slug}_runtime_seconds_min"] = min(runtime_values)
+        per_case_metrics[f"{slug}_runtime_seconds_max"] = max(runtime_values)
+        per_case_metrics[f"{slug}_runtime_seconds_stddev"] = sample_stddev(runtime_values)
         per_case_metrics[f"{slug}_normalized_score"] = normalized_case_score
         per_case_metrics[f"{slug}_weighted_contribution"] = weighted_contribution
 
@@ -114,23 +155,24 @@ def compute_lane_metrics(metric_config, case_map):
         "objective_suite_total_final_score_raw": sum(raw_scores),
         "objective_suite_average_final_score_raw": mean(raw_scores),
         "objective_suite_case_count": float(len(raw_scores)),
+        "objective_suite_total_replicate_count": float(len(raw_cases)),
         "objective_suite_total_runtime_seconds": sum(runtimes),
         "objective_suite_average_runtime_seconds": mean(runtimes),
         "objective_suite_external_validation_failures": float(
-            external_validation_failures(resolved_cases)
+            external_validation_failures(raw_cases)
         ),
         "objective_suite_total_score_mismatches": float(
-            total_score_mismatches(resolved_cases)
+            total_score_mismatches(raw_cases)
         ),
         "objective_suite_score_breakdown_mismatches": float(
-            breakdown_mismatches(resolved_cases)
+            breakdown_mismatches(raw_cases)
         ),
     }
 
     for suffix, value in per_case_metrics.items():
         metrics[f"objective_suite_case_{suffix}"] = value
 
-    return metrics, resolved_cases
+    return metrics, resolved_cases, raw_cases
 
 
 def compute_correctness_metrics(correctness_report):
@@ -148,7 +190,7 @@ def compute_correctness_metrics(correctness_report):
 
 
 def compute_diagnostic_lane_metrics(metric_config, case_map):
-    metrics, resolved_cases = compute_lane_metrics(metric_config, case_map)
+    metrics, resolved_cases, _ = compute_lane_metrics(metric_config, case_map)
     primary_metric_name = metric_config["primary_metric_name"]
 
     remapped = {}
@@ -187,8 +229,8 @@ def main(argv):
             raise SystemExit("fixed-time mode expects at least 1 canonical report plus 1 correctness report")
         canonical_reports = reports[:-1]
         correctness_report = reports[-1]
-        case_map = index_cases(canonical_reports)
-        metrics, canonical_cases = compute_lane_metrics(metric_config, case_map)
+        case_map = group_cases(canonical_reports)
+        metrics, canonical_cases, _ = compute_lane_metrics(metric_config, case_map)
         correctness_metrics, correctness_cases = compute_correctness_metrics(correctness_report)
         all_runtimes = [float(case.get("runtime_seconds") or 0.0) for case in canonical_cases + correctness_cases]
         canonical_runtimes = [float(case.get("runtime_seconds") or 0.0) for case in canonical_cases]
@@ -200,7 +242,7 @@ def main(argv):
     elif mode == "fixed-iteration":
         if len(reports) < 1:
             raise SystemExit("fixed-iteration mode expects at least 1 canonical report")
-        case_map = index_cases(reports)
+        case_map = group_cases(reports)
         metrics, _ = compute_diagnostic_lane_metrics(metric_config, case_map)
     else:
         raise SystemExit(f"unsupported mode: {mode}")

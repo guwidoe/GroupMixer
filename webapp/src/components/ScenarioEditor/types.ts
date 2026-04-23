@@ -41,7 +41,7 @@ export interface ConstraintFormState {
   desired_values?: Record<string, number>;
   // ImmovablePerson
   person_id?: string;
-  // MustStayTogether / ShouldNotBeTogether
+  // MustStayTogether / MustStayApart / ShouldNotBeTogether
   people?: string[];
   sessions?: number[];
 }

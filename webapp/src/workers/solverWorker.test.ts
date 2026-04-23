@@ -556,6 +556,59 @@ describe("solverWorker runtime", () => {
     ]);
   });
 
+  it("serializes canonical public solver errors into descriptive worker error payloads", async () => {
+    const { runtime } = createRuntime({
+      wasmModule: {
+        solve_with_progress: vi.fn(() => {
+          throw {
+            error: {
+              code: "infeasible-scenario",
+              message: "Could not place clique: team leads require separate groups in session 2",
+              why: "The solver cannot satisfy the required constraints, capacities, or session assignments for the provided scenario input.",
+              recovery: "Validate the scenario, inspect constraint settings, and adjust the input so a valid schedule is possible.",
+            },
+          };
+        }),
+      },
+    });
+    await initializeRuntime(runtime);
+    postedMessages = [];
+
+    await runtime.handleMessage({
+      type: "SOLVE",
+      id: "2",
+      data: {
+        scenarioPayload: {
+          scenario: {
+            people: [],
+            groups: [],
+            num_sessions: 1,
+            objectives: [],
+            constraints: [],
+            settings: { solver_type: "SimulatedAnnealing", stop_conditions: {}, solver_params: {} },
+          },
+        },
+        useProgress: false,
+      },
+    });
+
+    expect(postedMessages).toEqual([
+      {
+        type: "ERROR",
+        id: "2",
+        data: {
+          error: "Could not place clique: team leads require separate groups in session 2",
+          publicError: {
+            code: "infeasible-scenario",
+            message: "Could not place clique: team leads require separate groups in session 2",
+            why: "The solver cannot satisfy the required constraints, capacities, or session assignments for the provided scenario input.",
+            recovery: "Validate the scenario, inspect constraint settings, and adjust the input so a valid schedule is possible.",
+          },
+        },
+      },
+    ]);
+  });
+
   it("rejects solve requests that omit scenarioPayload", async () => {
     const { runtime } = createRuntime();
     await initializeRuntime(runtime);

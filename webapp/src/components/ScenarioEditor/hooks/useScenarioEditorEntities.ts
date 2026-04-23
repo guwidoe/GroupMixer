@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import type { AttributeDefinition, Group, GroupFormData, Person, PersonFormData, Scenario } from '../../../types';
+import type { AttributeDefinition, Group, GroupFormData, Person, PersonFormData, Scenario, ScenarioDocument } from '../../../types';
 import {
   applyNamedAttributeValuesToPerson,
   buildPersonFormAttributes,
   createAttributeDefinition,
   getAttributeDefinitionName,
-  reconcileScenarioAttributeState,
 } from '../../../services/scenarioAttributes';
 import { generateUniquePersonId, getDefaultSolverSettings } from '../helpers';
 import { buildScenarioWithGroups } from './scenarioEditorBulkUtils';
@@ -20,7 +19,7 @@ interface UseScenarioEditorEntitiesArgs {
   scenario: Scenario | null;
   attributeDefinitions: AttributeDefinition[];
   addAttributeDefinition: (definition: AttributeDefinition) => void;
-  setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
+  setScenarioDocument: (document: ScenarioDocument) => void;
   addNotification: (notification: NotificationPayload) => void;
   setScenario: (scenario: Scenario) => void;
 }
@@ -85,7 +84,7 @@ export function useScenarioEditorEntities({
   scenario,
   attributeDefinitions,
   addAttributeDefinition,
-  setAttributeDefinitions,
+  setScenarioDocument,
   addNotification,
   setScenario,
 }: UseScenarioEditorEntitiesArgs) {
@@ -472,12 +471,14 @@ export function useScenarioEditorEntities({
       editingAttribute.id,
     );
 
-    const nextDefinitions = attributeDefinitions.map((definition) =>
-      definition.id === editingAttribute.id ? updatedDefinition : definition,
-    );
-    setAttributeDefinitions(nextDefinitions);
     if (scenario) {
-      setScenario(reconcileScenarioAttributeState(scenario, nextDefinitions));
+      const nextDefinitions = attributeDefinitions.map((definition) =>
+        definition.id === editingAttribute.id ? updatedDefinition : definition,
+      );
+      setScenarioDocument({
+        scenario,
+        attributeDefinitions: nextDefinitions,
+      });
     }
 
     setNewAttribute({ key: '', values: [''] });
@@ -501,9 +502,11 @@ export function useScenarioEditorEntities({
         definition.id,
       ));
 
-    setAttributeDefinitions(normalizedDefinitions);
     if (scenario) {
-      setScenario(reconcileScenarioAttributeState(scenario, normalizedDefinitions));
+      setScenarioDocument({
+        scenario,
+        attributeDefinitions: normalizedDefinitions,
+      });
     }
     addNotification({
       type: 'success',

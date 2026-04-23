@@ -1,7 +1,22 @@
 import React from 'react';
-import type { ScenarioDataGridColumn, ScenarioDataGridWorkspaceConfig } from '../types';
+import type {
+  ScenarioDataGridColumn,
+  ScenarioDataGridWorkspaceConfig,
+  ScenarioDataGridWorkspaceMode,
+} from '../types';
 import { escapeCsvValue, parseCsvText } from '../model/csvCodec';
 import { formatColumnRawValue, parseColumnRawValue } from '../model/rawCodec';
+
+const CSV_PARSE_DEBOUNCE_MS = 180;
+
+type CachedCsvParse<T> = {
+  text: string;
+  sourceRows: T[];
+  result: {
+    rows: T[];
+    errors: string[];
+  };
+};
 
 function cloneRow<T>(row: T): T {
   if (typeof structuredClone === 'function') {
@@ -15,24 +30,45 @@ function cloneRows<T>(rows: T[]): T[] {
 }
 
 interface UseGridWorkspaceDraftArgs<T> {
+  browseModeEnabled: boolean;
   rows: T[];
   workspace?: ScenarioDataGridWorkspaceConfig<T>;
   draftEditableColumns: ScenarioDataGridColumn<T>[];
 }
 
-export function useGridWorkspaceDraft<T>({ rows, workspace, draftEditableColumns }: UseGridWorkspaceDraftArgs<T>) {
-  const [draftRows, setDraftRows] = React.useState<T[]>(() => cloneRows(rows));
-  const [csvDraftText, setCsvDraftText] = React.useState('');
+export function useGridWorkspaceDraft<T>({ browseModeEnabled, rows, workspace, draftEditableColumns }: UseGridWorkspaceDraftArgs<T>) {
+  const [draftRowsState, setDraftRowsState] = React.useState<T[]>(() => cloneRows(rows));
+  const [csvDraftTextState, setCsvDraftTextState] = React.useState('');
   const [csvErrors, setCsvErrors] = React.useState<string[]>([]);
-  const previousWorkspaceModeRef = React.useRef<'browse' | 'edit' | 'csv'>(workspace?.mode ?? 'browse');
+  const [isDraftDirty, setIsDraftDirty] = React.useState(false);
+  const [csvValidationState, setCsvValidationState] = React.useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const previousWorkspaceModeRef = React.useRef<'browse' | 'edit' | 'csv'>(workspace?.mode ?? (browseModeEnabled ? 'browse' : 'edit'));
+  const cachedCsvParseRef = React.useRef<CachedCsvParse<T> | null>(null);
 
   const workspaceMode = workspace?.mode ?? 'browse';
+  const normalizedWorkspaceMode = browseModeEnabled ? workspaceMode : (workspaceMode === 'csv' ? 'csv' : 'edit');
   const draftConfig = workspace?.draft;
   const inlineCsvConfig = workspace?.csv;
   const hasDraftEditing = Boolean(draftConfig) && draftEditableColumns.length > 0;
-  const isInlineCsvMode = workspaceMode === 'csv' && (hasDraftEditing || Boolean(inlineCsvConfig));
-  const effectiveEditMode = workspace ? workspaceMode === 'edit' : false;
-  const activeRows = hasDraftEditing && workspaceMode !== 'browse' ? draftRows : rows;
+  const isInlineCsvMode = normalizedWorkspaceMode === 'csv' && (hasDraftEditing || Boolean(inlineCsvConfig));
+  const effectiveEditMode = workspace ? normalizedWorkspaceMode === 'edit' : false;
+  const activeRows = hasDraftEditing && normalizedWorkspaceMode !== 'browse' ? draftRowsState : rows;
+  const hasUnappliedChanges = hasDraftEditing && isDraftDirty;
+
+  const replaceDraftRows = React.useCallback((nextRows: T[], options?: { dirty?: boolean }) => {
+    setDraftRowsState(cloneRows(nextRows));
+    setIsDraftDirty(options?.dirty ?? false);
+  }, []);
+
+  const setDraftRows = React.useCallback<React.Dispatch<React.SetStateAction<T[]>>>((nextRows) => {
+    setIsDraftDirty(true);
+    setDraftRowsState(nextRows);
+  }, []);
+
+  const setCsvDraftText = React.useCallback((nextText: string) => {
+    setIsDraftDirty(true);
+    setCsvDraftTextState(nextText);
+  }, []);
 
   const buildDraftCsvText = React.useCallback((sourceRows: T[]) => {
     const headerLine = draftEditableColumns.map((column) => escapeCsvValue(column.header)).join(',');
@@ -96,110 +132,191 @@ export function useGridWorkspaceDraft<T>({ rows, workspace, draftEditableColumns
     return { rows: errors.length > 0 ? sourceRows : nextRows, errors };
   }, [draftConfig, draftEditableColumns]);
 
+  const getCachedDraftCsvParse = React.useCallback((text: string, sourceRows: T[]) => {
+    const cached = cachedCsvParseRef.current;
+    if (cached && cached.text === text && cached.sourceRows === sourceRows) {
+      return cached.result;
+    }
+
+    const result = parseDraftCsvText(text, sourceRows);
+    cachedCsvParseRef.current = {
+      text,
+      sourceRows,
+      result,
+    };
+    return result;
+  }, [parseDraftCsvText]);
+
+  const discardDraftChanges = React.useCallback((nextMode?: ScenarioDataGridWorkspaceMode) => {
+    const resolvedNextMode = nextMode ?? (browseModeEnabled ? 'browse' : 'edit');
+
+    replaceDraftRows(rows);
+    setCsvDraftTextState('');
+    setCsvErrors([]);
+    setCsvValidationState('idle');
+    cachedCsvParseRef.current = null;
+    workspace?.onModeChange?.(!browseModeEnabled && resolvedNextMode === 'browse' ? 'edit' : resolvedNextMode);
+  }, [browseModeEnabled, replaceDraftRows, rows, workspace]);
+
+  const applyDraftChanges = React.useCallback((nextMode?: ScenarioDataGridWorkspaceMode) => {
+    if (!draftConfig) {
+      return true;
+    }
+
+    const resolvedNextMode = nextMode ?? (browseModeEnabled ? 'browse' : 'edit');
+
+    if (normalizedWorkspaceMode === 'csv') {
+      const parsed = getCachedDraftCsvParse(csvDraftTextState, draftRowsState);
+      if (parsed.errors.length > 0) {
+        setCsvErrors(parsed.errors);
+        setCsvValidationState('invalid');
+        return false;
+      }
+
+      draftConfig.onApply(parsed.rows);
+      setDraftRowsState(cloneRows(parsed.rows));
+      setIsDraftDirty(false);
+      setCsvErrors([]);
+      setCsvValidationState('valid');
+      workspace?.onModeChange?.(!browseModeEnabled && resolvedNextMode === 'browse' ? 'edit' : resolvedNextMode);
+      return true;
+    }
+
+    draftConfig.onApply(draftRowsState);
+    setIsDraftDirty(false);
+    setCsvErrors([]);
+    setCsvValidationState('idle');
+    workspace?.onModeChange?.(!browseModeEnabled && resolvedNextMode === 'browse' ? 'edit' : resolvedNextMode);
+    return true;
+  }, [browseModeEnabled, csvDraftTextState, draftConfig, draftRowsState, getCachedDraftCsvParse, normalizedWorkspaceMode, workspace]);
+
   const requestWorkspaceMode = React.useCallback((nextMode: 'browse' | 'edit' | 'csv') => {
     if (!workspace?.onModeChange) {
       return;
     }
 
+    if (!browseModeEnabled && nextMode === 'browse') {
+      discardDraftChanges('edit');
+      return;
+    }
+
     if (!hasDraftEditing) {
-      workspace.onModeChange(nextMode);
+      workspace.onModeChange(!browseModeEnabled && nextMode === 'browse' ? 'edit' : nextMode);
       return;
     }
 
     if (nextMode === 'browse') {
-      setDraftRows(cloneRows(rows));
-      setCsvDraftText('');
-      setCsvErrors([]);
-      workspace.onModeChange('browse');
+      discardDraftChanges('browse');
       return;
     }
 
-    if (workspaceMode === 'csv') {
-      const parsed = parseDraftCsvText(csvDraftText, draftRows);
+    if (normalizedWorkspaceMode === 'csv') {
+      const parsed = getCachedDraftCsvParse(csvDraftTextState, draftRowsState);
       if (parsed.errors.length > 0) {
         setCsvErrors(parsed.errors);
+        setCsvValidationState('invalid');
         return;
       }
-      setDraftRows(parsed.rows);
+
+      setDraftRowsState(parsed.rows);
       setCsvErrors([]);
+      setCsvValidationState('valid');
       if (nextMode === 'edit') {
         workspace.onModeChange('edit');
         return;
       }
-      setCsvDraftText(buildDraftCsvText(parsed.rows));
+      setCsvDraftTextState(buildDraftCsvText(parsed.rows));
       workspace.onModeChange('csv');
       return;
     }
 
     if (nextMode === 'edit') {
-      setDraftRows(cloneRows(rows));
+      replaceDraftRows(rows);
       setCsvErrors([]);
+      setCsvValidationState('idle');
       workspace.onModeChange('edit');
       return;
     }
 
-    const nextDraftRows = workspaceMode === 'edit' ? cloneRows(draftRows) : cloneRows(rows);
-    setDraftRows(nextDraftRows);
-    setCsvDraftText(buildDraftCsvText(nextDraftRows));
+    const nextDraftRows = normalizedWorkspaceMode === 'edit' ? cloneRows(draftRowsState) : cloneRows(rows);
+    setDraftRowsState(nextDraftRows);
+    setCsvDraftTextState(buildDraftCsvText(nextDraftRows));
     setCsvErrors([]);
+    setCsvValidationState('idle');
+    cachedCsvParseRef.current = null;
     workspace.onModeChange('csv');
-  }, [buildDraftCsvText, csvDraftText, draftRows, hasDraftEditing, parseDraftCsvText, rows, workspace, workspaceMode]);
-
-  const handleApplyDraftChanges = React.useCallback(() => {
-    if (!draftConfig) {
-      return;
-    }
-
-    if (workspaceMode === 'csv') {
-      const parsed = parseDraftCsvText(csvDraftText, draftRows);
-      if (parsed.errors.length > 0) {
-        setCsvErrors(parsed.errors);
-        return;
-      }
-      draftConfig.onApply(parsed.rows);
-      setDraftRows(cloneRows(parsed.rows));
-      setCsvErrors([]);
-      workspace?.onModeChange('browse');
-      return;
-    }
-
-    draftConfig.onApply(draftRows);
-    setCsvErrors([]);
-    workspace?.onModeChange('browse');
-  }, [csvDraftText, draftConfig, draftRows, parseDraftCsvText, workspace, workspaceMode]);
+  }, [browseModeEnabled, buildDraftCsvText, csvDraftTextState, discardDraftChanges, draftRowsState, getCachedDraftCsvParse, hasDraftEditing, normalizedWorkspaceMode, replaceDraftRows, rows, workspace]);
 
   const handleAddDraftRow = React.useCallback(() => {
     if (!draftConfig?.createRow) {
       return;
     }
     setDraftRows((current) => [...current, cloneRow(draftConfig.createRow!())]);
-  }, [draftConfig]);
+  }, [draftConfig, setDraftRows]);
+
+  React.useEffect(() => {
+    cachedCsvParseRef.current = null;
+  }, [draftRowsState, draftEditableColumns, draftConfig]);
+
+  React.useEffect(() => {
+    if (!hasDraftEditing || normalizedWorkspaceMode !== 'csv') {
+      setCsvValidationState('idle');
+      return;
+    }
+
+    setCsvValidationState('validating');
+    const timeoutId = window.setTimeout(() => {
+      const parsed = getCachedDraftCsvParse(csvDraftTextState, draftRowsState);
+      setCsvValidationState(parsed.errors.length > 0 ? 'invalid' : 'valid');
+    }, CSV_PARSE_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [csvDraftTextState, draftRowsState, getCachedDraftCsvParse, hasDraftEditing, normalizedWorkspaceMode]);
+
+  React.useEffect(() => {
+    if (!hasDraftEditing || isDraftDirty) {
+      return;
+    }
+
+    setDraftRowsState(cloneRows(rows));
+
+    if (normalizedWorkspaceMode === 'csv') {
+      setCsvDraftTextState(buildDraftCsvText(rows));
+    }
+  }, [buildDraftCsvText, hasDraftEditing, isDraftDirty, normalizedWorkspaceMode, rows]);
 
   React.useEffect(() => {
     const previousWorkspaceMode = previousWorkspaceModeRef.current;
-    previousWorkspaceModeRef.current = workspaceMode;
+    previousWorkspaceModeRef.current = normalizedWorkspaceMode;
 
     if (!hasDraftEditing) {
       return;
     }
 
-    if (workspaceMode !== 'browse' || previousWorkspaceMode === 'browse') {
+    if (normalizedWorkspaceMode !== 'browse' || previousWorkspaceMode === 'browse') {
       return;
     }
 
-    setDraftRows(cloneRows(rows));
-    setCsvDraftText('');
+    replaceDraftRows(rows);
+    setCsvDraftTextState('');
     setCsvErrors([]);
-  }, [hasDraftEditing, rows, workspaceMode]);
+    setCsvValidationState('idle');
+  }, [hasDraftEditing, normalizedWorkspaceMode, replaceDraftRows, rows]);
 
   return {
     activeRows,
-    csvDraftText,
+    applyDraftChanges,
+    csvDraftText: csvDraftTextState,
     csvErrors,
+    csvValidationState,
+    discardDraftChanges,
     draftConfig,
-    draftRows,
+    draftRows: draftRowsState,
     effectiveEditMode,
     hasDraftEditing,
+    hasUnappliedChanges,
     inlineCsvConfig,
     isInlineCsvMode,
     requestWorkspaceMode,
@@ -208,6 +325,6 @@ export function useGridWorkspaceDraft<T>({ rows, workspace, draftEditableColumns
     setDraftRows,
     workspaceMode,
     handleAddDraftRow,
-    handleApplyDraftChanges,
+    handleApplyDraftChanges: applyDraftChanges,
   };
 }

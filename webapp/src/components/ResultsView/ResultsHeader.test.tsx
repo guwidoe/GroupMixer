@@ -30,6 +30,8 @@ describe("ResultsHeader", () => {
         solution={createSampleSolution({ final_score: 12.5, iteration_count: 42, elapsed_time_ms: 1234 })}
         summary={summary}
         configDiff={null}
+        showSavedResultsAction={false}
+        onOpenSavedResults={vi.fn()}
         configDetailsOpen={false}
         onToggleConfigDetails={vi.fn()}
         onRestoreConfig={vi.fn()}
@@ -56,6 +58,7 @@ describe("ResultsHeader", () => {
     const user = userEvent.setup();
     const onToggleConfigDetails = vi.fn();
     const onRestoreConfig = vi.fn();
+    const onOpenSavedResults = vi.fn();
     const onToggleExportDropdown = vi.fn();
     const onExportAction = vi.fn();
     const onCopyAction = vi.fn();
@@ -68,6 +71,8 @@ describe("ResultsHeader", () => {
         solution={createSampleSolution()}
         summary={summary}
         configDiff={configDiff}
+        showSavedResultsAction={true}
+        onOpenSavedResults={onOpenSavedResults}
         configDetailsOpen={true}
         onToggleConfigDetails={onToggleConfigDetails}
         onRestoreConfig={onRestoreConfig}
@@ -83,6 +88,7 @@ describe("ResultsHeader", () => {
       />
     );
 
+    await user.click(screen.getByRole('button', { name: /saved results/i }));
     await user.click(screen.getByRole("button", { name: /different config/i }));
     await user.click(screen.getByRole("button", { name: /restore this result's configuration as new scenario/i }));
     await user.click(screen.getByRole("button", { name: /share & export/i }));
@@ -92,6 +98,7 @@ describe("ResultsHeader", () => {
     await user.click(screen.getByRole("button", { name: /download participant itineraries/i }));
 
     expect(screen.getByText(/people configuration changed/i)).toBeInTheDocument();
+    expect(onOpenSavedResults).toHaveBeenCalledTimes(1);
     expect(onToggleConfigDetails).toHaveBeenCalledTimes(1);
     expect(onRestoreConfig).toHaveBeenCalledTimes(1);
     expect(onToggleExportDropdown).toHaveBeenCalledTimes(1);

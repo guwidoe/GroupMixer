@@ -1,5 +1,6 @@
 import React from 'react';
 import type { AttributeDefinition, Scenario } from '../../../types';
+import { useAppStore } from '../../../store';
 import { WorkspaceLayout } from '../../workspace/layout/WorkspaceLayout';
 import type { WorkspaceNavGroup } from '../../workspace/layout/types';
 import { getResolvedScenarioSetupSectionsByGroup } from '../navigation/scenarioSetupNav';
@@ -13,6 +14,7 @@ interface ScenarioSetupLayoutProps {
   onNavigate: (sectionId: ScenarioSetupSectionId) => void;
   sidebarHeader?: React.ReactNode;
   collapsedSidebarHeader?: React.ReactNode;
+  headerContent?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -24,8 +26,11 @@ export function ScenarioSetupLayout({
   onNavigate,
   sidebarHeader,
   collapsedSidebarHeader,
+  headerContent,
   children,
 }: ScenarioSetupLayoutProps) {
+  const advancedModeEnabled = useAppStore((state) => state.ui.advancedModeEnabled ?? false);
+
   const groupedSections = getResolvedScenarioSetupSectionsByGroup(
     {
       scenario,
@@ -33,7 +38,7 @@ export function ScenarioSetupLayout({
       objectiveCount,
     },
     { surface: 'sidebar' },
-  );
+  ).filter((entry) => advancedModeEnabled || entry.group.id !== 'optimization');
 
   const groupedItems = React.useMemo<WorkspaceNavGroup[]>(
     () => groupedSections.map(({ group, sections }) => ({
@@ -62,7 +67,10 @@ export function ScenarioSetupLayout({
       sidebarHeader={sidebarHeader}
       collapsedSidebarHeader={collapsedSidebarHeader}
     >
-      {children}
+      <div className="space-y-4">
+        {headerContent ? <div>{headerContent}</div> : null}
+        {children}
+      </div>
     </WorkspaceLayout>
   );
 }

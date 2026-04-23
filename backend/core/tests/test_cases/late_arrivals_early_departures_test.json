@@ -4,14 +4,12 @@
     "tags": [
       "sessions",
       "participation",
-      "comparison",
-      "solver2"
+      "comparison"
     ],
     "kind": "correctness",
     "tier": "default",
     "solver_families": [
-      "solver1",
-      "solver2"
+      "solver1"
     ],
     "comparison": {
       "category": "invariant_only"

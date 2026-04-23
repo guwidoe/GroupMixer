@@ -331,20 +331,36 @@ const LIST_SOLVERS_SNIPPETS: &[ReferenceSnippet] = &[ReferenceSnippet {
       "notes": "Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation."
     },
     {
-      "kind": "solver2",
-      "canonical_id": "solver2",
-      "display_name": "Solver 2",
+      "kind": "solver3",
+      "canonical_id": "solver3",
+      "display_name": "Solver 3",
       "accepted_config_ids": [
-        "solver2"
+        "solver3"
       ],
       "capabilities": {
         "supports_initial_schedule": true,
         "supports_progress_callback": true,
         "supports_benchmark_observer": true,
-        "supports_recommended_settings": false,
+        "supports_recommended_settings": true,
         "supports_deterministic_seed": true
       },
-      "notes": "Internal `solver2` family with explicit compiled-problem/state seams, correctness-first move kernels, and a minimal runnable search baseline. Solve paths now run through `gm-core`; runtime-aware recommendation remains intentionally unsupported during bring-up."
+      "notes": "Solver 3 is an advanced dense-state solver family focused on fast search. Supports recommended runtime mode, manual tuning, and optional correctness checks for debugging and validation. For normal runs, leave correctness checks off."
+    },
+    {
+      "kind": "solver4",
+      "canonical_id": "solver4",
+      "display_name": "Solver 4",
+      "accepted_config_ids": [
+        "solver4"
+      ],
+      "capabilities": {
+        "supports_initial_schedule": false,
+        "supports_progress_callback": false,
+        "supports_benchmark_observer": false,
+        "supports_recommended_settings": true,
+        "supports_deterministic_seed": true
+      },
+      "notes": "Dedicated pure-SGP solver family implementing the complete Triska/Musliu paper: Section 5 complete backtracking with pattern-driven minimal-freedom set selection, plus Sections 6 and 7 randomized greedy initialization and conflict-position local search. Solver4 strictly accepts only pure zero-repeat Social-Golfer-style scenarios."
     }
   ]
 }"#,

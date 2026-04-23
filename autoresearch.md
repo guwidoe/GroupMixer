@@ -1,107 +1,223 @@
-# Autoresearch: solver3 feature-complete metaheuristic quality
+# Autoresearch: solver3 broad multiseed quality
 
 ## Objective
-Improve `solver3`'s newer advanced search functionality under long budgets, with the primary goal of achieving the **best final incumbent score** at the end of the run across a deliberately mixed feature-surface bundle.
+Improve `solver3` against the new **broad multiseed fixed-time objective lane**.
 
-This lane is not just about Social Golfer. It is explicitly about making the newer solver3 metaheuristic surfaces work **cleanly and honestly** across:
+The benchmark question is:
+- run 10 canonical solver3 cases
+- run each case with 4 explicit seeds
+- average the final score across the 4 seeds for each canonical case
+- normalize each case against the checked-in baseline reference
+- average those normalized case scores with equal weight
+- scale by `100`
 
-- representative workshop scenarios
-- together/apart + pair-meeting constraints
-- transfer-heavy balance problems
-- clique / must-stay-together workloads
-- immovable assignments
-- partial attendance and session-specific capacities
-- zero-repeat encounter benchmarks like Social Golfer and Kirkman
+Lower is better.
+
+This session is about **overall objective quality robustness**, not single-case hero numbers. The main goal is to improve search quality across the broad portfolio without cheating on the benchmark definition.
 
 ## Metrics
-- **Primary**: `metaheuristic_suite_weighted_normalized_score` (lower is better, unitless scaled by 100)
+- **Primary**: `solver3_broad_multiseed_weighted_normalized_score` (lower is better)
 - **Secondary**:
-  - `metaheuristic_fixed_iteration_weighted_normalized_score`
-  - `solver3_raw_score_us`
-  - `runtime_total_seconds`
+  - `objective_suite_total_final_score_raw`
+  - `objective_suite_average_final_score_raw`
   - `objective_suite_total_runtime_seconds`
-  - validation mismatch counters
-  - per-case normalized scores for all 9 objective cases
+  - `objective_suite_total_replicate_count`
+  - `objective_suite_external_validation_failures`
+  - `objective_suite_total_score_mismatches`
+  - `objective_suite_score_breakdown_mismatches`
+  - per-case mean/min/max/stddev score metrics
+  - per-case mean/min/max/stddev runtime metrics
+  - `solver3_raw_score_us`
+  - `hotpath_total_us`
+  - `swap_preview_us`
+  - `swap_apply_us`
+  - `transfer_preview_us`
+  - `transfer_apply_us`
+  - `clique_preview_us`
+  - `clique_apply_us`
+  - `rep_avg_iter_us`
+  - `path_avg_iter_us`
+
+Interpretation policy:
+- primary metric decides keep/discard
+- raw hotpath metrics matter as diagnostics and tie-break context, but not as excuses to keep broad-quality regressions
+- broad multiseed quality beats single-seed wins
+- correctness must stay clean
 
 ## How to Run
 `./autoresearch.sh`
 
-Root wrappers delegate to `tools/autoresearch/solver3-metaheuristic-quality/`.
+Root wrappers delegate to:
+- `tools/autoresearch/solver3-broad-quality/autoresearch.sh`
+- `tools/autoresearch/solver3-broad-quality/autoresearch.checks.sh`
 
-## Persistent Metrics Logging
-`./autoresearch.sh` writes the latest full metric set to `autoresearch.last_run_metrics.json`.
+## Benchmark Contract
+Canonical portfolio, each with 4 explicit seeds:
+1. representative.small-workshop-balanced
+2. representative.small-workshop-constrained
+3. adversarial.clique-swap-functionality-35p
+4. adversarial.transfer-attribute-balance-111p
+5. stretch.social-golfer-32x8x10
+6. stretch.kirkman-schoolgirls-15x5x7
+7. stretch.large-gender-immovable-110p
+8. stretch.sailing-trip-demo-real
+9. stretch.synthetic-partial-attendance-capacity-pressure-152p
+10. stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p
 
-After every completed `run_experiment` + `log_experiment` cycle, run:
-
-`python3 tools/autoresearch/patch_autoresearch_jsonl.py autoresearch.jsonl autoresearch.last_run_metrics.json`
-
-This patches the latest run entry in `autoresearch.jsonl` so the tool-managed history also retains the secondary diagnostics and per-case scores.
+Lane definition and references live in:
+- `tools/autoresearch/solver3-broad-quality/fixed-time-metric-config.json`
+- `backend/benchmarking/suites/objective-canonical-representative-solver3-broad-multiseed-v1.yaml`
+- `backend/benchmarking/suites/objective-canonical-adversarial-solver3-broad-multiseed-v1.yaml`
+- `backend/benchmarking/suites/objective-canonical-stretch-solver3-broad-multiseed-v1.yaml`
 
 ## Files in Scope
-- `backend/core/src/solver3/**`
-- `backend/core/src/models.rs`
+- `backend/core/src/solver3/search/**` — move-family choice, sampling, search-driver behavior
+- `backend/core/src/solver3/moves/**` — preview/apply hotpaths and feasibility handling
+- `backend/core/src/solver3/scoring/**` — scoring/oracle fallout if needed
+- `backend/core/src/solver3/runtime_state.rs` — state helpers if search needs them
+- `backend/core/src/solver3/compiled_problem.rs` — compiled lookup support if justified
+- `backend/core/src/solver3/tests.rs` — focused solver3 regression coverage
 - `backend/core/tests/search_driver_regression.rs`
-- `backend/benchmarking/suites/*solver3-metaheuristic-v1.yaml`
-- `tools/autoresearch/solver3-metaheuristic-quality/**`
+- `backend/core/tests/data_driven_tests.rs`
+- `backend/core/tests/property_tests.rs`
+- `backend/benchmarking/src/manifest.rs` — only if benchmark manifest/test fallout requires it
+- `backend/benchmarking/suites/*.yaml` — only if keeping the benchmark contract intact while fixing metadata/coverage issues
+- `tools/autoresearch/objective-quality/aggregate_objective_metrics.py` — metric aggregation logic only when needed for honest signal
+- `tools/autoresearch/solver3-broad-quality/**`
 - `autoresearch.md`
 - `autoresearch.sh`
 - `autoresearch.checks.sh`
 - `autoresearch.config.json`
-- `autoresearch.ideas-to-try.md`
 - `autoresearch.ideas.md`
 
 ## Off Limits
-- `backend/core/src/solver1/**`
-- `backend/core/src/solver2/**`
-- solver3 constructor changes
-- hidden fallback / silent downgrade behavior for unsupported advanced modes
-- benchmark case identity, seeds, budgets, and metric reference math during the loop
-- weakening checks
+- changing benchmark case identity, seed lists, weights, or budgets to make the metric easier
+- simplifying canonical problems or replacing them with helper cases
+- solver1/solver5 feature work unrelated to solver3 broad-lane quality
+- unrelated benchmark/reporting cleanup not needed for this lane
+- hidden fallbacks or benchmark gaming
 
 ## Constraints
-- Primary signal is long-budget fixed-time objective quality on the explicit mixed solver3 bundle
-- Target per-case budgets are `150s` fixed-time and `7,000,000` fixed-iteration
-- Advanced search work must either support scenario semantics honestly or fail explicitly
-- Keep broad correctness guardrails; do not trade semantics away for SGP-only gains
-- Do not proxy or simplify the benchmark question
-- Prefer architecture that helps advanced search support more feature combinations cleanly
-- Benchmarks must run in `--release` mode for meaningful performance data
+- solver3 only
+- correctness checks must stay green
+- preserve the broad-lane contract exactly
+- do not overfit to one case, especially Sailing Trip
+- prefer robust policy changes over one-off per-case hacks
+- when an idea looks promising, invest **3-4 refinement attempts** before discarding it unless it is clearly broken, crashes, or violates checks
+- when a path is promising but too large for now, record it in `autoresearch.ideas.md`
+- keep notes current so a fresh agent can resume from this file alone
 
-## Canonical fixed-time objective portfolio
-- `representative.small-workshop-balanced`
-- `representative.small-workshop-constrained`
-- `adversarial.clique-swap-functionality-35p`
-- `adversarial.transfer-attribute-balance-111p`
-- `stretch.social-golfer-32x8x10`
-- `stretch.kirkman-schoolgirls-15x5x7`
-- `stretch.large-gender-immovable-110p`
-- `stretch.sailing-trip-demo-real`
-- `stretch.synthetic-partial-attendance-capacity-pressure-152p`
-
-## Diagnostic companions
-- fixed-iteration bundle on the same 9 objective cases
-- capability-aware suite splitting is allowed when it preserves the same case set, budgets, and metric references while routing semantically supported cases to advanced modes and keeping unsupported cases on truthful baseline modes
-- solver3 raw runtime / hotpath diagnostic lane
-- solver3 correctness benchmark corpus with external validation
-
-## Research policy
-- Prefer substantial search ideas over micro-tuning.
-- Favor cleaner feature-complete advanced search wiring over narrow SGP-only wins.
-- Capability gating is allowed and often preferred to dishonest degradation.
-- If a feature family is currently unsupported by one advanced mode, either extend support cleanly or keep the rejection explicit and truthful.
-- The big question is not only whether a mechanism helps Social Golfer, but whether it can become a real solver3 capability rather than a brittle niche lane.
+## Current State Before Loop Start
+- The broad multiseed solver3 lane is checked in and runnable.
+- The metric aggregator now supports duplicate `case_id`s so multiseed averaging is first-class.
+- Root autoresearch wrappers now target the solver3 broad lane.
+- Existing solver3 context from recent work:
+  - `MustStayApart` shipped for solver3
+  - swap-side structural preselection shipped
+  - adaptive move-family chooser exists and improved over the broken first-valid-family policy, but remains open for tuning
+  - trusted-vs-checked preview split exists, but broad raw-speed evidence for wider trusted rollout is mixed
+- Known likely leverage areas:
+  - move-family choice robustness
+  - search policy balance across time-limited multiseed runs
+  - cheap structural gating that improves quality-per-second without biasing family usage badly
+  - targeted preview hotpath cleanup only when it helps the broad lane
 
 ## What's Been Tried
-- Solver3 now has explicit advanced driver separation, SGP-local tabu, memetic scaffolding, donor-session transplant recombination, truthful benchmark telemetry, and explicit capability gating for unsupported advanced combinations.
-- Plain `sgp_week_pair_tabu` remains the strongest advanced result on the 25s Social Golfer anchor.
-- Donor-session recombination is no longer obviously dead: forced-fire diagnostics can beat the tabu reference on matched 3M Social Golfer budgets, but the normal trigger/selection regime still lags on the real 25s anchor.
-- The next loop should treat advanced-mode **feature coverage + honest long-budget quality** as the main target, rather than only continuing narrow Social Golfer tuning.
-- Broad repeat-encounter routing into `single_state + sgp_week_pair_tabu` was too coarse for the mixed bundle: it helped Social Golfer but hurt `large_gender` enough to regress the aggregate.
-- Narrower capability routing looks more credible: keeping `sgp_week_pair_tabu` only on the pure zero-repeat stretch cases (`social_golfer`, `kirkman`) while leaving broader feature-rich stretch cases on baseline truthful modes improved the primary metric to `99.9137` by capturing the Social Golfer gain without the `large_gender` regression.
-- A stronger follow-up that upgraded those same pure zero-repeat cases from `single_state + sgp_week_pair_tabu` to `donor_session_transplant + sgp_week_pair_tabu` produced a much larger jump (`88.8026`), driven by retaining the Social Golfer gain and solving Kirkman to score `0` under the long-budget lane while leaving the broader feature-rich cases on truthful baseline modes.
-- A targeted incubation follow-up on that pure zero-repeat donor route then made donor triggering and child-polish escalation more aggressive for long budgets (`recombination_no_improvement_window` / `cooldown_window`: `100000 -> 25000`, `child_polish_max_stagnation_windows`: `4 -> 8`). That improved the primary metric further to `88.7544`, mainly by improving Social Golfer from `5367 -> 5346`; fixed-iteration Social worsened (`5367 -> 5388`), so this looked like better time-budget utilization rather than a uniform quality-per-iteration improvement.
-- A second trigger-aggression follow-up pushed the zero-repeat donor trigger/cooldown further down to `10000 / 10000` while keeping `child_polish_max_stagnation_windows = 8`. That improved the primary metric again to `88.5818`, with Social Golfer improving sharply to `5262` fixed-time and `5325` fixed-iteration. Kirkman remained perfect in fixed-time (`0`) but regressed from perfect to `33` in fixed-iteration, so the current best setting is even more explicitly a fixed-time quality win rather than a universally better quality-per-iteration setting.
-- A same-code confirmation rerun of that `10000 / 10000` champion reproduced the exact same primary and fixed-iteration metrics (`88.5818`, `95.3830`) and the same per-case objective scores, while raw runtime diagnostics moved around significantly. That is useful anti-overfitting evidence: the incumbent-quality gain looks stable on the objective lane even though micro-runtime diagnostics are noisy on the shared machine.
-- A follow-up that made adaptive raw-child retention much stricter on the zero-repeat donor route (`keep_ratio: 0.5 -> 0.25`) failed badly (`97.4707`). Social Golfer stayed at the improved donor score, but Kirkman regressed sharply (`0 -> 44` fixed-time, `33 -> 44` fixed-iteration). So the current win is not coming from polishing fewer donor children; aggressive pruning starves the mechanism on Kirkman.
-- An asymmetric trigger/cooldown follow-up (`recombination_no_improvement_window = 10000`, `recombination_cooldown_window = 5000`) was effectively inert: it reproduced the same primary and fixed-iteration metrics as the `10000 / 10000` champion. So once the first donor trigger is delayed to the current threshold, shortening the post-event cooldown alone does not appear to change behavior on the honest lane.
-- The opposite asymmetry (`recombination_no_improvement_window = 5000`, `recombination_cooldown_window = 10000`) also regressed (`88.6681`). It preserved Kirkman at `0` but gave back the Social Golfer gain (`5262 -> 5304` fixed-time; `5325 -> 5304` fixed-iteration), which suggests the earlier first trigger itself is too aggressive even when repeat firing is locked out longer.
+- The broad-lane benchmark and aggregation infrastructure were created and validated.
+- The checked-in reference baseline in `fixed-time-metric-config.json` uses these per-case 4-seed means:
+  - representative.small-workshop-balanced = `3.0`
+  - representative.small-workshop-constrained = `4.0`
+  - adversarial.clique-swap-functionality-35p = `4756.0`
+  - adversarial.transfer-attribute-balance-111p = `199.75`
+  - stretch.social-golfer-32x8x10 = `338.25`
+  - stretch.kirkman-schoolgirls-15x5x7 = `55.0`
+  - stretch.large-gender-immovable-110p = `2176.25`
+  - stretch.sailing-trip-demo-real = `2451.0`
+  - stretch.synthetic-partial-attendance-capacity-pressure-152p = `6552.25`
+  - stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p = `6632.0`
+- A first rerun on current `master` scored about `102.09`, meaning current head was slightly worse than the reference baseline on this broad lane.
+- Session baseline on branch `autoresearch/solver3-broad-quality-2026-04-16` / setup commit `98504a9` scored `102.53818534304553`.
+  - biggest regression signal: `stretch.sailing-trip-demo-real` mean `3425.75 / 2451.0` (`1.3977x` normalized)
+  - mild regressions: transfer-attribute-balance (`1.0063x`), partial-attendance (`1.0017x`)
+  - notable wins: kirkman (`0.9000x`), social-golfer (`0.9593x`), large-gender-immovable (`0.9924x`), keep-apart partial-attendance (`0.9964x`)
+  - raw runtime diagnostic baseline: `solver3_raw_score_us=3.7197`, `hotpath_total_us=2.1176`
+- Recent solver3 search history already suggests that raw micro-speed wins can still hurt portfolio quality if move-family balance shifts badly.
+- The loop should therefore prefer:
+  1. policy improvements that survive multiseed averaging
+  2. hotpath wins that do not distort family mix in harmful ways
+  3. multi-step refinement of promising ideas before giving up
+- Experiment 1: softened adaptive chooser utility ranking with `normalized.sqrt()` before weighting.
+  - outcome: **discarded**
+  - primary metric regressed from `102.5382` to `103.7673`
+  - runtime also got worse (`objective_suite_total_runtime_seconds` `47.98 -> 54.27`)
+  - main damage stayed concentrated in Sailing (`1.3977x -> 1.4080x`) while several broad-lane runtimes inflated
+  - takeaway: broad utility compression increased exploration/diversity in a way that hurt both quality and throughput; the next refinement should be more selective than globally softening utility differences
+- Experiment 2: added mild negative reward for rejected/no-candidate family attempts so chooser utility is not driven only by successful accepts.
+  - outcome: **keep**
+  - primary metric improved from `102.5382` to `101.0107`
+  - biggest win: Sailing collapsed from `3425.75` mean (`1.3977x`) to `2409.75` mean (`0.9832x`)
+  - other wins: transfer-attribute-balance improved to `0.9825x`
+  - regressions to watch: kirkman worsened to `1.1000x`, large-gender-immovable worsened to `1.0316x`, partial-attendance worsened to `1.0116x`
+  - hotpath/raw-runtime diagnostics got slower, but the primary broad fixed-time quality metric improved decisively
+  - next refinement should preserve the failure-penalty idea while clawing back the regressions outside Sailing and some of the hotpath slowdown
+- Experiment 3: kept the rejected-candidate penalty but removed the no-candidate penalty, leaving missing-candidate handling to the existing candidate-rate/share signal.
+  - outcome: **keep**
+  - primary metric improved further from `101.0107` to `98.1441`
+  - Sailing improved again to `2357.25` mean (`0.9618x`)
+  - kirkman flipped from a regression to a strong win (`1.1000x -> 0.8500x`)
+  - transfer-attribute-balance stayed good (`0.9787x`), social-golfer stayed good (`0.9919x`)
+  - remaining watch item: large-gender-immovable is still weak at `1.0379x`; partial-attendance is basically flat (`1.0001x`)
+  - runtime/hotpath diagnostics also improved materially versus Experiment 2, though they are still secondary to the primary broad-lane objective
+  - takeaway: penalizing failed previews is useful, but penalizing no-candidate attempts separately was too aggressive because candidate-rate-based share correction was already enough
+- Experiment 4: reduced the rejected-candidate penalty from `0.10` to `0.08`.
+  - outcome: **discarded**
+  - primary metric snapped back to `102.1250`, giving up most of the gains from Experiment 3
+  - kirkman regressed badly (`0.8500x -> 1.2000x`) and social-golfer also flipped from a win to a regression (`0.9919x -> 1.0163x`)
+  - Sailing stayed good (`0.9784x`) and partial-attendance stayed slightly better, but not enough to offset the broader losses
+  - takeaway: the rejected-preview penalty needs to stay near the stronger `0.10` level; weakening it too much loses the useful discipline the chooser needs
+- Experiment 5: blended recent improving-accept rate into the chooser's target-share calculation, so fair-share pressure depends on both candidate availability and recent improving productivity.
+  - outcome: **discarded**
+  - primary metric regressed from `98.1441` to `101.5189`
+  - large-gender-immovable improved slightly (`1.0379x -> 1.0303x`) and kirkman stayed decent (`0.8500x -> 0.9500x`), but Sailing degraded badly (`0.9618x -> 1.1576x`)
+  - transfer-heavy adversarial also lost its gain (`0.9787x -> 1.0025x`), so the added productive-share logic overcorrected against the families that were helping Sailing
+  - takeaway: improving-accept rate may still be useful as instrumentation, but blending it directly into target-share pressure was too destabilizing for the broad lane
+- Experiment 6: switched sampled swap previewing back from trusted to checked throughout `candidate_sampling.rs`.
+  - outcome: **discarded**
+  - primary metric landed at `98.4304`, slightly worse than the current best `98.1441`
+  - broad quality stayed decent and large-gender-immovable improved a bit (`1.0379x -> 1.0291x`), but Sailing softened (`0.9618x -> 0.9982x`) and the overall gain was not enough
+  - takeaway: sampled checked swap preview is not obviously catastrophic on the broad lane, but it is not a clear win either; keep it as a secondary fallback idea rather than the main current direction
+- Experiment 7: reduced adaptive chooser exploration epsilon from `0.05` to `0.03` while keeping the rejected-preview penalty policy from the current best.
+  - outcome: **discarded**
+  - primary metric regressed to `102.2684`
+  - transfer-heavy adversarial and social-golfer improved, and runtime got faster, but Sailing blew up again (`0.9618x -> 1.2072x`) and dominated the loss
+  - takeaway: the current best chooser still needs more exploration than `0.03`; cutting exploration too aggressively recreates the same kind of path-dependence failure that hurts Sailing
+- Experiment 8: added a small improving-accept-rate bonus directly into chooser weight computation as a tie-break, while leaving target-share logic untouched.
+  - outcome: **discarded**
+  - primary metric regressed to `102.0270`
+  - social-golfer and transfer-heavy adversarial improved strongly, but Sailing regressed again (`0.9618x -> 1.1909x`) and large-gender-immovable also stayed weak (`1.0404x`)
+  - takeaway: even a mild productivity bonus inside the main chooser weights is too strong; if improving-accept rate is used at all, it likely needs to be gated to near-tie situations or kept as offline telemetry only
+- Experiment 9: gated the productivity bonus to near-tie utility situations only.
+  - outcome: **discarded**
+  - primary metric was still worse than the current best (`98.3132` vs `98.1441`)
+  - Sailing stayed strong (`0.9801x`) and large-gender-immovable improved slightly (`1.0337x`), but the overall score was not better and runtime got even slower
+  - takeaway: a near-tie productivity tie-break is less damaging than an always-on productivity bonus, but it still does not beat the simpler current-best chooser
+- Experiment 10: added a **near-tie share-deficit bonus** so families that are under their target share get a small extra nudge only when utility is already close.
+  - outcome: **keep**
+  - primary metric improved from `98.1441` to `98.0095`
+  - biggest broad wins: social-golfer improved further to `0.9431x`; Sailing stayed strong at `0.9815x`; kirkman stayed strong at `0.8500x`
+  - transfer-heavy adversarial remained good at `0.9850x`
+  - remaining weak spots: large-gender-immovable still around `1.0412x`; partial-attendance slightly regressed to `1.0021x`
+  - runtime got slower than the previous best (`50.61s -> 54.96s`), but the primary broad quality metric improved honestly
+  - takeaway: tiny fairness nudges based on **share deficit in near ties** are meaningfully safer than productivity-based bonuses and may be a viable refinement direction
+- Experiment 11: reduced the diversification-burst stagnation threshold from `25_000` to `20_000`.
+  - outcome: **discarded**
+  - primary metric stayed close but slightly worse than the current best (`98.0577` vs `98.0095`)
+  - large-gender-immovable improved modestly (`1.0412x -> 1.0253x`), but Sailing worsened to a regression (`0.9815x -> 1.0111x`) and runtime ballooned badly (`54.94s -> 68.55s`)
+  - takeaway: earlier diversification is not free; it can help some stuck cases, but this threshold was too aggressive for the broad lane and spent too much time polishing donors
+- Experiment 12: increased the record-to-record initial threshold from `2.0` to `2.25`.
+  - outcome: **keep**
+  - primary metric improved from `98.0095` to `97.2726`
+  - quality wins were broad rather than concentrated in one case: Sailing improved to `0.9754x`, kirkman improved further to `0.8000x`, transfer-heavy improved to `0.9750x`, and large-gender-immovable improved from `1.0412x` to `1.0253x`
+  - social-golfer softened a bit versus Experiment 10 (`0.9431x -> 0.9512x`), and partial-attendance stayed a mild regression (`1.0037x`), but the broad aggregate still improved clearly
+  - runtime also improved materially versus Experiment 10 (`54.96s -> 52.63s`)
+  - takeaway: a slightly wider early record-to-record acceptance band appears to improve diversification/escape behavior across multiple canonical cases without reopening the old Sailing failure mode; this looks like a promising broader-than-chooser search-policy direction

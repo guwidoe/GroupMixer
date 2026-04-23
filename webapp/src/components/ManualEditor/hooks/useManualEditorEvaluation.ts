@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Assignment, Scenario, Solution } from '../../../types';
 import { getRuntime } from '../../../services/runtime';
+import { namifyPersonIdsInText } from '../../../utils/personReferenceText';
 import type { PreviewDelta } from '../types';
 
 interface UseManualEditorEvaluationArgs {
@@ -34,7 +35,9 @@ export function useManualEditorEvaluation({
         });
         if (!cancelled) setEvaluated(res);
       } catch (e) {
-        if (!cancelled) setEvalError(e instanceof Error ? e.message : String(e));
+        if (!cancelled) {
+          setEvalError(namifyPersonIdsInText(e instanceof Error ? e.message : String(e), effectiveScenario.people));
+        }
       } finally {
         if (!cancelled) setEvalLoading(false);
       }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 import type { Constraint } from '../../../../types';
-import { Button } from '../../../ui';
+import { Button, NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../../../ui';
 import { replaceConstraintsAtIndices } from '../../../constraints/constraintMutations';
 import { SetupActionsMenu } from '../../shared/SetupActionsMenu';
 import { SetupCardSearchToolbar } from '../../shared/SetupCardSearchToolbar';
@@ -34,22 +34,32 @@ import type {
 
 export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }: HardConstraintFamilySectionProps) {
   const { scenario, setScenario, addNotification, isLoading } = useConstraintScenario();
+  const isImmovableFamily = family === 'ImmovablePeople';
+  const hardPeopleFamily: Extract<Constraint, { type: 'MustStayTogether' | 'MustStayApart' }>['type'] = family === 'MustStayTogether'
+    ? 'MustStayTogether'
+    : 'MustStayApart';
+  const conversionTargetType = family === 'MustStayTogether'
+    ? 'ShouldStayTogether'
+    : family === 'MustStayApart'
+      ? 'ShouldNotBeTogether'
+      : null;
+  const supportsBulkConvert = conversionTargetType !== null;
   const [search, setSearch] = React.useState('');
   const [minMembers, setMinMembers] = React.useState<number | ''>('');
   const [viewMode, setViewMode] = React.useState<SetupCollectionViewMode>('list');
-  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('browse');
-  const [selectedMustIndices, setSelectedMustIndices] = React.useState<number[]>([]);
-  const [isSelectingMust, setIsSelectingMust] = React.useState(false);
+  const [gridWorkspaceMode, setGridWorkspaceMode] = React.useState<'browse' | 'edit' | 'csv'>('edit');
+  const [selectedHardIndices, setSelectedHardIndices] = React.useState<number[]>([]);
+  const [isSelectingHard, setIsSelectingHard] = React.useState(false);
   const [showBulkConvert, setShowBulkConvert] = React.useState(false);
   const [bulkWeight, setBulkWeight] = React.useState<number | ''>(10);
   const handleViewModeChange = React.useCallback((nextMode: SetupCollectionViewMode) => {
     setViewMode(nextMode);
     if (nextMode !== 'cards') {
-      setIsSelectingMust(false);
-      setSelectedMustIndices((current) => (current.length === 0 ? current : []));
+      setIsSelectingHard(false);
+      setSelectedHardIndices((current) => (current.length === 0 ? current : []));
     }
     if (nextMode !== 'list') {
-      setGridWorkspaceMode('browse');
+      setGridWorkspaceMode('edit');
     }
   }, []);
 
@@ -63,7 +73,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
 
   const filteredItems = viewMode === 'cards'
     ? items.filter(({ constraint }) => {
-        if (family === 'MustStayTogether' && minMembers !== '' && constraint.people.length < minMembers) {
+        if (supportsBulkConvert && minMembers !== '' && constraint.people.length < minMembers) {
           return false;
         }
 
@@ -75,7 +85,10 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
 
         if (constraint.type === 'ImmovablePeople') {
           textPool.push(constraint.group_id.toLowerCase());
-          textPool.push(...constraint.sessions.map((session) => String(session + 1)));
+          textPool.push(...(constraint.sessions ?? []).map((session) => String(session + 1)));
+          if (!constraint.sessions || constraint.sessions.length === 0) {
+            textPool.push('all sessions');
+          }
         } else if (Array.isArray(constraint.sessions)) {
           textPool.push(...constraint.sessions.map((session) => String(session + 1)));
         }
@@ -85,13 +98,13 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
     : items;
 
   const createGridRow = (): IndexedConstraint<Extract<Constraint, { type: HardConstraintFamily }>> => {
-    if (family === 'ImmovablePeople') {
+    if (isImmovableFamily) {
       return {
         constraint: {
           type: 'ImmovablePeople',
           people: [],
           group_id: scenario.groups[0]?.id ?? '',
-          sessions: Array.from({ length: scenario.num_sessions }, (_, index) => index),
+          sessions: undefined,
         },
         index: -1,
       } as IndexedConstraint<Extract<Constraint, { type: HardConstraintFamily }>>;
@@ -99,7 +112,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
 
     return {
       constraint: {
-        type: 'MustStayTogether',
+        type: hardPeopleFamily,
         people: [],
         sessions: undefined,
       },
@@ -115,21 +128,17 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
       const people = Array.from(new Set(constraint.people.filter(Boolean)));
       const normalizedSessions = normalizeSessionSelection(constraint.sessions ?? [], scenario.num_sessions);
 
-      if (family === 'ImmovablePeople') {
+      if (isImmovableFamily) {
         if (people.length < 1 || !constraint.group_id) {
           skippedRows += 1;
           return [];
         }
 
-        const sessions = normalizedSessions.length > 0
-          ? normalizedSessions
-          : Array.from({ length: scenario.num_sessions }, (_, index) => index);
-
         return [{
           type: 'ImmovablePeople',
           people,
           group_id: constraint.group_id,
-          sessions,
+          sessions: normalizedSessions.length === 0 ? undefined : normalizedSessions,
         } satisfies Constraint];
       }
 
@@ -139,7 +148,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
       }
 
       return [{
-        type: 'MustStayTogether',
+        type: hardPeopleFamily,
         people,
         sessions: normalizedSessions.length === 0 ? undefined : normalizedSessions,
       } satisfies Constraint];
@@ -154,46 +163,46 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
       type: skippedRows > 0 ? 'info' : 'success',
       title: skippedRows > 0 ? 'Some Rows Skipped' : 'Constraints Updated',
       message: skippedRows > 0
-        ? `Applied ${nextConstraints.length} ${family === 'ImmovablePeople' ? 'immovable' : 'must-stay-together'} row${nextConstraints.length === 1 ? '' : 's'} and skipped ${skippedRows} incomplete row${skippedRows === 1 ? '' : 's'}.`
-        : `Applied ${nextConstraints.length} ${family === 'ImmovablePeople' ? 'immovable' : 'must-stay-together'} row${nextConstraints.length === 1 ? '' : 's'}.`,
+        ? `Applied ${nextConstraints.length} ${isImmovableFamily ? 'immovable' : copy.title.toLowerCase()} row${nextConstraints.length === 1 ? '' : 's'} and skipped ${skippedRows} incomplete row${skippedRows === 1 ? '' : 's'}.`
+        : `Applied ${nextConstraints.length} ${isImmovableFamily ? 'immovable' : copy.title.toLowerCase()} row${nextConstraints.length === 1 ? '' : 's'}.`,
     });
   };
 
   return (
     <>
       <SetupCollectionPage
-        sectionKey={family === 'ImmovablePeople' ? 'immovable-people' : 'must-stay-together'}
+        sectionKey={family === 'ImmovablePeople' ? 'immovable-people' : family === 'MustStayTogether' ? 'must-stay-together' : 'must-stay-apart'}
         title={copy.title}
         count={items.length}
         description={copy.description}
         actions={
           <>
-            {family === 'MustStayTogether' ? (
+            {supportsBulkConvert ? (
               <>
                 <Button
-                  variant={isSelectingMust ? 'primary' : 'secondary'}
+                  variant={isSelectingHard ? 'primary' : 'secondary'}
                   onClick={() => {
-                    setIsSelectingMust((current) => {
+                    setIsSelectingHard((current) => {
                       if (current) {
-                        setSelectedMustIndices([]);
+                        setSelectedHardIndices([]);
                       }
                       return !current;
                     });
                   }}
                 >
-                  {isSelectingMust ? 'Done selecting' : 'Select cards'}
+                  {isSelectingHard ? 'Done selecting' : 'Select cards'}
                 </Button>
                 <SetupActionsMenu
                   label="Actions"
-                  summary={selectedMustIndices.length > 0 ? `Advanced actions · ${selectedMustIndices.length} selected` : 'Advanced actions'}
+                  summary={selectedHardIndices.length > 0 ? `Advanced actions · ${selectedHardIndices.length} selected` : 'Advanced actions'}
                   items={[
                     {
-                      label: `Convert selected to ${getConstraintDisplayName('ShouldStayTogether')}`,
-                      disabled: selectedMustIndices.length === 0,
+                      label: `Convert selected to ${getConstraintDisplayName(conversionTargetType)}`,
+                      disabled: selectedHardIndices.length === 0,
                       description:
-                        selectedMustIndices.length === 0
-                          ? 'Turn on card selection and choose one or more cliques first.'
-                          : 'Turn the selected hard cliques into weighted preferences.',
+                        selectedHardIndices.length === 0
+                          ? 'Turn on card selection and choose one or more constraints first.'
+                          : 'Turn the selected hard constraints into weighted preferences.',
                       onSelect: () => setShowBulkConvert(true),
                     },
                   ]}
@@ -214,16 +223,19 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
               onClear={() => setSearch('')}
               placeholder={family === 'ImmovablePeople' ? 'Filter by person, group, or session' : 'Filter by person or session'}
               status={searchValue || minMembers !== '' ? `Showing ${filteredItems.length} of ${items.length}` : undefined}
-              extra={family === 'MustStayTogether' ? (
+              extra={supportsBulkConvert ? (
                 <label className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
                   <span>Min members</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={minMembers}
-                    onChange={(event) => setMinMembers(event.target.value === '' ? '' : Math.max(0, parseInt(event.target.value, 10) || 0))}
-                    className="input w-24"
-                  />
+                  <span className="w-24">
+                    <NumberField
+                      label={undefined}
+                      value={minMembers === '' ? null : minMembers}
+                      onChange={(value) => setMinMembers(value == null ? '' : Math.max(0, Math.round(value)))}
+                      variant="compact"
+                      showSlider={false}
+                      {...withContextualMax(NUMBER_FIELD_PRESETS.meetingTarget, scenario.people.length)}
+                    />
+                  </span>
                 </label>
               ) : null}
             />
@@ -246,17 +258,17 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
               renderCard={({ constraint, index }) => (
                 <SetupItemCard
                   key={index}
-                  selected={selectedMustIndices.includes(index)}
+                  selected={selectedHardIndices.includes(index)}
                   badges={<SetupTypeBadge label={copy.title} />}
                   onOpen={() => onEdit(constraint, index)}
                   openLabel={`Edit ${copy.title.toLowerCase()} constraint`}
                   actions={
                     <>
-                      {family === 'MustStayTogether' && isSelectingMust ? (
+                      {supportsBulkConvert && isSelectingHard ? (
                         <SetupSelectionToggle
-                          selected={selectedMustIndices.includes(index)}
-                          onToggle={() => setSelectedMustIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
-                          label={`${selectedMustIndices.includes(index) ? 'Deselect' : 'Select'} ${copy.title.toLowerCase()} item`}
+                          selected={selectedHardIndices.includes(index)}
+                          onToggle={() => setSelectedHardIndices((previous) => previous.includes(index) ? previous.filter((value) => value !== index) : [...previous, index])}
+                          label={`${selectedHardIndices.includes(index) ? 'Deselect' : 'Select'} ${copy.title.toLowerCase()} item`}
                         />
                       ) : null}
                       <SetupItemActions onDelete={() => onDelete(index)} variant="card" />
@@ -276,6 +288,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
               workspace={{
                 mode: gridWorkspaceMode,
                 onModeChange: setGridWorkspaceMode,
+                browseModeEnabled: false,
                 draft: {
                   onApply: applyGridRows,
                   createRow: createGridRow,
@@ -308,7 +321,7 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                   searchText: (_value, item) => formatPersonSearchList(scenario.people, item.constraint.people),
                   width: 280,
                 },
-                ...(family === 'ImmovablePeople'
+                ...(isImmovableFamily
                   ? [{
                       kind: 'primitive' as const,
                       id: 'group',
@@ -326,42 +339,19 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                       width: 180,
                     }]
                   : []),
-                ...(family === 'ImmovablePeople'
-                  ? [{
-                      kind: 'primitive' as const,
-                      id: 'sessions',
-                      header: 'Sessions',
-                      primitive: 'array' as const,
-                      itemType: 'number' as const,
-                      options: Array.from({ length: scenario.num_sessions }, (_, index) => ({
-                        value: String(index + 1),
-                        label: String(index + 1),
-                      })),
-                      getValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.sessions?.length
-                        ? item.constraint.sessions.map((session) => session + 1)
-                        : Array.from({ length: scenario.num_sessions }, (_, index) => index + 1),
-                      setValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>, value) => {
-                        const normalized = Array.isArray(value)
-                          ? Array.from(new Set(value.map((entry) => Math.max(1, Math.round(Number(entry) || 1))))).sort((left, right) => left - right)
-                          : [];
-
-                        return {
-                          ...item,
-                          constraint: {
-                            ...item.constraint,
-                            sessions: normalized.length > 0
-                              ? normalized.map((session) => session - 1)
-                              : Array.from({ length: scenario.num_sessions }, (_, index) => index),
-                          },
-                        };
-                      },
-                      renderValue: (value: unknown) => Array.isArray(value) && value.length > 0 && value.length < scenario.num_sessions
-                        ? value.join(', ')
-                        : 'All sessions',
-                      searchText: (_value: unknown, item: IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>) => item.constraint.sessions?.join(' ') || 'all sessions',
-                      width: 220,
-                    }]
-                  : [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'MustStayTogether' }>>>({
+                ...(isImmovableFamily
+                  ? [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'ImmovablePeople' }>>>({
+                      totalSessions: scenario.num_sessions,
+                      getSessions: (item) => item.constraint.sessions,
+                      setSessions: (item, sessions) => ({
+                        ...item,
+                        constraint: {
+                          ...item.constraint,
+                          sessions,
+                        },
+                      }),
+                    })]
+                  : [createOptionalSessionScopeColumn<IndexedConstraint<Extract<Constraint, { type: 'MustStayTogether' | 'MustStayApart' }>>>({
                       totalSessions: scenario.num_sessions,
                       getSessions: (item) => item.constraint.sessions,
                       setSessions: (item, sessions) => ({
@@ -395,33 +385,47 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4">
           <div className="w-full max-w-md rounded-2xl border px-6 py-6" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}>
             <h3 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Convert to {getConstraintDisplayName('ShouldStayTogether')}
+              Convert to {getConstraintDisplayName(conversionTargetType)}
             </h3>
             <p className="mt-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
-              {selectedMustIndices.length} selected clique{selectedMustIndices.length === 1 ? '' : 's'} will be converted to {getConstraintDisplayName('ShouldStayTogether')} with the chosen penalty weight.
+              {selectedHardIndices.length} selected {copy.title.toLowerCase()} constraint{selectedHardIndices.length === 1 ? '' : 's'} will be converted to {getConstraintDisplayName(conversionTargetType)} with the chosen penalty weight.
             </p>
             <label className="mt-4 block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
               Penalty weight
             </label>
-            <input type="number" value={bulkWeight} onChange={(event) => setBulkWeight(event.target.value === '' ? '' : parseFloat(event.target.value))} className="input mt-2 w-full" />
+            <div className="mt-2">
+              <NumberField
+                label={undefined}
+                value={bulkWeight === '' ? null : bulkWeight}
+                onChange={(value) => setBulkWeight(value == null ? '' : value)}
+                {...NUMBER_FIELD_PRESETS.penaltyWeight}
+              />
+            </div>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setShowBulkConvert(false)}>Cancel</Button>
               <Button
                 variant="primary"
                 onClick={() => {
                   if (bulkWeight === '' || bulkWeight <= 0) return;
-                  setScenario(replaceConstraintsAtIndices(scenario, selectedMustIndices, (currentConstraint) => {
-                    if (currentConstraint.type !== 'MustStayTogether') {
+                  setScenario(replaceConstraintsAtIndices(scenario, selectedHardIndices, (currentConstraint) => {
+                    if (currentConstraint.type !== 'MustStayTogether' && currentConstraint.type !== 'MustStayApart') {
                       return [currentConstraint];
                     }
-                    return [{
-                      type: 'ShouldStayTogether',
-                      people: currentConstraint.people,
-                      sessions: currentConstraint.sessions,
-                      penalty_weight: bulkWeight,
-                    } satisfies Constraint];
+                    return [currentConstraint.type === 'MustStayTogether'
+                      ? {
+                          type: 'ShouldStayTogether',
+                          people: currentConstraint.people,
+                          sessions: currentConstraint.sessions,
+                          penalty_weight: bulkWeight,
+                        } satisfies Constraint
+                      : {
+                          type: 'ShouldNotBeTogether',
+                          people: currentConstraint.people,
+                          sessions: currentConstraint.sessions,
+                          penalty_weight: bulkWeight,
+                        } satisfies Constraint];
                   }));
-                  setSelectedMustIndices([]);
+                  setSelectedHardIndices([]);
                   setShowBulkConvert(false);
                 }}
               >

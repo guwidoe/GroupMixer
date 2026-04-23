@@ -29,6 +29,7 @@ pub fn validate_invariants(state: &RuntimeState) -> Result<(), SolverError> {
     check_participation_and_uniqueness(cp, state)?;
     check_location_membership_consistency(cp, state)?;
     check_cliques(cp, state)?;
+    check_hard_apart(cp, state)?;
     check_immovable(cp, state)?;
 
     Ok(())
@@ -245,6 +246,38 @@ fn check_cliques(cp: &CompiledProblem, state: &RuntimeState) -> Result<(), Solve
             }
         }
     }
+    Ok(())
+}
+
+fn check_hard_apart(cp: &CompiledProblem, state: &RuntimeState) -> Result<(), SolverError> {
+    for pair in &cp.hard_apart_pairs {
+        let (left, right) = pair.people;
+        for sidx in 0..cp.num_sessions {
+            let active = match &pair.sessions {
+                Some(sessions) => sessions.contains(&sidx),
+                None => true,
+            };
+            if !active
+                || !cp.person_participation[left][sidx]
+                || !cp.person_participation[right][sidx]
+            {
+                continue;
+            }
+
+            let left_group = state.person_location[sidx * cp.num_people + left];
+            let right_group = state.person_location[sidx * cp.num_people + right];
+            if left_group.is_some() && left_group == right_group {
+                return Err(SolverError::ValidationError(format!(
+                    "MustStayApart pair ['{}', '{}'] is together in group '{}' for session {}",
+                    cp.display_person(left),
+                    cp.display_person(right),
+                    cp.display_group(left_group.expect("checked above")),
+                    sidx
+                )));
+            }
+        }
+    }
+
     Ok(())
 }
 

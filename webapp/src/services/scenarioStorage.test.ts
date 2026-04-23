@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   ScenarioStorageService,
+  buildScenarioContentHash,
   buildScenarioDraftIdentityHash,
   compareScenarioConfigurations,
 } from "./scenarioStorage";
@@ -212,6 +213,15 @@ describe("ScenarioStorageService", () => {
     );
     expect(buildScenarioDraftIdentityHash("Workshop", scenario)).not.toBe(
       buildScenarioDraftIdentityHash("Workshop", createSampleScenario({ num_sessions: 3 }))
+    );
+  });
+
+  it("builds the same content hash when the setup matches", () => {
+    expect(buildScenarioContentHash(createSampleScenario())).toBe(
+      buildScenarioContentHash(createSampleScenario())
+    );
+    expect(buildScenarioContentHash(createSampleScenario())).not.toBe(
+      buildScenarioContentHash(createSampleScenario({ num_sessions: 3 }))
     );
   });
 

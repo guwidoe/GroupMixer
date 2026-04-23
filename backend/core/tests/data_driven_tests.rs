@@ -587,7 +587,8 @@ fn assert_forbidden_pairs_respected(input: &ApiInput, result: &SolverResult) {
     for constraint in &input.constraints {
         if let gm_core::models::Constraint::ShouldNotBeTogether {
             people, sessions, ..
-        } = constraint
+        }
+        | gm_core::models::Constraint::MustStayApart { people, sessions } = constraint
         {
             let applicable_sessions: Vec<u32> = match sessions {
                 Some(session_list) => session_list.clone(),
@@ -607,7 +608,7 @@ fn assert_forbidden_pairs_respected(input: &ApiInput, result: &SolverResult) {
                             present_members += 1;
                         }
                     }
-                    assert!(present_members <= 1, "Forbidden-pair constraint violated");
+                    assert!(present_members <= 1, "apart constraint violated");
                 }
             }
         }
@@ -737,6 +738,10 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
             people,
             sessions: Some(session_list),
             ..
+        }
+        | gm_core::models::Constraint::MustStayApart {
+            people,
+            sessions: Some(session_list),
         } = constraint
         {
             for session in session_list {
@@ -754,7 +759,7 @@ fn assert_session_specific_constraints_respected(input: &ApiInput, result: &Solv
                     }
                     assert!(
                         present_members <= 1,
-                        "Session-specific forbidden-pair constraint violated"
+                        "Session-specific apart constraint violated"
                     );
                 }
             }

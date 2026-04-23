@@ -143,4 +143,97 @@ impl State {
         }
         Ok(())
     }
+
+    /// Validates solver1 hard-constraint semantics against the current schedule.
+    pub fn validate_hard_constraints(&self) -> Result<(), SolverError> {
+        self.validate_no_duplicate_assignments()?;
+
+        for (clique_idx, clique) in self.cliques.iter().enumerate() {
+            for day in 0..self.num_sessions as usize {
+                if let Some(sessions) = &self.clique_sessions[clique_idx] {
+                    if !sessions.contains(&day) {
+                        continue;
+                    }
+                }
+
+                let active_members = clique
+                    .iter()
+                    .copied()
+                    .filter(|&person_idx| self.person_participation[person_idx][day])
+                    .collect::<Vec<_>>();
+                if active_members.len() < 2 {
+                    continue;
+                }
+
+                let first_group = self.locations[day][active_members[0]].0;
+                if let Some(other_idx) = active_members
+                    .iter()
+                    .copied()
+                    .find(|&person_idx| self.locations[day][person_idx].0 != first_group)
+                {
+                    return Err(SolverError::ValidationError(format!(
+                        "MustStayTogether violation: clique {} is split in session {} between '{}' and '{}'",
+                        clique_idx,
+                        day,
+                        self.display_person_by_idx(active_members[0]),
+                        self.display_person_by_idx(other_idx)
+                    )));
+                }
+            }
+        }
+
+        for (pair_idx, &(p1, p2)) in self.hard_apart_pairs.iter().enumerate() {
+            for day in 0..self.num_sessions as usize {
+                if let Some(sessions) = &self.hard_apart_pair_sessions[pair_idx] {
+                    if !sessions.contains(&day) {
+                        continue;
+                    }
+                }
+
+                if !self.person_participation[p1][day] || !self.person_participation[p2][day] {
+                    continue;
+                }
+
+                let (g1, _) = self.locations[day][p1];
+                let (g2, _) = self.locations[day][p2];
+                if g1 == g2 {
+                    return Err(SolverError::ValidationError(format!(
+                        "MustStayApart violation: pair ['{}', '{}'] is together in group '{}' for session {}",
+                        self.person_idx_to_id[p1],
+                        self.person_idx_to_id[p2],
+                        self.group_idx_to_id[g1],
+                        day
+                    )));
+                }
+            }
+        }
+
+        for ((person_idx, day), required_group_idx) in &self.immovable_people {
+            if !self.person_participation[*person_idx][*day] {
+                continue;
+            }
+
+            let (actual_group_idx, _) = self.locations[*day][*person_idx];
+            if actual_group_idx != *required_group_idx {
+                return Err(SolverError::ValidationError(format!(
+                    "Immovable violation: '{}' is in '{}' instead of '{}' for session {}",
+                    self.display_person_by_idx(*person_idx),
+                    self.group_idx_to_id[actual_group_idx],
+                    self.group_idx_to_id[*required_group_idx],
+                    day
+                )));
+            }
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "debug-invariant-checks")]
+    pub(crate) fn debug_validate_hard_constraints_if_enabled(&self, context: &str) {
+        if self.logging.debug_validate_invariants {
+            self.validate_hard_constraints().unwrap_or_else(|error| {
+                panic!("hard-constraint validation failed in {context}: {error}")
+            });
+        }
+    }
 }

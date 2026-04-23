@@ -44,6 +44,7 @@ export interface ScenarioDataGridDraftConfig<T> {
 export interface ScenarioDataGridWorkspaceConfig<T = unknown> {
   mode: ScenarioDataGridWorkspaceMode;
   onModeChange: (mode: ScenarioDataGridWorkspaceMode) => void;
+  browseModeEnabled?: boolean;
   draft?: ScenarioDataGridDraftConfig<T>;
   csv?: ScenarioDataGridInlineCsvConfig;
   editLabel?: string;

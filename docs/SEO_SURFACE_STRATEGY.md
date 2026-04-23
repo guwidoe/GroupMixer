@@ -1,5 +1,9 @@
 # GroupMixer SEO surface strategy
 
+Execution backlog:
+
+- `docs/SEO_BACKLOG.md`
+
 ## Intentional indexed surface
 
 The public SEO surface is:

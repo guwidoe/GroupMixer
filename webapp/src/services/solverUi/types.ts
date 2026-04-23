@@ -1,7 +1,7 @@
 import type { SolverSettings } from '../../types';
 import type { RuntimeProgressUpdate, RuntimeSolverDescriptor } from '../runtime';
 
-export type SolverFamilyId = 'solver1' | 'solver2' | 'solver3';
+export type SolverFamilyId = 'solver1' | 'solver3';
 export type SolverUiSectionKind = 'universal' | 'family_shared' | 'solver_specific';
 export type SolverFormInputKey =
   | 'maxIterations'
@@ -137,11 +137,6 @@ export type SolverDraft =
       familyId: 'solver1';
       common: CommonSolverSettingsDraft;
       specific: Solver1SpecificDraft;
-    }
-  | {
-      familyId: 'solver2';
-      common: CommonSolverSettingsDraft;
-      specific: Record<string, never>;
     }
   | {
       familyId: 'solver3';

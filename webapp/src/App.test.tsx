@@ -1,9 +1,10 @@
 /* eslint-disable react/no-multi-comp */
 import { Outlet } from "react-router-dom";
 import { screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { renderWithRouter } from "./test/utils";
+import { useAppStore } from "./store";
 
 vi.mock("./pages/ToolLandingPage", () => ({
   default: ({ pageKey, locale }: { pageKey: string; locale: string }) => (
@@ -41,6 +42,11 @@ vi.mock("./components/ManualEditor", () => ({
 }));
 
 describe("App routing", () => {
+  beforeEach(() => {
+    useAppStore.getState().reset();
+    useAppStore.getState().setAdvancedModeEnabled(false);
+  });
+
   it("renders the tool-first landing page on the root route", async () => {
     renderWithRouter(<App />, { route: "/" });
 
@@ -124,9 +130,18 @@ describe("App routing", () => {
   });
 
   it("redirects /app/solver to the default run workspace", async () => {
+    useAppStore.getState().setAdvancedModeEnabled(true);
+
     renderWithRouter(<App />, { route: "/app/solver" });
 
     expect(await screen.findByText("Main app shell")).toBeInTheDocument();
     expect(await screen.findByText("Solver workspace test stub")).toBeInTheDocument();
+  });
+
+  it('redirects /app/solver back into the basic workflow when advanced mode is disabled', async () => {
+    renderWithRouter(<App />, { route: '/app/solver' });
+
+    expect(await screen.findByText('Main app shell')).toBeInTheDocument();
+    expect(await screen.findByText('Scenario editor test stub')).toBeInTheDocument();
   });
 });

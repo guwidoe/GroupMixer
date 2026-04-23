@@ -79,6 +79,7 @@ fn validate_schedule(
     let immovable_assignments =
         compile_immovable_assignments(input, &person_id_to_idx, &group_id_to_idx)?;
     let cliques = compile_cliques(input, &person_id_to_idx, num_sessions)?;
+    let hard_apart_pairs = compile_hard_apart_pairs(input, &person_id_to_idx, num_sessions)?;
 
     let mut compiled = vec![vec![Vec::new(); num_groups]; num_sessions];
     let mut seen_people = vec![vec![false; num_people]; num_sessions];
@@ -178,6 +179,7 @@ fn validate_schedule(
             &compiled,
             &person_participation,
             &cliques,
+            &hard_apart_pairs,
             &immovable_assignments,
             &person_idx_to_id,
             &group_idx_to_id,
@@ -250,6 +252,12 @@ struct CompiledClique {
     sessions: Option<Vec<usize>>,
 }
 
+#[derive(Debug, Clone)]
+struct CompiledHardApartPair {
+    people: (usize, usize),
+    sessions: Option<Vec<usize>>,
+}
+
 fn compile_cliques(
     input: &ApiInput,
     person_id_to_idx: &HashMap<String, usize>,
@@ -319,6 +327,46 @@ fn compile_cliques(
         .collect::<Vec<_>>();
     cliques.sort_by(|left, right| left.members.cmp(&right.members));
     Ok(cliques)
+}
+
+fn compile_hard_apart_pairs(
+    input: &ApiInput,
+    person_id_to_idx: &HashMap<String, usize>,
+    num_sessions: usize,
+) -> Result<Vec<CompiledHardApartPair>, SolverError> {
+    let mut pairs = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    for constraint in &input.constraints {
+        if let Constraint::MustStayApart { people, sessions } = constraint {
+            let sessions = normalize_sessions(sessions, num_sessions, "MustStayApart")?;
+            for left_idx in 0..people.len() {
+                for right_idx in (left_idx + 1)..people.len() {
+                    let &left = person_id_to_idx.get(&people[left_idx]).ok_or_else(|| {
+                        SolverError::ValidationError(format!(
+                            "MustStayApart references unknown person '{}'",
+                            people[left_idx]
+                        ))
+                    })?;
+                    let &right = person_id_to_idx.get(&people[right_idx]).ok_or_else(|| {
+                        SolverError::ValidationError(format!(
+                            "MustStayApart references unknown person '{}'",
+                            people[right_idx]
+                        ))
+                    })?;
+                    let people = canonical_pair(left, right);
+                    if seen.insert((people, sessions.clone())) {
+                        pairs.push(CompiledHardApartPair {
+                            people,
+                            sessions: sessions.clone(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(pairs)
 }
 
 #[derive(Debug, Clone)]
@@ -417,6 +465,7 @@ fn validate_hard_constraints(
     schedule: &IndexedSchedule,
     person_participation: &[Vec<bool>],
     cliques: &[CompiledClique],
+    hard_apart_pairs: &[CompiledHardApartPair],
     immovable_assignments: &[CompiledImmovableAssignment],
     person_idx_to_id: &[String],
     group_idx_to_id: &[String],
@@ -463,6 +512,33 @@ fn validate_hard_constraints(
                 return Err(SolverError::ValidationError(format!(
                     "warm start splits must-stay-together clique {:?} across multiple groups in session {}",
                     members, session_idx
+                )));
+            }
+        }
+    }
+
+    for pair in hard_apart_pairs {
+        let (left, right) = pair.people;
+        for session_idx in 0..num_sessions {
+            if let Some(sessions) = &pair.sessions {
+                if !sessions.contains(&session_idx) {
+                    continue;
+                }
+            }
+            if !person_participation[left][session_idx] || !person_participation[right][session_idx]
+            {
+                continue;
+            }
+
+            let left_group = person_groups[session_idx][left];
+            let right_group = person_groups[session_idx][right];
+            if left_group.is_some() && left_group == right_group {
+                return Err(SolverError::ValidationError(format!(
+                    "warm start places must-stay-apart pair ['{}', '{}'] together in group '{}' for session {}",
+                    person_idx_to_id[left],
+                    person_idx_to_id[right],
+                    group_idx_to_id[left_group.expect("checked above")],
+                    session_idx
                 )));
             }
         }
@@ -525,5 +601,40 @@ impl Dsu {
                 self.rank[left_root] += 1;
             }
         }
+    }
+}
+
+fn normalize_sessions(
+    sessions: &Option<Vec<u32>>,
+    num_sessions: usize,
+    label: &str,
+) -> Result<Option<Vec<usize>>, SolverError> {
+    let Some(sessions) = sessions else {
+        return Ok(None);
+    };
+    let mut normalized = sessions
+        .iter()
+        .map(|&session| session as usize)
+        .collect::<Vec<_>>();
+    normalized.sort_unstable();
+    normalized.dedup();
+    for &session_idx in &normalized {
+        if session_idx >= num_sessions {
+            return Err(SolverError::ValidationError(format!(
+                "{label} references invalid session {} (max: {})",
+                session_idx,
+                num_sessions.saturating_sub(1)
+            )));
+        }
+    }
+    Ok(Some(normalized))
+}
+
+#[inline]
+fn canonical_pair(left: usize, right: usize) -> (usize, usize) {
+    if left < right {
+        (left, right)
+    } else {
+        (right, left)
     }
 }

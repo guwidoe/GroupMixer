@@ -5,6 +5,7 @@ type ConstraintController = {
   setShowImmovableModal: (open: boolean) => void;
   setEditingConstraintIndex: (index: number | null) => void;
   setShowMustStayTogetherModal: (open: boolean) => void;
+  setShowMustStayApartModal: (open: boolean) => void;
   setShowRepeatEncounterModal: (open: boolean) => void;
   setShowAttributeBalanceModal: (open: boolean) => void;
   setShowShouldNotBeTogetherModal: (open: boolean) => void;
@@ -63,6 +64,12 @@ export function createScenarioEditorActions({ scenario, updateScenario, constrai
         return;
       }
 
+      if (type === 'MustStayApart') {
+        constraints.setEditingConstraintIndex(null);
+        constraints.setShowMustStayApartModal(true);
+        return;
+      }
+
       constraints.setConstraintForm((previous) => ({ ...previous, type }));
       constraints.setShowConstraintForm(true);
     },
@@ -77,6 +84,12 @@ export function createScenarioEditorActions({ scenario, updateScenario, constrai
       if (constraint.type === 'MustStayTogether') {
         constraints.setEditingConstraintIndex(index);
         constraints.setShowMustStayTogetherModal(true);
+        return;
+      }
+
+      if (constraint.type === 'MustStayApart') {
+        constraints.setEditingConstraintIndex(index);
+        constraints.setShowMustStayApartModal(true);
         return;
       }
 

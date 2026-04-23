@@ -4,7 +4,7 @@ const assetAvailabilityCache = new Map<string, boolean>();
 
 export function resolvePublicAssetUrl(
   assetPath: string,
-  baseUrl: string = import.meta.env.BASE_URL ?? "/"
+  baseUrl: string = import.meta.env?.BASE_URL ?? "/"
 ) {
   const normalizedBase = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
   const normalizedAssetPath = assetPath.replace(/^\/+/, "");

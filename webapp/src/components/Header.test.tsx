@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+/* eslint-disable react/no-multi-comp */
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,7 +21,10 @@ vi.mock('./AppHeader', () => ({
 
 vi.mock('./ScenarioEditor/DemoDataDropdown', () => ({
   DemoDataDropdown: ({ onDemoCaseClick }: { onDemoCaseClick: (id: string, name: string) => void }) => (
-    <button onClick={() => onDemoCaseClick('demo-1', 'Demo One')}>Demo Data</button>
+    <div>
+      <button onClick={() => onDemoCaseClick('demo-1', 'Demo One')}>Demo Data</button>
+      <button onClick={() => onDemoCaseClick('generated-random-workshop', 'Generate random workshop scenario')}>Random Demo</button>
+    </div>
   ),
 }));
 
@@ -34,6 +38,8 @@ describe('Header', () => {
     const user = userEvent.setup();
     const setShowScenarioManager = vi.fn();
     const saveScenario = vi.fn();
+    const setAdvancedModeEnabled = vi.fn();
+    const setShowWorkflowGuideButton = vi.fn();
     const loadDemoCaseOverwrite = vi.fn();
 
     const savedScenario = createSavedScenario({
@@ -48,6 +54,8 @@ describe('Header', () => {
       savedScenarios: { [savedScenario.id]: savedScenario },
       setShowScenarioManager,
       saveScenario,
+      setAdvancedModeEnabled,
+      setShowWorkflowGuideButton,
       loadDemoCase: vi.fn(),
       loadDemoCaseOverwrite,
       loadDemoCaseNewScenario: vi.fn(),
@@ -66,11 +74,15 @@ describe('Header', () => {
 
     await user.click(screen.getAllByRole('button', { name: /load/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /save/i })[0]);
+    await user.click(screen.getAllByRole('switch', { name: /enable advanced mode/i })[0]);
+    await user.click(screen.getAllByRole('switch', { name: /show workflow guide button/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /demo data/i })[0]);
     await user.click(screen.getByRole('button', { name: /overwrite/i }));
 
     expect(setShowScenarioManager).toHaveBeenCalledTimes(1);
     expect(saveScenario).toHaveBeenCalledWith('Workshop Plan');
+    expect(setAdvancedModeEnabled).toHaveBeenCalledWith(true);
+    expect(setShowWorkflowGuideButton).toHaveBeenCalledWith(false);
     expect(loadDemoCaseOverwrite).toHaveBeenCalledWith('demo-1');
   });
 
@@ -95,5 +107,53 @@ describe('Header', () => {
     expect(screen.getAllByRole('button', { name: /^load$/i })[0]).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /^save$/i })[0]).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /demo data/i })[0]).toBeInTheDocument();
+  });
+
+  it('can generate a random demo scenario from the demo data menu', async () => {
+    const user = userEvent.setup();
+    const loadGeneratedDemoScenarioOverwrite = vi.fn();
+
+    useAppStore.setState({
+      scenario: createSampleScenario(),
+      currentScenarioId: null,
+      savedScenarios: {},
+      setShowScenarioManager: vi.fn(),
+      saveScenario: vi.fn(),
+      loadDemoCase: vi.fn(),
+      loadDemoCaseOverwrite: vi.fn(),
+      loadDemoCaseNewScenario: vi.fn(),
+      loadGeneratedDemoScenario: vi.fn(),
+      loadGeneratedDemoScenarioOverwrite,
+      loadGeneratedDemoScenarioNewScenario: vi.fn(),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/app/solver']}>
+        <Header />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /random demo/i }));
+    fireEvent.change(screen.getByRole('slider', { name: /groups \(g\) slider/i }), { target: { value: '5' } });
+    fireEvent.change(screen.getByRole('slider', { name: /people per group \(p\) slider/i }), { target: { value: '3' } });
+    fireEvent.change(screen.getByRole('slider', { name: /sessions \(w\) slider/i }), { target: { value: '4' } });
+    await user.click(screen.getByRole('button', { name: /generate scenario/i }));
+    await user.click(screen.getByRole('button', { name: /overwrite/i }));
+
+    expect(loadGeneratedDemoScenarioOverwrite).toHaveBeenCalledTimes(1);
+    expect(loadGeneratedDemoScenarioOverwrite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        num_sessions: 4,
+        constraints: [
+          expect.objectContaining({
+            type: 'RepeatEncounter',
+            penalty_function: 'squared',
+            penalty_weight: 10,
+          }),
+        ],
+        groups: expect.arrayContaining([expect.objectContaining({ size: 3 })]),
+      }),
+      'Random Demo (5 groups × 3 people, 4 sessions)',
+    );
   });
 });
