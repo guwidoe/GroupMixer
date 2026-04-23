@@ -729,6 +729,29 @@ describe('ToolLandingPage SEO wiring', () => {
     confirmSpy.mockRestore();
   });
 
+  it('focuses the new landing attribute header after activating the add attribute area', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /add attribute/i }));
+
+    expect(screen.getByLabelText('Attribute column 1')).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: /add attribute/i }));
+
+    expect(screen.getByLabelText('Attribute column 2')).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: /remove attribute: attribute 2/i }));
+    await user.click(screen.getByRole('button', { name: /add attribute/i }));
+
+    expect(screen.getByLabelText('Attribute column 2')).toHaveFocus();
+  });
+
   it('renders the page heading above the generator across breakpoints', () => {
     render(
       <MemoryRouter>

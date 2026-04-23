@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import type { QuickSetupParticipantColumn } from './types';
 import { splitParticipantColumnValues } from '../../utils/quickSetup/participantColumns';
 
@@ -29,7 +30,9 @@ interface EditableTextBlockProps {
   placeholder?: string;
   style?: React.CSSProperties;
   onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
+  inputRef?: (node: HTMLDivElement | null) => void;
   dataFocusTarget?: boolean;
+  focusToken?: number | null;
 }
 
 const NAME_COLUMN_WIDTH = 120;
@@ -48,6 +51,17 @@ function readEditableValue(element: HTMLDivElement) {
   return rawValue.replace(/\n+$/g, '');
 }
 
+function focusEditableAtStart(element: HTMLDivElement) {
+  element.focus();
+
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(element);
+  range.collapse(true);
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+}
+
 function EditableTextBlock({
   className,
   value,
@@ -57,9 +71,15 @@ function EditableTextBlock({
   placeholder,
   style,
   onKeyDown,
+  inputRef,
   dataFocusTarget = false,
+  focusToken = null,
 }: EditableTextBlockProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const setRef = useCallback((node: HTMLDivElement | null) => {
+    ref.current = node;
+    inputRef?.(node);
+  }, [inputRef]);
 
   useLayoutEffect(() => {
     const element = ref.current;
@@ -77,9 +97,18 @@ function EditableTextBlock({
     }
   }, [value]);
 
+  useLayoutEffect(() => {
+    const element = ref.current;
+    if (focusToken == null || !element) {
+      return;
+    }
+
+    focusEditableAtStart(element);
+  }, [focusToken]);
+
   return (
     <div
-      ref={ref}
+      ref={setRef}
       contentEditable
       suppressContentEditableWarning
       spellCheck={false}
@@ -119,8 +148,8 @@ export function LandingParticipantColumnsInput({
   const [height, setHeight] = useState(minHeight);
   const [columnWidths, setColumnWidths] = useState<number[]>(() => columns.map((_, index) => (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH)));
   const [ghostColumnWidth, setGhostColumnWidth] = useState(ATTRIBUTE_COLUMN_WIDTH);
-  const [pendingFocusColumnId, setPendingFocusColumnId] = useState<string | null>(null);
-  const focusedColumnIdRef = useRef<string | null>(null);
+  const [pendingFocusRequest, setPendingFocusRequest] = useState<{ columnId: string; token: number } | null>(null);
+  const focusRequestTokenRef = useRef(0);
   const dragStateRef = useRef<{
     startX: number;
     leftWidth: number;
@@ -131,6 +160,41 @@ export function LandingParticipantColumnsInput({
   const resizeDragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const stopColumnResizeRef = useRef<() => void>(() => {});
   const stopResizeRef = useRef<() => void>(() => {});
+  const lastGhostPointerActivationAtRef = useRef<number | null>(null);
+  const headerInputRefs = useRef(new Map<string, HTMLDivElement>());
+  const fulfilledFocusRequestTokenRef = useRef<number | null>(null);
+
+  const focusColumnHeader = useCallback((columnId: string, token?: number) => {
+    if (token != null && fulfilledFocusRequestTokenRef.current === token) {
+      return true;
+    }
+
+    const element = headerInputRefs.current.get(columnId);
+    if (!element) {
+      return false;
+    }
+
+    focusEditableAtStart(element);
+    const isFocused = document.activeElement === element;
+    if (isFocused && token != null) {
+      fulfilledFocusRequestTokenRef.current = token;
+    }
+
+    return isFocused;
+  }, []);
+
+  const registerHeaderInput = useCallback((columnId: string, node: HTMLDivElement | null) => {
+    if (node) {
+      headerInputRefs.current.set(columnId, node);
+
+      if (pendingFocusRequest?.columnId === columnId) {
+        focusColumnHeader(columnId, pendingFocusRequest.token);
+      }
+      return;
+    }
+
+    headerInputRefs.current.delete(columnId);
+  }, [focusColumnHeader, pendingFocusRequest]);
 
   const maxLineCount = useMemo(() => (
     Math.max(1, ...columns.map((column) => Math.max(1, splitParticipantColumnValues(column.values).length)))
@@ -223,25 +287,33 @@ export function LandingParticipantColumnsInput({
     return stopResize;
   }, [stopResize]);
 
-  useEffect(() => {
-    if (!pendingFocusColumnId || focusedColumnIdRef.current === pendingFocusColumnId) {
+  useLayoutEffect(() => {
+    if (!pendingFocusRequest) {
       return;
     }
 
-    const element = document.querySelector(`[data-column-id="${pendingFocusColumnId}"] [data-ghost-focus-target="true"]`) as HTMLDivElement | null;
-    if (!element) {
-      return;
-    }
+    const { columnId, token } = pendingFocusRequest;
+    const timeoutIds: number[] = [];
+    const animationFrameId = window.requestAnimationFrame(() => {
+      focusColumnHeader(columnId, token);
+    });
 
-    element.focus();
-    const selection = window.getSelection();
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    range.collapse(true);
-    selection?.removeAllRanges();
-    selection?.addRange(range);
-    focusedColumnIdRef.current = pendingFocusColumnId;
-  }, [columns, pendingFocusColumnId]);
+    focusColumnHeader(columnId, token);
+    timeoutIds.push(window.setTimeout(() => {
+      focusColumnHeader(columnId, token);
+    }, 0));
+    timeoutIds.push(window.setTimeout(() => {
+      focusColumnHeader(columnId, token);
+    }, 50));
+    timeoutIds.push(window.setTimeout(() => {
+      focusColumnHeader(columnId, token);
+    }, 150));
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    };
+  }, [focusColumnHeader, pendingFocusRequest]);
 
   const handleResizePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -256,11 +328,32 @@ export function LandingParticipantColumnsInput({
   }, [handleResizePointerMove, height, stopResize]);
 
   const handleActivateGhostColumn = useCallback(() => {
-    const newColumnId = onAddAttribute();
+    let newColumnId: string | null = null;
+
+    flushSync(() => {
+      newColumnId = onAddAttribute();
+      if (newColumnId) {
+        focusRequestTokenRef.current += 1;
+        fulfilledFocusRequestTokenRef.current = null;
+        setPendingFocusRequest({
+          columnId: newColumnId,
+          token: focusRequestTokenRef.current,
+        });
+      }
+    });
+
     if (newColumnId) {
-      setPendingFocusColumnId(newColumnId);
+      const focusToken = focusRequestTokenRef.current;
+      const focusAfterGesture = () => {
+        window.requestAnimationFrame(() => {
+          focusColumnHeader(newColumnId as string, focusToken);
+        });
+      };
+
+      window.addEventListener('pointerup', focusAfterGesture, { once: true });
+      window.addEventListener('touchend', focusAfterGesture, { once: true });
     }
-  }, [onAddAttribute]);
+  }, [focusColumnHeader, onAddAttribute]);
 
   return (
     <div className="landing-resizable-textarea landing-resizable-textarea--structured rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
@@ -296,7 +389,9 @@ export function LandingParticipantColumnsInput({
                             className="landing-participant-columns__header-input landing-participant-columns__header-text"
                             ariaLabel={`Attribute column ${index}`}
                             placeholder={attributeNamePlaceholder}
+                            inputRef={(node) => registerHeaderInput(column.id, node)}
                             dataFocusTarget
+                            focusToken={pendingFocusRequest?.columnId === column.id ? pendingFocusRequest.token : null}
                           />
                           <button
                             type="button"
@@ -357,7 +452,19 @@ export function LandingParticipantColumnsInput({
               role="button"
               tabIndex={0}
               aria-label={addAttributeLabel}
-              onClick={handleActivateGhostColumn}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                lastGhostPointerActivationAtRef.current = Date.now();
+                handleActivateGhostColumn();
+              }}
+              onClick={() => {
+                const lastPointerActivationAt = lastGhostPointerActivationAtRef.current;
+                if (lastPointerActivationAt != null && Date.now() - lastPointerActivationAt < 750) {
+                  return;
+                }
+
+                handleActivateGhostColumn();
+              }}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
                   event.preventDefault();
