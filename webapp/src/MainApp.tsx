@@ -90,6 +90,7 @@ function MainApp() {
       <div ref={headerRef} className="results-print-hide">
         <Header
           renderDesktopCenterContent={() => <Navigation variant="embedded" />}
+          renderMobileBelowHeaderContent={() => <Navigation variant="mobile-bar" />}
           renderMobileCenterContent={({ closeMobileMenu }) => (
             <Navigation variant="mobile-menu" closeMobileMenu={closeMobileMenu} />
           )}

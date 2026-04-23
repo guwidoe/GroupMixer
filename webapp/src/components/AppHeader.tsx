@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Bug, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
@@ -19,6 +19,7 @@ interface AppHeaderProps {
   hideDesktopUtilityRail?: boolean;
   renderDesktopCenterContent?: () => ReactNode;
   renderMobileCenterContent?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
+  renderMobileBelowHeaderContent?: () => ReactNode;
   renderDesktopActions?: () => ReactNode;
   renderMobileActions?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
   renderDesktopUtilityActions?: () => ReactNode;
@@ -36,6 +37,7 @@ export function AppHeader({
   hideDesktopUtilityRail = false,
   renderDesktopCenterContent,
   renderMobileCenterContent,
+  renderMobileBelowHeaderContent,
   renderDesktopActions,
   renderMobileActions,
   renderDesktopUtilityActions,
@@ -49,11 +51,35 @@ export function AppHeader({
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const desktopCenterContent = renderDesktopCenterContent?.();
   const mobileCenterContent = renderMobileCenterContent?.({ closeMobileMenu });
+  const mobileBelowHeaderContent = renderMobileBelowHeaderContent?.();
   const desktopActions = renderDesktopActions?.();
   const mobileActions = renderMobileActions?.({ closeMobileMenu });
   const desktopUtilityActions = renderDesktopUtilityActions?.();
   const mobileUtilityActions = renderMobileUtilityActions?.({ closeMobileMenu });
   const BrandTitle = titleAs;
+  const desktopBreakpointMinWidth = {
+    sm: 640,
+    md: 768,
+    lg: 1024,
+    landing: 700,
+  }[desktopBreakpoint];
+  const [showMobileBelowHeaderContent, setShowMobileBelowHeaderContent] = useState(() => (
+    typeof window !== 'undefined' ? window.innerWidth < desktopBreakpointMinWidth : false
+  ));
+
+  useEffect(() => {
+    const updateShowMobileBelowHeaderContent = () => {
+      setShowMobileBelowHeaderContent(window.innerWidth < desktopBreakpointMinWidth);
+    };
+
+    updateShowMobileBelowHeaderContent();
+    window.addEventListener('resize', updateShowMobileBelowHeaderContent);
+
+    return () => {
+      window.removeEventListener('resize', updateShowMobileBelowHeaderContent);
+    };
+  }, [desktopBreakpointMinWidth]);
+
   const responsiveClasses = {
     sm: {
       headerLayout: 'flex flex-col gap-3 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-4',
@@ -164,6 +190,12 @@ export function AppHeader({
             ) : null}
           </div>
         </div>
+
+        {showMobileBelowHeaderContent && mobileBelowHeaderContent ? (
+          <div className="mt-3">
+            {mobileBelowHeaderContent}
+          </div>
+        ) : null}
 
         {mobileMenuOpen && (
           <div className={responsiveClasses.mobileMenu} style={{ borderColor: 'var(--border-primary)' }}>

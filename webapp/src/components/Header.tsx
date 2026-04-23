@@ -350,9 +350,10 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
 interface HeaderProps {
   renderDesktopCenterContent?: () => React.ReactNode;
   renderMobileCenterContent?: (helpers: { closeMobileMenu: () => void }) => React.ReactNode;
+  renderMobileBelowHeaderContent?: () => React.ReactNode;
 }
 
-export function Header({ renderDesktopCenterContent, renderMobileCenterContent }: HeaderProps = {}) {
+export function Header({ renderDesktopCenterContent, renderMobileCenterContent, renderMobileBelowHeaderContent }: HeaderProps = {}) {
   const {
     scenario,
     currentScenarioId,
@@ -419,6 +420,7 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
       <AppHeader
         renderDesktopCenterContent={renderDesktopCenterContent}
         renderMobileCenterContent={renderMobileCenterContent}
+        renderMobileBelowHeaderContent={renderMobileBelowHeaderContent}
         renderDesktopActions={() => <WorkspaceDesktopMenu handlers={handlers} />}
         renderMobileActions={({ closeMobileMenu }) => (
           <WorkspaceInlineActions closeMobileMenu={closeMobileMenu} handlers={handlers} />

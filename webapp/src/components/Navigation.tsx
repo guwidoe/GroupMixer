@@ -25,7 +25,7 @@ type WorkflowAction = {
 };
 
 type WorkflowItem = WorkflowTab | WorkflowAction;
-type NavigationVariant = 'standalone' | 'embedded' | 'mobile-menu';
+type NavigationVariant = 'standalone' | 'embedded' | 'mobile-menu' | 'mobile-bar';
 
 const EMBEDDED_SCENARIO_HISTORY_SLOT_CLASS = 'w-[5.25rem] shrink-0';
 
@@ -251,7 +251,7 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
   );
   const activeTabId = resolveActiveWorkflowTabId(location.pathname, advancedModeEnabled);
   const activeTabOrder = activeTabId ? workflowTabs.findIndex((tab) => tab.id === activeTabId) : -1;
-  const showScenarioHistoryControls = activeTabId === 'scenario' && variant !== 'standalone';
+  const showScenarioHistoryControls = activeTabId === 'scenario' && variant !== 'standalone' && variant !== 'mobile-bar';
 
   const getTabPath = (tabId: WorkflowTab['id'], path: string) => (tabId === 'scenario'
     ? getScenarioSetupPath(lastScenarioSetupSection)
@@ -374,17 +374,21 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
     <div
       className={variant === 'embedded'
         ? 'grid min-w-0 grid-cols-[5.25rem_minmax(0,1fr)_5.25rem] items-center gap-2'
-        : ''}
+        : variant === 'mobile-bar'
+          ? 'min-w-0'
+          : ''}
     >
       {variant === 'embedded' ? <div className={EMBEDDED_SCENARIO_HISTORY_SLOT_CLASS} aria-hidden="true" /> : null}
-      <ScrollArea orientation="horizontal" className={variant === 'embedded' ? 'min-w-0' : 'px-4 py-2'}>
-        <div className={variant === 'embedded' ? 'flex min-w-max items-center justify-center' : 'mx-auto flex min-w-max items-center justify-center'}>
+      <ScrollArea orientation="horizontal" className={variant === 'embedded' || variant === 'mobile-bar' ? 'min-w-0' : 'px-4 py-2'}>
+        <div className={variant === 'embedded' || variant === 'mobile-bar' ? 'flex min-w-max items-center justify-center' : 'mx-auto flex min-w-max items-center justify-center'}>
           <div
-            className="inline-flex items-center rounded-[1.1rem] border px-1.5 py-1"
+            className={variant === 'mobile-bar'
+              ? 'inline-flex items-center rounded-[1.05rem] border px-1 py-1'
+              : 'inline-flex items-center rounded-[1.1rem] border px-1.5 py-1'}
             style={{
               backgroundColor: 'var(--header-rail-surface)',
               borderColor: 'var(--border-primary)',
-              boxShadow: variant === 'embedded' ? 'none' : 'var(--shadow)',
+              boxShadow: variant === 'embedded' || variant === 'mobile-bar' ? 'none' : 'var(--shadow)',
             }}
           >
           {workflowItems.map((item, index) => {
@@ -419,7 +423,9 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
                   onClick={(event) => handleNavigate(event, tabPath)}
                   onMouseEnter={() => setHoveredTabId(item.id)}
                   onMouseLeave={() => setHoveredTabId((current) => (current === item.id ? null : current))}
-                  className="group inline-flex h-9 shrink-0 items-center gap-2 rounded-[0.9rem] px-3 text-sm font-medium transition-colors duration-150 md:px-3.5"
+                  className={variant === 'mobile-bar'
+                    ? 'group inline-flex h-9 shrink-0 items-center gap-2 rounded-[0.9rem] px-2.5 text-sm font-medium transition-colors duration-150'
+                    : 'group inline-flex h-9 shrink-0 items-center gap-2 rounded-[0.9rem] px-3 text-sm font-medium transition-colors duration-150 md:px-3.5'}
                   style={{
                     color: isActive || isPast || isHovered ? 'var(--text-primary)' : 'var(--text-secondary)',
                     backgroundColor: isActive
@@ -451,7 +457,7 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
                   >
                     {tabOrder + 1}
                   </span>
-                  <span className="truncate">{variant === 'embedded' ? (item.shortLabel ?? item.label) : item.label}</span>
+                  <span className="truncate">{variant === 'embedded' || variant === 'mobile-bar' ? (item.shortLabel ?? item.label) : item.label}</span>
                 </NavLink>
 
                 {nextItemExists ? (
