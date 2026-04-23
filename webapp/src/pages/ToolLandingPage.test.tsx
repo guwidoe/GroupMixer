@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
@@ -11,9 +11,10 @@ import { getToolPageConfig, TOOL_PAGE_CONFIGS } from './toolPageConfigs';
 
 const scrollIntoViewMock = vi.fn();
 
-function LocationProbe() {
+function LocationProbe({ includeSearch = false }: { includeSearch?: boolean }) {
   const location = useLocation();
-  return <div data-testid="location-probe">{location.pathname}</div>;
+  const displayLocation = includeSearch ? `${location.pathname}${location.search}${location.hash}` : location.pathname;
+  return <div data-testid="location-probe">{displayLocation}</div>;
 }
 
 vi.mock('../services/solver/solveScenario', () => ({
@@ -77,6 +78,7 @@ describe('ToolLandingPage SEO wiring', () => {
     if (config.hero.audienceSummary) {
       expect(screen.getByText(config.hero.audienceSummary)).toBeInTheDocument();
     }
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(document.title).toBe(config.seo.title);
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(config.seo.description);
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
@@ -220,6 +222,7 @@ describe('ToolLandingPage SEO wiring', () => {
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
+        <LocationProbe includeSearch />
       </MemoryRouter>,
     );
 
@@ -236,6 +239,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(await screen.findByText('Group 1')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /export csv/i })).toBeInTheDocument();
     expect(await screen.findByText(/results generated below/i)).toBeInTheDocument();
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/?view=results');
     expect(scrollIntoViewMock).toHaveBeenCalled();
 
     // Can transition to scenario editor
@@ -252,6 +256,27 @@ describe('ToolLandingPage SEO wiring', () => {
         expect.objectContaining({ name: 'landing_open_advanced_workspace' }),
       ]),
     );
+  }, 10000);
+
+  it('surfaces landing solver errors without falling back to draft groups', async () => {
+    const user = userEvent.setup();
+    vi.mocked(solveScenario).mockRejectedValueOnce(
+      new Error("Failed to solve scenario: invalid-input: MustStayApart conflicts with MustStayTogether for ['Alex', 'Sam']"),
+    );
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+        <LocationProbe includeSearch />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+
+    expect(await screen.findByText('Solver Error')).toBeInTheDocument();
+    expect(await screen.findByText(/muststayapart conflicts with muststaytogether/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('landing-results-panel')).not.toBeInTheDocument();
+    expect(screen.getByTestId('location-probe')).toHaveTextContent(/^\/$/);
   }, 10000);
 
   it('scrolls to the inline results each time groups are generated', async () => {
@@ -469,6 +494,9 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.queryByRole('button', { name: /switch to csv/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /sample/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^reset$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument();
+    expect(screen.getByText(/^fixed people$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/balance groups by attribute/i).length).toBeGreaterThan(0);
     
     expect(screen.getByText(
       'Keep certain people together or apart. Balance people by gender or other attributes. Generate multiple rounds with minimal repeats.',
@@ -504,10 +532,14 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.queryByRole('button', { name: /switch to names/i })).not.toBeInTheDocument();
     expect(screen.getByText(/balance groups by attribute/i)).toBeInTheDocument();
     expect(screen.getAllByText(/^role$/i).length).toBeGreaterThan(1);
-    expect(screen.getByRole('button', { name: /auto distribute attribute: team/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /auto distribute attribute: role/i })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: /auto distribute attribute: team/i })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /auto distribute attribute: role/i })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /minimize repeat pairings/i })).toBeChecked();
     expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/fixed people/i).compareDocumentPosition(screen.getByText(/balance groups by attribute/i))
+        & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it('lets users toggle repeat-pairing minimization from the sessions row', async () => {
@@ -527,7 +559,26 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(checkbox).not.toBeChecked();
   });
 
-  it('loads landing-compatible demo data into the quick setup form', async () => {
+  it('switches attribute auto-distribution off after a manual balance edit', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="group-assignment-optimizer" locale="en" />
+      </MemoryRouter>,
+    );
+
+    const checkbox = screen.getByRole('checkbox', { name: /auto distribute attribute: team/i });
+    expect(checkbox).toBeChecked();
+
+    fireEvent.change(screen.getAllByLabelText(/blue count/i)[0], { target: { value: '2' } });
+    expect(checkbox).not.toBeChecked();
+
+    await user.click(checkbox);
+    expect(checkbox).toBeChecked();
+  });
+
+  it('loads landing-compatible example data into the quick setup form', async () => {
     const user = userEvent.setup();
     const demoFixture = {
       demo_metadata: {
@@ -566,7 +617,7 @@ describe('ToolLandingPage SEO wiring', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getAllByRole('button', { name: /demo data/i })[0]);
+    await user.click(screen.getByRole('button', { name: /example data/i }));
     await user.click(await screen.findByRole('menuitem', { name: /landing ok/i }));
 
     await waitFor(() => {
@@ -574,8 +625,39 @@ describe('ToolLandingPage SEO wiring', () => {
     });
     expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('team');
     expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Ada - Grace');
-    expect(screen.getByRole('combobox', { name: /name 1/i })).toHaveValue('Ada');
-    expect(screen.getByRole('combobox', { name: /group 1/i })).toHaveValue('Group 1');
+    expect(screen.getByRole('textbox', { name: /fixed people: name/i })).toHaveTextContent('Ada');
+    expect(screen.getByRole('textbox', { name: /fixed people: group/i })).toHaveTextContent('Group 1');
+  });
+
+  it('confirms before clearing existing landing inputs', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/keep apart/i), 'Ada - Grace');
+    await user.click(screen.getByRole('button', { name: /clear all/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Clear all current inputs and results?');
+    expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Ada - Grace');
+
+    confirmSpy.mockClear();
+    confirmSpy.mockReturnValue(true);
+
+    await user.click(screen.getByRole('button', { name: /clear all/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Clear all current inputs and results?');
+    expect(screen.getByLabelText(/keep apart/i)).toHaveValue('');
+
+    confirmSpy.mockClear();
+
+    await user.click(screen.getByRole('button', { name: /clear all/i }));
+
+    expect(confirmSpy).not.toHaveBeenCalled();
   });
 
   it('lets users remove attribute columns from the structured participant editor', async () => {
@@ -591,13 +673,14 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(screen.getByRole('button', { name: /remove attribute: role/i }));
 
     expect(confirmSpy).toHaveBeenCalledWith('Remove "role" and all entered values?');
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
     expect(screen.queryByLabelText('Attribute column 2')).not.toBeInTheDocument();
     expect(screen.queryByText('role')).not.toBeInTheDocument();
 
     confirmSpy.mockRestore();
   });
 
-  it('lets users add fixed people assignments from the landing tool', async () => {
+  it('lets users enter fixed people assignments from the landing tool', async () => {
     const user = userEvent.setup();
 
     render(
@@ -606,8 +689,13 @@ describe('ToolLandingPage SEO wiring', () => {
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: /add fixed person/i }));
-    await user.selectOptions(screen.getByRole('combobox', { name: /group 1/i }), 'Group 2');
+    const fixedNames = screen.getByRole('textbox', { name: /fixed people: name/i });
+    const fixedGroups = screen.getByRole('textbox', { name: /fixed people: group/i });
+
+    await user.click(fixedNames);
+    await user.keyboard('Alex');
+    await user.click(fixedGroups);
+    await user.keyboard('Group 2');
     await user.click(screen.getByRole('button', { name: /generate groups/i }));
 
     expect(vi.mocked(solveScenario)).toHaveBeenCalledWith(
@@ -638,6 +726,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(screen.getByRole('button', { name: /remove attribute: role/i }));
 
     expect(confirmSpy).toHaveBeenCalledWith('Remove "role" and all entered values?');
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
     expect(screen.getByLabelText('Attribute column 2')).toBeInTheDocument();
 
     confirmSpy.mockRestore();
@@ -664,15 +753,42 @@ describe('ToolLandingPage SEO wiring', () => {
     confirmSpy.mockRestore();
   });
 
-  it('stacks the generator above the hero content on mobile while preserving desktop order classes', () => {
+  it('focuses the new landing attribute header after activating the add attribute area', async () => {
+    const user = userEvent.setup();
+
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId('landing-tool-panel')).toHaveClass('order-1', 'lg:order-2');
-    expect(screen.getByTestId('landing-hero')).toHaveClass('order-2', 'lg:order-1');
+    await user.click(screen.getByRole('button', { name: /add attribute/i }));
+
+    expect(screen.getByLabelText('Attribute column 1')).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: /add attribute/i }));
+
+    expect(screen.getByLabelText('Attribute column 2')).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: /remove attribute: attribute 2/i }));
+    await user.click(screen.getByRole('button', { name: /add attribute/i }));
+
+    expect(screen.getByLabelText('Attribute column 2')).toHaveFocus();
+  });
+
+  it('renders the page heading above the generator across breakpoints', () => {
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('landing-hero')).toHaveClass('order-1', 'min-w-0');
+    expect(screen.getByRole('heading', { level: 1, name: 'Random Group Generator' })).toHaveClass(
+      'max-w-full',
+      'whitespace-nowrap',
+    );
+    expect(screen.getByTestId('landing-tool-panel')).toHaveClass('order-2');
   });
 
   it('renders FAQ section for SEO', () => {
@@ -698,7 +814,25 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(screen.getByRole('button', { name: /generate groups/i }));
 
     expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-4');
-    expect(screen.getByTestId('landing-hero')).toHaveClass('order-2', 'lg:order-1');
+    expect(screen.getByTestId('landing-hero')).toHaveClass('order-1');
+    expect(screen.getByTestId('landing-secondary-copy')).toHaveClass('order-5');
+  });
+
+  it('renders the eyebrow and supporting copy below the results section', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+
+    const results = await screen.findByTestId('landing-results-panel');
+    const secondaryCopy = screen.getByTestId('landing-secondary-copy');
+
+    expect(results.compareDocumentPosition(secondaryCopy) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('uses consistent comma-separated helper text for advanced constraint inputs', () => {
@@ -710,11 +844,11 @@ describe('ToolLandingPage SEO wiring', () => {
 
     expect(screen.getByLabelText(/keep together/i)).toHaveAttribute(
       'placeholder',
-      'One group per line\nAlex, Sam\nPriya, Jordan, Mina',
+      'One group per line\nAlex, Sam\nElla, Jordan, Mina',
     );
     expect(screen.getByLabelText(/keep apart/i)).toHaveAttribute(
       'placeholder',
-      'One pair per line\nAlex, Sam\nPriya, Jordan',
+      'One pair per line\nAlex, Ella\nSam, Jordan',
     );
   });
 

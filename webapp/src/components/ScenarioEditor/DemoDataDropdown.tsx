@@ -6,6 +6,7 @@ import { Tooltip } from '../Tooltip';
 import type { DemoCaseWithMetrics } from './types';
 import { useOutsideClick } from '../../hooks';
 import { getButtonClassName } from '../ui';
+import type { ButtonSize } from '../ui';
 import { GENERATED_DEMO_CASE_ID, GENERATED_DEMO_CASE_NAME } from '../../services/demoScenarioGenerator';
 
 interface DemoDataDropdownProps {
@@ -14,6 +15,8 @@ interface DemoDataDropdownProps {
   placement?: 'bottom' | 'right';
   collapsed?: boolean;
   triggerLabel?: string;
+  triggerButtonSize?: ButtonSize;
+  triggerClassName?: string;
   popupOwnerId?: string;
   loadCases?: () => Promise<DemoCaseWithMetrics[]>;
   includeGeneratedDemo?: boolean;
@@ -32,6 +35,8 @@ export function DemoDataDropdown({
   placement = 'bottom',
   collapsed = false,
   triggerLabel = 'Demo Data',
+  triggerButtonSize,
+  triggerClassName,
   popupOwnerId,
   loadCases,
   includeGeneratedDemo = true,
@@ -197,7 +202,13 @@ export function DemoDataDropdown({
       onMouseLeave={() => setIsTriggerHovered(false)}
       className={variant === 'menu'
         ? 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors'
-        : getButtonClassName({ variant: variant === 'header' ? 'toolbar' : 'secondary', size: variant === 'header' ? 'md' : 'lg' })}
+        : [
+          getButtonClassName({
+            variant: variant === 'header' ? 'toolbar' : 'secondary',
+            size: triggerButtonSize ?? (variant === 'header' ? 'md' : 'lg'),
+          }),
+          triggerClassName,
+        ].filter(Boolean).join(' ')}
       style={{
         outline: 'none',
         boxShadow: 'none',
