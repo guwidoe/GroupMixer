@@ -40,6 +40,7 @@ import {
   type SupportedLocale,
   type ToolPageKey,
 } from './toolPageConfigs';
+import { GUIDE_PAGE_ROUTES, getGuidePageConfig } from './guidePageConfigs';
 
 interface ToolLandingPageProps {
   pageKey: ToolPageKey;
@@ -62,47 +63,6 @@ const LANDING_TOOL_LEFT_MIN_WIDTH = 400;
 const LANDING_TOOL_RIGHT_MIN_WIDTH = 340;
 const LANDING_TOOL_RESIZE_MIN_WIDTH = LANDING_TOOL_LEFT_MIN_WIDTH + LANDING_TOOL_RIGHT_MIN_WIDTH + LANDING_TOOL_RESIZE_HANDLE_WIDTH;
 const HOME_ANIMATED_HERO_STATIC_TITLE = 'Group Generator - Random, Balanced & Multi-Round';
-const RELATED_TOOL_PAGE_KEYS: ToolPageKey[] = [
-  'home',
-  'random-group-generator',
-  'student-group-generator',
-  'random-team-generator',
-  'group-generator-with-constraints',
-  'multi-round-group-assignment-tool',
-  'speed-networking-generator',
-];
-
-const RELATED_TOOL_PAGE_COPY: Record<(typeof RELATED_TOOL_PAGE_KEYS)[number], { title: string; description: string }> = {
-  home: {
-    title: 'Group Generator',
-    description: 'Start with the main instant tool for random, balanced, or multi-round groups.',
-  },
-  'random-group-generator': {
-    title: 'Random Group Generator',
-    description: 'Paste a list of names and split it into groups right away.',
-  },
-  'student-group-generator': {
-    title: 'Student Group Generator',
-    description: 'Create classroom groups for activities, projects, and rotations.',
-  },
-  'random-team-generator': {
-    title: 'Random Team Generator',
-    description: 'Turn names into teams and balance them by role, skill, or another attribute.',
-  },
-  'group-generator-with-constraints': {
-    title: 'Group Generator with Constraints',
-    description: 'Keep people together or apart and balance groups with extra rules.',
-  },
-  'multi-round-group-assignment-tool': {
-    title: 'Multi-Round Group Assignment Tool',
-    description: 'Generate several rounds while minimizing repeated pairings.',
-  },
-  'speed-networking-generator': {
-    title: 'Speed Networking Generator',
-    description: 'Plan repeated small-group rounds where people meet new participants.',
-  },
-};
-
 function buildDisplaySessions(
   sharedSessionData: Array<{ sessionIndex: number; groups: Array<{ id: string; people: Array<{ id: string }> }> }>,
   fallbackSessions: Array<{ sessionNumber: number; groups: Array<{ id: string; members: Array<{ name: string }> }> }>,
@@ -242,22 +202,21 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       })),
     [config.liveLocales, config.slug, location.search, pageKey],
   );
-  const relatedToolLinks = useMemo(() => {
+  const guideLinks = useMemo(() => {
     if (config.locale !== DEFAULT_LOCALE) {
       return [];
     }
 
-    return RELATED_TOOL_PAGE_KEYS
-      .filter((relatedPageKey) => relatedPageKey !== config.key)
-      .map((relatedPageKey) => {
-        const relatedConfig = getToolPageConfig(relatedPageKey, DEFAULT_LOCALE);
-        return {
-          key: relatedPageKey,
-          href: buildToolPagePath(DEFAULT_LOCALE, relatedPageKey, relatedConfig.slug),
-          ...RELATED_TOOL_PAGE_COPY[relatedPageKey],
-        };
-      });
-  }, [config.key, config.locale]);
+    return GUIDE_PAGE_ROUTES.map((route) => {
+      const guideConfig = getGuidePageConfig(route.key);
+      return {
+        key: route.key,
+        href: guideConfig.canonicalPath,
+        title: guideConfig.hero.title,
+        description: guideConfig.hero.intro,
+      };
+    });
+  }, [config.locale]);
   const telemetryAttribution = useMemo(
     () =>
       readTelemetryAttributionFromSearch({
@@ -1300,16 +1259,16 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
           </div>
         </section>
 
-        {relatedToolLinks.length > 0 ? (
+        {guideLinks.length > 0 ? (
           <section className="border-t px-4 pb-12 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
             <div className="mx-auto max-w-6xl">
-              <h2 className="text-2xl font-semibold tracking-tight">More group generator tools</h2>
+              <h2 className="text-2xl font-semibold tracking-tight">Guides</h2>
               <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
-                Explore related tools for classrooms, teams, constraints, and multi-round group assignments.
+                Practical playbooks for workshops, classrooms, and repeated group assignments.
               </p>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {relatedToolLinks.map((link) => (
+                {guideLinks.map((link) => (
                   <a
                     key={link.key}
                     href={link.href}

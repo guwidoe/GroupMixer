@@ -822,6 +822,22 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('button', { name: /does it work offline after first load/i })).toBeInTheDocument();
   });
 
+  it('replaces the old related-tools block with a guides section', () => {
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Guides' })).toBeInTheDocument();
+    expect(screen.getByText(/practical playbooks for workshops, classrooms, and repeated group assignments/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /how to avoid repeat pairings in workshops/i })).toHaveAttribute(
+      'href',
+      '/guides/avoid-repeat-pairings-in-workshops',
+    );
+    expect(screen.queryByText('More group generator tools')).not.toBeInTheDocument();
+  });
+
   it('keeps results above the hero content on mobile once groups are generated', async () => {
     const user = userEvent.setup();
 
