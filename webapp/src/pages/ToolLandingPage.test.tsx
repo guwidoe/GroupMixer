@@ -154,7 +154,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(screen.getByRole('button', { name: 'Generar grupos' }));
 
     expect(await screen.findByRole('heading', { name: 'Tus grupos' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Tarjetas' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Cuadrícula' })).toBeInTheDocument();
     expect(screen.getByText('Sesión 1')).toBeInTheDocument();
     expect(screen.getByText(/8 personas asignadas/)).toBeInTheDocument();
 
@@ -835,7 +835,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     await user.click(screen.getByRole('button', { name: /generate groups/i }));
 
-    expect(await screen.findByRole('tab', { name: 'cards' })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: 'grid' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'list' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'text' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'csv' })).toBeInTheDocument();
