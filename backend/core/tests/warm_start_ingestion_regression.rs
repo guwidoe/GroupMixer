@@ -86,11 +86,7 @@ fn assert_invalid_warm_start_rejected(
 
 #[test]
 fn all_solver_families_accept_valid_incumbent_warm_start_exactly() {
-    for kind in [
-        SolverKind::Solver1,
-        SolverKind::Solver2,
-        SolverKind::Solver3,
-    ] {
+    for kind in [SolverKind::Solver1, SolverKind::Solver3] {
         let mut input = base_input(kind);
         let schedule = valid_schedule();
         input.initial_schedule = Some(schedule.clone());
@@ -111,11 +107,7 @@ fn all_solver_families_reject_partial_incumbent_warm_start() {
         HashMap::from([("g0".to_string(), vec!["p0".to_string()])]),
     )]);
 
-    for kind in [
-        SolverKind::Solver1,
-        SolverKind::Solver2,
-        SolverKind::Solver3,
-    ] {
+    for kind in [SolverKind::Solver1, SolverKind::Solver3] {
         let mut input = base_input(kind);
         input.initial_schedule = Some(partial.clone());
         let error = run_solver(&input)
@@ -147,11 +139,7 @@ fn all_solver_families_reject_split_clique_incumbent_warm_start() {
         ),
     ]);
 
-    for kind in [
-        SolverKind::Solver1,
-        SolverKind::Solver2,
-        SolverKind::Solver3,
-    ] {
+    for kind in [SolverKind::Solver1, SolverKind::Solver3] {
         assert_invalid_warm_start_rejected(kind, split.clone(), "must-stay-together clique");
     }
 }

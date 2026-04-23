@@ -1,0 +1,148 @@
+schema_version: 1
+suite_id: solver4-pure-sgp-multiseed
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: allow_non_canonical
+class: stretch
+title: Solver4 pure Social Golfer multiseed suite
+description: Dedicated solver4 benchmark lane for pure Social-Golfer-style cases using the paper-shaped solver4 with gamma=0.0 across a small seed sweep.
+default_solver_family: solver4
+default_solver:
+  solver_type: solver4
+  stop_conditions:
+    max_iterations: 10000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver4
+    gamma: 0.0
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.pure_sgp.kirkman_15x5x7.seed_1
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150507
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.pure_sgp.kirkman_15x5x7.seed_2
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150508
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.pure_sgp.kirkman_15x5x7.seed_3
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150509
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+    case_role: canonical
+    purpose: diagnostic.solver4.pure_sgp.kirkman_15x5x7.seed_4
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 10
+    seed: 150510
+    max_iterations: 1500000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.pure_sgp.social_golfer_32x8x9.seed_1
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320910
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.pure_sgp.social_golfer_32x8x9.seed_2
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320911
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.pure_sgp.social_golfer_32x8x9.seed_3
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320912
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.pure_sgp.social_golfer_32x8x9.seed_4
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320913
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.solver4.pure_sgp.social_golfer_32x8x10.seed_1
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320810
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.solver4.pure_sgp.social_golfer_32x8x10.seed_2
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320811
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.solver4.pure_sgp.social_golfer_32x8x10.seed_3
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320812
+    max_iterations: 10000000
+    time_limit_seconds: 25
+  - manifest: ../cases/stretch/social_golfer_32x8x10.json
+    case_role: canonical
+    purpose: diagnostic.solver4.pure_sgp.social_golfer_32x8x10.seed_4
+    provenance: solver4_pure_sgp_multiseed_lane
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 25
+    seed: 320813
+    max_iterations: 10000000
+    time_limit_seconds: 25

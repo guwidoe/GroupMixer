@@ -3,6 +3,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
 
 interface ObjectiveWeightEditorProps {
   currentWeight: number;
@@ -10,32 +11,21 @@ interface ObjectiveWeightEditorProps {
 }
 
 const ObjectiveWeightEditor: React.FC<ObjectiveWeightEditorProps> = ({ currentWeight, onCommit }) => {
-  const [weightInput, setWeightInput] = useState<string>(String(currentWeight));
+  const [draftWeight, setDraftWeight] = useState<number | null>(currentWeight);
 
   // Keep local field in sync when external weight changes (e.g., when scenario loads)
   useEffect(() => {
-    setWeightInput(String(currentWeight));
+    setDraftWeight(currentWeight);
   }, [currentWeight]);
-
-  const handleBlur = () => {
-    const parsed = parseFloat(weightInput);
-    const newWeight = isNaN(parsed) ? 0 : Math.max(0, parsed);
-    onCommit(newWeight);
-  };
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-        Weight for "Maximize Unique Contacts"
-      </label>
-      <input
-        type="number"
-        min="0"
-        step="0.1"
-        value={weightInput}
-        onChange={(e) => setWeightInput(e.target.value)}
-        onBlur={handleBlur}
-        className="input w-32"
+      <NumberField
+        label={'Weight for "Maximize Unique Contacts"'}
+        value={draftWeight}
+        onChange={(value) => setDraftWeight(value ?? 0)}
+        onCommit={(value) => onCommit(Math.max(0, value ?? 0))}
+        {...NUMBER_FIELD_PRESETS.objectiveWeight}
       />
       <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>
         Set to 0 to deactivate this objective. Higher values increase its importance relative to constraint penalties.

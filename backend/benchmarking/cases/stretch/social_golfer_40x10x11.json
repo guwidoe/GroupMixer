@@ -1,0 +1,351 @@
+{
+  "schema_version": 1,
+  "id": "stretch.social-golfer-40x10x11",
+  "class": "stretch",
+  "case_role": "helper",
+  "purpose": "diagnostic_target.stretch.social_golfer_zero_repeat_encounters_40x10x11",
+  "provenance": "constructed_from_social_golfer_32x8x10_template_for_larger_p4_stretch_suite",
+  "declared_budget": {
+    "max_iterations": 22000000,
+    "time_limit_seconds": 120
+  },
+  "tags": [
+    "stretch",
+    "social-golfer",
+    "repeat-encounter",
+    "diagnostic",
+    "10x4x11",
+    "larger-p4"
+  ],
+  "title": "Social Golfer 40x10x11 (larger p=4 stretch)",
+  "description": "Pure Social Golfer stretch workload: 40 participants into 10 groups of 4 across 11 sessions with a meet-at-most-once target.",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "golfer_01",
+          "attributes": {
+            "name": "Golfer 01"
+          }
+        },
+        {
+          "id": "golfer_02",
+          "attributes": {
+            "name": "Golfer 02"
+          }
+        },
+        {
+          "id": "golfer_03",
+          "attributes": {
+            "name": "Golfer 03"
+          }
+        },
+        {
+          "id": "golfer_04",
+          "attributes": {
+            "name": "Golfer 04"
+          }
+        },
+        {
+          "id": "golfer_05",
+          "attributes": {
+            "name": "Golfer 05"
+          }
+        },
+        {
+          "id": "golfer_06",
+          "attributes": {
+            "name": "Golfer 06"
+          }
+        },
+        {
+          "id": "golfer_07",
+          "attributes": {
+            "name": "Golfer 07"
+          }
+        },
+        {
+          "id": "golfer_08",
+          "attributes": {
+            "name": "Golfer 08"
+          }
+        },
+        {
+          "id": "golfer_09",
+          "attributes": {
+            "name": "Golfer 09"
+          }
+        },
+        {
+          "id": "golfer_10",
+          "attributes": {
+            "name": "Golfer 10"
+          }
+        },
+        {
+          "id": "golfer_11",
+          "attributes": {
+            "name": "Golfer 11"
+          }
+        },
+        {
+          "id": "golfer_12",
+          "attributes": {
+            "name": "Golfer 12"
+          }
+        },
+        {
+          "id": "golfer_13",
+          "attributes": {
+            "name": "Golfer 13"
+          }
+        },
+        {
+          "id": "golfer_14",
+          "attributes": {
+            "name": "Golfer 14"
+          }
+        },
+        {
+          "id": "golfer_15",
+          "attributes": {
+            "name": "Golfer 15"
+          }
+        },
+        {
+          "id": "golfer_16",
+          "attributes": {
+            "name": "Golfer 16"
+          }
+        },
+        {
+          "id": "golfer_17",
+          "attributes": {
+            "name": "Golfer 17"
+          }
+        },
+        {
+          "id": "golfer_18",
+          "attributes": {
+            "name": "Golfer 18"
+          }
+        },
+        {
+          "id": "golfer_19",
+          "attributes": {
+            "name": "Golfer 19"
+          }
+        },
+        {
+          "id": "golfer_20",
+          "attributes": {
+            "name": "Golfer 20"
+          }
+        },
+        {
+          "id": "golfer_21",
+          "attributes": {
+            "name": "Golfer 21"
+          }
+        },
+        {
+          "id": "golfer_22",
+          "attributes": {
+            "name": "Golfer 22"
+          }
+        },
+        {
+          "id": "golfer_23",
+          "attributes": {
+            "name": "Golfer 23"
+          }
+        },
+        {
+          "id": "golfer_24",
+          "attributes": {
+            "name": "Golfer 24"
+          }
+        },
+        {
+          "id": "golfer_25",
+          "attributes": {
+            "name": "Golfer 25"
+          }
+        },
+        {
+          "id": "golfer_26",
+          "attributes": {
+            "name": "Golfer 26"
+          }
+        },
+        {
+          "id": "golfer_27",
+          "attributes": {
+            "name": "Golfer 27"
+          }
+        },
+        {
+          "id": "golfer_28",
+          "attributes": {
+            "name": "Golfer 28"
+          }
+        },
+        {
+          "id": "golfer_29",
+          "attributes": {
+            "name": "Golfer 29"
+          }
+        },
+        {
+          "id": "golfer_30",
+          "attributes": {
+            "name": "Golfer 30"
+          }
+        },
+        {
+          "id": "golfer_31",
+          "attributes": {
+            "name": "Golfer 31"
+          }
+        },
+        {
+          "id": "golfer_32",
+          "attributes": {
+            "name": "Golfer 32"
+          }
+        },
+        {
+          "id": "golfer_33",
+          "attributes": {
+            "name": "Golfer 33"
+          }
+        },
+        {
+          "id": "golfer_34",
+          "attributes": {
+            "name": "Golfer 34"
+          }
+        },
+        {
+          "id": "golfer_35",
+          "attributes": {
+            "name": "Golfer 35"
+          }
+        },
+        {
+          "id": "golfer_36",
+          "attributes": {
+            "name": "Golfer 36"
+          }
+        },
+        {
+          "id": "golfer_37",
+          "attributes": {
+            "name": "Golfer 37"
+          }
+        },
+        {
+          "id": "golfer_38",
+          "attributes": {
+            "name": "Golfer 38"
+          }
+        },
+        {
+          "id": "golfer_39",
+          "attributes": {
+            "name": "Golfer 39"
+          }
+        },
+        {
+          "id": "golfer_40",
+          "attributes": {
+            "name": "Golfer 40"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "foursome_1",
+          "size": 4
+        },
+        {
+          "id": "foursome_2",
+          "size": 4
+        },
+        {
+          "id": "foursome_3",
+          "size": 4
+        },
+        {
+          "id": "foursome_4",
+          "size": 4
+        },
+        {
+          "id": "foursome_5",
+          "size": 4
+        },
+        {
+          "id": "foursome_6",
+          "size": 4
+        },
+        {
+          "id": "foursome_7",
+          "size": 4
+        },
+        {
+          "id": "foursome_8",
+          "size": 4
+        },
+        {
+          "id": "foursome_9",
+          "size": 4
+        },
+        {
+          "id": "foursome_10",
+          "size": 4
+        }
+      ],
+      "num_sessions": 11
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 1,
+        "penalty_function": "squared",
+        "penalty_weight": 10.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 2000000,
+        "time_limit_seconds": 150,
+        "no_improvement_iterations": 1000000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 50.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 10000,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      },
+      "seed": 401011
+    },
+    "initial_schedule": null
+  },
+  "canonical_case_id": "stretch.social-golfer-32x8x10"
+}

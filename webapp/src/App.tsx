@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ManualEditor } from './components/ManualEditor';
 import { ScenarioEditor } from './components/ScenarioEditor/ScenarioEditor';
+import { PeopleGridPerformanceHarness } from './components/ScenarioEditor/perf/PeopleGridPerformanceHarness';
 import { ResultsHistory } from './components/ResultsHistory';
 import { ResultsView } from './components/ResultsView';
 import { SolverWorkspace } from './components/SolverWorkspace/SolverWorkspace';
@@ -26,11 +27,32 @@ function LegacySetupRouteRedirect() {
 }
 
 function SolverRouteRedirect() {
+  const advancedModeEnabled = useAppStore((state) => state.ui.advancedModeEnabled ?? false);
+  const solution = useAppStore((state) => state.solution);
+  const lastScenarioSetupSection = useAppStore((state) => state.ui.lastScenarioSetupSection);
+
+  if (!advancedModeEnabled) {
+    return <Navigate to={solution ? '/app/results' : getScenarioSetupPath(lastScenarioSetupSection)} replace />;
+  }
+
   return <Navigate to="/app/solver/run" replace />;
+}
+
+function SolverRouteGuard() {
+  const advancedModeEnabled = useAppStore((state) => state.ui.advancedModeEnabled ?? false);
+  const solution = useAppStore((state) => state.solution);
+  const lastScenarioSetupSection = useAppStore((state) => state.ui.lastScenarioSetupSection);
+
+  if (!advancedModeEnabled) {
+    return <Navigate to={solution ? '/app/results' : getScenarioSetupPath(lastScenarioSetupSection)} replace />;
+  }
+
+  return <SolverWorkspace />;
 }
 
 function App() {
   const { theme } = useThemeStore();
+  const showPerformanceRoutes = import.meta.env?.DEV ?? false;
 
   useEffect(() => initializeThemeStore(), []);
 
@@ -52,10 +74,11 @@ function App() {
           <Route path="scenario" element={<SetupRouteRedirect />} />
           <Route path="scenario/:section" element={<ScenarioEditor />} />
           <Route path="solver" element={<SolverRouteRedirect />} />
-          <Route path="solver/:section" element={<SolverWorkspace />} />
+          <Route path="solver/:section" element={<SolverRouteGuard />} />
           <Route path="results" element={<ResultsView />} />
           <Route path="editor" element={<ManualEditor />} />
           <Route path="history" element={<ResultsHistory />} />
+          {showPerformanceRoutes ? <Route path="perf/people-grid" element={<PeopleGridPerformanceHarness />} /> : null}
         </Route>
       </Routes>
     </div>

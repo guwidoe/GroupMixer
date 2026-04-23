@@ -17,6 +17,7 @@ interface SessionScopeFieldProps {
   label?: React.ReactNode;
   disabled?: boolean;
   compact?: boolean;
+  selectedModeDefault?: 'all' | 'empty';
 }
 
 export function SessionScopeField({
@@ -26,6 +27,7 @@ export function SessionScopeField({
   label,
   disabled = false,
   compact = false,
+  selectedModeDefault = 'all',
 }: SessionScopeFieldProps) {
   const inputName = React.useId();
   const selectedSessions = value.mode === 'selected'
@@ -39,9 +41,13 @@ export function SessionScopeField({
   const switchToSelected = React.useCallback(() => {
     onChange({
       mode: 'selected',
-      sessions: value.mode === 'selected' ? selectedSessions : createAllSessionIndices(totalSessions),
+      sessions: value.mode === 'selected'
+        ? selectedSessions
+        : selectedModeDefault === 'all'
+          ? createAllSessionIndices(totalSessions)
+          : [],
     });
-  }, [onChange, selectedSessions, totalSessions, value.mode]);
+  }, [onChange, selectedModeDefault, selectedSessions, totalSessions, value.mode]);
 
   const toggleSession = React.useCallback((sessionIndex: number) => {
     if (value.mode !== 'selected') {
@@ -58,6 +64,20 @@ export function SessionScopeField({
       sessions: normalizeSessionSelection(nextSessions, totalSessions),
     });
   }, [onChange, selectedSessions, totalSessions, value.mode]);
+
+  const selectAllSessions = React.useCallback(() => {
+    onChange({
+      mode: 'selected',
+      sessions: createAllSessionIndices(totalSessions),
+    });
+  }, [onChange, totalSessions]);
+
+  const clearSelectedSessions = React.useCallback(() => {
+    onChange({
+      mode: 'selected',
+      sessions: [],
+    });
+  }, [onChange]);
 
   const toneClass = compact ? 'space-y-2 rounded-lg p-2.5' : 'space-y-3 rounded-xl p-3';
   const optionClass = compact
@@ -145,24 +165,47 @@ export function SessionScopeField({
 
         {value.mode === 'selected' ? (
           totalSessions > 0 ? (
-            <div className={sessionGridClass}>
-              {Array.from({ length: totalSessions }, (_, index) => (
-                <label
-                  key={index}
-                  className="flex min-w-0 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm"
-                  style={{ color: 'var(--text-secondary)' }}
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  className="rounded-md border px-2.5 py-1 text-xs font-medium transition-colors"
+                  style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}
+                  onClick={selectAllSessions}
+                  disabled={disabled}
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedSessions.includes(index)}
-                    onChange={() => toggleSession(index)}
-                    disabled={disabled}
-                    className="h-4 w-4 shrink-0"
-                    style={{ accentColor: 'var(--color-accent)' }}
-                  />
-                  <span className="leading-none">{compact ? String(index + 1) : `Session ${index + 1}`}</span>
-                </label>
-              ))}
+                  Select all current
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md border px-2.5 py-1 text-xs font-medium transition-colors"
+                  style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}
+                  onClick={clearSelectedSessions}
+                  disabled={disabled}
+                >
+                  Clear
+                </button>
+              </div>
+
+              <div className={sessionGridClass}>
+                {Array.from({ length: totalSessions }, (_, index) => (
+                  <label
+                    key={index}
+                    className="flex min-w-0 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm"
+                    style={{ color: 'var(--text-secondary)' }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedSessions.includes(index)}
+                      onChange={() => toggleSession(index)}
+                      disabled={disabled}
+                      className="h-4 w-4 shrink-0"
+                      style={{ accentColor: 'var(--color-accent)' }}
+                    />
+                    <span className="leading-none">{compact ? String(index + 1) : `Session ${index + 1}`}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>

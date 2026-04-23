@@ -13,9 +13,9 @@ interface LandingFooterProps {
 export function LandingFooter({
   expertWorkspaceTo = '/app',
   expertWorkspaceLabel = 'Scenario editor',
-  tagline = 'GroupMixer — Free random group generator',
+  tagline = 'GroupMixer - Group generator and optimizer',
   feedbackLabel = 'Feedback',
-  privacyNote = 'All processing happens locally in your browser.',
+  privacyNote = 'Runs in your browser.',
 }: LandingFooterProps) {
   const assetBaseUrl = import.meta.env?.BASE_URL ?? '/';
   return (

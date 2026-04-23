@@ -49,7 +49,9 @@ describe('PeopleDirectory', () => {
       expect(screen.getByText('180')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /add person/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /import & bulk/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent(/preparing editable table/i);
+
+      fireEvent.click(screen.getByRole('button', { name: /^cards$/i }));
       expect(screen.getByText('Person 0001')).toBeInTheDocument();
       expect(screen.queryByText('Person 0180')).not.toBeInTheDocument();
 
@@ -58,7 +60,7 @@ describe('PeopleDirectory', () => {
       });
 
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
-      expect(screen.getByText(/page 1 of/i)).toBeInTheDocument();
+      expect(screen.getByText('Person 0180')).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }
@@ -100,11 +102,9 @@ describe('PeopleDirectory', () => {
     expect(screen.queryByRole('textbox', { name: /search table/i })).not.toBeInTheDocument();
     expect(screen.queryByText('p1')).not.toBeInTheDocument();
     expect(screen.getAllByText('dev').length).toBeGreaterThan(0);
-    expect(screen.getByRole('button', { name: /edit table/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
-
-    await user.click(screen.getByText('Alex'));
-    expect(onEditPerson).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: /delete alex/i })[0]!);
     expect(onDeletePerson).toHaveBeenCalledWith('p1');
@@ -177,5 +177,37 @@ describe('PeopleDirectory', () => {
         sessions: [0, 1, 2],
       }),
     ]);
+  });
+
+  it('warns before switching from list to cards when the grid has unapplied changes', async () => {
+    const user = userEvent.setup();
+    const onApplyGridPeople = vi.fn();
+
+    render(
+      <PeopleDirectory
+        {...createBaseProps({
+          scenario: createSampleScenario({
+            people: [{ id: 'p1', attributes: { name: 'Alex' } }],
+            settings: createSampleSolverSettings(),
+          }),
+          onApplyGridPeople,
+        })}
+      />,
+    );
+
+    const input = screen.getByRole('textbox', { name: /edit name for row p1/i });
+    await user.clear(input);
+    await user.type(input, 'Alex Prime');
+    await user.tab();
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+
+    expect(await screen.findByRole('dialog', { name: /unapplied grid changes/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /discard and leave/i }));
+
+    expect(screen.getByText('Alex')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /search people/i })).toBeInTheDocument();
+    expect(onApplyGridPeople).not.toHaveBeenCalled();
   });
 });

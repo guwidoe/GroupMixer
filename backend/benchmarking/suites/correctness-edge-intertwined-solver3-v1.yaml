@@ -57,3 +57,12 @@ cases:
       time_limit_seconds: 2
     max_iterations: 3000
     time_limit_seconds: 2
+  - manifest: ../cases/adversarial/correctness_partial_attendance_keep_apart_stress.json
+    case_role: canonical
+    purpose: correctness_edge.intertwined.partial_attendance_keep_apart_capacity_pressure
+    provenance: reused_from_backend/core/tests/test_cases/constraint_must_stay_apart_partial_attendance_stress_solver3.json
+    declared_budget:
+      max_iterations: 2500
+      time_limit_seconds: 3
+    max_iterations: 2500
+    time_limit_seconds: 3

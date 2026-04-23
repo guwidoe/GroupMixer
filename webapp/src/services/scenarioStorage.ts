@@ -56,6 +56,10 @@ function normalizeScenarioForDraftIdentity(scenario: Scenario): Scenario {
   };
 }
 
+export function buildScenarioContentHash(scenario: Scenario): string {
+  return hashString(stableSerialize(normalizeScenarioForDraftIdentity(scenario)));
+}
+
 export function buildScenarioDraftIdentityHash(name: string, scenario: Scenario): string {
   return hashString(stableSerialize({ name, scenario: normalizeScenarioForDraftIdentity(scenario) }));
 }

@@ -28,6 +28,10 @@ export const CONSTRAINT_DISPLAY: Record<DisplayConstraintType, ConstraintDisplay
     name: 'Keep Together',
     tooltipDescription: 'Require people to share a group.',
   },
+  MustStayApart: {
+    name: 'Keep Apart',
+    tooltipDescription: 'Require people to stay in different groups.',
+  },
   ShouldStayTogether: {
     name: 'Prefer Together',
     tooltipDescription: 'Prefer people to stay grouped.',

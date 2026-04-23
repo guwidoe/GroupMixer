@@ -21,9 +21,6 @@ export function ResultsScheduleList({ participants, sessionCount }: ResultsSched
                 <h4 className="truncate text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
                   {participant.displayName}
                 </h4>
-                <p className="mt-1 text-xs" style={{ color: 'var(--text-tertiary)' }}>
-                  {participant.personId}
-                </p>
               </div>
               <span
                 className="text-xs font-medium uppercase tracking-[0.08em]"
@@ -94,7 +91,6 @@ export function ResultsScheduleList({ participants, sessionCount }: ResultsSched
                         <Users className="w-4 h-4 mr-2" style={{ color: 'var(--text-tertiary)' }} />
                         <div>
                           <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{participant.displayName}</div>
-                          <div className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{participant.personId}</div>
                         </div>
                       </div>
                     </td>

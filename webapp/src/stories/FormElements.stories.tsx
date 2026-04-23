@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
+import { NumberField } from '../components/ui/NumberField';
 
 /**
  * Form elements showcase the input, select, and checkbox styles used in GroupMixer.
@@ -37,16 +38,7 @@ function FormElementsDemo() {
 
       {/* Number Input */}
       <div>
-        <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-          Group Capacity
-        </label>
-        <input
-          type="number"
-          className="input w-32"
-          min="1"
-          max="20"
-          defaultValue="4"
-        />
+        <NumberField label="Group Capacity" value={4} onChange={() => {}} min={1} softMax={20} step={1} kind="int" />
       </div>
 
       {/* Select */}
@@ -142,10 +134,7 @@ export const TextInput: Story = {
 export const NumberInput: Story = {
   render: () => (
     <div className="max-w-md">
-      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-        Capacity
-      </label>
-      <input type="number" className="input w-32" min="1" max="20" defaultValue="4" />
+      <NumberField label="Capacity" value={4} onChange={() => {}} min={1} softMax={20} step={1} kind="int" />
     </div>
   ),
 };

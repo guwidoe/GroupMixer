@@ -1,0 +1,119 @@
+schema_version: 1
+suite_id: objective-canonical-representative-solver3-broad-multiseed-v1
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: representative
+title: Objective canonical representative bundle for solver3 broad multiseed autoresearch (v1)
+description: Broad solver3 representative objective bundle with four explicit seeds per canonical case for multiseed autoresearch.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: 60
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/representative/small_workshop_balanced.json
+    case_role: canonical
+    purpose: objective_target.representative.balanced.seed_101
+    provenance: checked_in_case_manifest_broad_solver3_multiseed_autoresearch
+    declared_budget:
+      max_iterations: 1000000
+      time_limit_seconds: 3
+    seed: 101
+    max_iterations: 1000000
+    time_limit_seconds: 3
+    search_policy:
+      no_improvement_iterations: null
+  - manifest: ../cases/representative/small_workshop_balanced.json
+    case_role: canonical
+    purpose: objective_target.representative.balanced.seed_102
+    provenance: checked_in_case_manifest_broad_solver3_multiseed_autoresearch
+    declared_budget:
+      max_iterations: 1000000
+      time_limit_seconds: 3
+    seed: 102
+    max_iterations: 1000000
+    time_limit_seconds: 3
+    search_policy:
+      no_improvement_iterations: null
+  - manifest: ../cases/representative/small_workshop_balanced.json
+    case_role: canonical
+    purpose: objective_target.representative.balanced.seed_103
+    provenance: checked_in_case_manifest_broad_solver3_multiseed_autoresearch
+    declared_budget:
+      max_iterations: 1000000
+      time_limit_seconds: 3
+    seed: 103
+    max_iterations: 1000000
+    time_limit_seconds: 3
+    search_policy:
+      no_improvement_iterations: null
+  - manifest: ../cases/representative/small_workshop_balanced.json
+    case_role: canonical
+    purpose: objective_target.representative.balanced.seed_104
+    provenance: checked_in_case_manifest_broad_solver3_multiseed_autoresearch
+    declared_budget:
+      max_iterations: 1000000
+      time_limit_seconds: 3
+    seed: 104
+    max_iterations: 1000000
+    time_limit_seconds: 3
+    search_policy:
+      no_improvement_iterations: null
+  - manifest: ../cases/representative/small_workshop_constrained.json
+    case_role: canonical
+    purpose: objective_target.representative.constraint_mix.seed_102
+    provenance: checked_in_case_manifest_broad_solver3_multiseed_autoresearch
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 4
+    seed: 102
+    max_iterations: 1500000
+    time_limit_seconds: 4
+    search_policy:
+      no_improvement_iterations: null
+  - manifest: ../cases/representative/small_workshop_constrained.json
+    case_role: canonical
+    purpose: objective_target.representative.constraint_mix.seed_103
+    provenance: checked_in_case_manifest_broad_solver3_multiseed_autoresearch
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 4
+    seed: 103
+    max_iterations: 1500000
+    time_limit_seconds: 4
+    search_policy:
+      no_improvement_iterations: null
+  - manifest: ../cases/representative/small_workshop_constrained.json
+    case_role: canonical
+    purpose: objective_target.representative.constraint_mix.seed_104
+    provenance: checked_in_case_manifest_broad_solver3_multiseed_autoresearch
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 4
+    seed: 104
+    max_iterations: 1500000
+    time_limit_seconds: 4
+    search_policy:
+      no_improvement_iterations: null
+  - manifest: ../cases/representative/small_workshop_constrained.json
+    case_role: canonical
+    purpose: objective_target.representative.constraint_mix.seed_105
+    provenance: checked_in_case_manifest_broad_solver3_multiseed_autoresearch
+    declared_budget:
+      max_iterations: 1500000
+      time_limit_seconds: 4
+    seed: 105
+    max_iterations: 1500000
+    time_limit_seconds: 4
+    search_policy:
+      no_improvement_iterations: null

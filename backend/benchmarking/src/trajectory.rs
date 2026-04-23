@@ -395,6 +395,7 @@ mod tests {
                     rustc_version: None,
                     cargo_profile: Some("dev".to_string()),
                 },
+                case_parallelism: None,
             },
             totals: RunTotals {
                 total_cases: 1,
@@ -503,6 +504,7 @@ mod tests {
                     donor_session_transplant: None,
                     session_aligned_path_relinking: None,
                     multi_root_balanced_session_inheritance: None,
+                    solver4_paper_trace: None,
                 }),
                 moves: MoveFamilyBenchmarkTelemetrySummary::default(),
                 hotpath_metrics: None,

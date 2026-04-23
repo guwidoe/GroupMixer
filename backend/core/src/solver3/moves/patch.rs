@@ -86,8 +86,7 @@ pub fn apply_runtime_patch(
                 }
                 if members[member_pos] != expected_old_person_idx {
                     return Err(SolverError::ValidationError(
-                        "solver3 patch replace failed: unexpected member at target position"
-                            .into(),
+                        "solver3 patch replace failed: unexpected member at target position".into(),
                     ));
                 }
                 members[member_pos] = new_person_idx;
