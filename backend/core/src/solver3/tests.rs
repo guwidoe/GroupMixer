@@ -32,10 +32,10 @@ use crate::models::{
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::construction::constraint_scenario_oracle::{
     build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
-    extract_constraint_scenario_signals, select_oracleizable_flexible_block,
-    validate_pure_oracle_schedule, ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
-    PureStructureOracle, PureStructureOracleRequest, PureStructureOracleSchedule,
-    Solver6PureStructureOracle,
+    extract_constraint_scenario_signals, relabel_oracle_schedule_to_block,
+    select_oracleizable_flexible_block, validate_pure_oracle_schedule, ConstraintScenarioCandidate,
+    ConstraintScenarioCandidateSource, OracleizableFlexibleBlock, PureStructureOracle,
+    PureStructureOracleRequest, PureStructureOracleSchedule, Solver6PureStructureOracle,
 };
 use super::moves::{
     analyze_clique_swap, analyze_transfer, apply_clique_swap_runtime_preview,
@@ -635,6 +635,59 @@ fn solver6_pure_structure_oracle_services_exact_small_block() {
 
     let schedule = Solver6PureStructureOracle.solve(&request).unwrap();
     validate_pure_oracle_schedule(&request, &schedule.schedule).unwrap();
+}
+
+#[test]
+fn oracle_relabeling_improves_pair_alignment_and_aligns_groups() {
+    let input = minimal_input();
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let mut signals = super::construction::constraint_scenario_oracle::ConstraintScenarioSignals {
+        pair_pressure_by_session_pair: vec![0.0; compiled.num_sessions * compiled.num_pairs],
+        placement_histogram_by_person_session_group: vec![
+            0.0;
+            compiled.num_sessions
+                * compiled.num_people
+                * compiled.num_groups
+        ],
+        rigidity_by_person_session: vec![0.0; compiled.num_sessions * compiled.num_people],
+        rigid_placement_count: 0,
+        flexible_placement_count: compiled.num_sessions * compiled.num_people,
+    };
+    for session_idx in 0..compiled.num_sessions {
+        let pair_02 = compiled.pair_idx(0, 2);
+        let pair_13 = compiled.pair_idx(1, 3);
+        signals.pair_pressure_by_session_pair[session_idx * compiled.num_pairs + pair_02] = 1.0;
+        signals.pair_pressure_by_session_pair[session_idx * compiled.num_pairs + pair_13] = 1.0;
+        for &person_idx in &[0usize, 2] {
+            signals.placement_histogram_by_person_session_group
+                [(session_idx * compiled.num_people + person_idx) * compiled.num_groups] = 1.0;
+        }
+        for &person_idx in &[1usize, 3] {
+            signals.placement_histogram_by_person_session_group
+                [(session_idx * compiled.num_people + person_idx) * compiled.num_groups + 1] = 1.0;
+        }
+    }
+    let block = OracleizableFlexibleBlock {
+        people: vec![0, 1, 2, 3],
+        sessions: vec![0, 1],
+        groups_by_session: vec![vec![0, 1], vec![0, 1]],
+        num_groups: 2,
+        group_size: 2,
+        score: 1.0,
+        flexible_placement_count: 8,
+        scaffold_disruption_risk: 0.0,
+    };
+    let oracle_schedule = PureStructureOracleSchedule {
+        schedule: vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]],
+    };
+
+    let relabeling =
+        relabel_oracle_schedule_to_block(&compiled, &signals, &block, &oracle_schedule).unwrap();
+    assert!(relabeling.pair_alignment_score >= 4.0);
+    assert!(relabeling.group_alignment_score > 0.0);
+    let mut assigned_groups = relabeling.real_group_by_session_oracle_group[0].clone();
+    assigned_groups.sort_unstable();
+    assert_eq!(assigned_groups, vec![0, 1]);
 }
 
 #[test]

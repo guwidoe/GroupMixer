@@ -37,11 +37,12 @@ use rand_chacha::ChaCha12Rng;
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::construction::constraint_scenario_oracle::{
     build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
-    constraint_scenario_score, extract_constraint_scenario_signals, repeat_pressure_is_relevant,
+    constraint_scenario_score, extract_constraint_scenario_signals,
+    relabel_oracle_schedule_to_block, repeat_pressure_is_relevant,
     select_oracleizable_flexible_block, ConstraintScenarioCandidate,
     ConstraintScenarioCandidateSource, ConstraintScenarioOracleConstructionResult,
-    ConstraintScenarioOracleOutcomeKind, ConstraintScenarioOracleTelemetry,
-    DEFAULT_CONSTRAINT_SCENARIO_RUNS,
+    ConstraintScenarioOracleOutcomeKind, ConstraintScenarioOracleTelemetry, PureStructureOracle,
+    PureStructureOracleRequest, Solver6PureStructureOracle, DEFAULT_CONSTRAINT_SCENARIO_RUNS,
 };
 use super::oracle::maybe_cross_check_runtime_state;
 use super::scoring::recompute::recompute_oracle_score;
@@ -387,6 +388,26 @@ impl RuntimeState {
             &signals,
             &scaffold_mask,
         );
+        let oracle_relabel_score = if let Some(block) = oracle_block.as_ref() {
+            let oracle_schedule =
+                Solver6PureStructureOracle.solve(&PureStructureOracleRequest {
+                    num_groups: block.num_groups,
+                    group_size: block.group_size,
+                    num_sessions: block.num_sessions(),
+                    seed: effective_seed ^ 0x5eed_600d_u64,
+                })?;
+            Some(
+                relabel_oracle_schedule_to_block(
+                    &self.compiled,
+                    &signals,
+                    block,
+                    &oracle_schedule,
+                )?
+                .score,
+            )
+        } else {
+            None
+        };
         Ok(ConstraintScenarioOracleConstructionResult {
             schedule: best.schedule.clone(),
             telemetry: ConstraintScenarioOracleTelemetry {
@@ -409,6 +430,7 @@ impl RuntimeState {
                     .as_ref()
                     .map(|block| block.num_groups)
                     .unwrap_or(0),
+                oracle_relabel_score,
                 constructor_wall_ms: started_at.elapsed().as_millis(),
                 ..ConstraintScenarioOracleTelemetry::default()
             },
