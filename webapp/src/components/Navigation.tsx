@@ -10,7 +10,7 @@ import { useSolverWorkspaceRunController } from './SolverWorkspace/useSolverWork
 
 type WorkflowTab = {
   kind: 'tab';
-  id: 'scenario' | 'solver' | 'results' | 'editor';
+  id: 'scenario' | 'solver' | 'results';
   path: string;
   label: string;
   shortLabel?: string;
@@ -52,14 +52,6 @@ const ADVANCED_WORKFLOW_TABS: WorkflowTab[] = [
     shortLabel: 'Results',
     description: 'Inspect the active result in detail',
   },
-  {
-    kind: 'tab',
-    id: 'editor',
-    path: '/app/editor',
-    label: 'Manual Editor',
-    shortLabel: 'Editor',
-    description: 'Manually adjust assignments with live feedback',
-  },
 ];
 
 const BASIC_WORKFLOW_ITEMS: WorkflowItem[] = [
@@ -88,7 +80,7 @@ function resolveActiveWorkflowTabId(pathname: string, advancedModeEnabled: boole
   }
 
   if (pathname.startsWith('/app/editor')) {
-    return 'editor';
+    return 'results';
   }
 
   if (advancedModeEnabled && pathname.startsWith('/app/solver')) {

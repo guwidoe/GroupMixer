@@ -1,11 +1,12 @@
 import React from 'react';
-import { GitCompare, Trash2 } from 'lucide-react';
+import { ArrowLeft, GitCompare, Trash2 } from 'lucide-react';
 
 interface ResultsHistoryHeaderProps {
   resultsCount: number;
   currentScenarioName: string;
   selectedCount: number;
   totalCount: number;
+  onBackToResults: () => void;
   onSelectAll: () => void;
   onCompareSelected: () => void;
   onBulkDelete: () => void;
@@ -17,6 +18,7 @@ export function ResultsHistoryHeader({
   currentScenarioName,
   selectedCount,
   totalCount,
+  onBackToResults,
   onSelectAll,
   onCompareSelected,
   onBulkDelete,
@@ -25,6 +27,10 @@ export function ResultsHistoryHeader({
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-0">
       <div>
+        <button onClick={onBackToResults} className="btn-secondary mb-3 inline-flex items-center gap-2 text-sm">
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Results</span>
+        </button>
         <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Saved Results</h2>
         <p className="mt-1" style={{ color: 'var(--text-secondary)' }}>
           {resultsCount} result{resultsCount !== 1 ? 's' : ''} for "{currentScenarioName}"

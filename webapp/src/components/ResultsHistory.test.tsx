@@ -125,4 +125,42 @@ describe('ResultsHistory', () => {
     expect(await screen.findByText('Current result route')).toBeInTheDocument();
     expect(useAppStore.getState().currentResultId).toBe(savedScenario.results[0].id);
   });
+
+  it('navigates back to the main results page from saved results history', async () => {
+    const user = userEvent.setup();
+    const savedScenario = createSavedScenario({
+      id: 'scenario-1',
+      name: 'Workshop History',
+    });
+
+    useAppStore.setState({
+      currentScenarioId: savedScenario.id,
+      runtimeSolverCatalog: [],
+      runtimeSolverCatalogStatus: 'ready',
+      runtimeSolverCatalogError: null,
+      savedScenarios: { [savedScenario.id]: savedScenario },
+      solution: savedScenario.results[0].solution,
+      selectedResultIds: [],
+      selectResultsForComparison: vi.fn(),
+      updateResultName: vi.fn(),
+      deleteResult: vi.fn(),
+      setShowResultComparison: vi.fn(),
+      setSolution: vi.fn(),
+      restoreResultAsNewScenario: vi.fn(),
+      loadRuntimeSolverCatalog: vi.fn(async () => undefined),
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/app/history']}>
+        <Routes>
+          <Route path="/app/history" element={<ResultsHistory />} />
+          <Route path="/app/results" element={<div>Main results route</div>} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /back to results/i }));
+
+    expect(await screen.findByText('Main results route')).toBeInTheDocument();
+  });
 });

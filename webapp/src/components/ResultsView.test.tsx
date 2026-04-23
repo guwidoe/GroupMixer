@@ -1,7 +1,7 @@
 /* eslint-disable react/no-multi-comp */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResultsView } from './ResultsView';
 import { useAppStore } from '../store';
@@ -22,11 +22,22 @@ vi.mock('./ConstraintComplianceCards', () => ({
 }));
 
 vi.mock('./ResultsView/ResultsHeader', () => ({
-  ResultsHeader: ({ resultName, onRestoreConfig, summary }: { resultName?: string; onRestoreConfig: () => void; summary: { totalSessions: number } | null }) => (
+  ResultsHeader: ({
+    resultName,
+    onRestoreConfig,
+    onOpenManualEditor,
+    summary,
+  }: {
+    resultName?: string;
+    onRestoreConfig: () => void;
+    onOpenManualEditor?: () => void;
+    summary: { totalSessions: number } | null;
+  }) => (
     <div>
       <div>{`header:${resultName ?? 'none'}`}</div>
       <div>{`summary:${summary?.totalSessions ?? 0}`}</div>
       <button onClick={onRestoreConfig}>restore</button>
+      {onOpenManualEditor ? <button onClick={onOpenManualEditor}>open manual editor</button> : null}
     </div>
   ),
 }));
@@ -46,6 +57,11 @@ vi.mock('./ResultsView/ResultsSchedule', () => ({
     vizPluginId: string;
   }) => <div>{`schedule:${resultsModel?.sessions.length ?? 0}:${effectiveScenario.groups[0]?.id ?? 'none'}:${vizPluginId}`}</div>,
 }));
+
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
+}
 
 describe('ResultsView', () => {
   beforeEach(() => {
@@ -69,6 +85,7 @@ describe('ResultsView', () => {
     render(
       <MemoryRouter>
         <ResultsView />
+        <LocationProbe />
       </MemoryRouter>,
     );
 
@@ -142,5 +159,33 @@ describe('ResultsView', () => {
       savedScenario.results[0].id,
       'Workshop – Snapshot Result (restored)',
     );
+  });
+
+  it('opens the manual editor from the results header action', async () => {
+    const user = userEvent.setup();
+    const savedScenario = createSavedScenario({
+      name: 'Workshop',
+      scenario: createSampleScenario(),
+    });
+
+    useAppStore.setState({
+      scenario: savedScenario.scenario,
+      solution: savedScenario.results[0].solution,
+      solverState: useAppStore.getState().solverState,
+      currentScenarioId: savedScenario.id,
+      currentResultId: savedScenario.results[0].id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
+    });
+
+    render(
+      <MemoryRouter>
+        <ResultsView />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /open manual editor/i }));
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/app/editor');
   });
 });

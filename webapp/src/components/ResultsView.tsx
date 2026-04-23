@@ -276,6 +276,7 @@ export function ResultsView() {
         configDiff={configDiff}
         showSavedResultsAction={Boolean(currentScenarioId)}
         onOpenSavedResults={() => navigate('/app/history')}
+        onOpenManualEditor={() => navigate('/app/editor')}
         configDetailsOpen={configDetailsOpen}
         onToggleConfigDetails={() => setConfigDetailsOpen(!configDetailsOpen)}
         onRestoreConfig={() => {

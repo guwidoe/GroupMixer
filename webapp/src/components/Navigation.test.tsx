@@ -76,7 +76,8 @@ describe("Navigation", () => {
 
     expect(screen.getByRole("link", { name: /setup/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /solver/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /manual editor/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /results/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /manual editor/i })).not.toBeInTheDocument();
     expect(container.firstChild).toHaveClass('sticky');
 
     await user.click(screen.getByRole("link", { name: /solver/i }));
@@ -98,6 +99,16 @@ describe("Navigation", () => {
     expect(screen.getByRole('button', { name: /generate groups/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /results/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /solver/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /manual editor/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps the manual editor route out of the workflow bar', () => {
+    renderWithRouter(
+      <Navigation />,
+      { route: '/app/editor' },
+    );
+
+    expect(screen.getByRole('link', { name: /results/i })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /manual editor/i })).not.toBeInTheDocument();
   });
 

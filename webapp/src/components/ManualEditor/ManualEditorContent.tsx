@@ -332,6 +332,7 @@ export function ManualEditorContent() {
         <>
           <ManualEditorTopBar
             mode={mode}
+            onBackToResults={() => navigate('/app/results')}
             onModeChange={setMode}
             onPullNewPeople={handlePullNewPeople}
             onPullNewConstraints={handlePullNewConstraints}
