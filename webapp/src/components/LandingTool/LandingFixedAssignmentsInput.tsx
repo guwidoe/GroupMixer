@@ -109,6 +109,8 @@ export function LandingFixedAssignmentsInput({
     rightWidth: number;
   } | null>(null);
   const resizeDragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const stopColumnResizeRef = useRef<() => void>(() => {});
+  const stopResizeRef = useRef<() => void>(() => {});
 
   const participantValues = useMemo(() => serializeFixedAssignmentColumnValues(assignments, 'personId'), [assignments]);
   const groupValues = useMemo(() => serializeFixedAssignmentColumnValues(assignments, 'groupId'), [assignments]);
@@ -138,8 +140,8 @@ export function LandingFixedAssignmentsInput({
   const stopColumnResize = useCallback(() => {
     dragStateRef.current = null;
     window.removeEventListener('pointermove', handleColumnPointerMove);
-    window.removeEventListener('pointerup', stopColumnResize);
-    window.removeEventListener('pointercancel', stopColumnResize);
+    window.removeEventListener('pointerup', stopColumnResizeRef.current);
+    window.removeEventListener('pointercancel', stopColumnResizeRef.current);
   }, [handleColumnPointerMove]);
 
   const handleResizePointerMove = useCallback((event: PointerEvent) => {
@@ -155,12 +157,18 @@ export function LandingFixedAssignmentsInput({
   const stopResize = useCallback(() => {
     resizeDragStateRef.current = null;
     window.removeEventListener('pointermove', handleResizePointerMove);
-    window.removeEventListener('pointerup', stopResize);
-    window.removeEventListener('pointercancel', stopResize);
+    window.removeEventListener('pointerup', stopResizeRef.current);
+    window.removeEventListener('pointercancel', stopResizeRef.current);
   }, [handleResizePointerMove]);
 
-  useEffect(() => stopColumnResize, [stopColumnResize]);
-  useEffect(() => stopResize, [stopResize]);
+  useEffect(() => {
+    stopColumnResizeRef.current = stopColumnResize;
+    return stopColumnResize;
+  }, [stopColumnResize]);
+  useEffect(() => {
+    stopResizeRef.current = stopResize;
+    return stopResize;
+  }, [stopResize]);
 
   const startColumnResize = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();

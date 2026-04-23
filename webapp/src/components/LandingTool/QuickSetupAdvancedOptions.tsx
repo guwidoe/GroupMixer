@@ -76,6 +76,7 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             placeholder={labels.keepTogetherPlaceholder}
             minHeight={96}
             clipFieldBorder
+            interactiveSurface
             className="rounded-2xl"
             textareaClassName="px-4 py-3 text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
@@ -95,6 +96,7 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             placeholder={labels.avoidPairingPlaceholder}
             minHeight={96}
             clipFieldBorder
+            interactiveSurface
             className="rounded-2xl"
             textareaClassName="px-4 py-3 text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}

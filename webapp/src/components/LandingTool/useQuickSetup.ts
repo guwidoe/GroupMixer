@@ -7,7 +7,6 @@ import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import { solveScenario } from '../../services/solver/solveScenario';
 import { buildGroups, buildScenarioFromDraft, parseParticipantInput } from '../../utils/quickSetup';
 import {
-  deriveBalancedTargetValues,
   hasAnyBalanceTargets,
   normalizeBalanceTargets,
   normalizeManualBalanceAttributeKeys,

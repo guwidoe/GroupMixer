@@ -120,6 +120,7 @@ export function LandingParticipantColumnsInput({
   const [columnWidths, setColumnWidths] = useState<number[]>(() => columns.map((_, index) => (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH)));
   const [ghostColumnWidth, setGhostColumnWidth] = useState(ATTRIBUTE_COLUMN_WIDTH);
   const [pendingFocusColumnId, setPendingFocusColumnId] = useState<string | null>(null);
+  const focusedColumnIdRef = useRef<string | null>(null);
   const dragStateRef = useRef<{
     startX: number;
     leftWidth: number;
@@ -128,16 +129,18 @@ export function LandingParticipantColumnsInput({
     rightIsGhost: boolean;
   } | null>(null);
   const resizeDragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
-
-  useEffect(() => {
-    setColumnWidths((previous) => columns.map((_, index) => previous[index] ?? (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH)));
-  }, [columns]);
+  const stopColumnResizeRef = useRef<() => void>(() => {});
+  const stopResizeRef = useRef<() => void>(() => {});
 
   const maxLineCount = useMemo(() => (
     Math.max(1, ...columns.map((column) => Math.max(1, splitParticipantColumnValues(column.values).length)))
   ), [columns]);
 
   const contentHeight = Math.max(height - HEADER_HEIGHT - 18, maxLineCount * LINE_HEIGHT + BODY_PADDING);
+  const getColumnWidth = useCallback(
+    (index: number) => columnWidths[index] ?? (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH),
+    [columnWidths],
+  );
 
   const handleColumnPointerMove = useCallback((event: PointerEvent) => {
     const dragState = dragStateRef.current;
@@ -169,8 +172,8 @@ export function LandingParticipantColumnsInput({
   const stopColumnResize = useCallback(() => {
     dragStateRef.current = null;
     window.removeEventListener('pointermove', handleColumnPointerMove);
-    window.removeEventListener('pointerup', stopColumnResize);
-    window.removeEventListener('pointercancel', stopColumnResize);
+    window.removeEventListener('pointerup', stopColumnResizeRef.current);
+    window.removeEventListener('pointercancel', stopColumnResizeRef.current);
   }, [handleColumnPointerMove]);
 
   const startColumnResize = useCallback((index: number, event: React.PointerEvent<HTMLDivElement>) => {
@@ -184,15 +187,15 @@ export function LandingParticipantColumnsInput({
     dragStateRef.current = {
       index,
       startX: event.clientX,
-      leftWidth: measuredLeftWidth ?? columnWidths[index],
-      rightWidth: measuredRightWidth ?? (rightIsGhost ? ghostColumnWidth : columnWidths[index + 1]),
+      leftWidth: measuredLeftWidth ?? getColumnWidth(index),
+      rightWidth: measuredRightWidth ?? (rightIsGhost ? ghostColumnWidth : getColumnWidth(index + 1)),
       rightIsGhost,
     };
 
     window.addEventListener('pointermove', handleColumnPointerMove);
     window.addEventListener('pointerup', stopColumnResize);
     window.addEventListener('pointercancel', stopColumnResize);
-  }, [columnWidths, columns.length, ghostColumnWidth, handleColumnPointerMove, stopColumnResize]);
+  }, [columns.length, getColumnWidth, ghostColumnWidth, handleColumnPointerMove, stopColumnResize]);
 
   const handleResizePointerMove = useCallback((event: PointerEvent) => {
     const dragState = resizeDragStateRef.current;
@@ -207,15 +210,21 @@ export function LandingParticipantColumnsInput({
   const stopResize = useCallback(() => {
     resizeDragStateRef.current = null;
     window.removeEventListener('pointermove', handleResizePointerMove);
-    window.removeEventListener('pointerup', stopResize);
-    window.removeEventListener('pointercancel', stopResize);
+    window.removeEventListener('pointerup', stopResizeRef.current);
+    window.removeEventListener('pointercancel', stopResizeRef.current);
   }, [handleResizePointerMove]);
 
-  useEffect(() => stopColumnResize, [stopColumnResize]);
-  useEffect(() => stopResize, [stopResize]);
+  useEffect(() => {
+    stopColumnResizeRef.current = stopColumnResize;
+    return stopColumnResize;
+  }, [stopColumnResize]);
+  useEffect(() => {
+    stopResizeRef.current = stopResize;
+    return stopResize;
+  }, [stopResize]);
 
   useEffect(() => {
-    if (!pendingFocusColumnId) {
+    if (!pendingFocusColumnId || focusedColumnIdRef.current === pendingFocusColumnId) {
       return;
     }
 
@@ -231,7 +240,7 @@ export function LandingParticipantColumnsInput({
     range.collapse(true);
     selection?.removeAllRanges();
     selection?.addRange(range);
-    setPendingFocusColumnId(null);
+    focusedColumnIdRef.current = pendingFocusColumnId;
   }, [columns, pendingFocusColumnId]);
 
   const handleResizePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
@@ -264,7 +273,7 @@ export function LandingParticipantColumnsInput({
                   className="landing-participant-columns__column"
                   style={{
                     minWidth: `${index === 0 ? MIN_NAME_WIDTH : MIN_ATTRIBUTE_WIDTH}px`,
-                    flex: `0 1 ${columnWidths[index]}px`,
+                    flex: `0 1 ${getColumnWidth(index)}px`,
                   }}
                   data-column-id={column.id}
                 >

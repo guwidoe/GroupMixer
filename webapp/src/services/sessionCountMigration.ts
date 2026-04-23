@@ -161,7 +161,8 @@ function cloneConstraintWithSessions<TConstraint extends ScopedConstraint>(
   sessions: number[] | undefined,
 ): TConstraint {
   if (!sessions || sessions.length === 0) {
-    const { sessions: _removed, ...rest } = constraint as TConstraint & { sessions?: number[] };
+    const rest = { ...constraint } as TConstraint & { sessions?: number[] };
+    delete rest.sessions;
     return rest as TConstraint;
   }
 
@@ -272,7 +273,6 @@ export function planSessionCountReduction({ scenario, nextSessionCount }: PlanSe
 
     if (constraint.type === 'PairMeetingCount') {
       const normalizedSessions = normalizeExplicitSessions(constraint.sessions, previousSessionCount);
-      const effectiveSessions = normalizedSessions ?? buildAllSessions(normalizedNextCount);
       const trimmedSessions = normalizedSessions?.filter((session) => session < normalizedNextCount);
 
       if (normalizedSessions && (!trimmedSessions || trimmedSessions.length === 0)) {

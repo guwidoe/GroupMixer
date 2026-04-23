@@ -19,6 +19,16 @@ interface TooltipPosition {
   placement: TooltipPlacement;
 }
 
+interface TooltipTriggerProps {
+  onMouseEnter?: React.MouseEventHandler;
+  onFocus?: React.FocusEventHandler;
+  onBlur?: React.FocusEventHandler;
+  onPointerDown?: React.PointerEventHandler;
+  onTouchStart?: React.TouchEventHandler;
+  onClick?: React.MouseEventHandler;
+  'aria-describedby'?: string;
+}
+
 const VIEWPORT_PADDING = 12;
 const DEFAULT_OFFSET = 10;
 
@@ -230,15 +240,15 @@ export function Tooltip({
   const tooltipMaxWidth = typeof window === 'undefined'
     ? maxWidth
     : Math.min(maxWidth, window.innerWidth - VIEWPORT_PADDING * 2);
-  const child = React.isValidElement(children)
-    ? React.cloneElement(children as React.ReactElement<any>, {
-      onMouseEnter: composeEventHandlers((children.props as any).onMouseEnter, showTooltip),
-      onFocus: composeEventHandlers((children.props as any).onFocus, showTooltip),
-      onBlur: composeEventHandlers((children.props as any).onBlur, hideTooltip),
-      onPointerDown: composeEventHandlers((children.props as any).onPointerDown, showTooltip),
-      onTouchStart: composeEventHandlers((children.props as any).onTouchStart, showTooltip),
-      onClick: composeEventHandlers((children.props as any).onClick, showTooltip),
-      'aria-describedby': isVisible ? tooltipId : (children.props as any)['aria-describedby'],
+  const child = React.isValidElement<TooltipTriggerProps>(children)
+    ? React.cloneElement(children, {
+      onMouseEnter: composeEventHandlers<React.MouseEvent>(children.props.onMouseEnter, showTooltip),
+      onFocus: composeEventHandlers<React.FocusEvent>(children.props.onFocus, showTooltip),
+      onBlur: composeEventHandlers<React.FocusEvent>(children.props.onBlur, hideTooltip),
+      onPointerDown: composeEventHandlers<React.PointerEvent>(children.props.onPointerDown, showTooltip),
+      onTouchStart: composeEventHandlers<React.TouchEvent>(children.props.onTouchStart, showTooltip),
+      onClick: composeEventHandlers<React.MouseEvent>(children.props.onClick, showTooltip),
+      'aria-describedby': isVisible ? tooltipId : children.props['aria-describedby'],
     })
     : children;
 
