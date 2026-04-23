@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { navigateScenarioSetupSection, openApp, openScenarioSetupControls, openWorkspaceActions, waitForModal } from './helpers';
+import { navigateScenarioSetupSection, openApp, openScenarioSetupControls, openWorkspaceActions, setSliderValue, waitForModal } from './helpers';
 
 test('opening advanced editor from the landing page does not trigger a maximum update-depth crash', async ({ page }) => {
   test.setTimeout(60000);
@@ -139,15 +139,9 @@ test.describe('Scenario Editor', () => {
   test('can navigate to sessions section and set session count', async ({ page }) => {
     await navigateScenarioSetupSection(page, /Sessions/i);
 
-    // Find session count input
-    const sessionInput = page.locator('input[type="number"]').first();
-    await expect(sessionInput).toBeVisible();
+    const sessionInput = page.getByRole('slider', { name: /number of sessions/i });
+    await setSliderValue(sessionInput, 5);
 
-    // Change session count
-    await sessionInput.fill('5');
-    await sessionInput.blur();
-
-    // Verify count updated (check the tab badge or the input value)
     await expect(sessionInput).toHaveValue('5');
   });
 

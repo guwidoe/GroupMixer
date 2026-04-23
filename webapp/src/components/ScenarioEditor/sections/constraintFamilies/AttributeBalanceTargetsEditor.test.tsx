@@ -34,7 +34,7 @@ describe('AttributeBalanceTargetsEditor', () => {
     await user.click(screen.getByRole('button', { name: /^enable target for male$/i }));
 
     expect(screen.getByRole('button', { name: /adjust boundary between female and male/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /^disable target for male$/i })).toHaveAttribute('title', 'male');
+    expect(screen.getByRole('button', { name: /^disable target for male$/i })).toHaveTextContent('male');
     expect(screen.getByLabelText('male count')).toHaveValue('0');
   });
 });

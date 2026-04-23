@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { navigateScenarioSetupSection, openApp, waitForModal } from './helpers';
+import { navigateScenarioSetupSection, openApp, setSliderValue, waitForModal } from './helpers';
 
 test.describe('Scenario data-grid workspace', () => {
   test('does not hit a maximum update-depth loop when opening setup grids', async ({ page }) => {
@@ -56,7 +56,7 @@ test.describe('Scenario data-grid workspace', () => {
     await page.getByRole('button', { name: /^add group$/i }).click();
     await waitForModal(page);
     await page.getByPlaceholder(/team-alpha|group-1/i).fill('Team Alpha');
-    await page.locator('.modal-content input[type="number"]').fill('2');
+    await setSliderValue(page.getByRole('slider', { name: /default capacity/i }), 2);
     await page.locator('.modal-content').getByRole('button', { name: /^add group$/i }).click();
     await page.getByRole('button', { name: /^cards$/i }).click();
     await expect(page.getByText('Team Alpha').first()).toBeVisible();
@@ -93,6 +93,7 @@ test.describe('Scenario data-grid workspace', () => {
     await page.getByRole('button', { name: /^add group$/i }).click();
     await waitForModal(page);
     await page.getByPlaceholder(/team-alpha|group-1/i).fill('G1');
+    await setSliderValue(page.getByRole('slider', { name: /default capacity/i }), 3);
     await page.locator('.modal-content button').filter({ hasText: /^add group$/i }).click();
 
     await navigateScenarioSetupSection(page, /^balance attributes$/i);
@@ -103,9 +104,10 @@ test.describe('Scenario data-grid workspace', () => {
     await selects.nth(0).selectOption('G1');
     await selects.nth(1).selectOption({ label: 'gender' });
 
-    const numberInputs = page.locator('.modal-content input[type="number"]');
-    await numberInputs.nth(0).fill('2');
-    await numberInputs.nth(1).fill('1');
+    await page.getByRole('button', { name: /enable target for asdf \| asdf:/i }).click();
+    await page.getByRole('textbox', { name: /asdf \| asdf: count/i }).fill('2');
+    await page.getByRole('button', { name: /enable target for female/i }).click();
+    await page.getByRole('textbox', { name: /female count/i }).fill('1');
     await page.locator('.modal-content button').filter({ hasText: /^save$/i }).click();
 
     await expect(page.getByRole('button', { name: /edit table/i })).toBeVisible();
