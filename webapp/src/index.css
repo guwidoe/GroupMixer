@@ -62,8 +62,8 @@
   --text-primary: #111827;
   --text-secondary: #374151;
   --text-tertiary: #6b7280;
-  --border-primary: #e5e7eb;
-  --border-secondary: #d1d5db;
+  --border-primary: #c2cad4;
+  --border-secondary: #bcc6d3;
   --shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
       --color-accent: #2563eb; /* Default blue for light mode */
@@ -75,7 +75,7 @@
   --bg-backdrop-rgb: 255, 255, 255;
   --bg-backdrop: rgba(var(--bg-backdrop-rgb), 0.8); /* Translucent white for light mode */
   --header-surface: rgba(255, 255, 255, 0.82);
-  --header-rail-surface: #f5f7fa;
+  --header-rail-surface: #f3f6fa;
   --landing-backdrop-rgb: 255, 255, 255;
   --landing-backdrop-opacity: 0.95; /* More opaque for landing page */
   --tooltip-bg: color-mix(in srgb, var(--text-primary) 92%, var(--bg-primary) 8%);
@@ -85,7 +85,7 @@
   --scrollbar-track: color-mix(in srgb, var(--bg-secondary) 92%, var(--border-primary) 8%);
   --scrollbar-thumb: color-mix(in srgb, var(--border-secondary) 88%, var(--text-tertiary) 12%);
   --scrollbar-thumb-hover: color-mix(in srgb, var(--text-tertiary) 30%, var(--border-secondary) 70%);
-  --landing-ghost-text: var(--text-tertiary);
+  --landing-ghost-text: color-mix(in srgb, var(--text-tertiary) 78%, var(--bg-secondary) 22%);
   --number-slider-track-bg: color-mix(in srgb, var(--bg-tertiary) 88%, #d1d5db 12%);
   --number-slider-track-border: color-mix(in srgb, var(--border-secondary) 82%, #9ca3af 18%);
   --number-slider-thumb-border: color-mix(in srgb, var(--color-accent) 78%, white 22%);
@@ -123,7 +123,7 @@
     --tooltip-text: var(--text-primary);
     --tooltip-border: color-mix(in srgb, var(--border-primary) 86%, transparent);
     --tooltip-shadow: 0 18px 36px rgba(0, 0, 0, 0.38);
-    --landing-ghost-text: var(--text-tertiary);
+    --landing-ghost-text: color-mix(in srgb, var(--text-tertiary) 72%, var(--bg-secondary) 28%);
     --scrollbar-track: color-mix(in srgb, var(--bg-secondary) 88%, black 12%);
     --scrollbar-thumb: color-mix(in srgb, var(--bg-tertiary) 55%, var(--text-tertiary) 45%);
     --scrollbar-thumb-hover: color-mix(in srgb, var(--text-secondary) 58%, var(--bg-tertiary) 42%);
