@@ -33,7 +33,9 @@ use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::construction::constraint_scenario_oracle::{
     build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
     extract_constraint_scenario_signals, select_oracleizable_flexible_block,
-    ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
+    validate_pure_oracle_schedule, ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
+    PureStructureOracle, PureStructureOracleRequest, PureStructureOracleSchedule,
+    Solver6PureStructureOracle,
 };
 use super::moves::{
     analyze_clique_swap, analyze_transfer, apply_clique_swap_runtime_preview,
@@ -586,6 +588,53 @@ fn oracle_block_selector_finds_flexible_pure_sgp_block() {
     assert_eq!(block.num_sessions(), 2);
     assert_eq!(block.num_groups, 2);
     assert_eq!(block.group_size, 2);
+}
+
+#[derive(Debug, Clone)]
+struct FakePureStructureOracle {
+    schedule: PackedSchedule,
+}
+
+impl PureStructureOracle for FakePureStructureOracle {
+    fn solve(
+        &self,
+        request: &PureStructureOracleRequest,
+    ) -> Result<PureStructureOracleSchedule, crate::solver_support::SolverError> {
+        validate_pure_oracle_schedule(request, &self.schedule)?;
+        Ok(PureStructureOracleSchedule {
+            schedule: self.schedule.clone(),
+        })
+    }
+}
+
+#[test]
+fn pure_structure_oracle_seam_supports_fake_oracle() {
+    let request = PureStructureOracleRequest {
+        num_groups: 2,
+        group_size: 2,
+        num_sessions: 2,
+        seed: 7,
+    };
+    let fake = FakePureStructureOracle {
+        schedule: vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]],
+    };
+
+    let schedule = fake.solve(&request).unwrap();
+    assert_eq!(schedule.schedule.len(), 2);
+    assert_eq!(schedule.schedule[0].len(), 2);
+}
+
+#[test]
+fn solver6_pure_structure_oracle_services_exact_small_block() {
+    let request = PureStructureOracleRequest {
+        num_groups: 2,
+        group_size: 2,
+        num_sessions: 3,
+        seed: 11,
+    };
+
+    let schedule = Solver6PureStructureOracle.solve(&request).unwrap();
+    validate_pure_oracle_schedule(&request, &schedule.schedule).unwrap();
 }
 
 #[test]
