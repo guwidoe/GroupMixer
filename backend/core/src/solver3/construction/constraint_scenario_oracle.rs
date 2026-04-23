@@ -176,6 +176,27 @@ impl ConstraintScenarioSignals {
     }
 }
 
+/// Rigid/flexible classification over the best CS scaffold.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ConstraintScenarioScaffoldMask {
+    /// `[session_idx * num_people + person_idx] -> true when the placement should be protected`.
+    pub(crate) frozen_by_person_session: Vec<bool>,
+    pub(crate) rigid_placement_count: usize,
+    pub(crate) flexible_placement_count: usize,
+}
+
+impl ConstraintScenarioScaffoldMask {
+    #[inline]
+    pub(crate) fn is_frozen(
+        &self,
+        compiled: &CompiledProblem,
+        session_idx: usize,
+        person_idx: usize,
+    ) -> bool {
+        self.frozen_by_person_session[compiled.person_session_slot(session_idx, person_idx)]
+    }
+}
+
 /// Returns whether repeat/contact pressure is relevant enough to use this constructor family.
 pub(crate) fn repeat_pressure_is_relevant(compiled: &CompiledProblem) -> bool {
     let repeat_penalty_relevant = compiled
@@ -284,6 +305,67 @@ pub(crate) fn extract_constraint_scenario_signals(
         rigid_placement_count,
         flexible_placement_count,
     }
+}
+
+/// Classifies the best CS scaffold into protected rigid placements and flexible placements.
+pub(crate) fn build_constraint_scenario_scaffold_mask(
+    compiled: &CompiledProblem,
+    scaffold: &PackedSchedule,
+    signals: &ConstraintScenarioSignals,
+) -> ConstraintScenarioScaffoldMask {
+    let mut frozen_by_person_session = vec![false; compiled.num_sessions * compiled.num_people];
+    let mut rigid_placement_count = 0usize;
+    let mut flexible_placement_count = 0usize;
+
+    for session_idx in 0..compiled.num_sessions {
+        for person_idx in 0..compiled.num_people {
+            if !compiled.person_participation[person_idx][session_idx] {
+                continue;
+            }
+            let slot = compiled.person_session_slot(session_idx, person_idx);
+            let frozen = compiled.immovable_group(session_idx, person_idx).is_some()
+                || participates_in_active_clique(compiled, session_idx, person_idx)
+                || signals.rigidity(compiled, session_idx, person_idx) >= 0.75;
+            frozen_by_person_session[slot] = frozen;
+            if frozen {
+                rigid_placement_count += 1;
+            } else if placement_exists(scaffold, session_idx, person_idx) {
+                flexible_placement_count += 1;
+            }
+        }
+    }
+
+    ConstraintScenarioScaffoldMask {
+        frozen_by_person_session,
+        rigid_placement_count,
+        flexible_placement_count,
+    }
+}
+
+fn participates_in_active_clique(
+    compiled: &CompiledProblem,
+    session_idx: usize,
+    person_idx: usize,
+) -> bool {
+    let Some(clique_idx) = compiled.person_to_clique_id[session_idx][person_idx] else {
+        return false;
+    };
+    let clique = &compiled.cliques[clique_idx];
+    let active_members = clique
+        .members
+        .iter()
+        .copied()
+        .filter(|&member| compiled.person_participation[member][session_idx])
+        .count();
+    active_members >= 2
+}
+
+fn placement_exists(scaffold: &PackedSchedule, session_idx: usize, person_idx: usize) -> bool {
+    scaffold
+        .get(session_idx)
+        .into_iter()
+        .flat_map(|groups| groups.iter())
+        .any(|members| members.contains(&person_idx))
 }
 
 fn normalized_candidate_weights(ensemble: &ConstraintScenarioEnsemble) -> Vec<f64> {

@@ -36,11 +36,11 @@ use rand_chacha::ChaCha12Rng;
 
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::construction::constraint_scenario_oracle::{
-    build_constraint_scenario_ensemble, constraint_scenario_score,
-    extract_constraint_scenario_signals, repeat_pressure_is_relevant, ConstraintScenarioCandidate,
-    ConstraintScenarioCandidateSource, ConstraintScenarioOracleConstructionResult,
-    ConstraintScenarioOracleOutcomeKind, ConstraintScenarioOracleTelemetry,
-    DEFAULT_CONSTRAINT_SCENARIO_RUNS,
+    build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
+    constraint_scenario_score, extract_constraint_scenario_signals, repeat_pressure_is_relevant,
+    ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
+    ConstraintScenarioOracleConstructionResult, ConstraintScenarioOracleOutcomeKind,
+    ConstraintScenarioOracleTelemetry, DEFAULT_CONSTRAINT_SCENARIO_RUNS,
 };
 use super::oracle::maybe_cross_check_runtime_state;
 use super::scoring::recompute::recompute_oracle_score;
@@ -378,6 +378,8 @@ impl RuntimeState {
         let ensemble = self.build_constraint_scenario_ensemble(effective_seed)?;
         let signals = extract_constraint_scenario_signals(&self.compiled, &ensemble);
         let best = ensemble.best();
+        let scaffold_mask =
+            build_constraint_scenario_scaffold_mask(&self.compiled, &best.schedule, &signals);
         Ok(ConstraintScenarioOracleConstructionResult {
             schedule: best.schedule.clone(),
             telemetry: ConstraintScenarioOracleTelemetry {
@@ -386,8 +388,8 @@ impl RuntimeState {
                 cs_run_count: ensemble.candidates.len(),
                 cs_best_score: Some(best.cs_score),
                 cs_diversity: Some(ensemble.diversity),
-                rigid_placement_count: signals.rigid_placement_count,
-                flexible_placement_count: signals.flexible_placement_count,
+                rigid_placement_count: scaffold_mask.rigid_placement_count,
+                flexible_placement_count: scaffold_mask.flexible_placement_count,
                 constructor_wall_ms: started_at.elapsed().as_millis(),
                 ..ConstraintScenarioOracleTelemetry::default()
             },

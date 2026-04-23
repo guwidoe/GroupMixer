@@ -31,8 +31,9 @@ use crate::models::{
 
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::construction::constraint_scenario_oracle::{
-    build_constraint_scenario_ensemble, extract_constraint_scenario_signals,
-    ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
+    build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
+    extract_constraint_scenario_signals, ConstraintScenarioCandidate,
+    ConstraintScenarioCandidateSource,
 };
 use super::moves::{
     analyze_clique_swap, analyze_transfer, apply_clique_swap_runtime_preview,
@@ -505,6 +506,50 @@ fn constraint_scenario_signals_capture_pair_pressure_and_rigidity() {
     assert_eq!(signals.placement_frequency(&compiled, 1, 1, 1), 0.5);
     assert!(signals.rigidity(&compiled, 0, 1) > 0.99);
     assert!(signals.rigidity(&compiled, 1, 1) < 0.01);
+}
+
+#[test]
+fn constraint_scenario_scaffold_mask_protects_rigid_and_immovable_placements() {
+    let mut input = minimal_input();
+    input
+        .constraints
+        .push(Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p0".into(),
+            group_id: "g0".into(),
+            sessions: Some(vec![0]),
+        }));
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let schedule_a: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let schedule_b: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
+    let ensemble = build_constraint_scenario_ensemble(vec![
+        ConstraintScenarioCandidate {
+            schedule: schedule_a.clone(),
+            source: ConstraintScenarioCandidateSource::BaselineLegacy,
+            seed: 1,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+        ConstraintScenarioCandidate {
+            schedule: schedule_b,
+            source: ConstraintScenarioCandidateSource::FreedomAwareDeterministic,
+            seed: 2,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+    ])
+    .unwrap();
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &schedule_a, &signals);
+
+    assert!(mask.is_frozen(&compiled, 0, 0)); // immovable
+    assert!(mask.is_frozen(&compiled, 0, 1)); // rigid across ensemble
+    assert!(!mask.is_frozen(&compiled, 1, 1)); // split evenly across groups
+    assert_eq!(
+        mask.rigid_placement_count + mask.flexible_placement_count,
+        8
+    );
 }
 
 #[test]
