@@ -1838,3 +1838,87 @@ input[type="number"]::-webkit-outer-spin-button:hover {
 .dark .landing-hero-bg {
   background-color: #000 !important;
 } 
+
+.landing-rotating-title {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: baseline;
+  gap: 0.25em;
+  white-space: nowrap;
+}
+
+.landing-rotating-title__word-frame {
+  position: relative;
+  display: inline-block;
+  flex: 0 0 auto;
+  overflow: hidden;
+  line-height: inherit;
+  vertical-align: baseline;
+  transition: width 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.landing-rotating-title__word-spacer {
+  display: inline-block;
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+.landing-rotating-title__word {
+  position: absolute;
+  left: 0;
+  top: 0;
+  line-height: inherit;
+  white-space: nowrap;
+  will-change: opacity, transform;
+}
+
+.landing-rotating-title__word--current {
+  animation: landing-title-word-enter 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.landing-rotating-title__word--previous {
+  animation: landing-title-word-exit 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.landing-rotating-title__measure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+@keyframes landing-title-word-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-0.55em);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-title-word-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(0.55em);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-rotating-title__word-frame {
+    transition: none;
+  }
+
+  .landing-rotating-title__word {
+    animation: none;
+  }
+}
