@@ -779,11 +779,11 @@ describe('ToolLandingPage SEO wiring', () => {
     );
 
     expect(screen.getByTestId('landing-hero')).toHaveClass('order-1', 'min-w-0');
-    expect(screen.getByRole('heading', { level: 1, name: 'Group Generator - Random, Balanced & Multi-Round' })).toHaveClass(
+    expect(screen.getByRole('heading', { level: 1, name: 'Group Generator - Random, Balanced & Multi-Round' })).toHaveClass('sr-only');
+    expect(screen.getByTestId('landing-home-hero-animation')).toHaveClass(
       'max-w-full',
-      'whitespace-normal',
+      'whitespace-nowrap',
     );
-    expect(screen.getByTestId('landing-home-hero-animation')).toBeInTheDocument();
     expect(screen.getByTestId('landing-tool-panel')).toHaveClass('order-2');
   });
 

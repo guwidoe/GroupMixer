@@ -884,23 +884,19 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         <section className="px-4 pb-8 pt-4 sm:px-6 lg:pb-14 lg:pt-6">
           <div className="mx-auto grid max-w-7xl gap-5 lg:gap-6">
             <div data-testid="landing-hero" className="order-1 min-w-0 max-w-4xl">
-              <h1
-                className={[
-                  'block w-full max-w-full overflow-hidden text-ellipsis font-bold leading-[1.08] tracking-normal sm:text-4xl lg:leading-[1.15]',
-                  usesAnimatedHomeTitle
-                    ? 'whitespace-normal text-[1.15rem] min-[340px]:text-[1.38rem] min-[390px]:text-2xl'
-                    : 'whitespace-nowrap text-[1.15rem] min-[340px]:text-[1.38rem] min-[390px]:text-2xl',
-                ].join(' ')}
-              >
+              <h1 className={usesAnimatedHomeTitle ? 'sr-only' : [
+                'block w-full max-w-full overflow-hidden text-ellipsis font-bold leading-[1.08] tracking-normal sm:text-4xl lg:leading-[1.15]',
+                'whitespace-nowrap text-[1.15rem] min-[340px]:text-[1.38rem] min-[390px]:text-2xl',
+              ].join(' ')}>
                 {heroHeadingText}
               </h1>
               {usesAnimatedHomeTitle ? (
                 <div
                   data-testid="landing-home-hero-animation"
-                  className="mt-2 text-sm font-semibold uppercase tracking-[0.16em] sm:text-base"
-                  style={{ color: 'var(--text-secondary)' }}
+                  aria-hidden="true"
+                  className="block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-bold leading-[1.08] tracking-normal text-base min-[340px]:text-[1.08rem] min-[390px]:text-xl sm:text-4xl lg:leading-[1.15]"
                 >
-                  <HomeAnimatedHeroTitle suffix="" />
+                  <HomeAnimatedHeroTitle />
                 </div>
               ) : null}
             </div>
