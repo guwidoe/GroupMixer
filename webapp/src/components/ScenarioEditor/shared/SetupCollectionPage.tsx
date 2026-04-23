@@ -4,6 +4,7 @@ import { SetupSectionHeader } from './SetupSectionHeader';
 import { SetupSectionToolbar } from './SetupSectionToolbar';
 import { SetupViewModeToggle } from './SetupViewModeToggle';
 import { useSetupCollectionViewMode, type SetupCollectionViewMode } from './useSetupCollectionViewMode';
+import { useAppStore } from '../../../store';
 
 interface SetupCollectionPageProps {
   sectionKey: string;
@@ -45,7 +46,21 @@ export function SetupCollectionPage({
   const resolvedToolbarLeading = typeof toolbarLeading === 'function' ? toolbarLeading(viewMode) : toolbarLeading;
   const resolvedToolbarTrailing = typeof toolbarTrailing === 'function' ? toolbarTrailing(viewMode) : toolbarTrailing;
   const hasDedicatedToolbarContent = Boolean(resolvedToolbarLeading || resolvedToolbarTrailing);
-  const viewModeToggle = <SetupViewModeToggle viewMode={viewMode} onChange={setViewMode} />;
+  const requestViewModeChange = React.useCallback((nextMode: SetupCollectionViewMode) => {
+    if (nextMode === viewMode) {
+      return;
+    }
+
+    const { setupGridUnsaved, setupGridLeaveHook } = useAppStore.getState();
+    const continueAction = () => setViewMode(nextMode);
+    if (viewMode === 'list' && setupGridUnsaved && setupGridLeaveHook) {
+      setupGridLeaveHook(continueAction);
+      return;
+    }
+
+    continueAction();
+  }, [setViewMode, viewMode]);
+  const viewModeToggle = <SetupViewModeToggle viewMode={viewMode} onChange={requestViewModeChange} />;
   const headerActions = (
     <>
       {actions}

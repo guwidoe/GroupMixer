@@ -37,7 +37,10 @@ COMMON_ARGS=(
   --exclude gm-benchmarking
   --exclude gm-wasm
   --exclude gm-cli
-  --ignore-filename-regex '.*/src/main.rs|.*/src/bin/generate-reference.rs'
+  # Keep compiling experimental all-features surfaces, but exclude feature-gated
+  # solver3 recombination/path-relinking research drivers from coverage gating
+  # until they have dedicated coverage expectations of their own.
+  --ignore-filename-regex '.*/src/main.rs|.*/src/bin/generate-reference.rs|.*/solver3/search/path_relinking/.*|.*/solver3/search/recombination/.*'
 )
 
 FAIL_ARGS=()

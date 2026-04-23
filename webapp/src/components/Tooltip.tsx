@@ -19,6 +19,16 @@ interface TooltipPosition {
   placement: TooltipPlacement;
 }
 
+interface TooltipTriggerProps {
+  onMouseEnter?: React.MouseEventHandler;
+  onFocus?: React.FocusEventHandler;
+  onBlur?: React.FocusEventHandler;
+  onPointerDown?: React.PointerEventHandler;
+  onTouchStart?: React.TouchEventHandler;
+  onClick?: React.MouseEventHandler;
+  'aria-describedby'?: string;
+}
+
 const VIEWPORT_PADDING = 12;
 const DEFAULT_OFFSET = 10;
 
@@ -27,6 +37,16 @@ function clamp(value: number, min: number, max: number): number {
     return min;
   }
   return Math.min(Math.max(value, min), max);
+}
+
+function composeEventHandlers<E>(
+  original: ((event: E) => void) | undefined,
+  next: (event: E) => void,
+) {
+  return (event: E) => {
+    original?.(event);
+    next(event);
+  };
 }
 
 function getPlacementOrder(preferred: TooltipPlacement): TooltipPlacement[] {
@@ -189,23 +209,58 @@ export function Tooltip({
     setPosition(null);
   }, []);
 
+  useEffect(() => {
+    if (!isVisible) {
+      return;
+    }
+
+    const handleOutsideInteraction = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node | null;
+      if (!target) {
+        return;
+      }
+
+      if (triggerRef.current?.contains(target) || tooltipRef.current?.contains(target)) {
+        return;
+      }
+
+      hideTooltip();
+    };
+
+    document.addEventListener('mousedown', handleOutsideInteraction);
+    document.addEventListener('touchstart', handleOutsideInteraction, { passive: true });
+
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideInteraction);
+      document.removeEventListener('touchstart', handleOutsideInteraction);
+    };
+  }, [hideTooltip, isVisible]);
+
   const wrapperClassName = className ?? 'inline-flex items-center';
   const tooltipMaxWidth = typeof window === 'undefined'
     ? maxWidth
     : Math.min(maxWidth, window.innerWidth - VIEWPORT_PADDING * 2);
+  const child = React.isValidElement<TooltipTriggerProps>(children)
+    ? React.cloneElement(children, {
+      onMouseEnter: composeEventHandlers<React.MouseEvent>(children.props.onMouseEnter, showTooltip),
+      onFocus: composeEventHandlers<React.FocusEvent>(children.props.onFocus, showTooltip),
+      onBlur: composeEventHandlers<React.FocusEvent>(children.props.onBlur, hideTooltip),
+      onPointerDown: composeEventHandlers<React.PointerEvent>(children.props.onPointerDown, showTooltip),
+      onTouchStart: composeEventHandlers<React.TouchEvent>(children.props.onTouchStart, showTooltip),
+      onClick: composeEventHandlers<React.MouseEvent>(children.props.onClick, showTooltip),
+      'aria-describedby': isVisible ? tooltipId : children.props['aria-describedby'],
+    })
+    : children;
 
   return (
     <>
       <span
         ref={triggerRef}
         className={wrapperClassName}
-        onMouseEnter={showTooltip}
         onMouseLeave={hideTooltip}
-        onFocus={showTooltip}
-        onBlur={hideTooltip}
         aria-describedby={isVisible ? tooltipId : undefined}
       >
-        {children}
+        {child}
       </span>
 
       {isVisible && typeof document !== 'undefined' && createPortal(

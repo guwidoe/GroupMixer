@@ -1,0 +1,75 @@
+schema_version: 1
+suite_id: solver4-8x4x9-gamma0-trace
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: allow_non_canonical
+class: stretch
+title: Solver4 8x4x9 gamma=0 trace lane
+description: >-
+  Diagnostic lane for solver4 Sections 6/7 on the 8-4-9 paper anchor. Captures
+  solver4 paper traces for the four deterministic gamma=0 conformance seeds.
+default_solver_family: solver4
+default_solver:
+  solver_type: solver4
+  stop_conditions:
+    max_iterations: 8000000
+    time_limit_seconds: 20
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver4
+    mode: greedy_local_search
+    gamma: 0.0
+    diagnostics:
+      capture_paper_trace: true
+      trace_every_n_iterations: 1000
+      include_initial_schedule_in_trace: true
+  logging: {}
+  telemetry: {}
+  seed: 1
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.trace.social_golfer_32x8x9.gamma_0.seed_1
+    provenance: solver4_trace_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320910
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.trace.social_golfer_32x8x9.gamma_0.seed_2
+    provenance: solver4_trace_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320911
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.trace.social_golfer_32x8x9.gamma_0.seed_3
+    provenance: solver4_trace_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320912
+    max_iterations: 8000000
+    time_limit_seconds: 20
+  - manifest: ../cases/stretch/social_golfer_32x8x9.json
+    case_role: helper
+    canonical_case_id: stretch.social-golfer-32x8x10
+    purpose: diagnostic.solver4.trace.social_golfer_32x8x9.gamma_0.seed_4
+    provenance: solver4_trace_lane
+    declared_budget:
+      max_iterations: 8000000
+      time_limit_seconds: 20
+    seed: 320913
+    max_iterations: 8000000
+    time_limit_seconds: 20

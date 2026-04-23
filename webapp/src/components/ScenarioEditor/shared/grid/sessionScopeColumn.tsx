@@ -1,6 +1,5 @@
 import React from 'react';
 import type { ScenarioDataGridCustomColumn } from './types';
-import { SessionScopeField } from '../SessionScopeField';
 import {
   createAllSessionScopeDraft,
   formatSessionScopeDraftCompact,
@@ -11,6 +10,7 @@ import {
   type SessionScopeDraft,
 } from '../sessionScope';
 import { createJsonRawCodec } from './model/rawCodec';
+import { InlineSessionScopeEditor } from './components/editors/InlineSessionScopeEditor';
 
 interface CreateOptionalSessionScopeColumnArgs<T> {
   id?: string;
@@ -69,12 +69,12 @@ export function createOptionalSessionScopeColumn<T>({
       validate: (rawValue) => validateSessionScopeDraft(rawValue, totalSessions),
     }),
     renderEditor: ({ value, onCommit, disabled: isDisabled }) => (
-      <SessionScopeField
-        compact
+      <InlineSessionScopeEditor
+        ariaLabel={`Edit ${header}`}
+        disabled={isDisabled ?? false}
         totalSessions={totalSessions}
         value={(value as SessionScopeDraft | undefined) ?? createAllSessionScopeDraft()}
-        onChange={onCommit}
-        disabled={isDisabled}
+        onCommit={onCommit}
       />
     ),
   };

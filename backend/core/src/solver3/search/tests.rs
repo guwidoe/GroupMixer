@@ -6,21 +6,21 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha12Rng;
 use serde::Deserialize;
 
+use crate::default_solver_configuration_for;
 use crate::models::{
     ApiInput, Constraint, Group, MoveFamily, MoveFamilyWeights, MovePolicy, MoveSelectionMode,
     Objective, Person, ProblemDefinition, RepeatEncounterParams, Solver3HotspotGuidanceParams,
-    Solver3Params, Solver3RepeatGuidedSwapParams, SolverConfiguration, SolverKind,
-    SolverParams, StopConditions,
+    Solver3Params, Solver3RepeatGuidedSwapParams, SolverConfiguration, SolverKind, SolverParams,
+    StopConditions,
 };
-use crate::default_solver_configuration_for;
 use crate::solver3::runtime_state::RuntimeState;
 
 use super::acceptance::{AcceptanceInputs, SimulatedAnnealingAcceptance};
 use super::candidate_sampling::{CandidateSampler, SwapSamplingOptions};
 use super::context::{SearchProgressState, SearchRunContext};
 use super::family_selection::MoveFamilySelector;
-use super::single_state::{build_solver_result, polish_state, LocalImproverBudget};
 use super::single_state::should_emit_progress_callback;
+use super::single_state::{build_solver_result, polish_state, LocalImproverBudget};
 use super::SearchEngine;
 
 #[derive(Debug, Deserialize)]
@@ -365,8 +365,8 @@ fn diagnose_sailing_trip_search_hotpath_breakdown() {
 fn diagnose_sailing_trip_preview_wrapper_breakdown() {
     let input = sailing_trip_raw_solver3_input();
     let state = RuntimeState::from_input(&input).expect("raw sailing state should build");
-    let run_context = SearchRunContext::from_solver(&input.solver, &state, 7)
-        .expect("run context should build");
+    let run_context =
+        SearchRunContext::from_solver(&input.solver, &state, 7).expect("run context should build");
     let family_selector = MoveFamilySelector::new(&run_context.move_policy);
     let sampler = CandidateSampler;
 
@@ -422,7 +422,10 @@ fn diagnose_sailing_trip_preview_wrapper_breakdown() {
     let overall_preview_kernel_us =
         overall.preview_kernel_seconds * 1_000_000.0 / overall.count as f64;
 
-    println!("sailing raw default-preview diagnostic over {} accepted samples", overall.count);
+    println!(
+        "sailing raw default-preview diagnostic over {} accepted samples",
+        overall.count
+    );
     println!(
         "  wall={:.3}s total={:.3}µs/sample proposal={:.3}µs/sample preview_kernel={:.3}µs/sample wrapper_share={:.1}%",
         wall_seconds,
@@ -454,7 +457,10 @@ fn diagnose_sailing_trip_preview_wrapper_breakdown() {
         );
     }
 
-    assert!(overall.count > 0, "diagnostic should sample at least one move");
+    assert!(
+        overall.count > 0,
+        "diagnostic should sample at least one move"
+    );
 }
 
 #[test]

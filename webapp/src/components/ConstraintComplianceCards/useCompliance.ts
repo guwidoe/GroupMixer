@@ -179,8 +179,7 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             type: constraint.type,
             title: `${getConstraintDisplayName('AttributeBalance')} – ${constraint.group_id} (${constraint.attribute_key})`,
             subtitle:
-              `${formatSessions(constraint.sessions, scenario.num_sessions)} • Weight: ${constraint.penalty_weight}` +
-              (mode === 'at_least' ? ' • Mode: At least' : ''),
+              `${formatSessions(constraint.sessions, scenario.num_sessions)} • Weight: ${constraint.penalty_weight} • Mode: ${mode === 'at_least' ? 'At least' : 'Exact'}`,
             adheres: violations === 0,
             violationsCount: violations,
             details,
@@ -277,6 +276,7 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
           });
           break;
         }
+        case 'MustStayApart':
         case 'ShouldNotBeTogether': {
           const sessions = constraint.sessions ?? Array.from({ length: scenario.num_sessions }, (_, i) => i);
           const details: ViolationDetail[] = [];
@@ -295,8 +295,11 @@ export function useCompliance(scenario: Scenario, solution: Solution): CardData[
             id: index,
             constraint,
             type: constraint.type,
-            title: getConstraintDisplayName('ShouldNotBeTogether'),
-            subtitle: `${formatSessions(constraint.sessions, scenario.num_sessions)} • Weight: ${constraint.penalty_weight}`,
+            title: getConstraintDisplayName(constraint.type),
+            subtitle:
+              constraint.type === 'ShouldNotBeTogether'
+                ? `${formatSessions(constraint.sessions, scenario.num_sessions)} • Weight: ${constraint.penalty_weight}`
+                : formatSessions(constraint.sessions, scenario.num_sessions),
             adheres: violations === 0,
             violationsCount: violations,
             details,

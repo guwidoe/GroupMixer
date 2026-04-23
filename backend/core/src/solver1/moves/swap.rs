@@ -57,7 +57,7 @@ impl State {
     /// 1. **Contact changes**: How unique contacts and repeat encounters change
     /// 2. **Repetition penalties**: Changes in penalties for exceeding encounter limits
     /// 3. **Attribute balance**: Impact on group attribute distributions
-    /// 4. **Constraint violations**: Changes in clique and forbidden pair violations
+    /// 4. **Constraint violations**: Changes in clique and soft-apart pair violations
     ///
     /// # Arguments
     ///
@@ -94,7 +94,7 @@ impl State {
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
-    /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
+    /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None, stop_on_optimal_score: true },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #         telemetry: Default::default(),
@@ -136,7 +136,7 @@ impl State {
     ///
     /// ## Constraint Delta
     /// - **Clique violations**: Checks if swap breaks clique integrity
-    /// - **Forbidden pairs**: Checks if swap creates/removes forbidden pairings
+    /// - **Soft-apart pairs**: Checks if swap creates/removes `ShouldNotBeTogether` violations
     /// - **Immovable constraints**: Handled by early validation
     ///
     /// # Validation
@@ -163,6 +163,26 @@ impl State {
 
         if g1_idx == g2_idx {
             return 0.0;
+        }
+
+        if self
+            .first_hard_apart_conflict_in_group_excluding(
+                day,
+                p1_idx,
+                &self.schedule[day][g2_idx],
+                p2_idx,
+            )
+            .is_some()
+            || self
+                .first_hard_apart_conflict_in_group_excluding(
+                    day,
+                    p2_idx,
+                    &self.schedule[day][g1_idx],
+                    p1_idx,
+                )
+                .is_some()
+        {
+            return f64::INFINITY;
         }
 
         let mut delta_cost = 0.0;
@@ -222,10 +242,10 @@ impl State {
         // Hard Constraint Delta - Cliques
         // No clique weight based delta; cliques are enforced by move feasibility
 
-        // Constraint Delta - Forbidden Pairs
-        for (pair_idx, &(p1, p2)) in self.forbidden_pairs.iter().enumerate() {
-            // Check if this forbidden pair applies to this session
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+        // Constraint Delta - Soft-Apart Pairs
+        for (pair_idx, &(p1, p2)) in self.soft_apart_pairs.iter().enumerate() {
+            // Check if this soft-apart pair applies to this session
+            if let Some(ref sessions) = self.soft_apart_pair_sessions[pair_idx] {
                 if !sessions.contains(&day) {
                     continue; // Skip this constraint for this session
                 }
@@ -244,7 +264,7 @@ impl State {
                 continue;
             }
 
-            let pair_weight = self.forbidden_pair_weights[pair_idx];
+            let pair_weight = self.soft_apart_pair_weights[pair_idx];
 
             let were_together = self.locations[day][p1].0 == self.locations[day][p2].0;
             let are_together = group_after_swap(p1) == group_after_swap(p2);
@@ -414,7 +434,7 @@ impl State {
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
-    /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
+    /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None, stop_on_optimal_score: true },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #         telemetry: Default::default(),
@@ -467,7 +487,7 @@ impl State {
     /// #     objectives: vec![], constraints: vec![],
     /// #     solver: SolverConfiguration {
     /// #         solver_type: "SimulatedAnnealing".to_string(),
-    /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None },
+    /// #         stop_conditions: StopConditions { max_iterations: Some(1000), time_limit_seconds: None, no_improvement_iterations: None, stop_on_optimal_score: true },
     /// #         solver_params: SolverParams::SimulatedAnnealing(SimulatedAnnealingParams { initial_temperature: 10.0, final_temperature: 0.1, cooling_schedule: "geometric".to_string(), reheat_after_no_improvement: Some(0), reheat_cycles: Some(0) }),
     /// #         logging: LoggingOptions::default(),
     /// #         telemetry: Default::default(),
@@ -515,6 +535,26 @@ impl State {
 
         if g1_idx == g2_idx {
             return; // Same group, no swap needed
+        }
+
+        if self
+            .first_hard_apart_conflict_in_group_excluding(
+                day,
+                p1_idx,
+                &self.schedule[day][g2_idx],
+                p2_idx,
+            )
+            .is_some()
+            || self
+                .first_hard_apart_conflict_in_group_excluding(
+                    day,
+                    p2_idx,
+                    &self.schedule[day][g1_idx],
+                    p1_idx,
+                )
+                .is_some()
+        {
+            return;
         }
 
         // === TAKE OWNERSHIP OF AFFECTED GROUPS ===
@@ -696,10 +736,10 @@ impl State {
 
         // === UPDATE CONSTRAINT PENALTIES (THIS WAS MISSING!) ===
 
-        // Update forbidden pair violations
-        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
-            // Check if this forbidden pair applies to this session
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+        // Update soft-apart pair violations
+        for (pair_idx, &(person_a, person_b)) in self.soft_apart_pairs.iter().enumerate() {
+            // Check if this soft-apart pair applies to this session
+            if let Some(ref sessions) = self.soft_apart_pair_sessions[pair_idx] {
                 if !sessions.contains(&day) {
                     continue; // Skip this constraint for this session
                 }
@@ -712,7 +752,7 @@ impl State {
                 continue; // Skip if either person is not participating
             }
 
-            // Check if this swap affects this forbidden pair
+            // Check if this swap affects this soft-apart pair
             if (person_a == p1_idx || person_a == p2_idx)
                 || (person_b == p1_idx || person_b == p2_idx)
             {
@@ -753,10 +793,10 @@ impl State {
                 // Update the violation count
                 if were_together_before && !are_together_after {
                     // They were together before but not after - violation removed
-                    self.forbidden_pair_violations[pair_idx] -= 1;
+                    self.soft_apart_pair_violations[pair_idx] -= 1;
                 } else if !were_together_before && are_together_after {
                     // They were not together before but are after - violation added
-                    self.forbidden_pair_violations[pair_idx] += 1;
+                    self.soft_apart_pair_violations[pair_idx] += 1;
                 }
             }
         }
@@ -963,6 +1003,8 @@ impl State {
         // Update the legacy constraint_penalty field for backward compatibility
         self._update_constraint_penalty_total();
         self.refresh_cost_from_caches();
+        #[cfg(feature = "debug-invariant-checks")]
+        self.debug_validate_hard_constraints_if_enabled("apply_swap");
         #[cfg(feature = "cache-drift-assertions")]
         self.debug_assert_no_cache_drift_if_enabled("apply_swap");
     }

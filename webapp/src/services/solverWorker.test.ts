@@ -535,4 +535,28 @@ describe("SolverWorkerService", () => {
 
     await expect(settingsPromise).rejects.toThrow("Worker error");
   });
+
+  it("surfaces public solver errors with a recovery hint", async () => {
+    const service = createService();
+    await initializeService(service);
+
+    const solvePromise = service.solve(createScenario());
+    FakeWorker.latest().emit({
+      type: "ERROR",
+      id: "2",
+      data: {
+        error: "Could not place clique: team leads require separate groups in session 2",
+        publicError: {
+          code: "infeasible-scenario",
+          message: "Could not place clique: team leads require separate groups in session 2",
+          why: "The solver cannot satisfy the required constraints, capacities, or session assignments for the provided scenario input.",
+          recovery: "Validate the scenario, inspect constraint settings, and adjust the input so a valid schedule is possible.",
+        },
+      },
+    });
+
+    await expect(solvePromise).rejects.toThrow(
+      "Could not place clique: team leads require separate groups in session 2 Hint: Validate the scenario, inspect constraint settings, and adjust the input so a valid schedule is possible.",
+    );
+  });
 });

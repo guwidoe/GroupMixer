@@ -1,10 +1,15 @@
 import React from 'react';
+import {
+  AttributeDistributionField,
+  getAttributeDistributionBuckets,
+} from '../../../ui';
 
 interface AttributeBalanceTargetsEditorProps {
   options: string[];
   value?: Record<string, number>;
   onCommit: (value: Record<string, number>) => void;
   disabled?: boolean;
+  maxValue?: number;
 }
 
 export function AttributeBalanceTargetsEditor({
@@ -12,6 +17,7 @@ export function AttributeBalanceTargetsEditor({
   value,
   onCommit,
   disabled = false,
+  maxValue,
 }: AttributeBalanceTargetsEditorProps) {
   const targets = value ?? {};
   const unknownKeys = Object.keys(targets)
@@ -26,39 +32,22 @@ export function AttributeBalanceTargetsEditor({
     );
   }
 
+  const allocatedTotal = Object.values(targets).reduce((sum, count) => sum + Math.max(0, Math.round(Number(count) || 0)), 0);
+  const effectiveCapacity = typeof maxValue === 'number' ? Math.max(maxValue, allocatedTotal) : allocatedTotal;
+
   return (
-    <div className="min-w-[14rem] space-y-2">
-      {options.map((option) => (
-        <label key={option} className="grid grid-cols-[minmax(0,1fr)_5.5rem] items-center gap-2 text-sm">
-          <span className="truncate" title={option} style={{ color: 'var(--text-secondary)' }}>
-            {option}
-          </span>
-          <input
-            type="number"
-            disabled={disabled}
-            value={targets[option] ?? ''}
-            onChange={(event) => {
-              const nextTargets = { ...targets };
-              const nextValue = event.target.value.trim();
-              if (!nextValue) {
-                delete nextTargets[option];
-              } else {
-                const parsed = Number(nextValue);
-                if (!Number.isFinite(parsed)) {
-                  return;
-                }
-                nextTargets[option] = parsed;
-              }
-              onCommit(nextTargets);
-            }}
-            className="input h-9 w-full"
-            aria-label={`Target for ${option}`}
-          />
-        </label>
-      ))}
+    <div className="min-w-[16rem]">
+      <AttributeDistributionField
+        buckets={getAttributeDistributionBuckets(options)}
+        value={targets}
+        capacity={effectiveCapacity}
+        onChange={(nextValue) => onCommit(nextValue)}
+        disabled={disabled}
+        showSummary={false}
+      />
       {unknownKeys.length > 0 ? (
         <div
-          className="rounded-xl border px-3 py-2 text-xs"
+          className="mt-2 rounded-xl border px-3 py-2 text-xs"
           style={{
             borderColor: 'var(--color-warning)',
             backgroundColor: 'color-mix(in srgb, var(--color-warning) 10%, var(--bg-primary) 90%)',

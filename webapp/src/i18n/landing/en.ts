@@ -1,10 +1,14 @@
 import type { ToolPageKey, ToolPageLocalizedContent } from '../../pages/toolPageTypes';
+import { EN_TECHNICAL_TOOL_PAGE_CONTENT } from './enTechnical';
 
 const TRUST_BULLETS = [
-  'Private (processed in your browser)',
-  'No sign-up',
-  'Results in seconds',
+  'Keep together or apart',
+  'Multiple rounds',
+  'Balance by attribute',
 ];
+
+const HOME_FEATURE_SUMMARY =
+  'Keep certain people together or apart. Balance people by gender or other attributes. Generate multiple rounds with minimal repeats.';
 
 const OPTIMIZER_FEATURES = [
   'Keep together',
@@ -19,9 +23,9 @@ const OPTIMIZER_FEATURES = [
 const CHROME = {
   expertWorkspaceLabel: 'Scenario editor',
   faqHeading: 'Frequently asked questions',
-  footerTagline: 'GroupMixer — Free random group generator',
+  footerTagline: 'GroupMixer - Group generator and optimizer',
   feedbackLabel: 'Feedback',
-  privacyNote: 'All processing happens locally in your browser.',
+  privacyNote: 'Runs in your browser.',
   scrollHint: 'Scroll down for use cases & FAQ',
 };
 
@@ -86,29 +90,29 @@ const ADVANCED_SECTION = {
 
 const FAQS = {
   free: {
-    question: 'Is GroupMixer free to use?',
+    question: 'Do I need an account?',
     answer:
-      'Yes. GroupMixer is completely free. There is no sign-up, no account required, and no usage limits.',
+      'No. Paste names, adjust the setup, and generate groups right away.',
   },
   privacy: {
-    question: 'Does my data stay private?',
+    question: 'Where is my data processed?',
     answer:
-      'Yes. All processing happens locally in your browser. Your names and group data are never sent to a server. You can use this page without internet connection once it is loaded.',
+      'In your browser on this device. Your participant list stays in the page while you work.',
   },
   constraints: {
     question: 'Can I add rules like keep-together or keep-apart?',
     answer:
-      'Yes. Open the advanced options to add keep-together groups, avoid-pairing rules, multiple sessions, and attribute balancing. Or use the scenario editor for full control.',
+      'Yes. Open the advanced options to add keep-together groups, avoid-pairing rules, multiple sessions, and attribute balancing.',
   },
   multiSession: {
     question: 'Can I create groups for multiple rounds?',
     answer:
-      'Yes. Set the number of sessions in the advanced options and enable "Avoid repeat pairings" to minimize how often the same people end up together.',
+      'Yes. Set the number of sessions and enable "Avoid repeat pairings" to cut down on repeats across rounds.',
   },
   workspace: {
     question: 'What is the scenario editor?',
     answer:
-      'The scenario editor gives you detailed control over sessions, constraints, solver settings, warm-start from previous results, and full result analysis. It uses the same powerful solver engine.',
+      'The scenario editor gives you more control over sessions, constraints, solver settings, and result analysis.',
   },
 };
 
@@ -119,6 +123,10 @@ function createContent({
   heroTitle,
   subhead,
   audienceSummary,
+  trustBullets = TRUST_BULLETS,
+  optimizerCta,
+  useCasesSection = USE_CASES_SECTION,
+  advancedSection = ADVANCED_SECTION,
   faqEntries,
 }: {
   title: string;
@@ -127,6 +135,10 @@ function createContent({
   heroTitle: string;
   subhead: string;
   audienceSummary: string;
+  trustBullets?: string[];
+  optimizerCta?: ToolPageLocalizedContent['optimizerCta'];
+  useCasesSection?: ToolPageLocalizedContent['useCasesSection'];
+  advancedSection?: ToolPageLocalizedContent['advancedSection'];
   faqEntries: ToolPageLocalizedContent['faqEntries'];
 }): ToolPageLocalizedContent {
   return {
@@ -136,9 +148,9 @@ function createContent({
       title: heroTitle,
       subhead,
       audienceSummary,
-      trustBullets: TRUST_BULLETS,
+      trustBullets,
     },
-    optimizerCta: {
+    optimizerCta: optimizerCta ?? {
       eyebrow: 'Want to do better than random?',
       title: 'Use the full group optimizer.',
       featureBullets: OPTIMIZER_FEATURES,
@@ -147,21 +159,20 @@ function createContent({
     },
     faqEntries,
     chrome: CHROME,
-    useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
+    useCasesSection,
+    advancedSection,
   };
 }
 
-export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent> = {
+export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalizedContent>> = {
   home: createContent({
-    title: 'Random Group Generator — Split Names into Teams Instantly | GroupMixer',
-    description:
-      'Free random group generator. Paste names, pick group count, and generate balanced groups in seconds. No sign-up required. Add constraints when you need them.',
+    title: 'Random Group Generator - Split Names into Balanced Teams',
+    description: HOME_FEATURE_SUMMARY,
     eyebrow: 'For classrooms, workshops, and events',
     heroTitle: 'Random Group Generator',
-    subhead:
-      'Paste names, choose the number of groups, and generate instantly.',
+    subhead: HOME_FEATURE_SUMMARY,
     audienceSummary: '',
+    trustBullets: [],
     faqEntries: [
       {
         question: 'How do I split a list of names into random groups?',
@@ -176,15 +187,15 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     ],
   }),
   'random-group-generator': createContent({
-    title: 'Random Group Generator — Create Groups from a List of Names | GroupMixer',
+    title: 'Random Group Generator - Split a List of Names into Groups',
     description:
-      'Free random group generator. Paste a list of names, choose how many groups, and split them instantly. Works for classrooms, workshops, and events.',
+      'Split a list of names into groups. Set group count or group size, then add balancing, pairing rules, or multiple rounds when needed.',
     eyebrow: 'For quick random splits',
     heroTitle: 'Random Group Generator',
     subhead:
-      'Paste a list of names, choose how many groups you want, and split them instantly. No sign-up, no server — everything runs in your browser.',
+      'Paste names, choose group count or group size, and split the list right away.',
     audienceSummary:
-      'Ideal when you need a fast, low-friction group maker for class activities, workshop breakouts, and simple event logistics.',
+      'Splits any name list into groups for class activities, workshop breakouts, and quick event logistics.',
     faqEntries: [
       {
         question: 'How does the random group generator work?',
@@ -202,15 +213,15 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     ],
   }),
   'random-team-generator': createContent({
-    title: 'Random Team Generator — Create Balanced Teams Fast | GroupMixer',
+    title: 'Random Team Generator - Create Balanced Teams',
     description:
-      'Free random team generator. Paste names and create balanced teams instantly. Add rules for skill balancing, keep-together, and keep-apart when needed.',
+      'Turn a list of names into teams. Balance skills or roles, keep people together or apart, generate multiple rounds with minimal repeats.',
     eyebrow: 'For coaches, leads, and facilitators',
     heroTitle: 'Random Team Generator',
     subhead:
-      'Create random teams in seconds. Paste names, pick team count, and generate. Add balancing rules when you need fairer teams.',
+      'Paste names, choose team count, and generate teams. Add balancing rules when the split needs more structure.',
     audienceSummary:
-      'Built for team-based activities where fairness matters more than pure randomness, especially when roles or skills should be spread out.',
+      'Build more balanced teams by spreading skills, roles, or any other attribute across the groups.',
     faqEntries: [
       {
         question: 'How do I create random teams?',
@@ -228,15 +239,15 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     ],
   }),
   'random-pair-generator': createContent({
-    title: 'Random Pair Generator — Make Pairs from a List of Names | GroupMixer',
+    title: 'Random Pair Generator - Turn a List of Names into Pairs',
     description:
-      'Free random pair generator. Paste names, create random pairs instantly, and reshuffle in seconds. Great for classrooms, workshops, and partner activities.',
+      'Turn a list of names into pairs. Avoid certain pairings and avoid repeats across sessions.',
     eyebrow: 'For partner work and pair rotations',
     heroTitle: 'Random Pair Generator',
     subhead:
-      'Paste names, create random pairs instantly, and reshuffle whenever you want a new partner mix.',
+      'Paste names and generate pairs. Avoid certain pairings and prevent repeats across sessions.',
     audienceSummary:
-      'Built for teachers, trainers, and facilitators who need fast partner assignments for practice rounds, peer feedback, and icebreakers.',
+      'For partner work, peer feedback, drills, and short practice rounds.',
     faqEntries: [
       {
         question: 'How do I make random pairs from a list of names?',
@@ -254,15 +265,15 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     ],
   }),
   'team-shuffle-generator': createContent({
-    title: 'Team Shuffle Generator — Reshuffle Teams Quickly and Fairly | GroupMixer',
+    title: 'Team Shuffle Generator - Reshuffle Teams and Keep Them Balanced',
     description:
-      'Free team shuffle generator. Reshuffle a list of names into fresh teams in seconds. Useful for workshops, training cohorts, sports drills, and group exercises.',
+      'Reshuffle the same roster into new teams. Keep teams balanced by role, skill, or any attribute.',
     eyebrow: 'For fresh team mixes without the admin work',
     heroTitle: 'Team Shuffle Generator',
     subhead:
-      'Reshuffle people into fresh teams fast. Great when you want new combinations without rebuilding your setup from scratch.',
+      'Reshuffle the same roster into fresh teams. Keep the mix balanced and add pairing rules when needed.',
     audienceSummary:
-      'Best for facilitators, coaches, and team leads who regularly rotate groups and want a cleaner, more reviewable way to do it.',
+      'Reshuffles the same roster for drills, workshops, and repeat activities where each round needs a fresh mix.',
     faqEntries: [
       {
         question: 'What is a team shuffle generator?',
@@ -280,15 +291,15 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     ],
   }),
   'breakout-room-generator': createContent({
-    title: 'Breakout Room Generator — Split Participants into Rooms | GroupMixer',
+    title: 'Breakout Room Generator - Assign Participants to Rooms',
     description:
-      'Free breakout room generator. Paste names and split participants into breakout rooms instantly. Great for classes, workshops, and remote meetings.',
+      'Assign participants to breakout rooms. Choose room count, rotate across rounds, and minimize repeat pairings.',
     eyebrow: 'For Zoom calls, trainings, and workshops',
     heroTitle: 'Breakout Room Generator',
     subhead:
-      'Split participants into breakout rooms instantly. Paste names, set room count, and generate. Perfect for workshops, classes, and remote sessions.',
+      'Paste names, set room count, and assign participants to breakout rooms. Add rounds, balance gender, experience or other attributes.',
     audienceSummary:
-      'Useful when you need room assignments fast, but still want the option to rotate people across rounds and reduce repetitive pairings.',
+      'Assigns participants to breakout rooms, rotates them across rounds, and keep the room mix more even.',
     faqEntries: [
       {
         question: 'How do I create breakout rooms?',
@@ -306,15 +317,15 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     ],
   }),
   'workshop-group-generator': createContent({
-    title: 'Workshop Group Generator — Create Small Groups for Sessions | GroupMixer',
+    title: 'Workshop Group Generator - Create Small Groups for Sessions',
     description:
-      'Free workshop group generator. Split participants into small groups for activities, breakouts, and multi-round sessions. Add constraints when you need them.',
+      'Create workshop groups for breakouts, discussions, and rotating sessions. Keep certain people together or apart and cut down on repeats across rounds.',
     eyebrow: 'For facilitators running collaborative sessions',
     heroTitle: 'Workshop Group Generator',
     subhead:
-      'Create workshop groups in seconds. Start simple, then add rounds, balancing, or pairing rules as your facilitation plan gets more complex.',
+      'Set up workshop groups for breakouts, table work, and rotating sessions.',
     audienceSummary:
-      'Made for workshops where group composition affects discussion quality, energy, and how often participants meet new people.',
+      'Create workshop groups for breakouts and rotating sessions while keeping important pairing rules intact.',
     faqEntries: [
       {
         question: 'How do I create workshop groups?',
@@ -332,15 +343,15 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     ],
   }),
   'student-group-generator': createContent({
-    title: 'Student Group Generator — Create Classroom Groups Fast | GroupMixer',
+    title: 'Student Group Generator - Create Classroom Groups',
     description:
-      'Free student group generator for teachers. Paste your class roster and create balanced student groups in seconds. Add rules for keeping students together or apart.',
+      'Student group generator for teachers. Paste your class roster and create balanced student groups in seconds. Add rules for keeping students together or apart or balancing gender, skill level, or any attribute.',
     eyebrow: 'For teachers and classroom activities',
     heroTitle: 'Student Group Generator',
     subhead:
-      'Paste your class roster and create student groups instantly. Keep it simple or add rules like keep-together and balanced teams when needed.',
+      'Paste a class roster and build groups. Add pairing rules or balancing when the activity needs more structure.',
     audienceSummary:
-      'Designed for educators who need a class-friendly way to form groups quickly without giving up control over pairings or balance.',
+      'Builds classroom groups while letting you control pairings and balance by skill, gender, or any other attribute.',
     faqEntries: [
       {
         question: 'How do I create student groups?',
@@ -358,15 +369,15 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     ],
   }),
   'icebreaker-group-generator': createContent({
-    title: 'Icebreaker Group Generator — Create Quick Small Groups for Activities | GroupMixer',
+    title: 'Icebreaker Group Generator - Quick Groups for Warm-Ups',
     description:
-      'Free icebreaker group generator. Make quick small groups or pairs for workshops, classes, and events. Great for warm-ups, introductions, and networking starters.',
+      'Icebreaker group generator. Make quick small groups or pairs for workshops, classes, and events. Great for warm-ups, introductions, and networking starters.',
     eyebrow: 'For warm-ups, introductions, and energizers',
     heroTitle: 'Icebreaker Group Generator',
     subhead:
-      'Create fast small groups for introductions, warm-ups, and conversation starters without slowing down the room.',
+      'Set up small groups or pairs for warm-ups, introductions, and short conversations.',
     audienceSummary:
-      'Useful when you need low-friction group creation for the first minutes of a class, workshop, meetup, or team event.',
+      'For quick warm-ups at the start of a class, workshop, meetup, or event.',
     faqEntries: [
       {
         question: 'How do I make groups for an icebreaker activity?',
@@ -384,15 +395,15 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     ],
   }),
   'speed-networking-generator': createContent({
-    title: 'Speed Networking Generator — Multiple Rounds, Less Repetition | GroupMixer',
+    title: 'Speed Networking Generator - Multiple Rounds with Fewer Repeats',
     description:
-      'Free speed networking generator. Create multiple rounds where participants meet new people each time. Minimize repeat pairings automatically.',
+      'Plan speed networking rounds where participants keep meeting new people. Set group size, round count, and reduce repeat pairings.',
     eyebrow: 'For mixers, meetups, and networking sessions',
     heroTitle: 'Speed Networking Generator',
     subhead:
-      'Generate multiple networking rounds where people meet new faces each time. Paste names, set rounds, and minimize repeat pairings.',
+      'Create round-based networking groups so participants keep meeting new people instead of repeating the same conversations.',
     audienceSummary:
-      'Best for structured networking formats where the goal is to create new connections instead of repeating the same small groups.',
+      'Generates round-based networking groups that maximize new contacts and cut down on repeated pairings.',
     faqEntries: [
       {
         question: 'How does the speed networking generator work?',
@@ -410,15 +421,15 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
     ],
   }),
   'group-generator-with-constraints': createContent({
-    title: 'Group Generator with Constraints — Keep Together, Keep Apart, Balance | GroupMixer',
+    title: 'Group Generator with Constraints - Keep Together, Keep Apart, Balance',
     description:
-      'Free group generator with constraints. Add keep-together, keep-apart, balanced teams, and no-repeat-pairing rules. Paste names and generate smart groups.',
+      'Create groups with rules. Keep people together, keep people apart, balance attributes, and avoid repeat pairings across rounds.',
     eyebrow: 'For higher-stakes group planning',
     heroTitle: 'Group Generator with Constraints',
     subhead:
-      'Create groups with rules. Keep people together, keep them apart, balance by attribute, and avoid repeat pairings across rounds.',
+      'Create groups with rules. Keep people together, keep them apart, balance by attribute, and reduce repeat pairings.',
     audienceSummary:
-      'Use this version when the assignment itself matters: preserving pairings, avoiding conflicts, balancing attributes, or rotating across sessions.',
+      'Builds groups around the rules first: together/apart constraints, attribute balancing, and repeated-round planning.',
     faqEntries: [
       {
         question: 'What constraints can I set?',
@@ -435,4 +446,5 @@ export const EN_TOOL_PAGE_CONTENT: Record<ToolPageKey, ToolPageLocalizedContent>
       FAQS.workspace,
     ],
   }),
+  ...EN_TECHNICAL_TOOL_PAGE_CONTENT,
 };

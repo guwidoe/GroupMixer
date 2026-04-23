@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { navigateScenarioSetupSection, openApp, waitForModal } from './helpers';
+import { navigateScenarioSetupSection, openApp, setSliderValue, waitForModal } from './helpers';
 
 test.describe('Scenario data-grid workspace', () => {
   test('does not hit a maximum update-depth loop when opening setup grids', async ({ page }) => {
@@ -29,7 +29,9 @@ test.describe('Scenario data-grid workspace', () => {
       await waitForModal(page);
       await page.getByPlaceholder(/enter person's name/i).fill(name);
       await page.locator('.modal-content').getByRole('button', { name: /^add person$/i }).click();
+      await page.getByRole('button', { name: /^cards$/i }).click();
       await expect(page.getByText(name).first()).toBeVisible();
+      await page.getByRole('button', { name: /^list$/i }).click();
     }
 
     await page.getByRole('button', { name: /^list$/i }).click();
@@ -54,9 +56,11 @@ test.describe('Scenario data-grid workspace', () => {
     await page.getByRole('button', { name: /^add group$/i }).click();
     await waitForModal(page);
     await page.getByPlaceholder(/team-alpha|group-1/i).fill('Team Alpha');
-    await page.locator('.modal-content input[type="number"]').fill('2');
+    await setSliderValue(page.getByRole('slider', { name: /default capacity/i }), 2);
     await page.locator('.modal-content').getByRole('button', { name: /^add group$/i }).click();
+    await page.getByRole('button', { name: /^cards$/i }).click();
     await expect(page.getByText('Team Alpha').first()).toBeVisible();
+    await page.getByRole('button', { name: /^list$/i }).click();
 
     await expect(page.getByRole('button', { name: /edit table/i })).toBeVisible();
     await page.getByRole('button', { name: /^csv$/i }).click();
@@ -89,6 +93,7 @@ test.describe('Scenario data-grid workspace', () => {
     await page.getByRole('button', { name: /^add group$/i }).click();
     await waitForModal(page);
     await page.getByPlaceholder(/team-alpha|group-1/i).fill('G1');
+    await setSliderValue(page.getByRole('slider', { name: /default capacity/i }), 3);
     await page.locator('.modal-content button').filter({ hasText: /^add group$/i }).click();
 
     await navigateScenarioSetupSection(page, /^balance attributes$/i);
@@ -99,16 +104,19 @@ test.describe('Scenario data-grid workspace', () => {
     await selects.nth(0).selectOption('G1');
     await selects.nth(1).selectOption({ label: 'gender' });
 
-    const numberInputs = page.locator('.modal-content input[type="number"]');
-    await numberInputs.nth(0).fill('2');
-    await numberInputs.nth(1).fill('1');
+    await page.getByRole('button', { name: /enable target for asdf \| asdf:/i }).click();
+    await page.getByRole('textbox', { name: /asdf \| asdf: count/i }).fill('2');
+    await page.getByRole('button', { name: /enable target for female/i }).click();
+    await page.getByRole('textbox', { name: /female count/i }).fill('1');
     await page.locator('.modal-content button').filter({ hasText: /^save$/i }).click();
 
     await expect(page.getByRole('button', { name: /edit table/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /targets/i })).toBeVisible();
     await expect(page.getByRole('columnheader', { name: /attribute/i })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'G1' })).toBeVisible();
-    await expect(page.getByText('asdf | asdf:: 2 · female: 1')).toBeVisible();
+    await expect(page.getByText(/^gender: 3 \/ 0 allocated$/i)).toBeVisible();
+    await expect(page.getByText(/^asdf \| asdf:$/i).first()).toBeVisible();
+    await expect(page.getByText(/^female$/i).first()).toBeVisible();
 
     await page.getByRole('button', { name: /^csv$/i }).click();
     const attributeBalanceCsv = page.getByRole('textbox', { name: /balance attributes csv/i });
@@ -119,7 +127,7 @@ test.describe('Scenario data-grid workspace', () => {
     await attributeBalanceCsv.fill('Group,Attribute,Targets,Mode,Weight,Sessions\nG1,gender,"{""asdf | asdf:"":2,""female"":3}",exact,10,"{""mode"":""selected"",""sessions"":[0,1,2]}"');
     await page.getByRole('button', { name: /apply changes/i }).click();
 
-    await expect(page.getByText('asdf | asdf:: 2 · female: 3')).toBeVisible();
+    await expect(page.getByText(/^gender: 5 \/ 0 allocated$/i)).toBeVisible();
     await expect(page.getByText(/^1, 2, 3$/i)).toBeVisible();
 
     await page.getByRole('button', { name: /^csv$/i }).click();
