@@ -35,11 +35,19 @@ interface EmbeddableToolProps {
   locale: SupportedLocale;
 }
 
+interface ToolDividerDragState {
+  startX: number;
+  startLeftWidth: number;
+  trackWidth: number;
+}
+
 const LANDING_TOOL_RESIZE_STORAGE_KEY = 'landing:tool-split';
 const LANDING_TOOL_RESIZE_HANDLE_WIDTH = 22;
+const LANDING_TOOL_COLUMN_GAP = 20;
+const LANDING_TOOL_RESIZE_GAP_COUNT = 2;
 const LANDING_TOOL_LEFT_MIN_WIDTH = 400;
 const LANDING_TOOL_RIGHT_MIN_WIDTH = 340;
-const LANDING_TOOL_RESIZE_MIN_WIDTH = LANDING_TOOL_LEFT_MIN_WIDTH + LANDING_TOOL_RIGHT_MIN_WIDTH + LANDING_TOOL_RESIZE_HANDLE_WIDTH;
+const LANDING_TOOL_RESIZE_MIN_WIDTH = LANDING_TOOL_LEFT_MIN_WIDTH + LANDING_TOOL_RIGHT_MIN_WIDTH + LANDING_TOOL_RESIZE_HANDLE_WIDTH + (LANDING_TOOL_COLUMN_GAP * LANDING_TOOL_RESIZE_GAP_COUNT);
 
 function buildDisplaySessions(
   sharedSessionData: Array<{ sessionIndex: number; groups: Array<{ id: string; people: Array<{ id: string }> }> }>,
@@ -127,6 +135,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   const advancedOptionsPaneRef = useRef<HTMLDivElement>(null);
   const hasBalancedInitialToolColumnsRef = useRef(false);
   const lastNotifiedSolverErrorRef = useRef<string | null>(null);
+  const toolDividerDragStateRef = useRef<ToolDividerDragState | null>(null);
   const [resultFormat, setResultFormat] = useState<LandingToolResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<LandingToolResultFormat | null>(null);
   const [toolSplitRatio, setToolSplitRatio] = useLocalStorageState<number>(`${LANDING_TOOL_RESIZE_STORAGE_KEY}:${pageKey}`, 0.5);
@@ -168,7 +177,10 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
   const canResizeToolColumns = toolColumnsWidth >= LANDING_TOOL_RESIZE_MIN_WIDTH;
   const resolvedToolSplitRatio = Math.min(0.72, Math.max(0.4, toolSplitRatio));
-  const resizableTrackWidth = Math.max(0, toolColumnsWidth - LANDING_TOOL_RESIZE_HANDLE_WIDTH);
+  const resizableTrackWidth = Math.max(
+    0,
+    toolColumnsWidth - LANDING_TOOL_RESIZE_HANDLE_WIDTH - (LANDING_TOOL_COLUMN_GAP * LANDING_TOOL_RESIZE_GAP_COUNT),
+  );
   const leftColumnWidth = canResizeToolColumns
     ? Math.min(
         Math.max(resizableTrackWidth * resolvedToolSplitRatio, LANDING_TOOL_LEFT_MIN_WIDTH),
@@ -356,20 +368,23 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
     }
 
     const handlePointerMove = (event: PointerEvent) => {
-      const bounds = toolColumnsRef.current?.getBoundingClientRect();
-      if (!bounds) {
+      const dragState = toolDividerDragStateRef.current;
+      if (!dragState) {
         return;
       }
 
       const nextLeftWidth = Math.min(
-        Math.max(event.clientX - bounds.left - (LANDING_TOOL_RESIZE_HANDLE_WIDTH / 2), LANDING_TOOL_LEFT_MIN_WIDTH),
-        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, bounds.width - LANDING_TOOL_RESIZE_HANDLE_WIDTH - LANDING_TOOL_RIGHT_MIN_WIDTH),
+        Math.max(dragState.startLeftWidth + (event.clientX - dragState.startX), LANDING_TOOL_LEFT_MIN_WIDTH),
+        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, dragState.trackWidth - LANDING_TOOL_RIGHT_MIN_WIDTH),
       );
-      const nextRatio = nextLeftWidth / Math.max(1, bounds.width - LANDING_TOOL_RESIZE_HANDLE_WIDTH);
+      const nextRatio = nextLeftWidth / Math.max(1, dragState.trackWidth);
       setToolSplitRatio(Math.min(0.72, Math.max(0.4, nextRatio)));
     };
 
-    const stopDragging = () => setIsDraggingToolDivider(false);
+    const stopDragging = () => {
+      toolDividerDragStateRef.current = null;
+      setIsDraggingToolDivider(false);
+    };
 
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', stopDragging);
@@ -489,6 +504,20 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
       onStartToolDividerDrag={(event) => {
         event.preventDefault();
         event.currentTarget.setPointerCapture?.(event.pointerId);
+
+        const leftPane = event.currentTarget.previousElementSibling as HTMLDivElement | null;
+        const bounds = toolColumnsRef.current?.getBoundingClientRect();
+        const measuredLeftWidth = leftPane?.getBoundingClientRect().width;
+        const trackWidth = Math.max(
+          1,
+          (bounds?.width ?? toolColumnsWidth) - LANDING_TOOL_RESIZE_HANDLE_WIDTH - (LANDING_TOOL_COLUMN_GAP * LANDING_TOOL_RESIZE_GAP_COUNT),
+        );
+
+        toolDividerDragStateRef.current = {
+          startX: event.clientX,
+          startLeftWidth: measuredLeftWidth ?? leftColumnWidth ?? (trackWidth * resolvedToolSplitRatio),
+          trackWidth,
+        };
         setIsDraggingToolDivider(true);
       }}
       onGenerateGroups={() => {

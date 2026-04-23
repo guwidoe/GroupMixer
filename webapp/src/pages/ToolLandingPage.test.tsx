@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -500,6 +501,90 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByText(/bring this setup with you, then fine-tune partial attendance/i)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /open scenario editor/i }).some((button) => button.className.includes('btn-primary'))).toBe(true);
   }, 10000);
+
+  it('keeps the tool divider aligned with the pointer when dragging starts', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const getBoundingClientRectMock = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
+      const className = typeof this.className === 'string' ? this.className : '';
+      const ariaLabel = this.getAttribute('aria-label');
+
+      if (className.includes('landing-participants-pane')) {
+        return {
+          x: 100,
+          y: 0,
+          left: 100,
+          top: 0,
+          right: 660,
+          bottom: 400,
+          width: 560,
+          height: 400,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+
+      if (className.includes('pl-2')) {
+        return {
+          x: 722,
+          y: 0,
+          left: 722,
+          top: 0,
+          right: 1300,
+          bottom: 400,
+          width: 578,
+          height: 400,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+
+      if (ariaLabel === 'Resize landing tool columns') {
+        return {
+          x: 680,
+          y: 0,
+          left: 680,
+          top: 0,
+          right: 702,
+          bottom: 400,
+          width: 22,
+          height: 400,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+
+      if (className.includes('grid gap-5 lg:gap-5')) {
+        return {
+          x: 100,
+          y: 0,
+          left: 100,
+          top: 0,
+          right: 1300,
+          bottom: 400,
+          width: 1200,
+          height: 400,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+
+      return originalGetBoundingClientRect.call(this);
+    });
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    const divider = await screen.findByRole('button', { name: /resize landing tool columns/i });
+    const toolColumns = divider.parentElement as HTMLDivElement;
+
+    fireEvent.pointerDown(divider, { clientX: 691, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 696, pointerId: 1 });
+
+    await waitFor(() => {
+      expect(toolColumns.style.gridTemplateColumns).toContain('565px');
+    });
+
+    getBoundingClientRectMock.mockRestore();
+  });
 
   it('uses explicit en-only constraint-page defaults without involving localized behavior', () => {
     const config = getToolPageConfig('group-generator-with-constraints', 'en');
