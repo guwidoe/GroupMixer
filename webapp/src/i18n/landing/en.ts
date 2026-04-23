@@ -295,33 +295,6 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
       FAQS.fixedPeople,
     ],
   }),
-  'team-shuffle-generator': createContent({
-    title: 'Team Shuffle Generator - Reshuffle Teams and Keep Them Balanced',
-    description:
-      'Reshuffle the same roster into new teams. Keep teams balanced by role, skill, or any attribute.',
-    eyebrow: 'For fresh team mixes without the admin work',
-    heroTitle: 'Team Shuffle Generator',
-    subhead:
-      'Reshuffle the same roster into fresh teams. Keep the mix balanced and add pairing rules when needed.',
-    audienceSummary:
-      'Reshuffles the same roster for drills, workshops, and repeat activities where each round needs a fresh mix.',
-    faqEntries: [
-      {
-        question: 'What is a team shuffle generator?',
-        answer:
-          'It is a fast way to remix the same participants into new teams. Paste your names, choose the number of teams, and GroupMixer produces a fresh split instantly.',
-      },
-      {
-        question: 'Can I keep a reshuffle fair instead of fully random?',
-        answer:
-          'Yes. You can balance by attributes such as skill, role, or department so the reshuffled teams stay more even.',
-      },
-      ...CORE_TRUST_FAQS,
-      FAQS.constraints,
-      FAQS.csvBalance,
-      FAQS.fixedPeople,
-    ],
-  }),
   'breakout-room-generator': createContent({
     title: 'Breakout Room Generator - Assign Participants to Rooms',
     description:
@@ -401,32 +374,6 @@ export const EN_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
       FAQS.csvBalance,
       FAQS.fixedPeople,
       FAQS.multiSession,
-    ],
-  }),
-  'icebreaker-group-generator': createContent({
-    title: 'Icebreaker Group Generator - Quick Groups for Warm-Ups',
-    description:
-      'Icebreaker group generator. Make quick small groups or pairs for workshops, classes, and events. Great for warm-ups, introductions, and networking starters.',
-    eyebrow: 'For warm-ups, introductions, and energizers',
-    heroTitle: 'Icebreaker Group Generator',
-    subhead:
-      'Set up small groups or pairs for warm-ups, introductions, and short conversations.',
-    audienceSummary:
-      'For quick warm-ups at the start of a class, workshop, meetup, or event.',
-    faqEntries: [
-      {
-        question: 'How do I make groups for an icebreaker activity?',
-        answer:
-          'Paste names, choose the number of groups or people per group, and click Generate. GroupMixer gives you small groups that are ready for a quick activity.',
-      },
-      {
-        question: 'Can I use this for multiple icebreaker rounds?',
-        answer:
-          'Yes. Set multiple sessions and avoid repeat pairings so people meet different participants across short rounds.',
-      },
-      ...CORE_TRUST_FAQS,
-      FAQS.multiSession,
-      FAQS.fixedPeople,
     ],
   }),
   'speed-networking-generator': createContent({

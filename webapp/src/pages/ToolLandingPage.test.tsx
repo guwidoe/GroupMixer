@@ -501,35 +501,33 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getAllByRole('button', { name: /open scenario editor/i }).some((button) => button.className.includes('btn-primary'))).toBe(true);
   }, 10000);
 
-  it('uses explicit technical-page defaults without involving localized behavior', () => {
-    const config = getToolPageConfig('group-assignment-optimizer', 'en');
+  it('uses explicit en-only constraint-page defaults without involving localized behavior', () => {
+    const config = getToolPageConfig('group-generator-with-constraints', 'en');
 
     expect(config.mode).toBe('constraint-optimizer');
-    expect(config.sectionSet).toBe('technical');
+    expect(config.sectionSet).toBe('standard');
     expect(config.liveLocales).toEqual(['en']);
-    expect(() => getToolPageConfig('group-assignment-optimizer', 'de')).toThrow(/not live for locale de/);
+    expect(() => getToolPageConfig('group-generator-with-constraints', 'de')).toThrow(/not live for locale de/);
 
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="group-assignment-optimizer" locale="en" />
+        <ToolLandingPage pageKey="group-generator-with-constraints" locale="en" />
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Group Assignment Optimizer' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Group Generator with Constraints' })).toBeInTheDocument();
     expect(screen.getByLabelText(/participants/i)).toHaveTextContent('Alex');
     expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('team');
     expect(screen.getByLabelText('Attribute column 2')).toHaveTextContent('role');
     expect(screen.queryByRole('button', { name: /switch to names/i })).not.toBeInTheDocument();
-    expect(screen.getByText(/balance groups by attribute/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/balance groups by attribute/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/^role$/i).length).toBeGreaterThan(1);
     expect(screen.getByRole('checkbox', { name: /auto distribute attribute: team/i })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /auto distribute attribute: role/i })).toBeChecked();
     expect(screen.getByRole('checkbox', { name: /minimize repeat pairings/i })).toBeChecked();
-    expect(screen.getByText(/28 attendees, groups of 4/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/pinned people/i).compareDocumentPosition(screen.getByText(/balance groups by attribute/i))
-        & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    const pinnedPeopleLabel = screen.getAllByText(/pinned people/i)[0];
+    const balanceGroupsLabel = screen.getAllByText(/balance groups by attribute/i)[0];
+    expect(pinnedPeopleLabel.compareDocumentPosition(balanceGroupsLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('lets users toggle repeat-pairing minimization from the sessions row', async () => {
@@ -557,7 +555,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="group-assignment-optimizer" locale="en" />
+        <ToolLandingPage pageKey="group-generator-with-constraints" locale="en" />
       </MemoryRouter>,
     );
 
@@ -659,7 +657,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="group-assignment-optimizer" locale="en" />
+        <ToolLandingPage pageKey="group-generator-with-constraints" locale="en" />
       </MemoryRouter>,
     );
 
@@ -714,7 +712,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     render(
       <MemoryRouter>
-        <ToolLandingPage pageKey="group-assignment-optimizer" locale="en" />
+        <ToolLandingPage pageKey="group-generator-with-constraints" locale="en" />
       </MemoryRouter>,
     );
 

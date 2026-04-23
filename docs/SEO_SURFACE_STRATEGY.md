@@ -70,9 +70,9 @@ Current live rollout set on the shared landing engine:
 | primary | `/workshop-group-generator` | workshop group generator | facilitators and training teams |
 | primary | `/student-group-generator` | student group generator | teachers and school staff |
 | primary | `/speed-networking-generator` | speed networking generator | event organizers |
-| supporting | `/team-shuffle-generator` | team shuffle generator | coaches / managers / facilitators |
-| supporting | `/icebreaker-group-generator` | icebreaker group generator | teachers / hosts / facilitators |
 | supporting | `/group-generator-with-constraints` | group generator with constraints | planners with assignment rules |
+
+Retired extra English-only landing routes were removed instead of redirected.
 
 Next candidates to evaluate before publishing more English pages:
 

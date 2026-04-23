@@ -11,17 +11,11 @@ export type ToolPageKey =
   | 'random-group-generator'
   | 'random-team-generator'
   | 'random-pair-generator'
-  | 'team-shuffle-generator'
   | 'breakout-room-generator'
   | 'workshop-group-generator'
   | 'student-group-generator'
-  | 'icebreaker-group-generator'
   | 'speed-networking-generator'
-  | 'group-generator-with-constraints'
-  | 'multi-round-group-assignment-tool'
-  | 'group-assignment-optimizer'
-  | 'social-golfer-problem-solver'
-  | 'constraint-based-team-generator';
+  | 'group-generator-with-constraints';
 
 export interface ToolPageFaqEntry {
   question: string;

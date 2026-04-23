@@ -237,11 +237,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/random-pair-generator" />
   </url>
   <url>
-    <loc>https://www.groupmixer.app/team-shuffle-generator</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/team-shuffle-generator" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/team-shuffle-generator" />
-  </url>
-  <url>
     <loc>https://www.groupmixer.app/breakout-room-generator</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/breakout-room-generator" />
     <xhtml:link rel="alternate" hreflang="de" href="https://www.groupmixer.app/de/breakout-room-generator" />
@@ -473,11 +468,6 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/student-group-generator" />
   </url>
   <url>
-    <loc>https://www.groupmixer.app/icebreaker-group-generator</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/icebreaker-group-generator" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/icebreaker-group-generator" />
-  </url>
-  <url>
     <loc>https://www.groupmixer.app/speed-networking-generator</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/speed-networking-generator" />
     <xhtml:link rel="alternate" hreflang="de" href="https://www.groupmixer.app/de/speed-networking-generator" />
@@ -558,26 +548,6 @@
     <loc>https://www.groupmixer.app/group-generator-with-constraints</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/group-generator-with-constraints" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/group-generator-with-constraints" />
-  </url>
-  <url>
-    <loc>https://www.groupmixer.app/multi-round-group-assignment-tool</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/multi-round-group-assignment-tool" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/multi-round-group-assignment-tool" />
-  </url>
-  <url>
-    <loc>https://www.groupmixer.app/group-assignment-optimizer</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/group-assignment-optimizer" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/group-assignment-optimizer" />
-  </url>
-  <url>
-    <loc>https://www.groupmixer.app/social-golfer-problem-solver</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/social-golfer-problem-solver" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/social-golfer-problem-solver" />
-  </url>
-  <url>
-    <loc>https://www.groupmixer.app/constraint-based-team-generator</loc>
-    <xhtml:link rel="alternate" hreflang="en" href="https://www.groupmixer.app/constraint-based-team-generator" />
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://www.groupmixer.app/constraint-based-team-generator" />
   </url>
   <url>
     <loc>https://www.groupmixer.app/guides/avoid-repeat-pairings-in-workshops</loc>
