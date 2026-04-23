@@ -1,6 +1,5 @@
 import { createRef } from "react";
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ResultsHeader } from "./ResultsHeader";
 import { createSampleSolution } from "../../test/fixtures";
@@ -54,8 +53,7 @@ describe("ResultsHeader", () => {
     expect(screen.queryByText(/different config/i)).not.toBeInTheDocument();
   });
 
-  it("exposes config difference and export actions", async () => {
-    const user = userEvent.setup();
+  it("exposes config difference and export actions", () => {
     const onToggleConfigDetails = vi.fn();
     const onRestoreConfig = vi.fn();
     const onOpenSavedResults = vi.fn();
@@ -88,14 +86,14 @@ describe("ResultsHeader", () => {
       />
     );
 
-    await user.click(screen.getByRole('button', { name: /saved results/i }));
-    await user.click(screen.getByRole("button", { name: /different config/i }));
-    await user.click(screen.getByRole("button", { name: /restore this result's configuration as new scenario/i }));
-    await user.click(screen.getByRole("button", { name: /share & export/i }));
-    await user.click(screen.getByRole("button", { name: /copy schedule table/i }));
-    await user.click(screen.getByRole("button", { name: /print current result/i }));
-    await user.click(screen.getByRole("button", { name: /save current view as png/i }));
-    await user.click(screen.getByRole("button", { name: /download participant itineraries/i }));
+    fireEvent.click(screen.getByRole('button', { name: /saved results/i }));
+    fireEvent.click(screen.getByRole("button", { name: /different config/i }));
+    fireEvent.click(screen.getByRole("button", { name: /restore this result's configuration as new scenario/i }));
+    fireEvent.click(screen.getByRole("button", { name: /share & export/i }));
+    fireEvent.click(screen.getByRole("button", { name: /copy schedule table/i }));
+    fireEvent.click(screen.getByRole("button", { name: /print current result/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save current view as png/i }));
+    fireEvent.click(screen.getByRole("button", { name: /download participant itineraries/i }));
 
     expect(screen.getByText(/people configuration changed/i)).toBeInTheDocument();
     expect(onOpenSavedResults).toHaveBeenCalledTimes(1);
