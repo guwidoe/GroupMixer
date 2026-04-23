@@ -19,6 +19,8 @@ interface LandingParticipantColumnsInputProps {
   onAddAttribute: () => string | null;
   onRemoveAttribute: (index: number) => void;
   minHeight: number;
+  autoOuterHeight?: number | null;
+  outerRef?: (node: HTMLDivElement | null) => void;
 }
 
 interface EditableTextBlockProps {
@@ -180,6 +182,8 @@ export function LandingParticipantColumnsInput({
   onAddAttribute,
   onRemoveAttribute,
   minHeight,
+  autoOuterHeight = null,
+  outerRef,
 }: LandingParticipantColumnsInputProps) {
   const [height, setHeight] = useState(minHeight);
   const [columnWidths, setColumnWidths] = useState<number[]>(() => columns.map((_, index) => (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH)));
@@ -194,11 +198,13 @@ export function LandingParticipantColumnsInput({
     rightIsGhost: boolean;
   } | null>(null);
   const resizeDragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const hasManualHeightRef = useRef(false);
   const stopColumnResizeRef = useRef<() => void>(() => {});
   const stopResizeRef = useRef<() => void>(() => {});
   const lastGhostPointerActivationAtRef = useRef<number | null>(null);
   const headerInputRefs = useRef(new Map<string, HTMLDivElement>());
   const fulfilledFocusRequestTokenRef = useRef<number | null>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
   const columnsContainerRef = useRef<HTMLDivElement | null>(null);
   const hasCustomColumnWidthsRef = useRef(false);
   const primaryBodyInputRef = useRef<HTMLDivElement | null>(null);
@@ -222,6 +228,14 @@ export function LandingParticipantColumnsInput({
 
     return isFocused;
   }, []);
+
+  const setRootRef = useCallback((node: HTMLDivElement | null) => {
+    rootRef.current = node;
+
+    if (typeof outerRef === 'function') {
+      outerRef(node);
+    }
+  }, [outerRef]);
 
   const registerHeaderInput = useCallback((columnId: string, node: HTMLDivElement | null) => {
     if (node) {
@@ -286,7 +300,10 @@ export function LandingParticipantColumnsInput({
         return;
       }
 
-      const minimumWidths = columns.map((_, index) => (index === 0 ? MIN_NAME_WIDTH : MIN_ATTRIBUTE_WIDTH));
+      const minimumWidths = Array.from(
+        { length: columns.length },
+        (_, index) => (index === 0 ? MIN_NAME_WIDTH : MIN_ATTRIBUTE_WIDTH),
+      );
       minimumWidths.push(MIN_ATTRIBUTE_WIDTH);
 
       const availableWidth = Math.max(0, totalWidth - (columns.length * COLUMN_SEPARATOR_WIDTH));
@@ -401,6 +418,27 @@ export function LandingParticipantColumnsInput({
   }, [stopResize]);
 
   useLayoutEffect(() => {
+    if (autoOuterHeight == null || hasManualHeightRef.current) {
+      return;
+    }
+
+    const root = rootRef.current;
+    if (!root) {
+      return;
+    }
+
+    const currentOuterHeight = root.getBoundingClientRect().height;
+    if (currentOuterHeight <= 0) {
+      return;
+    }
+
+    const nextHeight = Math.max(minHeight, height + (autoOuterHeight - currentOuterHeight));
+    if (Math.abs(nextHeight - height) >= 0.5) {
+      setHeight(nextHeight);
+    }
+  }, [autoOuterHeight, height, minHeight]);
+
+  useLayoutEffect(() => {
     if (!pendingFocusRequest) {
       return;
     }
@@ -458,6 +496,7 @@ export function LandingParticipantColumnsInput({
   const handleResizePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
+    hasManualHeightRef.current = true;
     resizeDragStateRef.current = {
       startY: event.clientY,
       startHeight: height,
@@ -497,7 +536,7 @@ export function LandingParticipantColumnsInput({
   }, [focusColumnHeader, onAddAttribute]);
 
   return (
-    <div className="landing-resizable-textarea landing-resizable-textarea--structured rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+    <div ref={setRootRef} className="landing-resizable-textarea landing-resizable-textarea--structured rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
       <div className="theme-scrollbar landing-participant-columns" style={{ height: `${height}px` }}>
         <div className="landing-participant-columns__surface">
           <div ref={columnsContainerRef} className="landing-participant-columns__columns">

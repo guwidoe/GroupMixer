@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import { ArrowRight, CircleHelp, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
 import { LandingParticipantColumnsInput } from '../components/LandingTool/LandingParticipantColumnsInput';
@@ -162,12 +162,17 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const location = useLocation();
   const resultsRef = useRef<HTMLDivElement>(null);
   const toolColumnsRef = useRef<HTMLDivElement>(null);
+  const participantsPaneRef = useRef<HTMLDivElement>(null);
+  const participantInputSlotRef = useRef<HTMLDivElement>(null);
+  const advancedOptionsPaneRef = useRef<HTMLDivElement>(null);
+  const hasBalancedInitialToolColumnsRef = useRef(false);
   const lastNotifiedSolverErrorRef = useRef<string | null>(null);
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
   const [toolSplitRatio, setToolSplitRatio] = useLocalStorageState<number>(`${LANDING_TOOL_RESIZE_STORAGE_KEY}:${pageKey}`, 0.5);
   const [toolColumnsWidth, setToolColumnsWidth] = useState(0);
   const [isDraggingToolDivider, setIsDraggingToolDivider] = useState(false);
+  const [participantInputAutoOuterHeight, setParticipantInputAutoOuterHeight] = useState<number | null>(null);
   const languageOptions = useMemo(
     () =>
       config.liveLocales.map((liveLocale) => ({
@@ -189,6 +194,11 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   useEffect(() => {
     persistTelemetryAttribution(telemetryAttribution);
   }, [telemetryAttribution]);
+
+  useEffect(() => {
+    hasBalancedInitialToolColumnsRef.current = false;
+    setParticipantInputAutoOuterHeight(null);
+  }, [config.locale, pageKey]);
 
   useEffect(() => {
     trackLandingEvent(
@@ -261,6 +271,9 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const advancedGridClassName = config.sectionSet === 'technical'
     ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4'
     : 'mt-8 grid gap-4 sm:grid-cols-2';
+  const setParticipantInputSlotRef = useCallback((node: HTMLDivElement | null) => {
+    participantInputSlotRef.current = node;
+  }, []);
 
   useEffect(() => {
     if (!controller.errorMessage) {
@@ -336,6 +349,89 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       observer?.disconnect();
     };
   }, []);
+
+  useLayoutEffect(() => {
+    if (hasBalancedInitialToolColumnsRef.current) {
+      return undefined;
+    }
+
+    let animationFrameId = 0;
+    const timeoutIds: number[] = [];
+
+    const measure = () => {
+      if (hasBalancedInitialToolColumnsRef.current) {
+        return;
+      }
+
+      const leftPane = participantsPaneRef.current;
+      const participantInput = participantInputSlotRef.current;
+      const rightPane = advancedOptionsPaneRef.current;
+      if (!leftPane || !participantInput || !rightPane) {
+        return;
+      }
+
+      const leftRect = leftPane.getBoundingClientRect();
+      const inputRect = participantInput.getBoundingClientRect();
+      const rightRect = rightPane.getBoundingClientRect();
+      if (leftRect.width <= 0 || inputRect.height <= 0 || rightRect.width <= 0) {
+        return;
+      }
+
+      const isHorizontalLayout = rightRect.left >= leftRect.right - 1;
+      if (!isHorizontalLayout) {
+        setParticipantInputAutoOuterHeight((previous) => (previous == null ? previous : null));
+        return;
+      }
+
+      const leftContentBottom = Array.from(leftPane.children).reduce((bottom, child) => {
+        const childBottom = child.getBoundingClientRect().bottom;
+        return Math.max(bottom, childBottom);
+      }, leftRect.top);
+      const leftContentHeight = leftContentBottom - leftRect.top;
+      const heightDelta = rightRect.height - leftContentHeight;
+      if (heightDelta <= 1) {
+        hasBalancedInitialToolColumnsRef.current = true;
+        return;
+      }
+
+      const nextOuterHeight = inputRect.height + heightDelta;
+      setParticipantInputAutoOuterHeight((previous) => (
+        previous != null && Math.abs(previous - nextOuterHeight) < 0.5 ? previous : nextOuterHeight
+      ));
+    };
+
+    const scheduleMeasure = () => {
+      window.cancelAnimationFrame(animationFrameId);
+      animationFrameId = window.requestAnimationFrame(measure);
+    };
+
+    measure();
+    scheduleMeasure();
+    timeoutIds.push(window.setTimeout(measure, 50));
+    timeoutIds.push(window.setTimeout(measure, 200));
+
+    const observedNodes = [
+      participantsPaneRef.current,
+      participantInputSlotRef.current,
+      advancedOptionsPaneRef.current,
+      toolColumnsRef.current,
+    ].filter((node): node is HTMLDivElement => Boolean(node));
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && observedNodes.length > 0) {
+      observer = new ResizeObserver(scheduleMeasure);
+      observedNodes.forEach((node) => observer?.observe(node));
+    }
+
+    window.addEventListener('resize', scheduleMeasure);
+
+    return () => {
+      window.cancelAnimationFrame(animationFrameId);
+      timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
+      observer?.disconnect();
+      window.removeEventListener('resize', scheduleMeasure);
+    };
+  }, [canResizeToolColumns, config.locale, pageKey]);
 
   useEffect(() => {
     if (!isDraggingToolDivider || !canResizeToolColumns) {
@@ -757,7 +853,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 ].filter(Boolean).join(' ')}
                 style={toolColumnsStyle}
               >
-                <div className="landing-participants-pane min-w-0">
+                <div ref={participantsPaneRef} className="landing-participants-pane min-w-0">
                   <SectionLabelWithTooltip
                     label={ui.quickSetup.participantsLabel}
                     help={ui.quickSetup.participantsHelp}
@@ -795,6 +891,8 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     removeAttributeLabel={ui.quickSetup.removeAttributeLabel}
                     columns={participantColumns}
                     minHeight={130}
+                    autoOuterHeight={participantInputAutoOuterHeight}
+                    outerRef={setParticipantInputSlotRef}
                     onAddAttribute={() => {
                       let newColumnId: string | null = null;
 
@@ -1024,7 +1122,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                   </button>
                 ) : null}
 
-                <div className={canResizeToolColumns ? 'pl-2' : undefined}>
+                <div ref={advancedOptionsPaneRef} className={canResizeToolColumns ? 'pl-2' : undefined}>
                   <QuickSetupAdvancedOptions controller={controller} onOpenFullEditor={() => openAdvancedWorkspace('people')} />
                 </div>
               </div>
