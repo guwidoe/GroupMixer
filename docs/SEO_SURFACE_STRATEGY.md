@@ -3,6 +3,7 @@
 Execution backlog:
 
 - `docs/SEO_BACKLOG.md`
+- `docs/SEO_GUIDES_IA_PLAN.md`
 
 ## Intentional indexed surface
 
@@ -11,6 +12,7 @@ The public SEO surface is:
 - `/`
 - locale-aware landing routes like `/es/...` and `/fr/...` when a page is live in those locales
 - shared tool landing pages from `webapp/src/pages/toolPageConfigs.data.mjs`
+- future guide pages under `/guides/...` as documented in `docs/SEO_GUIDES_IA_PLAN.md`
 
 The advanced workspace is **not** an SEO target:
 

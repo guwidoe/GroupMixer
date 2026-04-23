@@ -10,7 +10,9 @@ import { SolverWorkspace } from './components/SolverWorkspace/SolverWorkspace';
 import MainApp from './MainApp';
 import ToolLandingPage from './pages/ToolLandingPage';
 import LegalPage from './pages/LegalPage';
+import GuidePage from './pages/GuidePage';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, TOOL_PAGE_ROUTES } from './pages/toolPageConfigs';
+import { GUIDE_PAGE_ROUTES } from './pages/guidePageConfigs';
 import { getScenarioSetupPath, resolveScenarioSetupSection } from './components/ScenarioEditor/navigation/scenarioSetupNav';
 import { useAppStore } from './store';
 import { initializeThemeStore, useThemeStore } from './store/theme';
@@ -61,6 +63,9 @@ function App() {
       <Routes>
         {TOOL_PAGE_ROUTES.map(({ key, locale, path }) => (
           <Route key={`${locale}:${key}`} path={path} element={<ToolLandingPage pageKey={key} locale={locale} />} />
+        ))}
+        {GUIDE_PAGE_ROUTES.map(({ key, path }) => (
+          <Route key={`guide:${key}`} path={path} element={<GuidePage pageKey={key} />} />
         ))}
         <Route path="/legal" element={<LegalPage locale={DEFAULT_LOCALE} />} />
         {SUPPORTED_LOCALES.filter((locale) => locale !== DEFAULT_LOCALE).map((locale) => (

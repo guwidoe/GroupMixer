@@ -21,10 +21,10 @@ Purpose:
 
 ## Immediate priorities
 
+- [ ] choose and keep the `/guides/...` guide lane as the main next SEO surface
+- [ ] build the first guide page from `docs/SEO_GUIDES_IA_PLAN.md`
+- [ ] add clean internal links between guides and tool pages
 - [ ] add a crawlable internal-link hub for landing pages on `/`
-- [ ] add related-tool links on every landing page
-- [ ] make major landing pages less templated and more distinct
-- [ ] expand page targets around real product advantages, not just synonyms
 - [ ] track AI referral sources separately from search traffic
 
 ## Core keyword clusters
