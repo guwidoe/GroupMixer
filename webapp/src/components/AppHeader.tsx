@@ -24,6 +24,7 @@ interface AppHeaderProps {
   renderMobileActions?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
   renderDesktopUtilityActions?: () => ReactNode;
   renderMobileUtilityActions?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
+  utilityRailFramed?: boolean;
   issueHref?: string;
   issueLabel?: string;
 }
@@ -42,6 +43,7 @@ export function AppHeader({
   renderMobileActions,
   renderDesktopUtilityActions,
   renderMobileUtilityActions,
+  utilityRailFramed = true,
   issueHref = 'https://github.com/guwidoe/GroupMixer/issues',
   issueLabel = 'Report an issue or suggest a feature',
 }: AppHeaderProps) {
@@ -56,6 +58,12 @@ export function AppHeader({
   const mobileActions = renderMobileActions?.({ closeMobileMenu });
   const desktopUtilityActions = renderDesktopUtilityActions?.();
   const mobileUtilityActions = renderMobileUtilityActions?.({ closeMobileMenu });
+  const utilityToolbarClassName = utilityRailFramed
+    ? HEADER_ACTION_TOOLBAR_CLASS
+    : 'flex w-full flex-wrap items-center gap-1 sm:w-auto';
+  const utilityToolbarStyle = utilityRailFramed
+    ? { backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }
+    : undefined;
   const BrandTitle = titleAs;
   const desktopBreakpointMinWidth = {
     sm: 640,
@@ -157,10 +165,7 @@ export function AppHeader({
 
             {!hideDesktopUtilityRail ? (
               <div className={HEADER_ACTION_GROUP_CLASS}>
-                <div
-                  className={HEADER_ACTION_TOOLBAR_CLASS}
-                  style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
-                >
+                <div className={utilityToolbarClassName} style={utilityToolbarStyle}>
                   {desktopUtilityActions}
                   {desktopUtilityActions ? (
                     <div
@@ -204,10 +209,7 @@ export function AppHeader({
               {mobileActions}
 
               <div className={HEADER_ACTION_GROUP_CLASS}>
-                <div
-                  className={HEADER_ACTION_TOOLBAR_CLASS}
-                  style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
-                >
+                <div className={utilityToolbarClassName} style={utilityToolbarStyle}>
                   {mobileUtilityActions}
                   {mobileUtilityActions ? (
                     <div

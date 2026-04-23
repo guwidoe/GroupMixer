@@ -879,6 +879,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         logoAlt="GroupMixer logo"
         titleAs="div"
         desktopBreakpoint="landing"
+        utilityRailFramed={false}
         renderDesktopActions={() => (
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <button

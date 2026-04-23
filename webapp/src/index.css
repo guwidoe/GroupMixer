@@ -478,9 +478,10 @@
   }
 
   .ui-button--toolbar:hover:not(:disabled) {
-    background-color: var(--bg-primary);
+    background-color: color-mix(in srgb, var(--color-accent) 12%, var(--bg-primary));
     color: var(--text-primary);
-    box-shadow: none;
+    border-color: color-mix(in srgb, var(--color-accent) 28%, var(--border-primary));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 14%, transparent);
     transform: none;
   }
 
@@ -555,11 +556,17 @@
     transform: translateY(-1px);
   }
 
-  .landing-header-language-selector:hover,
-  .landing-header-language-selector:focus-visible {
-    background-color: var(--bg-primary) !important;
-    color: var(--text-primary) !important;
-    box-shadow: none;
+  .landing-header-language-control:hover .landing-header-language-control__surface,
+  .landing-header-language-control:focus-within .landing-header-language-control__surface {
+    background-color: color-mix(in srgb, var(--color-accent) 12%, var(--bg-primary)) !important;
+    border-color: color-mix(in srgb, var(--color-accent) 28%, var(--border-primary));
+    color: var(--text-primary);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 14%, transparent);
+  }
+
+  .landing-header-language-selector option {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
   }
 
   .landing-action-button:focus-visible {
