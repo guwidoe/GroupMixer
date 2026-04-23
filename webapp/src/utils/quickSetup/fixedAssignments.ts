@@ -1,4 +1,5 @@
 import type { QuickSetupFixedAssignment } from '../../components/LandingTool/types';
+import type { Group } from '../../types';
 import { splitParticipantColumnValues } from './participantColumns';
 
 export function normalizeFixedAssignmentRows(fixedAssignments: QuickSetupFixedAssignment[] | undefined): QuickSetupFixedAssignment[] {
@@ -33,4 +34,28 @@ export function serializeFixedAssignmentColumnValues(
   return normalizeFixedAssignmentRows(fixedAssignments)
     .map((assignment) => assignment[key])
     .join('\n');
+}
+
+export function resolveFixedAssignmentGroupId(groupValue: string, groups: Group[]): string | null {
+  const normalizedValue = groupValue.trim();
+  if (normalizedValue.length === 0) {
+    return null;
+  }
+
+  const groupIndex = Number(normalizedValue);
+  if (Number.isInteger(groupIndex) && groupIndex >= 1 && groupIndex <= groups.length) {
+    return groups[groupIndex - 1]?.id ?? null;
+  }
+
+  return groups.find((group) => group.id.toLowerCase() === normalizedValue.toLowerCase())?.id ?? null;
+}
+
+export function formatFixedAssignmentGroupValue(groupId: string, groups: Group[]): string {
+  const normalizedValue = groupId.trim();
+  if (normalizedValue.length === 0) {
+    return '';
+  }
+
+  const groupIndex = groups.findIndex((group) => group.id.toLowerCase() === normalizedValue.toLowerCase());
+  return groupIndex >= 0 ? String(groupIndex + 1) : normalizedValue;
 }

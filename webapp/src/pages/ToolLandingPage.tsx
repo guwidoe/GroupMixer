@@ -1200,7 +1200,10 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     type="button"
                     aria-label="Resize landing tool columns"
                     aria-orientation="vertical"
-                    className="flex w-[22px] cursor-col-resize items-center justify-center rounded-full border-0 bg-transparent p-0"
+                    className={[
+                      'landing-tool-columns__separator flex w-[22px] cursor-col-resize items-center justify-center rounded-full border-0 bg-transparent p-0',
+                      isDraggingToolDivider ? 'landing-tool-columns__separator--dragging' : null,
+                    ].filter(Boolean).join(' ')}
                     onPointerDown={(event) => {
                       event.preventDefault();
                       event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -1209,8 +1212,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                   >
                     <span
                       aria-hidden="true"
-                      className="h-full min-h-16 w-px rounded-full transition-colors"
-                      style={{ backgroundColor: isDraggingToolDivider ? 'var(--color-accent)' : 'var(--border-primary)' }}
+                      className="landing-tool-columns__separator-line h-full min-h-16 w-px rounded-full transition-colors"
                     />
                   </button>
                 ) : null}

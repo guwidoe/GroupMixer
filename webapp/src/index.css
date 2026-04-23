@@ -939,6 +939,15 @@
     background: var(--border-primary);
   }
 
+  .landing-tool-columns__separator-line {
+    background: var(--border-primary);
+  }
+
+  .landing-tool-columns__separator:hover .landing-tool-columns__separator-line,
+  .landing-tool-columns__separator--dragging .landing-tool-columns__separator-line {
+    background: var(--color-accent);
+  }
+
   /* Card Styles */
   .card {
     border-radius: 0.5rem;

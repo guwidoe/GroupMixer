@@ -12,7 +12,7 @@ import {
   normalizeManualBalanceAttributeKeys,
   syncAutoBalanceTargets,
 } from '../../utils/quickSetup/attributeBalanceTargets';
-import { normalizeFixedAssignmentRows } from '../../utils/quickSetup/fixedAssignments';
+import { normalizeFixedAssignmentRows, resolveFixedAssignmentGroupId } from '../../utils/quickSetup/fixedAssignments';
 import { createQuickSetupDraftFromScenario } from '../../utils/quickSetup/landingDemo';
 import { normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import type { AttributeDefinition, Scenario, Solution } from '../../types';
@@ -189,7 +189,7 @@ function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
   const { participants, availableBalanceKeys, balanceAttributes } = parseParticipants(draft);
   const participantByName = new Map(participants.map((participant) => [normalizeName(participant.name), participant] as const));
   const nameSet = new Set(participantByName.keys());
-  const validGroupIds = new Set(buildGroups(participants.length, draft).map((group) => group.id));
+  const groups = buildGroups(participants.length, draft);
   const ignoredConstraintNames = new Set<string>();
 
   const keepTogetherGroups = parseConstraintLines(draft.keepTogetherInput)
@@ -231,13 +231,14 @@ function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
       continue;
     }
 
-    if (!validGroupIds.has(assignment.groupId)) {
+    const groupId = resolveFixedAssignmentGroupId(assignment.groupId, groups);
+    if (!groupId) {
       continue;
     }
 
     resolvedFixedAssignments.set(participant.id, {
       personId: participant.id,
-      groupId: assignment.groupId,
+      groupId,
     });
   }
 

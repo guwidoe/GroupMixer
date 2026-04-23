@@ -184,7 +184,7 @@ describe('quick setup scenario mapping', () => {
     const { scenario } = buildScenarioFromDraft(
       makeDraft({
         fixedAssignments: [
-          { personId: 'Alice', groupId: 'Group 1' },
+          { personId: 'Alice', groupId: '1' },
           { personId: 'Dan', groupId: 'Group 2' },
         ],
       }),

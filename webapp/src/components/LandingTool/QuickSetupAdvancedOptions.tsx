@@ -10,7 +10,11 @@ import {
   setBalanceAttributeTargets,
   setBalanceTargetValues,
 } from '../../utils/quickSetup/attributeBalanceTargets';
-import { normalizeFixedAssignmentRows } from '../../utils/quickSetup/fixedAssignments';
+import {
+  formatFixedAssignmentGroupValue,
+  normalizeFixedAssignmentRows,
+  resolveFixedAssignmentGroupId,
+} from '../../utils/quickSetup/fixedAssignments';
 import { LandingResizableTextarea } from './LandingResizableTextarea';
 import type { QuickSetupController } from './useQuickSetup';
 
@@ -54,12 +58,16 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
   const showBalanceSection = true;
   const showBalanceTargets = analysis.balanceAttributes.length > 0 && balanceGroups.length > 0;
   const fixedAssignments = normalizeFixedAssignmentRows(draft.fixedAssignments);
+  const fixedAssignmentsForInput = fixedAssignments.map((assignment) => ({
+    ...assignment,
+    groupId: formatFixedAssignmentGroupValue(assignment.groupId, balanceGroups),
+  }));
   const fixedPeopleNamePlaceholder = analysis.participants.length > 0
     ? analysis.participants.slice(0, 2).map((participant) => participant.name).join('\n')
     : 'Alex\nElla';
   const fixedPeopleGroupPlaceholder = balanceGroups.length > 0
-    ? balanceGroups.slice(0, 2).map((group) => group.id).join('\n')
-    : 'Group 1\nGroup 2';
+    ? balanceGroups.slice(0, 2).map((_group, index) => String(index + 1)).join('\n')
+    : '1\n2';
 
   return (
     <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
@@ -114,10 +122,13 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             participantColumnPlaceholder={fixedPeopleNamePlaceholder}
             groupColumnLabel={labels.fixedPersonGroupLabel}
             groupColumnPlaceholder={fixedPeopleGroupPlaceholder}
-            assignments={fixedAssignments}
+            assignments={fixedAssignmentsForInput}
             onChange={(nextAssignments) => controller.updateDraft((current) => ({
               ...current,
-              fixedAssignments: nextAssignments,
+              fixedAssignments: nextAssignments.map((assignment) => ({
+                ...assignment,
+                groupId: resolveFixedAssignmentGroupId(assignment.groupId, balanceGroups) ?? assignment.groupId,
+              })),
             }))}
             minHeight={112}
           />

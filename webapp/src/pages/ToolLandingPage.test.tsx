@@ -616,7 +616,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('team');
     expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Ada - Grace');
     expect(screen.getByRole('textbox', { name: /fixed people: name/i })).toHaveTextContent('Ada');
-    expect(screen.getByRole('textbox', { name: /fixed people: group/i })).toHaveTextContent('Group 1');
+    expect(screen.getByRole('textbox', { name: /fixed people: group/i })).toHaveTextContent('1');
   });
 
   it('confirms before clearing existing landing inputs', async () => {
@@ -682,10 +682,12 @@ describe('ToolLandingPage SEO wiring', () => {
     const fixedNames = screen.getByRole('textbox', { name: /fixed people: name/i });
     const fixedGroups = screen.getByRole('textbox', { name: /fixed people: group/i });
 
+    expect(fixedGroups).toHaveAttribute('data-placeholder', '1\n2');
+
     await user.click(fixedNames);
     await user.keyboard('Alex');
     await user.click(fixedGroups);
-    await user.keyboard('Group 2');
+    await user.keyboard('2');
     await user.click(screen.getByRole('button', { name: /generate groups/i }));
 
     expect(vi.mocked(solveScenario)).toHaveBeenCalledWith(
