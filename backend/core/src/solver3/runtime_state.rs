@@ -38,8 +38,8 @@ use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::construction::constraint_scenario_oracle::{
     build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
     constraint_scenario_score, extract_constraint_scenario_signals,
-    relabel_oracle_schedule_to_block, repeat_pressure_is_relevant,
-    select_oracleizable_flexible_block, ConstraintScenarioCandidate,
+    merge_relabelled_oracle_into_scaffold, relabel_oracle_schedule_to_block,
+    repeat_pressure_is_relevant, select_oracleizable_flexible_block, ConstraintScenarioCandidate,
     ConstraintScenarioCandidateSource, ConstraintScenarioOracleConstructionResult,
     ConstraintScenarioOracleOutcomeKind, ConstraintScenarioOracleTelemetry, PureStructureOracle,
     PureStructureOracleRequest, Solver6PureStructureOracle, DEFAULT_CONSTRAINT_SCENARIO_RUNS,
@@ -388,7 +388,14 @@ impl RuntimeState {
             &signals,
             &scaffold_mask,
         );
-        let oracle_relabel_score = if let Some(block) = oracle_block.as_ref() {
+        let mut selected_schedule = best.schedule.clone();
+        let mut outcome = ConstraintScenarioOracleOutcomeKind::ConstraintScenarioOnly;
+        let mut oracle_relabel_score = None;
+        let mut merge_improvement_over_cs = None;
+        let mut oracle_merge_attempted = false;
+        let mut oracle_merge_accepted = false;
+        let mut oracle_merge_failed = false;
+        if let Some(block) = oracle_block.as_ref() {
             let oracle_schedule =
                 Solver6PureStructureOracle.solve(&PureStructureOracleRequest {
                     num_groups: block.num_groups,
@@ -396,22 +403,46 @@ impl RuntimeState {
                     num_sessions: block.num_sessions(),
                     seed: effective_seed ^ 0x5eed_600d_u64,
                 })?;
-            Some(
-                relabel_oracle_schedule_to_block(
-                    &self.compiled,
-                    &signals,
-                    block,
-                    &oracle_schedule,
-                )?
-                .score,
+            let relabeling = relabel_oracle_schedule_to_block(
+                &self.compiled,
+                &signals,
+                block,
+                &oracle_schedule,
+            )?;
+            oracle_relabel_score = Some(relabeling.score);
+            oracle_merge_attempted = true;
+            match merge_relabelled_oracle_into_scaffold(
+                &self.compiled,
+                &best.schedule,
+                &signals,
+                &scaffold_mask,
+                block,
+                &oracle_schedule,
+                &relabeling,
             )
-        } else {
-            None
-        };
+            .and_then(|merge| {
+                let snapshot = self.score_constructed_schedule(&merge.schedule)?;
+                Ok((merge.schedule, snapshot.total_score))
+            }) {
+                Ok((merged_schedule, merged_score)) => {
+                    let improvement = best.real_score - merged_score;
+                    merge_improvement_over_cs = Some(improvement);
+                    if improvement > 1e-9 {
+                        selected_schedule = merged_schedule;
+                        outcome = ConstraintScenarioOracleOutcomeKind::OracleMerged;
+                        oracle_merge_accepted = true;
+                    }
+                }
+                Err(_) => {
+                    oracle_merge_failed = true;
+                    merge_improvement_over_cs = Some(0.0);
+                }
+            }
+        }
         Ok(ConstraintScenarioOracleConstructionResult {
-            schedule: best.schedule.clone(),
+            schedule: selected_schedule,
             telemetry: ConstraintScenarioOracleTelemetry {
-                outcome: ConstraintScenarioOracleOutcomeKind::ConstraintScenarioOnly,
+                outcome,
                 repeat_relevant: true,
                 cs_run_count: ensemble.candidates.len(),
                 cs_best_score: Some(best.cs_score),
@@ -431,6 +462,10 @@ impl RuntimeState {
                     .map(|block| block.num_groups)
                     .unwrap_or(0),
                 oracle_relabel_score,
+                merge_improvement_over_cs,
+                oracle_merge_attempted,
+                oracle_merge_accepted,
+                oracle_merge_failed,
                 constructor_wall_ms: started_at.elapsed().as_millis(),
                 ..ConstraintScenarioOracleTelemetry::default()
             },

@@ -32,9 +32,10 @@ use crate::models::{
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::construction::constraint_scenario_oracle::{
     build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
-    extract_constraint_scenario_signals, relabel_oracle_schedule_to_block,
-    select_oracleizable_flexible_block, validate_pure_oracle_schedule, ConstraintScenarioCandidate,
-    ConstraintScenarioCandidateSource, OracleizableFlexibleBlock, PureStructureOracle,
+    extract_constraint_scenario_signals, merge_relabelled_oracle_into_scaffold,
+    relabel_oracle_schedule_to_block, select_oracleizable_flexible_block,
+    validate_pure_oracle_schedule, ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
+    OracleRelabelingResult, OracleizableFlexibleBlock, PureStructureOracle,
     PureStructureOracleRequest, PureStructureOracleSchedule, Solver6PureStructureOracle,
 };
 use super::moves::{
@@ -688,6 +689,70 @@ fn oracle_relabeling_improves_pair_alignment_and_aligns_groups() {
     let mut assigned_groups = relabeling.real_group_by_session_oracle_group[0].clone();
     assigned_groups.sort_unstable();
     assert_eq!(assigned_groups, vec![0, 1]);
+}
+
+#[test]
+fn oracle_merge_injects_relabelled_contacts_into_flexible_scaffold() {
+    let input = minimal_input();
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let scaffold: PackedSchedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let alternate: PackedSchedule =
+        vec![vec![vec![2, 3], vec![0, 1]], vec![vec![2, 3], vec![0, 1]]];
+    let ensemble = build_constraint_scenario_ensemble(vec![
+        ConstraintScenarioCandidate {
+            schedule: scaffold.clone(),
+            source: ConstraintScenarioCandidateSource::BaselineLegacy,
+            seed: 1,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+        ConstraintScenarioCandidate {
+            schedule: alternate,
+            source: ConstraintScenarioCandidateSource::FreedomAwareRandomized,
+            seed: 2,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+    ])
+    .unwrap();
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &scaffold, &signals);
+    let block = OracleizableFlexibleBlock {
+        people: vec![0, 1, 2, 3],
+        sessions: vec![0, 1],
+        groups_by_session: vec![vec![0, 1], vec![0, 1]],
+        num_groups: 2,
+        group_size: 2,
+        score: 1.0,
+        flexible_placement_count: 8,
+        scaffold_disruption_risk: 0.0,
+    };
+    let oracle_schedule = PureStructureOracleSchedule {
+        schedule: vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]],
+    };
+    let relabeling = OracleRelabelingResult {
+        real_person_by_oracle_person: vec![0, 2, 1, 3],
+        real_group_by_session_oracle_group: vec![vec![0, 1], vec![0, 1]],
+        score: 0.0,
+        pair_alignment_score: 0.0,
+        group_alignment_score: 0.0,
+        rigidity_mismatch: 0.0,
+    };
+
+    let merged = merge_relabelled_oracle_into_scaffold(
+        &compiled,
+        &scaffold,
+        &signals,
+        &mask,
+        &block,
+        &oracle_schedule,
+        &relabeling,
+    )
+    .unwrap();
+
+    assert_eq!(merged.schedule[0][0], vec![0, 2]);
+    assert_eq!(merged.schedule[0][1], vec![1, 3]);
+    assert_eq!(merged.changed_placement_count, 8);
 }
 
 #[test]

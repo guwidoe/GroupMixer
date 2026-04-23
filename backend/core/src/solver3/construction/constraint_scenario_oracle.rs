@@ -63,6 +63,9 @@ pub(crate) struct ConstraintScenarioOracleTelemetry {
     pub(crate) oracle_block_groups: usize,
     pub(crate) oracle_relabel_score: Option<f64>,
     pub(crate) merge_improvement_over_cs: Option<f64>,
+    pub(crate) oracle_merge_attempted: bool,
+    pub(crate) oracle_merge_accepted: bool,
+    pub(crate) oracle_merge_failed: bool,
     pub(crate) constructor_wall_ms: u128,
 }
 
@@ -81,6 +84,9 @@ impl Default for ConstraintScenarioOracleTelemetry {
             oracle_block_groups: 0,
             oracle_relabel_score: None,
             merge_improvement_over_cs: None,
+            oracle_merge_attempted: false,
+            oracle_merge_accepted: false,
+            oracle_merge_failed: false,
             constructor_wall_ms: 0,
         }
     }
@@ -256,6 +262,14 @@ pub(crate) struct OracleRelabelingResult {
     pub(crate) pair_alignment_score: f64,
     pub(crate) group_alignment_score: f64,
     pub(crate) rigidity_mismatch: f64,
+}
+
+/// Result of injecting relabeled oracle structure into the CS scaffold.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct OracleMergeResult {
+    pub(crate) schedule: PackedSchedule,
+    pub(crate) changed_placement_count: usize,
+    pub(crate) displaced_repair_count: usize,
 }
 
 /// Stub-testable seam for obtaining pure SGP contact geometry.
@@ -1025,6 +1039,300 @@ fn assignment_margin(scores: &[f64]) -> f64 {
         }
     }
     top - second
+}
+
+/// Merges relabeled oracle placements into a copy of the CS scaffold and repairs the freed slots.
+pub(crate) fn merge_relabelled_oracle_into_scaffold(
+    compiled: &CompiledProblem,
+    scaffold: &PackedSchedule,
+    signals: &ConstraintScenarioSignals,
+    mask: &ConstraintScenarioScaffoldMask,
+    block: &OracleizableFlexibleBlock,
+    oracle_schedule: &PureStructureOracleSchedule,
+    relabeling: &OracleRelabelingResult,
+) -> Result<OracleMergeResult, SolverError> {
+    let request = PureStructureOracleRequest {
+        num_groups: block.num_groups,
+        group_size: block.group_size,
+        num_sessions: block.num_sessions(),
+        seed: 0,
+    };
+    validate_pure_oracle_schedule(&request, &oracle_schedule.schedule)?;
+    validate_relabeling_for_merge(block, relabeling)?;
+
+    let mut schedule = scaffold.clone();
+    let mut changed_placement_count = 0usize;
+    let mut displaced_repair_count = 0usize;
+    let mut block_person = vec![false; compiled.num_people];
+    for &person_idx in &block.people {
+        block_person[person_idx] = true;
+    }
+
+    for (session_pos, &real_session_idx) in block.sessions.iter().enumerate() {
+        let mut displaced = Vec::<(usize, usize)>::new();
+        let mut removed = vec![false; compiled.num_people];
+        let selected_real_groups = &relabeling.real_group_by_session_oracle_group[session_pos];
+
+        for &group_idx in selected_real_groups {
+            let original_members = std::mem::take(&mut schedule[real_session_idx][group_idx]);
+            for person_idx in original_members {
+                if !mask.is_frozen(compiled, real_session_idx, person_idx) {
+                    removed[person_idx] = true;
+                    if !block_person[person_idx] {
+                        displaced.push((person_idx, group_idx));
+                    }
+                } else {
+                    schedule[real_session_idx][group_idx].push(person_idx);
+                }
+            }
+        }
+
+        for &person_idx in &block.people {
+            if !removed[person_idx] {
+                remove_person_from_session(&mut schedule, real_session_idx, person_idx)
+                    .ok_or_else(|| {
+                        SolverError::ValidationError(format!(
+                            "oracle merge could not remove block person {} from session {}",
+                            compiled.display_person(person_idx),
+                            real_session_idx
+                        ))
+                    })?;
+                removed[person_idx] = true;
+            }
+        }
+
+        for oracle_group_idx in 0..block.num_groups {
+            let real_group_idx =
+                relabeling.real_group_by_session_oracle_group[session_pos][oracle_group_idx];
+            for &oracle_person_idx in &oracle_schedule.schedule[session_pos][oracle_group_idx] {
+                let real_person_idx = relabeling.real_person_by_oracle_person[oracle_person_idx];
+                push_person_if_capacity(
+                    compiled,
+                    &mut schedule,
+                    real_session_idx,
+                    real_group_idx,
+                    real_person_idx,
+                )?;
+                changed_placement_count += 1;
+            }
+        }
+
+        displaced.sort_unstable_by_key(|&(person_idx, preferred_group_idx)| {
+            (preferred_group_idx, person_idx)
+        });
+        for (person_idx, preferred_group_idx) in displaced {
+            let Some(repair_group_idx) = choose_repair_group(
+                compiled,
+                &schedule,
+                signals,
+                real_session_idx,
+                person_idx,
+                preferred_group_idx,
+            ) else {
+                return Err(SolverError::ValidationError(format!(
+                    "oracle merge could not repair displaced person {} in session {}",
+                    compiled.display_person(person_idx),
+                    real_session_idx
+                )));
+            };
+            push_person_if_capacity(
+                compiled,
+                &mut schedule,
+                real_session_idx,
+                repair_group_idx,
+                person_idx,
+            )?;
+            displaced_repair_count += 1;
+        }
+    }
+
+    validate_packed_schedule_shape(compiled, &schedule)?;
+    Ok(OracleMergeResult {
+        schedule,
+        changed_placement_count,
+        displaced_repair_count,
+    })
+}
+
+fn validate_relabeling_for_merge(
+    block: &OracleizableFlexibleBlock,
+    relabeling: &OracleRelabelingResult,
+) -> Result<(), SolverError> {
+    if relabeling.real_person_by_oracle_person.len() != block.num_people() {
+        return Err(SolverError::ValidationError(
+            "oracle merge received person relabeling with wrong shape".into(),
+        ));
+    }
+    if relabeling.real_group_by_session_oracle_group.len() != block.num_sessions() {
+        return Err(SolverError::ValidationError(
+            "oracle merge received group relabeling with wrong session count".into(),
+        ));
+    }
+    for groups in &relabeling.real_group_by_session_oracle_group {
+        if groups.len() != block.num_groups {
+            return Err(SolverError::ValidationError(
+                "oracle merge received group relabeling with wrong group count".into(),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn remove_person_from_session(
+    schedule: &mut PackedSchedule,
+    session_idx: usize,
+    person_idx: usize,
+) -> Option<usize> {
+    for (group_idx, members) in schedule[session_idx].iter_mut().enumerate() {
+        if let Some(position) = members.iter().position(|&member| member == person_idx) {
+            members.swap_remove(position);
+            return Some(group_idx);
+        }
+    }
+    None
+}
+
+fn push_person_if_capacity(
+    compiled: &CompiledProblem,
+    schedule: &mut PackedSchedule,
+    session_idx: usize,
+    group_idx: usize,
+    person_idx: usize,
+) -> Result<(), SolverError> {
+    if !compiled.person_participation[person_idx][session_idx] {
+        return Err(SolverError::ValidationError(format!(
+            "oracle merge tried to place non-participating person {} in session {}",
+            compiled.display_person(person_idx),
+            session_idx
+        )));
+    }
+    if schedule[session_idx][group_idx].len() >= compiled.group_capacity(session_idx, group_idx) {
+        return Err(SolverError::ValidationError(format!(
+            "oracle merge overfilled group {} in session {}",
+            compiled.display_group(group_idx),
+            session_idx
+        )));
+    }
+    schedule[session_idx][group_idx].push(person_idx);
+    Ok(())
+}
+
+fn choose_repair_group(
+    compiled: &CompiledProblem,
+    schedule: &PackedSchedule,
+    signals: &ConstraintScenarioSignals,
+    session_idx: usize,
+    person_idx: usize,
+    preferred_group_idx: usize,
+) -> Option<usize> {
+    (0..compiled.num_groups)
+        .filter(|&group_idx| {
+            schedule[session_idx][group_idx].len() < compiled.group_capacity(session_idx, group_idx)
+        })
+        .max_by(|&left, &right| {
+            let left_score = repair_group_score(
+                compiled,
+                signals,
+                session_idx,
+                person_idx,
+                preferred_group_idx,
+                left,
+            );
+            let right_score = repair_group_score(
+                compiled,
+                signals,
+                session_idx,
+                person_idx,
+                preferred_group_idx,
+                right,
+            );
+            left_score
+                .partial_cmp(&right_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| right.cmp(&left))
+        })
+}
+
+fn repair_group_score(
+    compiled: &CompiledProblem,
+    signals: &ConstraintScenarioSignals,
+    session_idx: usize,
+    person_idx: usize,
+    preferred_group_idx: usize,
+    candidate_group_idx: usize,
+) -> f64 {
+    let scaffold_prior = if candidate_group_idx == preferred_group_idx {
+        2.0
+    } else {
+        0.0
+    };
+    scaffold_prior
+        + signals.placement_frequency(compiled, session_idx, person_idx, candidate_group_idx)
+}
+
+fn validate_packed_schedule_shape(
+    compiled: &CompiledProblem,
+    schedule: &PackedSchedule,
+) -> Result<(), SolverError> {
+    if schedule.len() != compiled.num_sessions {
+        return Err(SolverError::ValidationError(
+            "oracle merge produced wrong session count".into(),
+        ));
+    }
+    for (session_idx, groups) in schedule.iter().enumerate() {
+        if groups.len() != compiled.num_groups {
+            return Err(SolverError::ValidationError(format!(
+                "oracle merge produced wrong group count in session {session_idx}"
+            )));
+        }
+        let mut seen = vec![false; compiled.num_people];
+        for (group_idx, members) in groups.iter().enumerate() {
+            if members.len() > compiled.group_capacity(session_idx, group_idx) {
+                return Err(SolverError::ValidationError(format!(
+                    "oracle merge produced over-capacity group {} in session {}",
+                    compiled.display_group(group_idx),
+                    session_idx
+                )));
+            }
+            for &person_idx in members {
+                if person_idx >= compiled.num_people {
+                    return Err(SolverError::ValidationError(
+                        "oracle merge produced out-of-range person index".into(),
+                    ));
+                }
+                if !compiled.person_participation[person_idx][session_idx] {
+                    return Err(SolverError::ValidationError(format!(
+                        "oracle merge produced non-participating placement for {} in session {}",
+                        compiled.display_person(person_idx),
+                        session_idx
+                    )));
+                }
+                if seen[person_idx] {
+                    return Err(SolverError::ValidationError(format!(
+                        "oracle merge produced duplicate placement for {} in session {}",
+                        compiled.display_person(person_idx),
+                        session_idx
+                    )));
+                }
+                seen[person_idx] = true;
+            }
+        }
+        for (person_idx, participates) in compiled
+            .person_participation
+            .iter()
+            .map(|sessions| sessions[session_idx])
+            .enumerate()
+        {
+            if participates != seen[person_idx] {
+                return Err(SolverError::ValidationError(format!(
+                    "oracle merge produced missing/unexpected placement for {} in session {}",
+                    compiled.display_person(person_idx),
+                    session_idx
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn validate_pure_structure_request(
