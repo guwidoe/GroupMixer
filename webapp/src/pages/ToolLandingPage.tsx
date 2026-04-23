@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { ArrowRight, ChevronDown, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, ChevronDown, CircleHelp, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
@@ -9,12 +9,15 @@ import { QuickSetupAdvancedOptions } from '../components/LandingTool/QuickSetupA
 import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
 import { useQuickSetup } from '../components/LandingTool/useQuickSetup';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
+import { HomeAnimatedHeroTitle } from '../components/LandingPage/HomeAnimatedHeroTitle';
 import { LandingLanguageSelector } from '../components/LandingPage/LandingLanguageSelector';
+import { NotificationContainer } from '../components/NotificationContainer';
 import { ResultsScheduleGrid } from '../components/ResultsView/ResultsScheduleGrid';
 import { DemoDataDropdown } from '../components/ScenarioEditor/DemoDataDropdown';
 import { buildResultsSessionData } from '../components/results/buildResultsViewModel';
 import { Tooltip } from '../components/Tooltip';
 import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../components/ui';
+import { useLocalStorageState } from '../hooks/useLocalStorageState';
 import { interpolate } from '../i18n/interpolate';
 import { getLandingUiContent } from '../i18n/landingUi';
 import { Seo } from '../components/Seo';
@@ -51,6 +54,13 @@ interface DisplaySession {
     members: string[];
   }>;
 }
+
+const LANDING_TOOL_RESIZE_STORAGE_KEY = 'landing:tool-split';
+const LANDING_TOOL_RESIZE_HANDLE_WIDTH = 22;
+const LANDING_TOOL_LEFT_MIN_WIDTH = 400;
+const LANDING_TOOL_RIGHT_MIN_WIDTH = 340;
+const LANDING_TOOL_RESIZE_MIN_WIDTH = LANDING_TOOL_LEFT_MIN_WIDTH + LANDING_TOOL_RIGHT_MIN_WIDTH + LANDING_TOOL_RESIZE_HANDLE_WIDTH;
+const HOME_ANIMATED_HERO_STATIC_TITLE = 'Random Group Generator';
 
 function buildDisplaySessions(
   sharedSessionData: Array<{ sessionIndex: number; groups: Array<{ id: string; people: Array<{ id: string }> }> }>,
@@ -104,17 +114,60 @@ async function copyText(value: string) {
   }
 }
 
+function SectionLabelWithTooltip({
+  label,
+  help,
+  htmlFor,
+  action,
+}: {
+  label: string;
+  help: string;
+  htmlFor?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className={action ? 'relative mb-2 pr-28 sm:pr-32' : 'mb-2'}>
+      <div className="flex min-w-0 items-center gap-1.5">
+        <label htmlFor={htmlFor} className="block text-sm font-medium">
+          {label}
+        </label>
+        <Tooltip content={help} offset={6} maxWidth={360}>
+          <button
+            type="button"
+            aria-label="Show section help"
+            className="inline-flex h-4 min-w-4 items-center justify-center rounded-full text-[0.7rem] font-medium leading-none"
+            style={{ color: 'var(--text-tertiary)' }}
+          >
+            <CircleHelp className="h-3.5 w-3.5" />
+          </button>
+        </Tooltip>
+      </div>
+      {action ? (
+        <div className="absolute right-0 top-1/2 flex -translate-y-1/2 items-center">
+          {action}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProps) {
   const config = getToolPageConfig(pageKey, locale);
   const ui = getLandingUiContent(locale);
+  const usesAnimatedHomeTitle = config.key === 'home' && config.locale === 'en' && config.hero.title === HOME_ANIMATED_HERO_STATIC_TITLE;
   const controller = useQuickSetup(config);
   const loadWorkspaceAsNewScenario = useAppStore((state) => state.loadWorkspaceAsNewScenario);
   const addNotification = useAppStore((state) => state.addNotification);
   const navigate = useNavigate();
   const location = useLocation();
   const resultsRef = useRef<HTMLDivElement>(null);
+  const toolColumnsRef = useRef<HTMLDivElement>(null);
+  const lastNotifiedSolverErrorRef = useRef<string | null>(null);
   const [resultFormat, setResultFormat] = useState<ResultFormat>('cards');
   const [copiedFormat, setCopiedFormat] = useState<ResultFormat | null>(null);
+  const [toolSplitRatio, setToolSplitRatio] = useLocalStorageState<number>(`${LANDING_TOOL_RESIZE_STORAGE_KEY}:${pageKey}`, 0.56);
+  const [toolColumnsWidth, setToolColumnsWidth] = useState(0);
+  const [isDraggingToolDivider, setIsDraggingToolDivider] = useState(false);
   const languageOptions = useMemo(
     () =>
       config.liveLocales.map((liveLocale) => ({
@@ -181,10 +234,68 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const resultCsv = useMemo(() => buildResultCsv(displaySessions, ui.results), [displaySessions, ui.results]);
   const activeResultFormat = controller.result ? resultFormat : 'cards';
   const activeCopiedFormat = controller.result ? copiedFormat : null;
+  const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
+  const participantColumns = normalizeParticipantColumns(draft);
+  const displayedGroupCount = Math.max(1, estimatedGroupCount);
+  const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
+  const canResizeToolColumns = toolColumnsWidth >= LANDING_TOOL_RESIZE_MIN_WIDTH;
+  const resolvedToolSplitRatio = Math.min(0.72, Math.max(0.4, toolSplitRatio));
+  const resizableTrackWidth = Math.max(0, toolColumnsWidth - LANDING_TOOL_RESIZE_HANDLE_WIDTH);
+  const leftColumnWidth = canResizeToolColumns
+    ? Math.min(
+        Math.max(resizableTrackWidth * resolvedToolSplitRatio, LANDING_TOOL_LEFT_MIN_WIDTH),
+        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, resizableTrackWidth - LANDING_TOOL_RIGHT_MIN_WIDTH),
+      )
+    : null;
+  const rightColumnWidth = canResizeToolColumns && leftColumnWidth != null
+    ? Math.max(LANDING_TOOL_RIGHT_MIN_WIDTH, resizableTrackWidth - leftColumnWidth)
+    : null;
+  const toolColumnsStyle = canResizeToolColumns && leftColumnWidth != null && rightColumnWidth != null
+    ? {
+        gridTemplateColumns: `minmax(0, ${leftColumnWidth}px) ${LANDING_TOOL_RESIZE_HANDLE_WIDTH}px minmax(${LANDING_TOOL_RIGHT_MIN_WIDTH}px, ${rightColumnWidth}px)`,
+      }
+    : undefined;
+  const useCasesGridClassName = config.sectionSet === 'technical'
+    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3'
+    : 'mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
+  const advancedGridClassName = config.sectionSet === 'technical'
+    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4'
+    : 'mt-8 grid gap-4 sm:grid-cols-2';
+
+  useEffect(() => {
+    if (!controller.errorMessage) {
+      lastNotifiedSolverErrorRef.current = null;
+      return;
+    }
+
+    if (lastNotifiedSolverErrorRef.current === controller.errorMessage) {
+      return;
+    }
+
+    lastNotifiedSolverErrorRef.current = controller.errorMessage;
+    addNotification({
+      type: 'error',
+      title: 'Solver Error',
+      message: controller.errorMessage,
+    });
+  }, [addNotification, controller.errorMessage]);
 
   useEffect(() => {
     if (!controller.result?.generatedAt) {
       return;
+    }
+
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('view') !== 'results') {
+      searchParams.set('view', 'results');
+      navigate(
+        {
+          pathname: location.pathname,
+          search: searchParams.toString(),
+          hash: location.hash,
+        },
+        { replace: false },
+      );
     }
 
     const scrollToResults = () => {
@@ -198,7 +309,65 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       window.cancelAnimationFrame(animationFrameId);
       window.clearTimeout(timeoutId);
     };
-  }, [controller.result?.generatedAt]);
+  }, [controller.result?.generatedAt, location.hash, location.pathname, location.search, navigate]);
+
+  useEffect(() => {
+    const node = toolColumnsRef.current;
+    if (!node) {
+      return undefined;
+    }
+
+    const measure = () => {
+      const nextWidth = node.getBoundingClientRect().width;
+      setToolColumnsWidth((previous) => (Math.abs(previous - nextWidth) < 0.5 ? previous : nextWidth));
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => measure());
+      observer.observe(node);
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer?.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isDraggingToolDivider || !canResizeToolColumns) {
+      return undefined;
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const bounds = toolColumnsRef.current?.getBoundingClientRect();
+      if (!bounds) {
+        return;
+      }
+
+      const nextLeftWidth = Math.min(
+        Math.max(event.clientX - bounds.left - (LANDING_TOOL_RESIZE_HANDLE_WIDTH / 2), LANDING_TOOL_LEFT_MIN_WIDTH),
+        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, bounds.width - LANDING_TOOL_RESIZE_HANDLE_WIDTH - LANDING_TOOL_RIGHT_MIN_WIDTH),
+      );
+      const nextRatio = nextLeftWidth / Math.max(1, bounds.width - LANDING_TOOL_RESIZE_HANDLE_WIDTH);
+      setToolSplitRatio(Math.min(0.72, Math.max(0.4, nextRatio)));
+    };
+
+    const stopDragging = () => setIsDraggingToolDivider(false);
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopDragging);
+    window.addEventListener('pointercancel', stopDragging);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', stopDragging);
+      window.removeEventListener('pointercancel', stopDragging);
+    };
+  }, [canResizeToolColumns, isDraggingToolDivider, setToolSplitRatio]);
 
   const navigateToAdvancedWorkspace = (target: 'results' | 'people') => {
     const nextScenarioId = loadWorkspaceAsNewScenario({
@@ -236,16 +405,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     navigateToAdvancedWorkspace(target);
   };
 
-  const { draft, participantCount, estimatedGroupCount, estimatedGroupSize } = controller;
-  const participantColumns = normalizeParticipantColumns(draft);
-  const displayedGroupCount = Math.max(1, estimatedGroupCount);
-  const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
-  const useCasesGridClassName = config.sectionSet === 'technical'
-    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3'
-    : 'mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
-  const advancedGridClassName = config.sectionSet === 'technical'
-    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4'
-    : 'mt-8 grid gap-4 sm:grid-cols-2';
   const optimizerCtaCard = !controller.result ? (
     <div
       className="rounded-2xl border p-5 sm:p-6"
@@ -505,6 +664,14 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
     }
   };
 
+  const handleClearAllInputs = () => {
+    if (controller.hasAnyInputData && !window.confirm(ui.quickSetup.clearAllConfirmMessage)) {
+      return;
+    }
+
+    controller.clearDraft();
+  };
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
       <Seo
@@ -519,17 +686,10 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       <AppHeader
         homeTo={getLocaleHomePath(config.locale)}
         logoAlt="GroupMixer logo"
+        titleAs="div"
+        desktopBreakpoint="landing"
         renderDesktopActions={() => (
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <DemoDataDropdown
-              onDemoCaseClick={(demoCaseId) => {
-                void handleLandingDemoCaseClick(demoCaseId);
-              }}
-              variant="header"
-              triggerLabel="Demo Data"
-              loadCases={loadLandingCompatibleDemoCasesWithMetrics}
-              includeGeneratedDemo={false}
-            />
             <button
               type="button"
               onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
@@ -549,15 +709,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         )}
         renderMobileActions={() => (
           <>
-            <DemoDataDropdown
-              onDemoCaseClick={(demoCaseId) => {
-                void handleLandingDemoCaseClick(demoCaseId);
-              }}
-              variant="menu"
-              triggerLabel="Demo Data"
-              loadCases={loadLandingCompatibleDemoCasesWithMetrics}
-              includeGeneratedDemo={false}
-            />
             <button
               type="button"
               onClick={() => openAdvancedWorkspace(controller.result ? 'results' : 'people')}
@@ -578,24 +729,61 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
       />
 
       <main>
-        <section className="px-4 pb-10 pt-6 sm:px-6 lg:pb-16 lg:pt-8">
-          <div className="mx-auto grid max-w-7xl gap-6 lg:gap-8">
-            <div data-testid="landing-hero" className="order-2 max-w-4xl pt-2 lg:order-1 lg:pt-0">
-              <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl lg:leading-[1.15]">
-                {config.hero.title}
+        <section className="px-4 pb-8 pt-4 sm:px-6 lg:pb-14 lg:pt-6">
+          <div className="mx-auto grid max-w-7xl gap-5 lg:gap-6">
+            <div data-testid="landing-hero" className="order-1 min-w-0 max-w-4xl">
+              <h1
+                aria-label={usesAnimatedHomeTitle ? config.hero.title : undefined}
+                className={[
+                  'block w-full max-w-full overflow-hidden text-ellipsis whitespace-nowrap font-bold leading-[1.08] tracking-normal sm:text-4xl lg:leading-[1.15]',
+                  usesAnimatedHomeTitle
+                    ? 'text-base min-[340px]:text-[1.08rem] min-[390px]:text-xl'
+                    : 'text-[1.15rem] min-[340px]:text-[1.38rem] min-[390px]:text-2xl',
+                ].join(' ')}
+              >
+                {usesAnimatedHomeTitle ? <HomeAnimatedHeroTitle /> : config.hero.title}
               </h1>
             </div>
 
             <div
               data-testid="landing-tool-panel"
-              className="order-1 rounded-2xl border p-5 shadow-sm sm:p-6 lg:order-2"
-              style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+              className="order-2"
             >
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(300px,0.9fr)] lg:gap-5">
-                <div className="min-w-0">
-                  <label className="mb-2 block text-sm font-medium">
-                    {ui.quickSetup.participantsLabel}
-                  </label>
+              <div
+                ref={toolColumnsRef}
+                className={[
+                  'grid gap-5 lg:gap-5',
+                  canResizeToolColumns ? null : 'lg:grid-cols-[minmax(0,1.12fr)_minmax(320px,0.92fr)]',
+                ].filter(Boolean).join(' ')}
+                style={toolColumnsStyle}
+              >
+                <div className="landing-participants-pane min-w-0">
+                  <SectionLabelWithTooltip
+                    label={ui.quickSetup.participantsLabel}
+                    help={ui.quickSetup.participantsHelp}
+                    action={(
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleClearAllInputs}
+                          className="ui-button ui-button--ghost ui-button--sm min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
+                        >
+                          {ui.quickSetup.clearAllLabel}
+                        </button>
+                        <DemoDataDropdown
+                          onDemoCaseClick={(demoCaseId) => {
+                            void handleLandingDemoCaseClick(demoCaseId);
+                          }}
+                          variant="default"
+                          triggerLabel="Example data"
+                          triggerButtonSize="sm"
+                          triggerClassName="landing-example-data-trigger min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
+                          loadCases={loadLandingCompatibleDemoCasesWithMetrics}
+                          includeGeneratedDemo={false}
+                        />
+                      </div>
+                    )}
+                  />
                   <LandingParticipantColumnsInput
                     label={ui.quickSetup.participantsLabel}
                     nameColumnLabel={ui.quickSetup.nameColumnLabel}
@@ -661,22 +849,22 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                       });
                     }}
                     onRemoveAttribute={(index) => {
+                      const columnToRemove = participantColumns[index];
+                      const hasValues = Boolean(columnToRemove?.values.trim());
+
+                      if (hasValues) {
+                        const columnName = columnToRemove.name.trim() || `${ui.quickSetup.attributeColumnDefaultLabel} ${index}`;
+                        const confirmed = window.confirm(
+                          ui.quickSetup.removeAttributeConfirmMessage.replace('{name}', columnName),
+                        );
+
+                        if (!confirmed) {
+                          return;
+                        }
+                      }
+
                       controller.updateDraft((current) => {
                         const columns = normalizeParticipantColumns(current);
-                        const columnToRemove = columns[index];
-                        const hasValues = Boolean(columnToRemove?.values.trim());
-
-                        if (hasValues) {
-                          const columnName = columnToRemove.name.trim() || `${ui.quickSetup.attributeColumnDefaultLabel} ${index}`;
-                          const confirmed = window.confirm(
-                            ui.quickSetup.removeAttributeConfirmMessage.replace('{name}', columnName),
-                          );
-
-                          if (!confirmed) {
-                            return current;
-                          }
-                        }
-
                         return withParticipantColumns(
                           current,
                           columns.filter((_, columnIndex) => columnIndex !== index),
@@ -685,7 +873,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     }}
                   />
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <div className="landing-participants-controls mt-4">
                     <div>
                       <NumberField
                         label={ui.quickSetup.groupingValueGroupCountLabel}
@@ -716,13 +904,13 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                       />
                     </div>
 
-                    <div>
+                    <div className="landing-participants-controls__sessions min-w-0 w-full">
                       <div className="mb-[0.86rem] flex items-center justify-between gap-3">
                         <label className="text-sm font-medium" htmlFor="landing-sessions-slider">
                           {ui.advancedOptions.sessionsLabel}
                         </label>
                         <label
-                          className="ml-auto flex min-w-0 max-w-[65%] items-center gap-2 text-xs font-medium sm:max-w-[70%] sm:text-sm"
+                          className="landing-participants-controls__repeat-toggle"
                           style={{ color: 'var(--text-secondary)' }}
                         >
                           <input
@@ -750,6 +938,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                       </div>
                       <NumberField
                         id="landing-sessions-slider"
+                        className="w-full"
                         value={draft.sessions}
                         onChange={(value) =>
                           controller.updateDraft((current) => ({
@@ -814,13 +1003,38 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                     </p>
                   )}
                 </div>
-                <div className="lg:pl-1">
+
+                {canResizeToolColumns ? (
+                  <button
+                    type="button"
+                    aria-label="Resize landing tool columns"
+                    aria-orientation="vertical"
+                    className="flex w-[22px] cursor-col-resize items-center justify-center rounded-full border-0 bg-transparent p-0"
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      event.currentTarget.setPointerCapture?.(event.pointerId);
+                      setIsDraggingToolDivider(true);
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="h-full min-h-16 w-px rounded-full transition-colors"
+                      style={{ backgroundColor: isDraggingToolDivider ? 'var(--color-accent)' : 'var(--border-primary)' }}
+                    />
+                  </button>
+                ) : null}
+
+                <div className={canResizeToolColumns ? 'pl-2' : undefined}>
                   <QuickSetupAdvancedOptions controller={controller} onOpenFullEditor={() => openAdvancedWorkspace('people')} />
                 </div>
               </div>
             </div>
 
-            <div className="order-3 max-w-4xl">
+            {optimizerCtaCard && <div className="order-4">{optimizerCtaCard}</div>}
+
+            {resultsSection}
+
+            <div data-testid="landing-secondary-copy" className="order-5 max-w-4xl">
               <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
                 {config.hero.eyebrow}
               </div>
@@ -860,10 +1074,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                 </div>
               )}
             </div>
-
-            {optimizerCtaCard && <div className="order-4">{optimizerCtaCard}</div>}
-
-            {resultsSection}
           </div>
         </section>
 
@@ -937,6 +1147,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         feedbackLabel={config.chrome.feedbackLabel}
         privacyNote={config.chrome.privacyNote}
       />
+      <NotificationContainer />
     </div>
   );
 }

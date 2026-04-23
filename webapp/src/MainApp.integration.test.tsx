@@ -240,10 +240,14 @@ describe("MainApp stateful integration routes", () => {
 
     await user.click(screen.getByRole("button", { name: /auto-set/i }));
 
-    expect(runtime.recommendSettings).toHaveBeenCalledWith({
-      scenario: savedScenario.scenario,
+    expect(runtime.recommendSettings).toHaveBeenCalledWith(expect.objectContaining({
       desiredRuntimeSeconds: 3,
-    });
+      scenario: expect.objectContaining({
+        groups: savedScenario.scenario.groups,
+        num_sessions: savedScenario.scenario.num_sessions,
+        objectives: savedScenario.scenario.objectives,
+      }),
+    }));
     await waitFor(() => {
       expect(useAppStore.getState().scenario?.settings).toEqual(recommendedSettings);
     });

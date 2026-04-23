@@ -5,8 +5,14 @@ import { getLandingUiContent } from '../../i18n/landingUi';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import { solveScenario } from '../../services/solver/solveScenario';
+import { namifyPersonIdsInText } from '../../utils/personReferenceText';
 import { buildGroups, buildScenarioFromDraft, parseParticipantInput } from '../../utils/quickSetup';
-import { deriveBalancedTargetValues, hasAnyBalanceTargets, normalizeBalanceTargets } from '../../utils/quickSetup/attributeBalanceTargets';
+import {
+  normalizeBalanceTargets,
+  normalizeManualBalanceAttributeKeys,
+  syncAutoBalanceTargets,
+} from '../../utils/quickSetup/attributeBalanceTargets';
+import { normalizeFixedAssignmentRows } from '../../utils/quickSetup/fixedAssignments';
 import { createQuickSetupDraftFromScenario } from '../../utils/quickSetup/landingDemo';
 import { normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import type { AttributeDefinition, Scenario, Solution } from '../../types';
@@ -17,7 +23,6 @@ import type {
   QuickSetupGroupResult,
   QuickSetupParticipant,
   QuickSetupResult,
-  QuickSetupSessionResult,
 } from './types';
 
 export interface QuickSetupController {
@@ -50,6 +55,8 @@ export interface QuickSetupController {
   generateGroups: () => void;
   reshuffle: () => void;
   resetDraft: () => void;
+  clearDraft: () => void;
+  hasAnyInputData: boolean;
   loadSampleData: () => void;
   loadScenarioDraft: (scenario: Scenario) => boolean;
   exportGroupsCsv: () => void;
@@ -72,6 +79,7 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
     inputMode: defaults.inputMode,
     fixedAssignments: [],
     balanceAttributeKey: defaults.balanceAttributeKey,
+    manualBalanceAttributeKeys: [],
     advancedOpen: defaults.advancedOpen,
     workspaceScenarioId: null,
   };
@@ -82,50 +90,57 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
   };
 }
 
+function emptyDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
+  const cleared = defaultDraft(pageConfig);
+
+  return normalizeQuickSetupDraft({
+    ...withParticipantColumns(cleared, [{ id: 'name', name: 'Name', values: '' }]),
+    keepTogetherInput: '',
+    avoidPairingsInput: '',
+    fixedAssignments: [],
+    balanceAttributeKey: null,
+    balanceTargets: {},
+    manualBalanceAttributeKeys: [],
+    workspaceScenarioId: null,
+  });
+}
+
+function draftsMatch(left: QuickSetupDraft, right: QuickSetupDraft): boolean {
+  return JSON.stringify(normalizeQuickSetupDraft(left)) === JSON.stringify(normalizeQuickSetupDraft(right));
+}
+
 function normalizeQuickSetupDraft(draft: QuickSetupDraft): QuickSetupDraft {
   const nextDraft = {
     ...draft,
     avoidRepeatPairings: draft.avoidRepeatPairings ?? true,
-    fixedAssignments: normalizeFixedAssignments(draft.fixedAssignments),
-    balanceTargets: normalizeBalanceTargets(draft.balanceTargets),
+    fixedAssignments: normalizeFixedAssignmentRows(draft.fixedAssignments),
     participantColumns: normalizeParticipantColumns(draft),
+    balanceTargets: normalizeBalanceTargets(draft.balanceTargets),
+    manualBalanceAttributeKeys: normalizeManualBalanceAttributeKeys(
+      draft.manualBalanceAttributeKeys,
+      normalizeParticipantColumns(draft).slice(1).map((column) => column.name.trim()),
+      draft.balanceTargets,
+    ),
   };
+  const parsed = parseParticipantInput(nextDraft);
+  const groups = buildGroups(parsed.people.length, nextDraft);
+  const syncedBalanceTargets = syncAutoBalanceTargets({
+    balanceTargets: nextDraft.balanceTargets,
+    manualBalanceAttributeKeys: nextDraft.manualBalanceAttributeKeys,
+    people: parsed.people,
+    groups,
+    availableAttributeKeys: parsed.attributeKeys,
+  });
 
-  if (!hasAnyBalanceTargets(nextDraft.balanceTargets) && nextDraft.balanceAttributeKey) {
-    const parsed = parseParticipantInput(nextDraft);
-    const groups = buildGroups(parsed.people.length, nextDraft);
-    return {
-      ...nextDraft,
-      balanceTargets: {
-        [nextDraft.balanceAttributeKey]: deriveBalancedTargetValues(parsed.people, groups, nextDraft.balanceAttributeKey),
-      },
-    };
-  }
-
-  return nextDraft;
+  return {
+    ...nextDraft,
+    balanceTargets: syncedBalanceTargets.balanceTargets,
+    manualBalanceAttributeKeys: syncedBalanceTargets.manualBalanceAttributeKeys,
+  };
 }
 
 function normalizeName(value: string): string {
   return value.trim().toLowerCase();
-}
-
-function normalizeFixedAssignments(fixedAssignments: QuickSetupFixedAssignment[] | undefined): QuickSetupFixedAssignment[] {
-  const seen = new Set<string>();
-
-  return (fixedAssignments ?? [])
-    .map((assignment) => ({
-      personId: assignment.personId.trim(),
-      groupId: assignment.groupId.trim(),
-    }))
-    .filter((assignment) => assignment.personId.length > 0 && assignment.groupId.length > 0)
-    .filter((assignment) => {
-      const key = normalizeName(assignment.personId);
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
-    });
 }
 
 function parseParticipants(draft: QuickSetupDraft): Pick<QuickSetupAnalysis, 'participants' | 'availableBalanceKeys' | 'balanceAttributes'> {
@@ -174,6 +189,7 @@ function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
   const { participants, availableBalanceKeys, balanceAttributes } = parseParticipants(draft);
   const participantByName = new Map(participants.map((participant) => [normalizeName(participant.name), participant] as const));
   const nameSet = new Set(participantByName.keys());
+  const validGroupIds = new Set(buildGroups(participants.length, draft).map((group) => group.id));
   const ignoredConstraintNames = new Set<string>();
 
   const keepTogetherGroups = parseConstraintLines(draft.keepTogetherInput)
@@ -203,18 +219,31 @@ function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
     })
     .filter((pair): pair is NonNullable<typeof pair> => Boolean(pair));
 
-  const fixedAssignments = normalizeFixedAssignments(draft.fixedAssignments)
-    .map((assignment) => {
-      const participant = participantByName.get(normalizeName(assignment.personId));
-      if (!participant) {
-        ignoredConstraintNames.add(assignment.personId);
-        return null;
-      }
+  const resolvedFixedAssignments = new Map<string, QuickSetupFixedAssignment>();
+  for (const assignment of normalizeFixedAssignmentRows(draft.fixedAssignments)) {
+    if (assignment.personId.length === 0 || assignment.groupId.length === 0) {
+      continue;
+    }
 
-      return {
-        personId: participant.id,
-        groupId: assignment.groupId,
-      } satisfies QuickSetupFixedAssignment;
+    const participant = participantByName.get(normalizeName(assignment.personId));
+    if (!participant) {
+      ignoredConstraintNames.add(assignment.personId);
+      continue;
+    }
+
+    if (!validGroupIds.has(assignment.groupId)) {
+      continue;
+    }
+
+    resolvedFixedAssignments.set(participant.id, {
+      personId: participant.id,
+      groupId: assignment.groupId,
+    });
+  }
+
+  const fixedAssignments = [...resolvedFixedAssignments.values()]
+    .map((assignment) => {
+      return assignment satisfies QuickSetupFixedAssignment;
     })
     .filter((assignment): assignment is QuickSetupFixedAssignment => Boolean(assignment));
 
@@ -226,213 +255,6 @@ function analyzeDraft(draft: QuickSetupDraft): QuickSetupAnalysis {
     keepTogetherGroups,
     avoidPairings,
     ignoredConstraintNames: [...ignoredConstraintNames],
-  };
-}
-
-function mulberry32(seed: number) {
-  let value = seed >>> 0;
-  return () => {
-    value += 0x6d2b79f5;
-    let t = value;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function shuffled<T>(items: T[], random: () => number): T[] {
-  const out = [...items];
-  for (let index = out.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(random() * (index + 1));
-    [out[index], out[swapIndex]] = [out[swapIndex], out[index]];
-  }
-  return out;
-}
-
-function pairKey(left: string, right: string) {
-  return [left, right].sort().join('::');
-}
-
-function buildEntities(participants: QuickSetupParticipant[], analysis: QuickSetupAnalysis) {
-  const participantByName = new Map(
-    participants.map((participant) => [normalizeName(participant.name), participant] as const),
-  );
-  const claimed = new Set<string>();
-  const entities: QuickSetupParticipant[][] = [];
-
-  for (const group of analysis.keepTogetherGroups) {
-    const members = group.names
-      .map((name) => participantByName.get(normalizeName(name)))
-      .filter((participant): participant is QuickSetupParticipant => Boolean(participant))
-      .filter((participant) => !claimed.has(participant.id));
-    if (members.length > 1) {
-      members.forEach((member) => claimed.add(member.id));
-      entities.push(members);
-    }
-  }
-
-  for (const participant of participants) {
-    if (!claimed.has(participant.id)) {
-      entities.push([participant]);
-    }
-  }
-
-  return entities;
-}
-
-function generateSessions(draft: QuickSetupDraft, analysis: QuickSetupAnalysis, seed: number): QuickSetupResult {
-  const participants = analysis.participants;
-  const totalParticipants = participants.length;
-  const groupCount =
-    draft.groupingMode === 'groupCount'
-      ? Math.max(1, draft.groupingValue)
-      : Math.max(1, Math.ceil(totalParticipants / Math.max(1, draft.groupingValue)));
-  const preferredGroupSize = Math.max(1, Math.ceil(totalParticipants / groupCount));
-  const entities = buildEntities(participants, analysis);
-  const random = mulberry32(seed);
-  const pairCounts = new Map<string, number>();
-  const sessions: QuickSetupSessionResult[] = [];
-  const avoidRepeatPairings = draft.avoidRepeatPairings && draft.sessions > 1;
-
-  const avoidPairs = new Set(
-    analysis.avoidPairings.map((pair) => pairKey(normalizeName(pair.left), normalizeName(pair.right))),
-  );
-  const fixedGroupByPerson = new Map(analysis.fixedAssignments.map((assignment) => [assignment.personId, assignment.groupId] as const));
-
-  const attributeTargets = new Map<string, Map<string, number>>();
-  if (!hasAnyBalanceTargets(draft.balanceTargets) && draft.balanceAttributeKey) {
-    const counts = participants.reduce<Map<string, number>>((acc, participant) => {
-      const value = participant.attributes[draft.balanceAttributeKey!];
-      if (value) {
-        acc.set(value, (acc.get(value) ?? 0) + 1);
-      }
-      return acc;
-    }, new Map());
-    attributeTargets.set(
-      draft.balanceAttributeKey,
-      new Map([...counts.entries()].map(([value, count]) => [value, count / groupCount])),
-    );
-  }
-
-  const manualAttributeTargets = normalizeBalanceTargets(draft.balanceTargets);
-
-  for (let sessionIndex = 0; sessionIndex < Math.max(1, draft.sessions); sessionIndex += 1) {
-    const groups: QuickSetupGroupResult[] = Array.from({ length: groupCount }, (_, index) => ({
-      id: `Group ${index + 1}`,
-      members: [],
-    }));
-
-    for (const entity of shuffled(entities, random)) {
-      let bestGroup: QuickSetupGroupResult | null = null;
-      let bestScore = Number.POSITIVE_INFINITY;
-      const requiredGroupIds = [...new Set(
-        entity
-          .map((member) => fixedGroupByPerson.get(member.id))
-          .filter((groupId): groupId is string => Boolean(groupId)),
-      )];
-      const requiredGroupId = requiredGroupIds[0] ?? null;
-
-      for (const group of groups) {
-        if (requiredGroupId && group.id !== requiredGroupId) {
-          continue;
-        }
-
-        const projectedMembers = [...group.members, ...entity];
-        const projectedSize = projectedMembers.length;
-
-        let invalid = false;
-        for (const member of entity) {
-          for (const existing of group.members) {
-            if (avoidPairs.has(pairKey(normalizeName(member.name), normalizeName(existing.name)))) {
-              invalid = true;
-              break;
-            }
-          }
-          if (invalid) {
-            break;
-          }
-        }
-        if (invalid) {
-          continue;
-        }
-
-        let score = group.members.length * 2;
-        score += Math.max(0, projectedSize - preferredGroupSize) * 8;
-
-        if (avoidRepeatPairings) {
-          for (const member of entity) {
-            for (const existing of group.members) {
-              score += (pairCounts.get(pairKey(member.id, existing.id)) ?? 0) * 20;
-            }
-          }
-        }
-
-        if (Object.keys(manualAttributeTargets).length > 0) {
-          for (const [attributeKey, groupTargets] of Object.entries(manualAttributeTargets)) {
-            const targetCounts = groupTargets[group.id];
-            if (!targetCounts) {
-              continue;
-            }
-
-            const projectedCounts = projectedMembers.reduce<Map<string, number>>((acc, participant) => {
-              const value = participant.attributes[attributeKey];
-              if (value) {
-                acc.set(value, (acc.get(value) ?? 0) + 1);
-              }
-              return acc;
-            }, new Map());
-
-            for (const [value, target] of Object.entries(targetCounts)) {
-              score += Math.abs((projectedCounts.get(value) ?? 0) - target) * 4;
-            }
-          }
-        } else if (draft.balanceAttributeKey && attributeTargets.has(draft.balanceAttributeKey)) {
-          const targetCounts = attributeTargets.get(draft.balanceAttributeKey)!;
-          const projectedCounts = projectedMembers.reduce<Map<string, number>>((acc, participant) => {
-            const value = participant.attributes[draft.balanceAttributeKey!];
-            if (value) {
-              acc.set(value, (acc.get(value) ?? 0) + 1);
-            }
-            return acc;
-          }, new Map());
-
-          for (const [value, target] of targetCounts.entries()) {
-            score += Math.abs((projectedCounts.get(value) ?? 0) - target) * 4;
-          }
-        }
-
-        score += random();
-
-        if (score < bestScore) {
-          bestScore = score;
-          bestGroup = group;
-        }
-      }
-
-      (bestGroup ?? groups[0]).members.push(...entity);
-    }
-
-    if (avoidRepeatPairings) {
-      for (const group of groups) {
-        for (let leftIndex = 0; leftIndex < group.members.length; leftIndex += 1) {
-          for (let rightIndex = leftIndex + 1; rightIndex < group.members.length; rightIndex += 1) {
-            const key = pairKey(group.members[leftIndex].id, group.members[rightIndex].id);
-            pairCounts.set(key, (pairCounts.get(key) ?? 0) + 1);
-          }
-        }
-      }
-    }
-
-    sessions.push({
-      sessionNumber: sessionIndex + 1,
-      groups,
-    });
-  }
-
-  return {
-    seed,
-    generatedAt: new Date().toISOString(),
-    sessions,
   };
 }
 
@@ -579,17 +401,21 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
         setLastSolvedAttributeDefinitions(mapped.attributeDefinitions);
         setResult(quickSetupResultFromSolution(mapped.scenario, solution, seed));
       } catch (error) {
-        console.error('[QuickSetup] Falling back to local grouping after solve failure:', error);
-        setErrorMessage(ui.results.solverFallbackMessage);
+        const solverErrorMessage = namifyPersonIdsInText(
+          error instanceof Error ? error.message : 'Unknown error',
+          mapped.scenario.people,
+        );
+        console.error('[QuickSetup] Solver failed:', error);
+        setErrorMessage(solverErrorMessage);
         setLastSolvedScenario(null);
         setLastSolvedSolution(null);
         setLastSolvedAttributeDefinitions([]);
-        setResult(generateSessions(draft, analysis, seed));
+        setResult(null);
       } finally {
         setIsSolving(false);
       }
     },
-    [analysis, canGenerate, draft, ui.results.solverFallbackMessage],
+    [canGenerate, draft],
   );
 
   const generateGroups = useCallback(() => {
@@ -600,6 +426,15 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     void generateWithSeed(Date.now() + Math.floor(Math.random() * 100000));
   }, [generateWithSeed]);
 
+  const clearDraft = useCallback(() => {
+    setDraft(emptyDraft(pageConfig));
+    setResult(null);
+    setLastSolvedScenario(null);
+    setLastSolvedSolution(null);
+    setLastSolvedAttributeDefinitions([]);
+    setErrorMessage(null);
+  }, [pageConfig, setDraft]);
+
   const resetDraft = useCallback(() => {
     setDraft(defaultDraft(pageConfig));
     setResult(null);
@@ -608,6 +443,11 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     setLastSolvedAttributeDefinitions([]);
     setErrorMessage(null);
   }, [pageConfig, setDraft]);
+
+  const hasAnyInputData = useMemo(
+    () => !draftsMatch(draft, emptyDraft(pageConfig)) || result !== null || errorMessage !== null,
+    [draft, errorMessage, pageConfig, result],
+  );
 
   const loadSampleData = useCallback(() => {
     setDraft((current) => ({
@@ -674,6 +514,8 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
     generateGroups,
     reshuffle,
     resetDraft,
+    clearDraft,
+    hasAnyInputData,
     loadSampleData,
     loadScenarioDraft,
     exportGroupsCsv,

@@ -35,7 +35,7 @@ const TECHNICAL_CSV_DEFAULTS = {
 const CONSTRAINT_CSV_DEFAULTS = {
   ...TECHNICAL_CSV_DEFAULTS,
   keepTogetherInput: 'Alex, Sam',
-  avoidPairingsInput: 'Priya, Jordan',
+  avoidPairingsInput: 'Ella, Jordan',
 };
 
 const SOCIAL_GOLFER_DEFAULTS = {

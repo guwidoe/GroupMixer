@@ -1,5 +1,5 @@
 /* eslint-disable react/no-multi-comp */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -134,12 +134,9 @@ describe('Header', () => {
     );
 
     await user.click(screen.getByRole('button', { name: /random demo/i }));
-    await user.clear(screen.getByRole('textbox', { name: /groups \(g\)/i }));
-    await user.type(screen.getByRole('textbox', { name: /groups \(g\)/i }), '5');
-    await user.clear(screen.getByRole('textbox', { name: /people per group \(p\)/i }));
-    await user.type(screen.getByRole('textbox', { name: /people per group \(p\)/i }), '3');
-    await user.clear(screen.getByRole('textbox', { name: /sessions \(w\)/i }));
-    await user.type(screen.getByRole('textbox', { name: /sessions \(w\)/i }), '4');
+    fireEvent.change(screen.getByRole('slider', { name: /groups \(g\) slider/i }), { target: { value: '5' } });
+    fireEvent.change(screen.getByRole('slider', { name: /people per group \(p\) slider/i }), { target: { value: '3' } });
+    fireEvent.change(screen.getByRole('slider', { name: /sessions \(w\) slider/i }), { target: { value: '4' } });
     await user.click(screen.getByRole('button', { name: /generate scenario/i }));
     await user.click(screen.getByRole('button', { name: /overwrite/i }));
 

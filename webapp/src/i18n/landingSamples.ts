@@ -1,7 +1,7 @@
 import type { SupportedLocale } from '../pages/toolPageTypes';
 
 export const LANDING_SAMPLE_NAMES_BY_LOCALE: Record<SupportedLocale, string[]> = {
-  en: ['Alex', 'Sam', 'Priya', 'Jordan', 'Mina', 'Luis', 'Taylor', 'Casey'],
+  en: ['Alex', 'Sam', 'Ella', 'Jordan', 'Mina', 'Luis', 'Taylor', 'Casey'],
   de: ['Muller', 'Schmidt', 'Weber', 'Wagner', 'Hoffmann', 'Schafer', 'Koch', 'Richter'],
   es: ['Garcia', 'Lopez', 'Martinez', 'Sanchez', 'Gonzalez', 'Perez', 'Rodriguez', 'Fernandez'],
   fr: ['Martin', 'Bernard', 'Thomas', 'Petit', 'Robert', 'Richard', 'Dubois', 'Moreau'],

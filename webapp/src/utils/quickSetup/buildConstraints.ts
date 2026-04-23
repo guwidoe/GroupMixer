@@ -1,6 +1,7 @@
 import type { Constraint, Group, Person } from '../../types';
 import type { QuickSetupDraft } from '../../components/LandingTool/types';
 import { deriveBalancedTargetValues, hasAnyBalanceTargets, normalizeBalanceTargets } from './attributeBalanceTargets';
+import { normalizeFixedAssignmentRows } from './fixedAssignments';
 
 function normalize(value: string) {
   return value.trim().toLowerCase();
@@ -69,7 +70,11 @@ export function buildConstraints(
 
   const availableGroupIds = new Set(groups.map((group) => group.id));
   const resolvedPeopleByName = new Map(people.map((person) => [normalize(person.id), person.id] as const));
-  for (const assignment of draft.fixedAssignments ?? []) {
+  for (const assignment of normalizeFixedAssignmentRows(draft.fixedAssignments)) {
+    if (assignment.personId.length === 0 || assignment.groupId.length === 0) {
+      continue;
+    }
+
     const personId = resolvedPeopleByName.get(normalize(assignment.personId));
     if (!personId || !availableGroupIds.has(assignment.groupId)) {
       continue;

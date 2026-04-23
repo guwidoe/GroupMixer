@@ -29,6 +29,7 @@ export interface QuickSetupDraft {
   fixedAssignments?: QuickSetupFixedAssignment[];
   balanceAttributeKey: string | null;
   balanceTargets?: QuickSetupBalanceTargets;
+  manualBalanceAttributeKeys?: string[];
   advancedOpen: boolean;
   workspaceScenarioId: string | null;
 }
