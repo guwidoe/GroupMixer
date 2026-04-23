@@ -7,7 +7,7 @@
 //! 1. Set the initial score aggregates in `RuntimeState`.
 //! 2. Cross-check incremental aggregates during drift validation.
 //!
-//! The scoring formula matches `solver2`'s semantics exactly so cross-solver
+//! The scoring formula matches the canonical local-search semantics exactly so cross-solver
 //! comparisons are well-defined:
 //!
 //! ```text
@@ -42,7 +42,8 @@ pub struct OracleSnapshot {
 
     // Detailed violation vectors (for diagnostics and drift tracing).
     pub clique_violations: Vec<i32>,
-    pub forbidden_pair_violations: Vec<i32>,
+    pub hard_apart_violations: Vec<i32>,
+    pub soft_apart_violations: Vec<i32>,
     pub should_together_violations: Vec<i32>,
     pub immovable_violations: i32,
     pub pair_meeting_counts: Vec<u32>,
@@ -65,7 +66,8 @@ pub fn recompute_oracle_score(state: &RuntimeState) -> Result<OracleSnapshot, So
     let mut snap = OracleSnapshot {
         baseline_score: cp.baseline_score,
         clique_violations: vec![0; cp.cliques.len()],
-        forbidden_pair_violations: vec![0; cp.forbidden_pairs.len()],
+        hard_apart_violations: vec![0; cp.hard_apart_pairs.len()],
+        soft_apart_violations: vec![0; cp.soft_apart_pairs.len()],
         should_together_violations: vec![0; cp.should_together_pairs.len()],
         pair_meeting_counts: vec![0; cp.pair_meeting_constraints.len()],
         pair_contacts_fresh: vec![0u16; cp.num_pairs],
@@ -216,21 +218,41 @@ fn count_attribute_values(cp: &CompiledProblem, members: &[usize], attr_idx: usi
 // ---------------------------------------------------------------------------
 
 fn compute_constraints(cp: &CompiledProblem, state: &RuntimeState, snap: &mut OracleSnapshot) {
-    compute_forbidden_pairs(cp, state, snap);
+    compute_hard_apart_pairs(cp, state, snap);
+    compute_soft_apart_pairs(cp, state, snap);
     compute_should_together(cp, state, snap);
     compute_cliques(cp, state, snap);
     compute_immovable(cp, state, snap);
     compute_pair_meeting(cp, state, snap);
 
-    snap.constraint_penalty_raw = snap.forbidden_pair_violations.iter().sum::<i32>()
+    snap.constraint_penalty_raw = snap.hard_apart_violations.iter().sum::<i32>()
+        + snap.soft_apart_violations.iter().sum::<i32>()
         + snap.should_together_violations.iter().sum::<i32>()
         + snap.clique_violations.iter().sum::<i32>()
         + snap.immovable_violations
         + pair_meeting_violation_count(cp, snap);
 }
 
-fn compute_forbidden_pairs(cp: &CompiledProblem, state: &RuntimeState, snap: &mut OracleSnapshot) {
-    for (cidx, c) in cp.forbidden_pairs.iter().enumerate() {
+fn compute_hard_apart_pairs(cp: &CompiledProblem, state: &RuntimeState, snap: &mut OracleSnapshot) {
+    for (cidx, c) in cp.hard_apart_pairs.iter().enumerate() {
+        let (left, right) = c.people;
+        for sidx in active_sessions(c.sessions.as_deref(), cp.num_sessions) {
+            if !cp.person_participation[left][sidx] || !cp.person_participation[right][sidx] {
+                continue;
+            }
+            let lps = sidx * cp.num_people + left;
+            let rps = sidx * cp.num_people + right;
+            let lg = state.person_location[lps];
+            let rg = state.person_location[rps];
+            if lg.is_some() && lg == rg {
+                snap.hard_apart_violations[cidx] += 1;
+            }
+        }
+    }
+}
+
+fn compute_soft_apart_pairs(cp: &CompiledProblem, state: &RuntimeState, snap: &mut OracleSnapshot) {
+    for (cidx, c) in cp.soft_apart_pairs.iter().enumerate() {
         let (lp, rp) = c.people;
         for sidx in active_sessions(c.sessions.as_deref(), cp.num_sessions) {
             if !cp.person_participation[lp][sidx] || !cp.person_participation[rp][sidx] {
@@ -241,7 +263,7 @@ fn compute_forbidden_pairs(cp: &CompiledProblem, state: &RuntimeState, snap: &mu
             let lg = state.person_location[lps];
             let rg = state.person_location[rps];
             if lg.is_some() && lg == rg {
-                snap.forbidden_pair_violations[cidx] += 1;
+                snap.soft_apart_violations[cidx] += 1;
                 snap.constraint_penalty_weighted += c.penalty_weight;
             }
         }
@@ -291,7 +313,7 @@ fn compute_cliques(cp: &CompiledProblem, state: &RuntimeState, snap: &mut Oracle
             let separated = participating.len() as i32 - max_in_one;
             snap.clique_violations[cidx] += separated.max(0);
             // Note: clique violations count toward constraint_penalty_raw (integer) but are
-            // not directly added to constraint_penalty_weighted. This matches solver2 semantics:
+            // not directly added to constraint_penalty_weighted. This matches the canonical local-search semantics:
             // cliques are enforced structurally by the search; the integer count serves as a
             // diagnostic and invariant signal rather than a scored penalty surface.
         }

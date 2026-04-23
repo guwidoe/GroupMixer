@@ -3,10 +3,117 @@
  */
 
 import type { Scenario, Person, Group } from '../../types';
-import { resolveScenarioWorkspaceState } from '../../services/scenarioAttributes';
+import { reconcileScenarioAttributeDefinitions, resolveScenarioWorkspaceState } from '../../services/scenarioAttributes';
+import { createScenarioDocument, getSavedScenarioDocument, getScenarioDocumentState } from '../scenarioDocument';
 import { createDefaultSolverSettings } from '../../services/solverUi';
 import type { DemoDataState, DemoDataActions, StoreSlice } from '../types';
 import { scenarioStorage } from '../../services/scenarioStorage';
+
+function applyResolvedDemoScenario(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  set: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get: any,
+  scenario: Scenario,
+  successTitle: string,
+  successMessage: string,
+) {
+  const nextDocument = createScenarioDocument(scenario);
+
+  set((state: { attributeDefinitions: never[] }) => ({
+    ...getScenarioDocumentState(nextDocument, state.attributeDefinitions),
+    solution: null,
+  }));
+  get().clearScenarioDocumentHistory();
+
+  get().addNotification({
+    type: 'success',
+    title: successTitle,
+    message: successMessage,
+  });
+}
+
+function buildScenarioSummaryMessage(prefix: string, scenario: Scenario, attributeDefinitionCount: number): string {
+  return `${prefix} ${scenario.people.length} people, ${scenario.groups.length} groups, and ${attributeDefinitionCount} attributes`;
+}
+
+function loadScenarioIntoNewWorkspace(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  set: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  get: any,
+  scenario: Scenario,
+  successTitle: string,
+  baseMessage: string,
+) {
+  const nextDocument = createScenarioDocument(scenario);
+  const nextScenario = nextDocument.scenario;
+  const attributeDefinitions = nextDocument.attributeDefinitions;
+
+  const currentScenario = get().scenario;
+  const currentScenarioId = get().currentScenarioId;
+  if (
+    currentScenario &&
+    (currentScenario.people.length > 0 || currentScenario.groups.length > 0)
+  ) {
+    try {
+      if (currentScenarioId) {
+        get().updateCurrentScenario(currentScenarioId, currentScenario);
+      } else {
+        const savedScenario = scenarioStorage.createScenario(
+          'Untitled Scenario',
+          currentScenario,
+          get().attributeDefinitions,
+        );
+        set((state: { savedScenarios: Record<string, unknown> }) => ({
+          savedScenarios: {
+            ...state.savedScenarios,
+            [savedScenario.id]: savedScenario,
+          },
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to save current scenario:', error);
+    }
+  }
+
+  const newSavedScenario = scenarioStorage.createScenario(
+    'Unnamed Scenario',
+    nextScenario,
+    attributeDefinitions,
+  );
+
+  const updatedSavedScenarios = {
+    ...get().savedScenarios,
+    [newSavedScenario.id]: newSavedScenario,
+  };
+
+  set((state: { attributeDefinitions: never[] }) => ({
+    ...getScenarioDocumentState(getSavedScenarioDocument(newSavedScenario), state.attributeDefinitions),
+    currentScenarioId: newSavedScenario.id,
+    savedScenarios: updatedSavedScenarios,
+    solution: null,
+  }));
+  get().clearScenarioDocumentHistory();
+
+  let message = `${baseMessage} ${nextScenario.people.length} people, ${nextScenario.groups.length} groups, and ${attributeDefinitions.length} attributes`;
+  if (
+    currentScenario &&
+    (currentScenario.people.length > 0 || currentScenario.groups.length > 0)
+  ) {
+    if (currentScenarioId) {
+      message += `. Current scenario "${currentScenarioId}" has been saved`;
+    } else {
+      message += '. Current scenario saved as "Untitled Scenario"';
+    }
+  }
+
+  get().addNotification({
+    type: 'success',
+    title: successTitle,
+    message,
+  });
+}
 
 export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = (
   set,
@@ -176,11 +283,15 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
         },
       };
 
-      set({
-        scenario: demoScenario,
-        attributeDefinitions: reconcileScenarioAttributeDefinitions(demoScenario),
+      const demoDocument = createScenarioDocument(
+        demoScenario,
+        reconcileScenarioAttributeDefinitions(demoScenario),
+      );
+      set((state) => ({
+        ...getScenarioDocumentState(demoDocument, state.attributeDefinitions),
         solution: null,
-      });
+      }));
+      get().clearScenarioDocumentHistory();
 
       get().addNotification({
         type: 'success',
@@ -200,22 +311,17 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
   loadDemoCase: async (demoCaseId) => {
     try {
       const { loadDemoCase } = await import('../../services/demoDataService');
-
       set({ demoDropdownOpen: false });
+      const demoScenario = await loadDemoCase(demoCaseId);
+      const resolvedWorkspace = resolveScenarioWorkspaceState(demoScenario);
 
-      const resolvedWorkspace = resolveScenarioWorkspaceState(await loadDemoCase(demoCaseId));
-
-      set({
-        scenario: resolvedWorkspace.scenario,
-        attributeDefinitions: resolvedWorkspace.attributeDefinitions,
-        solution: null,
-      });
-
-      get().addNotification({
-        type: 'success',
-        title: 'Demo Case Loaded',
-        message: `Loaded demo case with ${resolvedWorkspace.scenario.people.length} people, ${resolvedWorkspace.scenario.groups.length} groups, and ${resolvedWorkspace.attributeDefinitions.length} attributes`,
-      });
+      applyResolvedDemoScenario(
+        set,
+        get,
+        demoScenario,
+        'Demo Case Loaded',
+        buildScenarioSummaryMessage('Loaded demo case with', resolvedWorkspace.scenario, resolvedWorkspace.attributeDefinitions.length),
+      );
     } catch (error) {
       console.error('Failed to load demo case:', error);
       set({ demoDropdownOpen: false });
@@ -231,20 +337,16 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
   loadDemoCaseOverwrite: async (demoCaseId) => {
     try {
       const { loadDemoCase } = await import('../../services/demoDataService');
+      const demoScenario = await loadDemoCase(demoCaseId);
+      const resolvedWorkspace = resolveScenarioWorkspaceState(demoScenario);
 
-      const resolvedWorkspace = resolveScenarioWorkspaceState(await loadDemoCase(demoCaseId));
-
-      set({
-        scenario: resolvedWorkspace.scenario,
-        attributeDefinitions: resolvedWorkspace.attributeDefinitions,
-        solution: null,
-      });
-
-      get().addNotification({
-        type: 'success',
-        title: 'Demo Case Loaded',
-        message: `Overwrote the current scenario with ${resolvedWorkspace.scenario.people.length} people, ${resolvedWorkspace.scenario.groups.length} groups, and ${resolvedWorkspace.attributeDefinitions.length} attributes`,
-      });
+      applyResolvedDemoScenario(
+        set,
+        get,
+        demoScenario,
+        'Demo Case Loaded',
+        buildScenarioSummaryMessage('Overwrote the current scenario with', resolvedWorkspace.scenario, resolvedWorkspace.attributeDefinitions.length),
+      );
     } catch (error) {
       console.error('Failed to load demo case:', error);
       get().addNotification({
@@ -258,79 +360,69 @@ export const createDemoDataSlice: StoreSlice<DemoDataState & DemoDataActions> = 
   loadDemoCaseNewScenario: async (demoCaseId) => {
     try {
       const { loadDemoCase } = await import('../../services/demoDataService');
-
-      const resolvedWorkspace = resolveScenarioWorkspaceState(await loadDemoCase(demoCaseId));
-      const demoScenario = resolvedWorkspace.scenario;
-      const attributeDefinitions = resolvedWorkspace.attributeDefinitions;
-
-      const currentScenario = get().scenario;
-      const currentScenarioId = get().currentScenarioId;
-      if (
-        currentScenario &&
-        (currentScenario.people.length > 0 || currentScenario.groups.length > 0)
-      ) {
-        try {
-          if (currentScenarioId) {
-            get().updateCurrentScenario(currentScenarioId, currentScenario);
-          } else {
-            const savedScenario = scenarioStorage.createScenario(
-              'Untitled Scenario',
-              currentScenario,
-              get().attributeDefinitions,
-            );
-            set((state) => ({
-              savedScenarios: {
-                ...state.savedScenarios,
-                [savedScenario.id]: savedScenario,
-              },
-            }));
-          }
-        } catch (error) {
-          console.error('Failed to save current scenario:', error);
-        }
-      }
-
-      const newSavedScenario = scenarioStorage.createScenario(
-        'Unnamed Scenario',
-        demoScenario,
-        attributeDefinitions,
-      );
-
-      const updatedSavedScenarios = {
-        ...get().savedScenarios,
-        [newSavedScenario.id]: newSavedScenario,
-      };
-
-      set({
-        scenario: demoScenario,
-        currentScenarioId: newSavedScenario.id,
-        attributeDefinitions,
-        savedScenarios: updatedSavedScenarios,
-        solution: null,
-      });
-
-      let message = `Loaded demo case in a new scenario with ${demoScenario.people.length} people, ${demoScenario.groups.length} groups, and ${attributeDefinitions.length} attributes`;
-      if (
-        currentScenario &&
-        (currentScenario.people.length > 0 || currentScenario.groups.length > 0)
-      ) {
-        if (currentScenarioId) {
-          message += `. Current scenario "${currentScenarioId}" has been saved`;
-        } else {
-          message += '. Current scenario saved as "Untitled Scenario"';
-        }
-      }
-
-      get().addNotification({
-        type: 'success',
-        title: 'Demo Case Loaded',
-        message,
-      });
+      const demoScenario = await loadDemoCase(demoCaseId);
+      loadScenarioIntoNewWorkspace(set, get, demoScenario, 'Demo Case Loaded', 'Loaded demo case in a new scenario with');
     } catch (error) {
       console.error('Failed to load demo case:', error);
       get().addNotification({
         type: 'error',
         title: 'Demo Case Load Failed',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    }
+  },
+
+  loadGeneratedDemoScenario: async (scenario, scenarioName = 'Random Demo') => {
+    try {
+      const resolvedWorkspace = resolveScenarioWorkspaceState(scenario);
+      set({ demoDropdownOpen: false });
+
+      applyResolvedDemoScenario(
+        set,
+        get,
+        scenario,
+        'Random Demo Loaded',
+        buildScenarioSummaryMessage(`Loaded ${scenarioName} with`, resolvedWorkspace.scenario, resolvedWorkspace.attributeDefinitions.length),
+      );
+    } catch (error) {
+      console.error('Failed to load generated demo scenario:', error);
+      get().addNotification({
+        type: 'error',
+        title: 'Random Demo Load Failed',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    }
+  },
+
+  loadGeneratedDemoScenarioOverwrite: async (scenario, scenarioName = 'Random Demo') => {
+    try {
+      const resolvedWorkspace = resolveScenarioWorkspaceState(scenario);
+
+      applyResolvedDemoScenario(
+        set,
+        get,
+        scenario,
+        'Random Demo Loaded',
+        buildScenarioSummaryMessage(`Overwrote the current scenario with ${scenarioName}:`, resolvedWorkspace.scenario, resolvedWorkspace.attributeDefinitions.length),
+      );
+    } catch (error) {
+      console.error('Failed to overwrite with generated demo scenario:', error);
+      get().addNotification({
+        type: 'error',
+        title: 'Random Demo Load Failed',
+        message: error instanceof Error ? error.message : 'Unknown error occurred',
+      });
+    }
+  },
+
+  loadGeneratedDemoScenarioNewScenario: async (scenario, scenarioName = 'Random Demo') => {
+    try {
+      loadScenarioIntoNewWorkspace(set, get, scenario, 'Random Demo Loaded', `Loaded ${scenarioName} in a new scenario with`);
+    } catch (error) {
+      console.error('Failed to load generated demo scenario in a new scenario:', error);
+      get().addNotification({
+        type: 'error',
+        title: 'Random Demo Load Failed',
         message: error instanceof Error ? error.message : 'Unknown error occurred',
       });
     }

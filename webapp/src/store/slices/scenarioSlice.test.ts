@@ -4,6 +4,7 @@ import type { AppStore } from "../types";
 import { createSampleScenario, createSavedScenario } from '../../test/fixtures';
 import { DEFAULT_ATTRIBUTE_DEFINITIONS } from './attributeSlice';
 import { scenarioStorage } from "../../services/scenarioStorage";
+import { createScenarioDocument } from '../scenarioDocument';
 
 vi.mock("../../services/scenarioStorage", () => ({
   scenarioStorage: {
@@ -15,6 +16,7 @@ vi.mock("../../services/scenarioStorage", () => ({
 
 function createHarness(overrides: Partial<AppStore> = {}) {
   let state = {
+    scenarioDocument: null,
     scenario: null,
     currentScenarioId: null,
     savedScenarios: {},
@@ -44,8 +46,11 @@ function createHarness(overrides: Partial<AppStore> = {}) {
   };
   const get = () => state;
 
+  const slice = createScenarioSlice(set, get);
+  state = { ...state, ...slice, ...overrides } as AppStore;
+
   return {
-    slice: createScenarioSlice(set, get),
+    slice,
     getState: () => state,
   };
 }
@@ -135,7 +140,7 @@ describe("createScenarioSlice", () => {
 
     const scenario = harness.slice.resolveScenario();
 
-    expect(scenario).toEqual(saved.scenario);
+    expect(scenario).toEqual(createScenarioDocument(saved.scenario, saved.attributeDefinitions).scenario);
     expect(scenarioStorage.setCurrentScenarioId).toHaveBeenCalledWith(saved.id);
     expect(harness.getState().currentScenarioId).toBe(saved.id);
   });

@@ -76,6 +76,7 @@ function renderAttributeContent(
         workspace={{
           mode: gridWorkspaceMode,
           onModeChange: setGridWorkspaceMode,
+          browseModeEnabled: false,
           draft: {
             onApply: onApplyGridAttributes,
             createRow: createGridAttributeRow,
@@ -175,7 +176,7 @@ export function AttributeDefinitionsSection({
 }: AttributeDefinitionsSectionProps) {
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('list');
-  const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('browse');
+  const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('edit');
   const searchValue = search.trim().toLowerCase();
 
   const filteredDefinitions = React.useMemo(() => {
@@ -214,7 +215,7 @@ export function AttributeDefinitionsSection({
       onViewModeChange={(nextMode) => {
         setViewMode(nextMode);
         if (nextMode !== 'list') {
-          setGridWorkspaceMode('browse');
+          setGridWorkspaceMode('edit');
         }
       }}
       toolbarLeading={(activeViewMode) =>

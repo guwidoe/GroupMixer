@@ -3,15 +3,16 @@ import React from 'react';
 interface InlineCsvEditorProps {
   ariaLabel: string;
   csvErrors: string[];
+  dataTestId?: string;
   helperText?: React.ReactNode;
   onChange: (value: string) => void;
   placeholder?: string;
   value: string;
 }
 
-export function InlineCsvEditor({ ariaLabel, csvErrors, helperText, onChange, placeholder, value }: InlineCsvEditorProps) {
+export function InlineCsvEditor({ ariaLabel, csvErrors, dataTestId, helperText, onChange, placeholder, value }: InlineCsvEditorProps) {
   return (
-    <div className="border-t px-4 py-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+    <div data-testid={dataTestId} className="border-t px-4 py-4" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
       {helperText ? <div className="mb-3">{helperText}</div> : null}
       <textarea
         value={value}

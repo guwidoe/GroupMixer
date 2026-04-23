@@ -35,6 +35,7 @@ describe('ResultsScheduleList', () => {
     const { container } = render(<ResultsScheduleList participants={participants} sessionCount={2} />);
 
     expect(screen.getAllByText('Alice').length).toBeGreaterThan(1);
+    expect(screen.queryByText('p1')).not.toBeInTheDocument();
     expect(screen.getByText('1/2 assigned')).toBeInTheDocument();
     expect(screen.getAllByText('Not assigned').length).toBeGreaterThan(0);
     expect(screen.getByRole('table')).toBeInTheDocument();

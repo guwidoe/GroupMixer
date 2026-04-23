@@ -1,6 +1,7 @@
 import { scenarioStorage } from '../../../services/scenarioStorage';
 import type { Scenario, ScenarioResult, Solution, SolverSettings } from '../../../types';
 import type { ScenarioManagerActions, ScenarioManagerState, StoreSlice } from '../../types';
+import { getSavedScenarioDocument, getScenarioDocumentState } from '../../scenarioDocument';
 import { initialSolverState } from '../solverSlice';
 
 type SliceTools = Parameters<StoreSlice<ScenarioManagerState & ScenarioManagerActions>>;
@@ -76,22 +77,24 @@ export function createResultActions(set: SetState, get: GetState): Pick<Scenario
             return {};
           }
 
+          const nextSavedScenario = persistedScenario
+            ? {
+                ...persistedScenario,
+                scenario: scenario || persistedScenario.scenario,
+              }
+            : {
+                ...currentScenario,
+                scenario: scenario || currentScenario.scenario,
+                results: [...(currentScenario.results || []), result],
+              };
+
           return {
-            scenario: scenario || currentScenario.scenario,
+            ...getScenarioDocumentState(getSavedScenarioDocument(nextSavedScenario), state.attributeDefinitions),
             solution,
             currentResultId: result.id,
             savedScenarios: {
               ...state.savedScenarios,
-              [currentScenarioId]: persistedScenario
-                ? {
-                    ...persistedScenario,
-                    scenario: scenario || persistedScenario.scenario,
-                  }
-                : {
-                    ...currentScenario,
-                    scenario: scenario || currentScenario.scenario,
-                    results: [...(currentScenario.results || []), result],
-                },
+              [currentScenarioId]: nextSavedScenario,
             },
             solverState: solverStateFromResult(result),
           };
@@ -183,7 +186,7 @@ export function createResultActions(set: SetState, get: GetState): Pick<Scenario
       }
 
       set((state) => ({
-        scenario: savedScenario.scenario,
+        ...getScenarioDocumentState(getSavedScenarioDocument(savedScenario), state.attributeDefinitions),
         solution: result.solution,
         currentResultId: result.id,
         solverState: solverStateFromResult(result),

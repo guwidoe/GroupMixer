@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResultsView } from './ResultsView';
 import { useAppStore } from '../store';
@@ -71,7 +72,11 @@ describe('ResultsView export quick actions', () => {
       value: printMock,
     });
 
-    render(<ResultsView />);
+    render(
+      <MemoryRouter>
+        <ResultsView />
+      </MemoryRouter>,
+    );
 
     await user.click(screen.getByRole('button', { name: /share & export/i }));
     await user.click(screen.getByRole('button', { name: /copy schedule table/i }));
@@ -100,7 +105,11 @@ describe('ResultsView export quick actions', () => {
       value: undefined,
     });
 
-    render(<ResultsView />);
+    render(
+      <MemoryRouter>
+        <ResultsView />
+      </MemoryRouter>,
+    );
 
     await user.click(screen.getByRole('button', { name: /share & export/i }));
     await user.click(screen.getByRole('button', { name: /copy schedule table/i }));

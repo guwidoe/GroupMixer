@@ -1,6 +1,7 @@
 /* eslint-disable react/no-multi-comp */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResultsView } from './ResultsView';
 import { useAppStore } from '../store';
@@ -56,14 +57,23 @@ describe('ResultsView', () => {
   });
 
   it('shows the empty results state when no solution is selected', () => {
+    const savedScenario = createSavedScenario({ name: 'Workshop' });
+
     useAppStore.setState({
-      scenario: createSampleScenario(),
+      scenario: savedScenario.scenario,
       solution: null,
+      currentScenarioId: savedScenario.id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
     });
 
-    render(<ResultsView />);
+    render(
+      <MemoryRouter>
+        <ResultsView />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('heading', { name: /no results yet/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /saved results/i })).toBeInTheDocument();
   });
 
   it('shows the missing-scenario empty state when a solution exists without a recoverable scenario', () => {
@@ -74,7 +84,11 @@ describe('ResultsView', () => {
       savedScenarios: {},
     });
 
-    render(<ResultsView />);
+    render(
+      <MemoryRouter>
+        <ResultsView />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('heading', { name: /no results available/i })).toBeInTheDocument();
   });
@@ -110,7 +124,11 @@ describe('ResultsView', () => {
       restoreResultAsNewScenario: restoreResultAsNewScenario as never,
     });
 
-    render(<ResultsView />);
+    render(
+      <MemoryRouter>
+        <ResultsView />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText('header:Snapshot Result')).toBeInTheDocument();
     expect(screen.getByText('summary:2')).toBeInTheDocument();

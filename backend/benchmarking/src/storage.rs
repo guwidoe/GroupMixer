@@ -328,6 +328,7 @@ mod tests {
                     benchmark_machine_id: Some("benchbox".to_string()),
                     ..Default::default()
                 },
+                case_parallelism: None,
             },
             totals: RunTotals::default(),
             class_rollups: vec![],

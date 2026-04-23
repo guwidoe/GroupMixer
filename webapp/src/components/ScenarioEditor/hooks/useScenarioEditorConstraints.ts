@@ -47,6 +47,7 @@ export function useScenarioEditorConstraints({
   const [showShouldNotBeTogetherModal, setShowShouldNotBeTogetherModal] = useState(false);
   const [showShouldStayTogetherModal, setShowShouldStayTogetherModal] = useState(false);
   const [showMustStayTogetherModal, setShowMustStayTogetherModal] = useState(false);
+  const [showMustStayApartModal, setShowMustStayApartModal] = useState(false);
   const [showPairMeetingCountModal, setShowPairMeetingCountModal] = useState(false);
   const [editingConstraintIndex, setEditingConstraintIndex] = useState<number | null>(null);
 
@@ -127,6 +128,7 @@ export function useScenarioEditorConstraints({
         }
 
         case 'MustStayTogether':
+        case 'MustStayApart':
         case 'ShouldNotBeTogether':
           if (!constraintForm.people?.length || constraintForm.people.length < 2) {
             throw new Error('Please select at least 2 people');
@@ -141,6 +143,15 @@ export function useScenarioEditorConstraints({
                     sessionsCount,
                   ),
                 }
+              : constraintForm.type === 'MustStayApart'
+                ? {
+                    type: 'MustStayApart',
+                    people: constraintForm.people,
+                    sessions: sessionScopeDraftToOptionalSessions(
+                      constraintForm.sessionScope ?? createAllSessionScopeDraft(),
+                      sessionsCount,
+                    ),
+                  }
               : {
                   type: 'ShouldNotBeTogether',
                   people: constraintForm.people,
@@ -223,6 +234,14 @@ export function useScenarioEditorConstraints({
           penalty_weight: undefined,
         });
         break;
+      case 'MustStayApart':
+        setConstraintForm({
+          type: 'MustStayApart',
+          people: constraint.people,
+          sessionScope: optionalSessionsToDraft(constraint.sessions, sessionsCount),
+          penalty_weight: undefined,
+        });
+        break;
       case 'ShouldNotBeTogether':
         setConstraintForm({
           type: 'ShouldNotBeTogether',
@@ -291,6 +310,7 @@ export function useScenarioEditorConstraints({
         }
 
         case 'MustStayTogether':
+        case 'MustStayApart':
         case 'ShouldNotBeTogether':
           if (!constraintForm.people?.length || constraintForm.people.length < 2) {
             throw new Error('Please select at least 2 people');
@@ -305,6 +325,15 @@ export function useScenarioEditorConstraints({
                     sessionsCount,
                   ),
                 }
+              : constraintForm.type === 'MustStayApart'
+                ? {
+                    type: 'MustStayApart',
+                    people: constraintForm.people,
+                    sessions: sessionScopeDraftToOptionalSessions(
+                      constraintForm.sessionScope ?? createAllSessionScopeDraft(),
+                      sessionsCount,
+                    ),
+                  }
               : {
                   type: 'ShouldNotBeTogether',
                   people: constraintForm.people,
@@ -494,6 +523,8 @@ export function useScenarioEditorConstraints({
     setShowShouldStayTogetherModal,
     showMustStayTogetherModal,
     setShowMustStayTogetherModal,
+    showMustStayApartModal,
+    setShowMustStayApartModal,
     showPairMeetingCountModal,
     setShowPairMeetingCountModal,
     editingConstraintIndex,

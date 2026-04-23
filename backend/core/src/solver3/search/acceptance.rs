@@ -3,7 +3,7 @@ use rand_chacha::ChaCha12Rng;
 
 pub(crate) const DEFAULT_INITIAL_TEMPERATURE: f64 = 2.0;
 pub(crate) const DEFAULT_FINAL_TEMPERATURE: f64 = 0.05;
-pub(crate) const DEFAULT_RECORD_TO_RECORD_INITIAL_THRESHOLD: f64 = 2.0;
+pub(crate) const DEFAULT_RECORD_TO_RECORD_INITIAL_THRESHOLD: f64 = 2.25;
 
 /// Inputs for the SA acceptance decision.
 ///
@@ -208,7 +208,10 @@ mod tests {
 
     #[test]
     fn record_to_record_shrinks_threshold_to_zero() {
-        assert_eq!(record_to_record_threshold_for_progress(0.0), 2.0);
+        assert_eq!(
+            record_to_record_threshold_for_progress(0.0),
+            super::DEFAULT_RECORD_TO_RECORD_INITIAL_THRESHOLD
+        );
         assert_eq!(record_to_record_threshold_for_progress(1.0), 0.0);
     }
 

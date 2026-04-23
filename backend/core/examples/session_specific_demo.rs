@@ -114,7 +114,10 @@ fn main() {
         Ok(state) => {
             println!("✅ Constraint preprocessing successful!");
             println!("   - {} cliques found", state.cliques.len());
-            println!("   - {} forbidden pairs found", state.forbidden_pairs.len());
+            println!(
+                "   - {} soft-apart pairs found",
+                state.soft_apart_pairs.len()
+            );
 
             // Show session information
             for (i, clique) in state.cliques.iter().enumerate() {
@@ -132,17 +135,17 @@ fn main() {
                 }
             }
 
-            for (i, &(p1, p2)) in state.forbidden_pairs.iter().enumerate() {
+            for (i, &(p1, p2)) in state.soft_apart_pairs.iter().enumerate() {
                 let p1_name = &state.person_idx_to_id[p1];
                 let p2_name = &state.person_idx_to_id[p2];
-                if let Some(ref sessions) = state.forbidden_pair_sessions[i] {
+                if let Some(ref sessions) = state.soft_apart_pair_sessions[i] {
                     println!(
-                        "   - Forbidden pair ({}, {}) applies to sessions: {:?}",
+                        "   - Soft-apart pair ({}, {}) applies to sessions: {:?}",
                         p1_name, p2_name, sessions
                     );
                 } else {
                     println!(
-                        "   - Forbidden pair ({}, {}) applies to all sessions",
+                        "   - Soft-apart pair ({}, {}) applies to all sessions",
                         p1_name, p2_name
                     );
                 }

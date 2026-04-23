@@ -181,6 +181,7 @@ export function SetupItemCard({
   selected = false,
   onOpen,
   openLabel,
+  allowInteractiveChildren = false,
   children,
 }: {
   badges?: React.ReactNode;
@@ -190,6 +191,7 @@ export function SetupItemCard({
   selected?: boolean;
   onOpen?: () => void;
   openLabel?: string;
+  allowInteractiveChildren?: boolean;
   children: React.ReactNode;
 }) {
   const body = (
@@ -223,7 +225,23 @@ export function SetupItemCard({
       <div className="flex h-full items-start gap-3">
         <div className="min-w-0 flex-1 space-y-2.5">
           {badges ? <div className="flex flex-wrap items-center gap-2">{badges}</div> : null}
-          {onOpen ? (
+          {onOpen && allowInteractiveChildren ? (
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={onOpen}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onOpen();
+                }
+              }}
+              aria-label={openLabel}
+              className="block w-full rounded-xl p-1 text-left transition-colors hover:bg-[color:var(--bg-secondary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)]"
+            >
+              {body}
+            </div>
+          ) : onOpen ? (
             <button
               type="button"
               onClick={onOpen}

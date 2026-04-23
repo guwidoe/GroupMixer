@@ -52,6 +52,11 @@ pub enum SwapFeasibility {
         person_idx: usize,
         clique_idx: usize,
     },
+    HardApartConflict {
+        person_idx: usize,
+        other_person_idx: usize,
+        target_group_idx: usize,
+    },
 }
 
 impl fmt::Display for SwapFeasibility {
@@ -90,6 +95,14 @@ impl fmt::Display for SwapFeasibility {
                     "person {person_idx} is part of active clique {clique_idx} in this session"
                 )
             }
+            Self::HardApartConflict {
+                person_idx,
+                other_person_idx,
+                target_group_idx,
+            } => write!(
+                f,
+                "person {person_idx} would violate MustStayApart with person {other_person_idx} in target group {target_group_idx}"
+            ),
         }
     }
 }
@@ -179,7 +192,7 @@ pub fn analyze_swap(state: &RuntimeState, swap: &SwapMove) -> Result<SwapAnalysi
             clique_idx,
         }
     } else {
-        SwapFeasibility::Feasible
+        swap_hard_apart_feasibility(state, swap, right_group_idx)
     };
 
     Ok(SwapAnalysis {
@@ -190,11 +203,158 @@ pub fn analyze_swap(state: &RuntimeState, swap: &SwapMove) -> Result<SwapAnalysi
     })
 }
 
+#[inline]
+fn analyze_swap_trusted(
+    state: &RuntimeState,
+    swap: &SwapMove,
+) -> Result<SwapAnalysis, SolverError> {
+    let cp = &state.compiled;
+    if swap.session_idx >= cp.num_sessions {
+        return Err(SolverError::ValidationError(format!(
+            "swap references invalid session {} (max: {})",
+            swap.session_idx,
+            cp.num_sessions.saturating_sub(1)
+        )));
+    }
+    if swap.left_person_idx >= cp.num_people || swap.right_person_idx >= cp.num_people {
+        return Err(SolverError::ValidationError(format!(
+            "swap references invalid person indices ({}, {}) (max: {})",
+            swap.left_person_idx,
+            swap.right_person_idx,
+            cp.num_people.saturating_sub(1)
+        )));
+    }
+
+    let left_group_idx =
+        state.person_location[state.people_slot(swap.session_idx, swap.left_person_idx)];
+    let right_group_idx =
+        state.person_location[state.people_slot(swap.session_idx, swap.right_person_idx)];
+
+    let feasibility = if swap.left_person_idx == swap.right_person_idx {
+        SwapFeasibility::SamePersonNoop
+    } else if matches!((left_group_idx, right_group_idx), (Some(left), Some(right)) if left == right)
+    {
+        SwapFeasibility::SameGroupNoop
+    } else {
+        swap_hard_apart_feasibility(state, swap, right_group_idx)
+    };
+
+    Ok(SwapAnalysis {
+        swap: *swap,
+        feasibility,
+        left_group_idx,
+        right_group_idx,
+    })
+}
+
+#[inline]
+fn swap_hard_apart_feasibility(
+    state: &RuntimeState,
+    swap: &SwapMove,
+    right_group_idx: Option<usize>,
+) -> SwapFeasibility {
+    let cp = &state.compiled;
+    if cp.hard_apart_pairs.is_empty() {
+        return SwapFeasibility::Feasible;
+    }
+
+    if let Some((other_person_idx, target_group_idx)) = find_swap_hard_apart_conflict(state, swap) {
+        let person_idx = if right_group_idx.is_some_and(|group_idx| group_idx == target_group_idx) {
+            swap.left_person_idx
+        } else {
+            swap.right_person_idx
+        };
+        SwapFeasibility::HardApartConflict {
+            person_idx,
+            other_person_idx,
+            target_group_idx,
+        }
+    } else {
+        SwapFeasibility::Feasible
+    }
+}
+
+fn find_swap_hard_apart_conflict(state: &RuntimeState, swap: &SwapMove) -> Option<(usize, usize)> {
+    let cp = &state.compiled;
+    if cp.hard_apart_pairs_by_person[swap.left_person_idx].is_empty()
+        && cp.hard_apart_pairs_by_person[swap.right_person_idx].is_empty()
+    {
+        return None;
+    }
+
+    let left_group_idx =
+        state.person_location[state.people_slot(swap.session_idx, swap.left_person_idx)]?;
+    let right_group_idx =
+        state.person_location[state.people_slot(swap.session_idx, swap.right_person_idx)]?;
+
+    find_hard_apart_conflict_in_group(
+        state,
+        swap.session_idx,
+        swap.left_person_idx,
+        right_group_idx,
+        &[swap.right_person_idx],
+    )
+    .map(|other_person_idx| (other_person_idx, right_group_idx))
+    .or_else(|| {
+        find_hard_apart_conflict_in_group(
+            state,
+            swap.session_idx,
+            swap.right_person_idx,
+            left_group_idx,
+            &[swap.left_person_idx],
+        )
+        .map(|other_person_idx| (other_person_idx, left_group_idx))
+    })
+}
+
+fn find_hard_apart_conflict_in_group(
+    state: &RuntimeState,
+    session_idx: usize,
+    person_idx: usize,
+    group_idx: usize,
+    excluded_people: &[usize],
+) -> Option<usize> {
+    let cp = &state.compiled;
+    if cp.hard_apart_pairs_by_person[person_idx].is_empty() {
+        return None;
+    }
+    let slot = state.group_slot(session_idx, group_idx);
+    state.group_members[slot].iter().copied().find(|member| {
+        !excluded_people.contains(member) && cp.hard_apart_active(session_idx, person_idx, *member)
+    })
+}
+
 pub fn preview_swap_runtime_lightweight(
     state: &RuntimeState,
     swap: &SwapMove,
 ) -> Result<SwapRuntimePreview, SolverError> {
+    preview_swap_runtime_checked(state, swap)
+}
+
+pub fn preview_swap_runtime_checked(
+    state: &RuntimeState,
+    swap: &SwapMove,
+) -> Result<SwapRuntimePreview, SolverError> {
     let analysis = analyze_swap(state, swap)?;
+    build_swap_runtime_preview(state, swap, analysis)
+}
+
+#[inline]
+pub(crate) fn preview_swap_runtime_trusted(
+    state: &RuntimeState,
+    swap: &SwapMove,
+) -> Result<SwapRuntimePreview, SolverError> {
+    let analysis = analyze_swap_trusted(state, swap)?;
+    maybe_cross_check_trusted_swap_analysis(state, swap, &analysis)?;
+    build_swap_runtime_preview(state, swap, analysis)
+}
+
+#[inline]
+fn build_swap_runtime_preview(
+    state: &RuntimeState,
+    swap: &SwapMove,
+    analysis: SwapAnalysis,
+) -> Result<SwapRuntimePreview, SolverError> {
     let patch = match analysis.feasibility {
         SwapFeasibility::Feasible => build_swap_runtime_patch(state, &analysis)?,
         SwapFeasibility::SamePersonNoop | SwapFeasibility::SameGroupNoop => RuntimePatch::default(),
@@ -214,6 +374,30 @@ pub fn preview_swap_runtime_lightweight(
     maybe_cross_check_swap_preview_delta(state, swap, &preview)?;
 
     Ok(preview)
+}
+
+fn maybe_cross_check_trusted_swap_analysis(
+    state: &RuntimeState,
+    swap: &SwapMove,
+    trusted_analysis: &SwapAnalysis,
+) -> Result<(), SolverError> {
+    #[cfg(feature = "solver3-oracle-checks")]
+    {
+        let checked_analysis = analyze_swap(state, swap)?;
+        if checked_analysis != *trusted_analysis {
+            return Err(SolverError::ValidationError(format!(
+                "solver3 trusted swap preview assumptions violated: trusted analysis {:?} diverged from checked {:?}",
+                trusted_analysis, checked_analysis
+            )));
+        }
+    }
+
+    #[cfg(not(feature = "solver3-oracle-checks"))]
+    {
+        let _ = (state, swap, trusted_analysis);
+    }
+
+    Ok(())
 }
 
 pub fn preview_swap_oracle_recompute(
@@ -382,7 +566,7 @@ fn build_swap_runtime_patch(
     }
 
     patch.score_delta.constraint_penalty_weighted_delta +=
-        forbidden_pair_penalty_delta_for_swap(state, analysis);
+        soft_apart_pair_penalty_delta_for_swap(state, analysis);
     patch.score_delta.constraint_penalty_weighted_delta +=
         should_together_penalty_delta_for_swap(state, analysis);
     patch.score_delta.constraint_penalty_weighted_delta +=
@@ -398,17 +582,17 @@ fn build_swap_runtime_patch(
     Ok(patch)
 }
 
-fn forbidden_pair_penalty_delta_for_swap(state: &RuntimeState, analysis: &SwapAnalysis) -> f64 {
+fn soft_apart_pair_penalty_delta_for_swap(state: &RuntimeState, analysis: &SwapAnalysis) -> f64 {
     let cp = &state.compiled;
     let session_idx = analysis.swap.session_idx;
     let indices = merged_indices(
-        &cp.forbidden_pairs_by_person[analysis.swap.left_person_idx],
-        &cp.forbidden_pairs_by_person[analysis.swap.right_person_idx],
+        &cp.soft_apart_pairs_by_person[analysis.swap.left_person_idx],
+        &cp.soft_apart_pairs_by_person[analysis.swap.right_person_idx],
     );
 
     let mut delta = 0.0;
     for idx in indices {
-        let constraint = &cp.forbidden_pairs[idx];
+        let constraint = &cp.soft_apart_pairs[idx];
         if !is_active_in_session(constraint.sessions.as_deref(), session_idx) {
             continue;
         }

@@ -97,6 +97,13 @@ impl State {
             return false;
         }
 
+        if self
+            .first_hard_apart_conflict_in_group(day, person_idx, &self.schedule[day][to_group])
+            .is_some()
+        {
+            return false;
+        }
+
         true
     }
 
@@ -214,18 +221,18 @@ impl State {
         }
 
         // === CONSTRAINT PENALTY DELTA ===
-        // Check forbidden pairs
-        for (pair_idx, &(person1, person2)) in self.forbidden_pairs.iter().enumerate() {
+        // Check soft-apart pairs
+        for (pair_idx, &(person1, person2)) in self.soft_apart_pairs.iter().enumerate() {
             // Check if this constraint applies to this session
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+            if let Some(ref sessions) = self.soft_apart_pair_sessions[pair_idx] {
                 if !sessions.contains(&day) {
                     continue;
                 }
             }
 
-            let pair_weight = self.forbidden_pair_weights[pair_idx];
+            let pair_weight = self.soft_apart_pair_weights[pair_idx];
 
-            // Check if the transferring person is part of this forbidden pair
+            // Check if the transferring person is part of this soft-apart pair
             if person_idx != person1 && person_idx != person2 {
                 continue;
             }
@@ -494,9 +501,9 @@ impl State {
         // part of a clique for this session, so only pair-based soft constraints can
         // change here.
 
-        // Update forbidden pair violations incrementally.
-        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+        // Update soft-apart pair violations incrementally.
+        for (pair_idx, &(person_a, person_b)) in self.soft_apart_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.soft_apart_pair_sessions[pair_idx] {
                 if !sessions.contains(&day) {
                     continue;
                 }
@@ -520,9 +527,9 @@ impl State {
             let are_together = after_group_of(person_idx) == after_group_of(other_person);
 
             if were_together && !are_together {
-                self.forbidden_pair_violations[pair_idx] -= 1;
+                self.soft_apart_pair_violations[pair_idx] -= 1;
             } else if !were_together && are_together {
-                self.forbidden_pair_violations[pair_idx] += 1;
+                self.soft_apart_pair_violations[pair_idx] += 1;
             }
         }
 
@@ -606,6 +613,8 @@ impl State {
             }
         }
 
+        #[cfg(feature = "debug-invariant-checks")]
+        self.debug_validate_hard_constraints_if_enabled("apply_transfer");
         #[cfg(feature = "cache-drift-assertions")]
         self.debug_assert_no_cache_drift_if_enabled("apply_transfer");
     }

@@ -6,6 +6,7 @@ import { RepeatEncounterModal } from '../modals/RepeatEncounterModal';
 import { AttributeBalanceModal } from '../modals/AttributeBalanceModal';
 import { ShouldNotBeTogetherModal } from '../modals/ShouldNotBeTogetherModal';
 import { ShouldStayTogetherModal } from '../modals/ShouldStayTogetherModal';
+import { MustStayApartModal } from '../modals/MustStayApartModal';
 import { MustStayTogetherModal } from '../modals/MustStayTogetherModal';
 import { PairMeetingCountModal } from '../modals/PairMeetingCountModal';
 
@@ -29,6 +30,8 @@ interface ScenarioEditorConstraintModalsProps {
   setShowShouldStayTogetherModal: (open: boolean) => void;
   showMustStayTogetherModal: boolean;
   setShowMustStayTogetherModal: (open: boolean) => void;
+  showMustStayApartModal: boolean;
+  setShowMustStayApartModal: (open: boolean) => void;
   showPairMeetingCountModal: boolean;
   setShowPairMeetingCountModal: (open: boolean) => void;
 
@@ -54,6 +57,8 @@ export function ScenarioEditorConstraintModals({
   setShowShouldStayTogetherModal,
   showMustStayTogetherModal,
   setShowMustStayTogetherModal,
+  showMustStayApartModal,
+  setShowMustStayApartModal,
   showPairMeetingCountModal,
   setShowPairMeetingCountModal,
   editingConstraintIndex,
@@ -66,6 +71,7 @@ export function ScenarioEditorConstraintModals({
   type ShouldStayConstraint = Extract<Constraint, { type: 'ShouldStayTogether' }>;
   type PairMeetingConstraint = Extract<Constraint, { type: 'PairMeetingCount' }>;
   type MustStayConstraint = Extract<Constraint, { type: 'MustStayTogether' }>;
+  type MustStayApartConstraint = Extract<Constraint, { type: 'MustStayApart' }>;
 
   return (
     <>
@@ -178,6 +184,24 @@ export function ScenarioEditorConstraintModals({
       >
         {({ initial, onCancel, onSave }) => (
           <MustStayTogetherModal
+            sessionsCount={sessionsCount}
+            initial={initial}
+            onCancel={onCancel}
+            onSave={onSave}
+          />
+        )}
+      </IndexedConstraintModal>
+
+      <IndexedConstraintModal<MustStayApartConstraint>
+        open={showMustStayApartModal}
+        editingIndex={editingConstraintIndex}
+        setEditingIndex={setEditingConstraintIndex}
+        setOpen={setShowMustStayApartModal}
+        resolveScenario={resolveScenario}
+        setScenario={setScenario}
+      >
+        {({ initial, onCancel, onSave }) => (
+          <MustStayApartModal
             sessionsCount={sessionsCount}
             initial={initial}
             onCancel={onCancel}

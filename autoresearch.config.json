@@ -1,5 +1,5 @@
 {
   "workingDir": "/home/ralph/ralph-repos/GroupMixer",
-  "maxIterations": 200,
+  "maxIterations": 100,
   "autoCompactResume": true
 }

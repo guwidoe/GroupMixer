@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { navigateScenarioSetupSection, openApp, openScenarioSetupControls, openWorkspaceActions, waitForModal } from './helpers';
+import { navigateScenarioSetupSection, openApp, openScenarioSetupControls, openWorkspaceActions, setSliderValue, waitForModal } from './helpers';
 
 test('opening advanced editor from the landing page does not trigger a maximum update-depth crash', async ({ page }) => {
   test.setTimeout(60000);
@@ -36,7 +36,7 @@ test('demo data loads from workspace actions', async ({ page }) => {
   await page.getByRole('menuitem').filter({ hasText: /company team demo/i }).first().click();
 
   await expect(page.getByText(/demo case loaded/i)).toBeVisible();
-  await expect(page.getByText(/alice johnson/i)).toBeVisible();
+  await expect(page.getByRole('cell', { name: /alice johnson/i }).first()).toBeVisible();
 });
 
 test.describe('Scenario Editor', () => {
@@ -72,6 +72,7 @@ test.describe('Scenario Editor', () => {
     await page.locator('.modal-content button').filter({ hasText: /^Add Attribute$/i }).click();
 
     // Verify attribute appears in the expanded list (use heading to avoid notification)
+    await page.getByRole('button', { name: /^cards$/i }).click();
     await expect(page.getByText('test-attr', { exact: true }).first()).toBeVisible();
   });
 
@@ -86,6 +87,7 @@ test.describe('Scenario Editor', () => {
     await page.locator('.modal-content button').filter({ hasText: /^Add Person$/i }).click();
 
     // Verify person appears in the list (use heading to avoid notification text)
+    await page.getByRole('button', { name: /^cards$/i }).click();
     await expect(page.getByText('alice', { exact: true }).first()).toBeVisible();
   });
 
@@ -94,6 +96,7 @@ test.describe('Scenario Editor', () => {
     await waitForModal(page);
     await page.getByPlaceholder(/Enter person's name/i).fill('bob');
     await page.locator('.modal-content button').filter({ hasText: /^Add Person$/i }).click();
+    await page.getByRole('button', { name: /^cards$/i }).click();
     await expect(page.getByText('bob', { exact: true }).first()).toBeVisible();
 
     await page.getByRole('button', { name: /delete bob/i }).first().click();
@@ -129,21 +132,16 @@ test.describe('Scenario Editor', () => {
     await page.locator('.modal-content button').filter({ hasText: /^Add Group$/i }).click();
 
     // Verify group appears (use heading to avoid notification text)
+    await page.getByRole('button', { name: /^cards$/i }).click();
     await expect(page.getByText('Team Alpha', { exact: true }).first()).toBeVisible();
   });
 
   test('can navigate to sessions section and set session count', async ({ page }) => {
     await navigateScenarioSetupSection(page, /Sessions/i);
 
-    // Find session count input
-    const sessionInput = page.locator('input[type="number"]').first();
-    await expect(sessionInput).toBeVisible();
+    const sessionInput = page.getByRole('slider', { name: /number of sessions/i });
+    await setSliderValue(sessionInput, 5);
 
-    // Change session count
-    await sessionInput.fill('5');
-    await sessionInput.blur();
-
-    // Verify count updated (check the tab badge or the input value)
     await expect(sessionInput).toHaveValue('5');
   });
 

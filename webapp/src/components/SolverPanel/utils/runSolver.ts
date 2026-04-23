@@ -3,6 +3,7 @@ import type { Scenario, ScenarioResult, SavedScenario, SolverSettings, SolverSta
 import { buildTelemetryPayload, getPersistedTelemetryAttribution, trackLandingEvent } from '../../../services/landingInstrumentation';
 import { isRuntimeCancelledError, type RuntimeProgressUpdate } from '../../../services/runtime';
 import { solveScenario } from '../../../services/solver/solveScenario';
+import { namifyPersonIdsInText } from '../../../utils/personReferenceText';
 import { reconcileResultToInitialSchedule } from '../../../utils/warmStart';
 import {
   finalizeCancelledRun,
@@ -165,7 +166,10 @@ function prepareWarmStartSchedule({
     addNotification({
       type: 'warning',
       title: 'Warm Start Failed',
-      message: error instanceof Error ? error.message : 'Falling back to default start',
+      message: namifyPersonIdsInText(
+        error instanceof Error ? error.message : 'Falling back to default start',
+        currentScenario.people,
+      ),
     });
     return undefined;
   } finally {
@@ -261,10 +265,12 @@ function applyCompletedSolverState({
 
 function handleRunError({
   error,
+  currentScenario,
   setSolverState,
   addNotification,
 }: Pick<RunSolverArgs, 'setSolverState' | 'addNotification'> & {
   error: unknown;
+  currentScenario: Scenario;
 }): void {
   if (isRuntimeCancelledError(error)) {
     setSolverState({ isRunning: false, isComplete: false });
@@ -276,7 +282,10 @@ function handleRunError({
     return;
   }
 
-  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+  const errorMessage = namifyPersonIdsInText(
+    error instanceof Error ? error.message : 'Unknown error',
+    currentScenario.people,
+  );
 
   setSolverState({ isRunning: false, error: errorMessage });
   addNotification({
@@ -376,6 +385,7 @@ export async function runSolver(args: RunSolverArgs) {
   } catch (error) {
     handleRunError({
       error,
+      currentScenario,
       setSolverState: args.setSolverState,
       addNotification: args.addNotification,
     });
