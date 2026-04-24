@@ -411,6 +411,20 @@ impl RuntimeState {
             effective_seed,
             construction_total_time_limit_seconds,
         )?;
+        if scaffold.score <= f64::EPSILON {
+            return Ok(ConstraintScenarioOracleConstructionResult {
+                schedule: scaffold.schedule,
+                telemetry: ConstraintScenarioOracleTelemetry {
+                    outcome: ConstraintScenarioOracleOutcomeKind::ConstraintScenarioOnly,
+                    repeat_relevant: true,
+                    cs_run_count: 1,
+                    cs_best_score: Some(scaffold.score),
+                    cs_diversity: Some(0.0),
+                    constructor_wall_ms: started_at.elapsed().as_millis(),
+                    ..ConstraintScenarioOracleTelemetry::default()
+                },
+            });
+        }
         let signals =
             extract_constraint_scenario_signals_from_scaffold(&self.compiled, &scaffold.schedule);
         let scaffold_mask =
