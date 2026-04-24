@@ -166,7 +166,7 @@ function createContent({
     },
     optimizerCta: optimizerCta ?? {
       eyebrow: 'Need even more control?',
-      title: 'Open the full scenario editor.',
+      title: 'Go to scenario editor.',
       featureBullets: OPTIMIZER_FEATURES,
       featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'Open scenario editor',
