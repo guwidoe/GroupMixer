@@ -14,6 +14,7 @@
 - Do not revisit available-capacity-only template sizing; it caused constrained SGP failure even with batch repair.
 - Do not continue attendance scalar tuning in projection; high-attendance hard filter and absent-penalty 0.5 both worsened.
 - Keep target acceptance pair pressure at full weight; removing or halving it improved Sailing but worsened broad balance.
+- Keep projected oracle target groups coherent; global cross-target acceptance assignment destroyed pure/constrained SGP structure.
 - Keep scaffold-disruption template penalty at 3.0; lower 2.5 remained worse even with batch repair.
 - Keep the 1s full-objective warmup scaffold; skipping warmup caused a zero-baseline regression and worsened broad quality.
 - Explore adaptive warmup only with a fundamentally different signal (not just budget size); both blind 2s and budget-guarded 2s were negative.
