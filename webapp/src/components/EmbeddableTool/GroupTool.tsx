@@ -22,6 +22,8 @@ import type { ToolController } from './useToolSetup';
 export type ToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
 const STICKY_GENERATE_CTA_SAFE_ZONE_PX = 96;
+const STICKY_GENERATE_STABLE_SCROLL_MAX_PX_PER_MS = 0.45;
+const STICKY_GENERATE_RETURN_TARGET_MARGIN_PX = 16;
 
 interface ToolDisplaySession {
   sessionNumber: number;
@@ -150,6 +152,7 @@ export function GroupTool({
   const generateButtonRef = useRef<HTMLButtonElement | null>(null);
   const stickyGenerateButtonRef = useRef<HTMLButtonElement | null>(null);
   const stickyGenerateAnimationTimeoutRef = useRef<number | null>(null);
+  const stickyGenerateScrollSampleRef = useRef({ at: 0, velocity: 0, y: 0 });
   const [showStickyGenerateButton, setShowStickyGenerateButton] = useState(false);
   const [renderStickyGenerateButton, setRenderStickyGenerateButton] = useState(false);
   const [stickyGenerateButtonStyle, setStickyGenerateButtonStyle] = useState<CSSProperties>({});
@@ -176,6 +179,15 @@ export function GroupTool({
 
       frameId = window.requestAnimationFrame(() => {
         frameId = null;
+        const now = performance.now();
+        const scrollY = window.scrollY;
+        const previousScrollSample = stickyGenerateScrollSampleRef.current;
+        const elapsedMs = Math.max(now - previousScrollSample.at, 1);
+        stickyGenerateScrollSampleRef.current = {
+          at: now,
+          velocity: Math.abs(scrollY - previousScrollSample.y) / elapsedMs,
+          y: scrollY,
+        };
         const rect = button.getBoundingClientRect();
         const advancedOptionsBottom = advancedOptionsPaneRef.current?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY;
         const scenarioEditorCtaAction = advancedOptionsPaneRef.current?.querySelector<HTMLElement>('[data-scenario-editor-cta-action="true"]') ?? null;
@@ -277,11 +289,18 @@ export function GroupTool({
 
     const stickyRect = stickyGenerateButtonRef.current?.getBoundingClientRect() ?? null;
     const targetRect = generateButtonRef.current?.getBoundingClientRect() ?? null;
+    const scrollSample = stickyGenerateScrollSampleRef.current;
+    const scrollIsStable = scrollSample.velocity <= STICKY_GENERATE_STABLE_SCROLL_MAX_PX_PER_MS;
+    const targetIsComfortablyVisible = Boolean(
+      targetRect
+      && targetRect.top >= STICKY_GENERATE_RETURN_TARGET_MARGIN_PX
+      && targetRect.bottom <= window.innerHeight - STICKY_GENERATE_RETURN_TARGET_MARGIN_PX,
+    );
     const canMorphBack = Boolean(
       stickyRect
       && targetRect
-      && targetRect.bottom > -80
-      && targetRect.top < window.innerHeight + 80,
+      && targetIsComfortablyVisible
+      && scrollIsStable,
     );
 
     if (stickyRect && targetRect && canMorphBack && !prefersReducedMotion) {
