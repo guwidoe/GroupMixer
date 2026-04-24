@@ -7,6 +7,7 @@
 - Re-evaluate small, principled scaffold-disruption weights only if paired with a structural candidate-risk/fill-order change; simple scalar retuning has had diminishing returns.
 - Evaluate multiple top template candidates only with strong hard-feasibility/risk/contact tradeoffs; naive top-3 projection-score and lowest-disruption-frontier selectors were both negative.
 - Add benchmark telemetry for oracle outcome/template dimensions per case to understand whether regressions come from candidate choice, projection, merge displacement, or hard repair.
+- If revisiting projection convergence, pair it with synthetic/constrained-SGP safeguards; one extra assignment/alignment pass alone improved Sailing/transfer but worsened primary metric.
 - Explore adaptive warmup only with a fundamentally different signal (not just budget size); both blind 2s and budget-guarded 2s were negative.
 
 ## De-emphasized / recently negative
