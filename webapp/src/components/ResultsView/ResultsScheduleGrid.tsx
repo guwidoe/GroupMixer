@@ -59,9 +59,9 @@ export function ResultsScheduleGrid({ sessionData, selectedSessionIndex = null, 
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h5 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{group.id}</h5>
+                    <h5 className="text-base font-semibold leading-6" style={{ color: 'var(--text-primary)' }}>{group.id}</h5>
                   </div>
-                  <span className="text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
+                  <span className="text-xs font-medium uppercase leading-6 tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>
                     {interpolate(localized.groupPeopleCountTemplate, {
                       count: group.people.length,
                       size: group.size,
