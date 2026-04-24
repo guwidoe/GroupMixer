@@ -5,7 +5,8 @@ use crate::solver3::compiled_problem::{CompiledProblem, PackedSchedule};
 pub(crate) enum ConstraintScenarioOracleOutcomeKind {
     /// The repeat-aware oracle-guided path was not relevant for the input.
     RepeatIrrelevant,
-    /// The heuristic produced and returned its repeat-blind constraint scaffold.
+    /// The oracle path was applicable enough to build a constraint scaffold, but no meaningful
+    /// flexible pure-contact template was available, so the constructor returned the scaffold.
     ConstraintScenarioOnly,
     /// The heuristic merged oracle structure into the constraint scaffold.
     OracleMerged,

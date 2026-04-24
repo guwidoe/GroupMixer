@@ -415,19 +415,29 @@ impl RuntimeState {
             extract_constraint_scenario_signals_from_scaffold(&self.compiled, &scaffold.schedule);
         let scaffold_mask =
             build_constraint_scenario_scaffold_mask(&self.compiled, &scaffold.schedule, &signals);
-        let candidate = generate_oracle_template_candidates(
+        let Some(candidate) = generate_oracle_template_candidates(
             &self.compiled,
             &scaffold.schedule,
             &signals,
             &scaffold_mask,
         )
         .into_iter()
-        .next()
-        .ok_or_else(|| {
-            SolverError::ValidationError(
-                "solver3 constraint-scenario oracle-guided construction could not generate an oracle template".into(),
-            )
-        })?;
+        .next() else {
+            return Ok(ConstraintScenarioOracleConstructionResult {
+                schedule: scaffold.schedule,
+                telemetry: ConstraintScenarioOracleTelemetry {
+                    outcome: ConstraintScenarioOracleOutcomeKind::ConstraintScenarioOnly,
+                    repeat_relevant: true,
+                    cs_run_count: 1,
+                    cs_best_score: Some(scaffold.score),
+                    cs_diversity: Some(0.0),
+                    rigid_placement_count: scaffold_mask.rigid_placement_count,
+                    flexible_placement_count: scaffold_mask.flexible_placement_count,
+                    constructor_wall_ms: started_at.elapsed().as_millis(),
+                    ..ConstraintScenarioOracleTelemetry::default()
+                },
+            });
+        };
         let oracle_schedule = Solver6PureStructureOracle.solve(&PureStructureOracleRequest {
             num_groups: candidate.num_groups,
             group_size: candidate.group_size,

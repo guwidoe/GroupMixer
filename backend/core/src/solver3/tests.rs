@@ -528,20 +528,16 @@ fn constraint_scenario_oracle_constructor_returns_cs_scaffold() {
 }
 
 #[test]
-fn constraint_scenario_oracle_constructor_errors_when_no_oracle_template_exists() {
+fn constraint_scenario_oracle_constructor_returns_scaffold_when_no_oracle_template_exists() {
     let mut input = representative_input();
     input.initial_schedule = None;
     if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
         params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
     }
 
-    let error = RuntimeState::from_input(&input).unwrap_err();
-    assert!(
-        error
-            .to_string()
-            .contains("could not generate an oracle template"),
-        "unexpected error: {error}"
-    );
+    let state = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&state).unwrap();
+    assert!(state.total_score.is_finite());
 }
 
 #[test]

@@ -722,6 +722,7 @@ fn run_solver3_construct_then_search_case(
 }
 
 const SOLVER3_COMPLEXITY_POLICY_MAX_ITERATIONS: u64 = 1_000_000_000;
+const SOLVER3_CONSTRUCT_THEN_SEARCH_CONSTRUCTION_BUDGET_FRACTION: f64 = 0.30;
 
 fn solver3_construct_then_search_input(
     input: gm_core::models::ApiInput,
@@ -786,7 +787,7 @@ fn complexity_based_wall_time_base_timeout_seconds(complexity: f64) -> u64 {
 }
 
 fn construction_phase_budget_seconds(total_timeout_seconds: u64) -> f64 {
-    total_timeout_seconds as f64 / 10.0
+    total_timeout_seconds as f64 * SOLVER3_CONSTRUCT_THEN_SEARCH_CONSTRUCTION_BUDGET_FRACTION
 }
 
 fn construction_phase_time_limit_seconds(total_timeout_seconds: u64) -> u64 {
@@ -1539,9 +1540,9 @@ mod tests {
             15
         );
 
-        assert_eq!(construction_phase_budget_seconds(15), 1.5);
-        assert_eq!(construction_phase_time_limit_seconds(15), 1);
-        assert_eq!(search_phase_timeout_seconds(15, 1.25), 14);
+        assert_eq!(construction_phase_budget_seconds(15), 4.5);
+        assert_eq!(construction_phase_time_limit_seconds(15), 4);
+        assert_eq!(search_phase_timeout_seconds(15, 2.75), 13);
         assert_eq!(search_phase_timeout_seconds(15, 15.25), 0);
     }
 
