@@ -16,7 +16,7 @@
 - Keep target acceptance pair pressure at full weight; removing or halving it improved Sailing but worsened broad balance.
 - Keep projected oracle target groups coherent; global cross-target acceptance assignment destroyed pure/constrained SGP structure.
 - Avoid oracle-cohort pressure in target acceptance; max(scaffold target pressure, oracle co-target pressure) worsened broad quality and constrained SGP 169x13x14.
-- Keep projection contact-signature anchoring at its current weight; removing it improved runtime/Sailing-like behavior but regressed broad balance, large immovable, transfer, and constrained SGP.
+- Keep projection contact-signature anchoring at its current weight; removing or doubling it regressed broad balance, so stop scalar tuning this term.
 - Keep scaffold-disruption template penalty at 3.0; lower 2.5 remained worse even with batch repair.
 - Keep the 1s full-objective warmup scaffold; skipping warmup caused a zero-baseline regression and replacing the pre-warmup baseline source with freedom-aware construction caused multiple failures.
 - Explore adaptive warmup only with a fundamentally different signal (not just budget size); blind 2s, budget-guarded 2s, and baseline/warmup consensus rigidity were negative.
