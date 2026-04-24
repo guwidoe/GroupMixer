@@ -8,7 +8,7 @@
 - Evaluate multiple top template candidates only with strong hard-feasibility/risk/contact tradeoffs; naive top-3 projection-score and lowest-disruption-frontier selectors were both negative.
 - Add benchmark telemetry for oracle outcome/template dimensions per case to understand whether regressions come from candidate choice, projection, merge displacement, or hard repair.
 - Do not add the simple extra projection assignment/alignment convergence pass; it worsened both before and after batch repair despite some sentinel gains.
-- Avoid scaffold-cohort pressure in repair; even a modest term after batch assignment was basin-hostile.
+- Avoid scaffold-cohort pressure in repair; positive and negative cohort terms after batch assignment were both basin-hostile.
 - Do not continue scalar tuning of batch repair's preferred-group prior; 1.0 and 3.0 both worsened versus kept 2.0.
 - Do not combine hard selected-region target priority with batch repair; it was much worse than with greedy repair.
 - Do not revisit available-capacity-only template sizing; it caused constrained SGP failure even with batch repair.
