@@ -8,14 +8,13 @@ const TRUST_BULLETS = [
 
 const OPTIMIZER_FEATURES = [
   'Asistencia parcial',
-  'Capacidades por grupo',
-  'Tamaños de grupo por sesión',
+  'Capacidades por grupo y sesión',
   'Reglas por sesión',
-  'Restricciones flexibles con pesos configurables',
+  'Restricciones flexibles ponderadas',
   'Objetivos de encuentros por pareja',
   'Ajuste avanzado de restricciones',
   'Ajustes del solver',
-  'Análisis detallado',
+  'Análisis de resultados',
 ];
 
 const CHROME = {
@@ -83,7 +82,7 @@ const FAQS = {
   workspace: {
     question: '¿Qué es el editor de escenarios?',
     answer:
-      'El editor de escenarios sirve para controles que esta página no expone: asistencia parcial, capacidades por grupo, tamaños de grupo por sesión, restricciones específicas por sesión, restricciones flexibles con pesos configurables, objetivos de encuentros por pareja, ajuste avanzado de restricciones, configuración del solver, resultados anteriores y análisis detallado.',
+      'El editor de escenarios sirve para controles que esta página no expone: asistencia parcial, capacidades por grupo y sesión, restricciones específicas por sesión, restricciones flexibles ponderadas, objetivos de encuentros por pareja, ajuste avanzado de restricciones, configuración del solver, resultados anteriores y análisis de resultados.',
   },
 };
 

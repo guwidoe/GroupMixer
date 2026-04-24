@@ -8,14 +8,13 @@ const TRUST_BULLETS = [
 
 const OPTIMIZER_FEATURES = [
   'Teilweise Anwesenheit',
-  'Gruppenspezifische Kapazitäten',
-  'Session-spezifische Gruppengrößen',
+  'Kapazitäten nach Gruppe und Session',
   'Session-spezifische Regeln',
-  'Weiche Constraints mit konfigurierbaren Gewichten',
+  'Gewichtete weiche Constraints',
   'Zielwerte für Paar-Begegnungen',
   'Erweiterte Constraint-Feinsteuerung',
   'Solver-Einstellungen',
-  'Detaillierte Ergebnisanalyse',
+  'Ergebnisanalyse',
 ];
 
 const CHROME = {
@@ -83,7 +82,7 @@ const FAQS = {
   workspace: {
     question: 'Was ist der Szenario-Editor?',
     answer:
-      'Der Szenario-Editor ist für Funktionen gedacht, die diese Seite nicht abdeckt: Teilanwesenheit, gruppenspezifische Kapazitäten, session-spezifische Gruppengrößen, session-spezifische Regeln, weiche Constraints mit konfigurierbaren Gewichten, Zielwerte für Paar-Begegnungen, erweiterte Constraint-Feinsteuerung, Solver-Einstellungen, frühere Ergebnisse und detaillierte Analyse.',
+      'Der Szenario-Editor ist für Funktionen gedacht, die diese Seite nicht abdeckt: Teilanwesenheit, Kapazitäten nach Gruppe und Session, session-spezifische Regeln, gewichtete weiche Constraints, Zielwerte für Paar-Begegnungen, erweiterte Constraint-Feinsteuerung, Solver-Einstellungen, frühere Ergebnisse und Ergebnisanalyse.',
   },
 };
 

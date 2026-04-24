@@ -8,14 +8,13 @@ const TRUST_BULLETS = [
 
 const OPTIMIZER_FEATURES = [
   'Participation partielle',
-  'Capacités propres à chaque groupe',
-  'Tailles de groupe par session',
+  'Capacités par groupe et session',
   'Règles par session',
-  'Contraintes souples à poids configurables',
+  'Contraintes souples pondérées',
   'Objectifs de rencontres par paire',
   'Réglage avancé des contraintes',
   'Réglages du solveur',
-  'Analyse détaillée',
+  'Analyse des résultats',
 ];
 
 const CHROME = {
@@ -83,7 +82,7 @@ const FAQS = {
   workspace: {
     question: 'Qu’est-ce que l’éditeur de scénarios ?',
     answer:
-      'L’éditeur de scénarios sert aux contrôles que cette page n’expose pas : présence partielle, capacités propres à chaque groupe, tailles de groupe par session, contraintes propres à chaque session, contraintes souples à poids configurables, objectifs de rencontres par paire, réglage avancé des contraintes, réglages du solveur, résultats précédents et analyse détaillée.',
+      'L’éditeur de scénarios sert aux contrôles que cette page n’expose pas : présence partielle, capacités par groupe et session, contraintes propres à chaque session, contraintes souples pondérées, objectifs de rencontres par paire, réglage avancé des contraintes, réglages du solveur, résultats précédents et analyse des résultats.',
   },
 };
 
