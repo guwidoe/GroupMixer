@@ -232,12 +232,19 @@ export function GroupTool({
       const sourceRect = generateButtonRef.current?.getBoundingClientRect() ?? null;
       setRenderStickyGenerateButton(true);
       setShowStickyGenerateMeta(false);
-      setStickyGenerateButtonStyle({});
+      setStickyGenerateButtonStyle({
+        opacity: 0,
+        transform: 'translate(0, 0) scale(1)',
+      });
 
       const firstFrame = window.requestAnimationFrame(() => {
         const targetRect = stickyGenerateButtonRef.current?.getBoundingClientRect() ?? null;
 
         if (!sourceRect || !targetRect || prefersReducedMotion) {
+          setStickyGenerateButtonStyle({
+            opacity: 1,
+            transform: 'translate(0, 0) scale(1)',
+          });
           setShowStickyGenerateMeta(true);
           return;
         }
