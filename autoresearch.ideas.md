@@ -11,7 +11,7 @@
 - Avoid scaffold-cohort pressure in repair; positive and negative cohort terms after batch assignment were both basin-hostile.
 - Do not continue scalar tuning of batch repair's preferred-group prior; 1.0 and 3.0 both worsened versus kept 2.0.
 - Do not combine hard selected-region target priority with batch repair; it was much worse than with greedy repair.
-- Do not revisit available-capacity-only template sizing; it caused constrained SGP failure even with batch repair.
+- Do not revisit available-capacity-only template sizing or available-capacity-first slot selection; sizing failed and slot ordering regressed transfer/49x7 despite feasible output.
 - Do not continue attendance scalar tuning in projection; high-attendance hard filter and absent-penalty 0.5 both worsened.
 - Keep target acceptance pair pressure at full weight; removing or halving it improved Sailing but worsened broad balance.
 - Keep projected oracle target groups coherent; global cross-target acceptance assignment destroyed pure/constrained SGP structure.
