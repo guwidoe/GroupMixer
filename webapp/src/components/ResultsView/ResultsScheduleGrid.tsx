@@ -69,16 +69,16 @@ export function ResultsScheduleGrid({ sessionData, selectedSessionIndex = null, 
                   </span>
                 </div>
 
-                <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--border-primary)' }}>
+                <div className="mt-1 border-t pt-1" style={{ borderColor: 'var(--border-primary)' }}>
                   {group.people.length > 0 ? (
-                    <ul className="space-y-3">
+                    <ul className="space-y-0.5">
                       {group.people.map((person) => (
                         <li
                           key={person.id}
                           className="flex items-center justify-between gap-3"
                         >
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                            <div className="truncate text-sm font-normal" style={{ color: 'var(--text-primary)' }}>
                               {getPersonDisplayName(person)}
                             </div>
                           </div>

@@ -77,6 +77,25 @@ describe('AttributeDistributionField', () => {
     expect(screen.getByLabelText('B count')).toHaveValue('4');
   });
 
+  it('allows legend count inputs to be emptied while editing', () => {
+    render(<ControlledField initialValue={{ A: 2, B: 1 }} capacity={11} />);
+
+    const input = screen.getByLabelText('B count');
+    fireEvent.change(input, { target: { value: '' } });
+
+    expect(input).toHaveValue('');
+
+    fireEvent.blur(input);
+
+    expect(screen.getByLabelText('B count')).toHaveValue('0');
+  });
+
+  it('widens legend count inputs for multiple digits', () => {
+    render(<ControlledField initialValue={{ A: 2, B: 10 }} capacity={20} />);
+
+    expect(screen.getByLabelText('B count')).toHaveStyle({ width: 'calc(2ch + 0.35rem)' });
+  });
+
   it('lets inactive chips be activated without a checkbox and then appear in the bar', async () => {
     const user = userEvent.setup();
 

@@ -1519,17 +1519,15 @@
   .attribute-distribution__support-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.45rem;
+    column-gap: 0.75rem;
+    row-gap: 0.35rem;
   }
 
   .attribute-distribution__support-item {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    padding: 0.28rem 0.5rem;
-    border: 1px solid var(--border-primary);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--bg-primary) 95%, var(--bg-secondary) 5%);
+    padding: 0;
     min-width: 0;
   }
 
@@ -1577,12 +1575,12 @@
   }
 
   .attribute-distribution__support-input {
-    width: 2rem;
+    width: 1.35rem;
     min-width: 0;
-    padding: 0.1rem 0.2rem;
-    border: 1px solid var(--border-primary);
-    border-radius: 999px;
-    background: var(--bg-primary);
+    padding: 0;
+    border: none !important;
+    border-radius: 0.25rem;
+    background: transparent;
     color: var(--text-primary);
     text-align: center;
     font-size: 0.75rem;
@@ -1591,8 +1589,7 @@
 
   .attribute-distribution__support-input:focus {
     outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.12);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.16);
   }
 
   .attribute-distribution__chips {
