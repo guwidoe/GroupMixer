@@ -1,8 +1,10 @@
 # Solver3 construction autoresearch ideas backlog
 
+## Preferred structural experiments
+
 - Implement an oracle-guided baseline fill rather than overwrite+repair: preserve immovables/cliques, then fill flexible slots using real objective marginal plus projected oracle-contact agreement.
 - Add merge acceptance scoring based on estimated search-basin disruption, not final-score gating: prefer oracle placements that keep scaffold-stable/cohesive groups while preserving the kept stronger outside-region move penalty.
-- Re-evaluate small, principled scaffold-disruption weights only under the new relative metric; old-log trials said 2x/2.5x/5x were worse than 3x, but the objective has changed.
+- Re-evaluate small, principled scaffold-disruption weights only if paired with a structural candidate-risk/fill-order change; simple scalar retuning has had diminishing returns.
 - Evaluate multiple top template candidates cheaply by projection/merge risk before invoking solver6 when the top-ranked candidate is high-disruption; keep deterministic and generic, no case-specific branches.
 - Add benchmark telemetry for oracle outcome/template dimensions per case to understand whether regressions come from candidate choice, projection, merge displacement, or hard repair.
 - Investigate same-region acceptance scoring beyond the kept outside-region penalty: e.g. tune selected-region move bonus or current-group keep bonus under the relative metric, without case-specific branches.

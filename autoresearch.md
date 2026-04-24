@@ -113,6 +113,10 @@ Benchmark/autoresearch support:
 
 Current suspected improvement direction:
 
+**Important: larger heuristic changes are explicitly allowed and preferred.** Do not restrict the loop to microscopic scalar tuning. Scalar changes are acceptable only when they test a structural hypothesis. The highest-value experiments should change the generic constructor strategy while preserving the strict/no-cheating constraints below.
+
+Preferred structural directions:
+
 - Move from "template overwrite + repair" toward **oracle-guided baseline fill**:
   - place immovables first,
   - place active cliques,
@@ -121,3 +125,4 @@ Current suspected improvement direction:
   - keep the output search-friendly rather than merely oracle-aligned.
 - Learn from `BaselineLegacy` on Sailing-style cases: its strength is basin quality, not construction-only score.
 - Add telemetry only when it improves diagnosis of final construction+search outcomes.
+- Prefer multi-template/risk-aware selection, projection/merge redesign, and fill-order changes over more one-constant experiments.
