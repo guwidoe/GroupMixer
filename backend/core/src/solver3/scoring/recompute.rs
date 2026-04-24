@@ -307,7 +307,10 @@ fn compute_immovable(cp: &CompiledProblem, state: &RuntimeState, snap: &mut Orac
         let actual = state.person_location[ps];
         if actual != Some(a.group_idx) {
             snap.immovable_violations += 1;
-            snap.constraint_penalty_weighted += 1000.0;
+            // Immovable placements are hard constraints. Violations are retained as
+            // diagnostics for drift/invariant checks, but they are not a scored soft
+            // penalty surface; valid solver3 states must reject or repair them before
+            // scoring/acceptance.
         }
     }
 }

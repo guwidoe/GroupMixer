@@ -46,6 +46,7 @@ use super::construction::constraint_scenario_oracle::{
 };
 use super::oracle::maybe_cross_check_runtime_state;
 use super::scoring::recompute::recompute_oracle_score;
+use super::validation::validate_invariants;
 
 const DEFAULT_BASELINE_CONSTRUCTION_SEED: u64 = 42;
 
@@ -173,6 +174,7 @@ impl RuntimeState {
         };
 
         state.initialize_from_schedule(effective_seed, construction)?;
+        validate_invariants(&state)?;
         state.rebuild_pair_contacts();
         state.sync_score_from_oracle()?;
         Ok(state)
@@ -206,6 +208,7 @@ impl RuntimeState {
         };
 
         state.load_exact_schedule(&schedule)?;
+        validate_invariants(&state)?;
         state.rebuild_pair_contacts();
         state.sync_score_from_oracle()?;
         Ok(state)
@@ -304,9 +307,11 @@ impl RuntimeState {
             construction,
             ConstructionHeuristicSelection::ConstraintScenarioOracleGuided
         ) {
-            return Ok(self
+            let mut schedule = self
                 .build_constraint_scenario_oracle_guided_schedule(effective_seed)?
-                .schedule);
+                .schedule;
+            self.repair_hard_constraints_in_schedule(&mut schedule, effective_seed)?;
+            return Ok(schedule);
         }
 
         let mut schedule = self
@@ -352,7 +357,7 @@ impl RuntimeState {
                 "constraint-scenario oracle-guided construction returns before shared constructor context setup"
             ),
         }
-        self.normalize_invalid_clique_sessions(&mut schedule, effective_seed)?;
+        self.repair_hard_constraints_in_schedule(&mut schedule, effective_seed)?;
         Ok(schedule)
     }
 
@@ -421,8 +426,13 @@ impl RuntimeState {
                 &relabeling,
             )
             .and_then(|merge| {
-                let snapshot = self.score_constructed_schedule(&merge.schedule)?;
-                Ok((merge.schedule, snapshot.total_score))
+                let mut repaired_schedule = merge.schedule;
+                self.repair_hard_constraints_in_schedule(
+                    &mut repaired_schedule,
+                    effective_seed ^ 0x4f72_6163_6c65_u64,
+                )?;
+                let snapshot = self.score_constructed_schedule(&repaired_schedule)?;
+                Ok((repaired_schedule, snapshot.total_score))
             }) {
                 Ok((merged_schedule, merged_score)) => {
                     let improvement = best.real_score - merged_score;
@@ -508,17 +518,48 @@ impl RuntimeState {
         recompute_oracle_score(&state)
     }
 
-    fn normalize_invalid_clique_sessions(
+    fn repair_hard_constraints_in_schedule(
         &self,
         schedule: &mut PackedSchedule,
         effective_seed: u64,
     ) -> Result<(), SolverError> {
         for session_idx in 0..self.compiled.num_sessions {
-            if self.session_has_split_active_clique(schedule, session_idx) {
+            if self.session_has_hard_constraint_violation(schedule, session_idx) {
                 self.rebuild_session_with_clique_integrity(schedule, session_idx, effective_seed)?;
             }
         }
         Ok(())
+    }
+
+    fn session_has_hard_constraint_violation(
+        &self,
+        schedule: &PackedSchedule,
+        session_idx: usize,
+    ) -> bool {
+        self.session_has_split_active_clique(schedule, session_idx)
+            || self.session_has_immovable_violation(schedule, session_idx)
+    }
+
+    fn session_has_immovable_violation(
+        &self,
+        schedule: &PackedSchedule,
+        session_idx: usize,
+    ) -> bool {
+        let mut person_group = vec![None; self.compiled.num_people];
+        for (group_idx, members) in schedule[session_idx].iter().enumerate() {
+            for &person_idx in members {
+                person_group[person_idx] = Some(group_idx);
+            }
+        }
+
+        self.compiled
+            .immovable_assignments
+            .iter()
+            .filter(|assignment| assignment.session_idx == session_idx)
+            .any(|assignment| {
+                self.compiled.person_participation[assignment.person_idx][session_idx]
+                    && person_group[assignment.person_idx] != Some(assignment.group_idx)
+            })
     }
 
     fn session_has_split_active_clique(

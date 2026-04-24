@@ -1516,6 +1516,70 @@ fn zero_unique_contacts_when_no_pairs_share_groups() {
 }
 
 #[test]
+fn immovable_violation_is_diagnostic_not_scored() {
+    let input = ApiInput {
+        problem: ProblemDefinition {
+            people: vec![
+                Person {
+                    id: "p0".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p1".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 1,
+        },
+        initial_schedule: None,
+        construction_seed_schedule: None,
+        objectives: vec![],
+        constraints: vec![Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p0".into(),
+            group_id: "g0".into(),
+            sessions: None,
+        })],
+        solver: solver3_config(),
+    };
+
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let person_idx = 0usize;
+    let old_group_idx = state.person_location[state.people_slot(0, person_idx)].unwrap();
+    let old_group_slot = state.group_slot(0, old_group_idx);
+    let old_position = state.group_members[old_group_slot]
+        .iter()
+        .position(|&member| member == person_idx)
+        .unwrap();
+    state.group_members[old_group_slot].swap_remove(old_position);
+    state.group_sizes[old_group_slot] -= 1;
+
+    let new_group_idx = 1usize;
+    let new_group_slot = state.group_slot(0, new_group_idx);
+    state.group_members[new_group_slot].push(person_idx);
+    state.group_sizes[new_group_slot] += 1;
+    let person_slot = state.people_slot(0, person_idx);
+    state.person_location[person_slot] = Some(new_group_idx);
+
+    let snap = recompute_oracle_score(&state).unwrap();
+    assert_eq!(snap.immovable_violations, 1);
+    assert_eq!(snap.constraint_penalty_weighted, 0.0);
+}
+
+#[test]
 fn soft_apart_pair_penalty_is_scored() {
     // 2 people, 1 group of 2, 1 session, one soft-apart constraint.
     let input = ApiInput {
