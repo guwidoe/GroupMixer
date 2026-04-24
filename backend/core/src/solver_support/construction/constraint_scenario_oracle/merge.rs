@@ -4,7 +4,7 @@ use crate::solver3::compiled_problem::{CompiledProblem, PackedSchedule};
 use crate::solver_support::SolverError;
 
 use super::oracle_backend::validate_pure_oracle_schedule;
-use super::projection::projected_oracle_person_for_session;
+use super::projection::{projected_oracle_person_for_session, solve_max_weight_assignment};
 use super::types::{
     ConstraintScenarioScaffoldMask, ConstraintScenarioSignals, OracleMergeResult,
     OracleTemplateCandidate, OracleTemplateProjectionResult, PureStructureOracleRequest,
@@ -92,33 +92,13 @@ pub(crate) fn merge_projected_oracle_template_into_scaffold(
             changed_placement_count += 1;
         }
 
-        displaced.sort_unstable_by_key(|&(person_idx, preferred_group_idx)| {
-            (preferred_group_idx, person_idx)
-        });
-        for (person_idx, preferred_group_idx) in displaced {
-            let Some(repair_group_idx) = choose_repair_group(
-                compiled,
-                &schedule,
-                signals,
-                real_session_idx,
-                person_idx,
-                preferred_group_idx,
-            ) else {
-                return Err(SolverError::ValidationError(format!(
-                    "oracle template merge could not repair displaced person {} in session {}",
-                    compiled.display_person(person_idx),
-                    real_session_idx
-                )));
-            };
-            push_person_if_capacity(
-                compiled,
-                &mut schedule,
-                real_session_idx,
-                repair_group_idx,
-                person_idx,
-            )?;
-            displaced_repair_count += 1;
-        }
+        displaced_repair_count += repair_displaced_people_by_assignment(
+            compiled,
+            &mut schedule,
+            signals,
+            real_session_idx,
+            &displaced,
+        )?;
     }
 
     validate_packed_schedule_shape(compiled, &schedule)?;
@@ -365,40 +345,63 @@ fn push_person_if_capacity(
     Ok(())
 }
 
-fn choose_repair_group(
+fn repair_displaced_people_by_assignment(
     compiled: &CompiledProblem,
-    schedule: &PackedSchedule,
+    schedule: &mut PackedSchedule,
     signals: &ConstraintScenarioSignals,
     session_idx: usize,
-    person_idx: usize,
-    preferred_group_idx: usize,
-) -> Option<usize> {
-    (0..compiled.num_groups)
-        .filter(|&group_idx| {
-            schedule[session_idx][group_idx].len() < compiled.group_capacity(session_idx, group_idx)
+    displaced: &[(usize, usize)],
+) -> Result<usize, SolverError> {
+    if displaced.is_empty() {
+        return Ok(0);
+    }
+
+    let mut open_slots = Vec::<usize>::new();
+    for group_idx in 0..compiled.num_groups {
+        let capacity = compiled.group_capacity(session_idx, group_idx);
+        let occupancy = schedule[session_idx][group_idx].len();
+        for _ in occupancy..capacity {
+            open_slots.push(group_idx);
+        }
+    }
+    if open_slots.len() < displaced.len() {
+        return Err(SolverError::ValidationError(format!(
+            "oracle template merge had {} displaced people but only {} open slots in session {}",
+            displaced.len(),
+            open_slots.len(),
+            session_idx
+        )));
+    }
+
+    let score_matrix = displaced
+        .iter()
+        .map(|&(person_idx, preferred_group_idx)| {
+            open_slots
+                .iter()
+                .map(|&group_idx| {
+                    repair_group_score(
+                        compiled,
+                        signals,
+                        session_idx,
+                        person_idx,
+                        preferred_group_idx,
+                        group_idx,
+                    )
+                })
+                .collect::<Vec<_>>()
         })
-        .max_by(|&left, &right| {
-            let left_score = repair_group_score(
-                compiled,
-                signals,
-                session_idx,
-                person_idx,
-                preferred_group_idx,
-                left,
-            );
-            let right_score = repair_group_score(
-                compiled,
-                signals,
-                session_idx,
-                person_idx,
-                preferred_group_idx,
-                right,
-            );
-            left_score
-                .partial_cmp(&right_score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| right.cmp(&left))
-        })
+        .collect::<Vec<_>>();
+    let assignment = solve_max_weight_assignment(&score_matrix);
+    for (row_idx, &slot_idx) in assignment.iter().enumerate() {
+        let (person_idx, _) = displaced[row_idx];
+        let Some(&group_idx) = open_slots.get(slot_idx) else {
+            return Err(SolverError::ValidationError(
+                "oracle template merge repair assignment produced an invalid slot".into(),
+            ));
+        };
+        push_person_if_capacity(compiled, schedule, session_idx, group_idx, person_idx)?;
+    }
+    Ok(displaced.len())
 }
 
 fn repair_group_score(
