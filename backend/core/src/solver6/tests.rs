@@ -1,5 +1,6 @@
 use super::catalog::{
-    store_cache_incumbent, Solver6CacheIncumbentStatus, SOLVER6_CACHE_POLICY_VERSION,
+    lookup_cache_incumbent, store_cache_incumbent, Solver6CacheIncumbentStatus, Solver6CacheLookup,
+    SOLVER6_CACHE_POLICY_VERSION,
 };
 use super::problem::PureSgpProblem;
 use super::SearchEngine;
@@ -89,6 +90,14 @@ fn exact_block_params_with_local_timeout(
     Solver6Params {
         local_search_time_limit_seconds,
         ..exact_block_params(None)
+    }
+}
+
+fn cached_status(params: &Solver6CacheParams, input: &ApiInput) -> Solver6CacheIncumbentStatus {
+    let problem = PureSgpProblem::from_input(input).expect("pure input");
+    match lookup_cache_incumbent(params, &problem).expect("cache lookup should succeed") {
+        Solver6CacheLookup::Hit(hit) => hit.entry.status,
+        Solver6CacheLookup::Miss { reason } => panic!("expected cache hit, got miss: {reason}"),
     }
 }
 
@@ -227,6 +236,124 @@ fn solver6_cache_miss_can_build_fresh_and_write_incumbent() {
         .expect("build-fresh cache policy should continue with live seed synthesis");
     assert_eq!(result.schedule.len(), 20);
     assert!(cache_dir.join("entries/g08_p04_w20.json").exists());
+}
+
+#[test]
+fn solver6_complete_cached_incumbent_skips_seed_and_local_search_budgets() {
+    let cache_dir =
+        std::env::temp_dir().join(format!("solver6-cache-complete-{}", uuid::Uuid::new_v4()));
+    let mut input = pure_input(2, 2, 2);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input");
+    let schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
+    let params = cache_params(
+        cache_dir.to_string_lossy().into_owned(),
+        Solver6CacheMissPolicy::Error,
+    );
+    store_cache_incumbent(
+        &params,
+        &problem,
+        schedule,
+        Solver6CacheIncumbentStatus::LocallyOptimal,
+        None,
+        None,
+        None,
+    )
+    .expect("cache entry should store");
+
+    let mut solver_params = exact_block_params(Some(params));
+    solver_params.seed_time_limit_seconds = Some(0);
+    solver_params.local_search_time_limit_seconds = Some(0);
+    input.solver.solver_params = SolverParams::Solver6(solver_params);
+
+    let result = SearchEngine::new(&input.solver)
+        .solve(&input)
+        .expect("complete cache hit should not need seed or local search budget");
+    assert_eq!(result.schedule.len(), 2);
+    assert_eq!(
+        result.stop_reason.map(|reason| format!("{reason:?}")),
+        Some("NoImprovementLimitReached".into())
+    );
+}
+
+#[test]
+fn solver6_incomplete_cached_incumbent_resumes_without_seed_budget() {
+    let cache_dir =
+        std::env::temp_dir().join(format!("solver6-cache-resume-{}", uuid::Uuid::new_v4()));
+    let mut input = pure_input(2, 2, 2);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input");
+    let schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
+    let params = cache_params(
+        cache_dir.to_string_lossy().into_owned(),
+        Solver6CacheMissPolicy::Error,
+    );
+    store_cache_incumbent(
+        &params,
+        &problem,
+        schedule,
+        Solver6CacheIncumbentStatus::SearchTimedOut,
+        None,
+        None,
+        None,
+    )
+    .expect("cache entry should store");
+
+    let mut solver_params = exact_block_params(Some(params));
+    solver_params.seed_time_limit_seconds = Some(0);
+    input.solver.solver_params = SolverParams::Solver6(solver_params);
+
+    let result = SearchEngine::new(&input.solver)
+        .solve(&input)
+        .expect("incomplete cache hit should resume without seed construction");
+    assert_eq!(result.schedule.len(), 2);
+    assert_ne!(
+        result.stop_reason.map(|reason| format!("{reason:?}")),
+        Some("TimeLimitReached".into())
+    );
+}
+
+#[test]
+fn solver6_local_search_timeout_writes_incomplete_then_later_upgrades() {
+    let cache_dir =
+        std::env::temp_dir().join(format!("solver6-cache-upgrade-{}", uuid::Uuid::new_v4()));
+    let cache_params = cache_params(
+        cache_dir.to_string_lossy().into_owned(),
+        Solver6CacheMissPolicy::BuildFresh,
+    );
+    let mut input = pure_input(8, 4, 20);
+    input.solver.stop_conditions.max_iterations = Some(200);
+    input.solver.stop_conditions.no_improvement_iterations = Some(50);
+    let mut timed_params = exact_block_params(Some(cache_params.clone()));
+    timed_params.pair_repeat_penalty_model = Solver6PairRepeatPenaltyModel::SquaredRepeatExcess;
+    timed_params.local_search_time_limit_seconds = Some(0);
+    input.solver.solver_params = SolverParams::Solver6(timed_params);
+
+    let timed = SearchEngine::new(&input.solver)
+        .solve(&input)
+        .expect("local-search timeout should still return incumbent");
+    assert_eq!(
+        timed.stop_reason.map(|reason| format!("{reason:?}")),
+        Some("TimeLimitReached".into())
+    );
+    assert_eq!(
+        cached_status(&cache_params, &input),
+        Solver6CacheIncumbentStatus::SearchTimedOut
+    );
+
+    let mut completing_params = exact_block_params(Some(cache_params.clone()));
+    completing_params.pair_repeat_penalty_model =
+        Solver6PairRepeatPenaltyModel::SquaredRepeatExcess;
+    input.solver.solver_params = SolverParams::Solver6(completing_params);
+    let completed = SearchEngine::new(&input.solver)
+        .solve(&input)
+        .expect("later run should resume and upgrade cached incumbent");
+    assert_ne!(
+        completed.stop_reason.map(|reason| format!("{reason:?}")),
+        Some("TimeLimitReached".into())
+    );
+    assert_ne!(
+        cached_status(&cache_params, &input),
+        Solver6CacheIncumbentStatus::SearchTimedOut
+    );
 }
 
 #[test]

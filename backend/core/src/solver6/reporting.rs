@@ -382,14 +382,17 @@ fn cache_store_detail(outcome: Option<&Solver6CacheStoreOutcome>) -> Option<Stri
         Solver6CacheStoreOutcome::Disabled => Some("cache_store=disabled".into()),
         Solver6CacheStoreOutcome::Wrote { entry_path, entry } => Some(format!(
             "cache_store=wrote, cache_entry={}, cache_status={:?}",
-            entry_path.display(), entry.status
+            entry_path.display(),
+            entry.status
         )),
-        Solver6CacheStoreOutcome::SkippedExistingBetterOrEqual { entry_path, existing } => {
-            Some(format!(
-                "cache_store=skipped_existing_better_or_equal, cache_entry={}, cache_status={:?}",
-                entry_path.display(), existing.status
-            ))
-        }
+        Solver6CacheStoreOutcome::SkippedExistingBetterOrEqual {
+            entry_path,
+            existing,
+        } => Some(format!(
+            "cache_store=skipped_existing_better_or_equal, cache_entry={}, cache_status={:?}",
+            entry_path.display(),
+            existing.status
+        )),
     }
 }
 
@@ -1052,10 +1055,10 @@ mod tests {
         assert_eq!(input.problem.num_sessions, 5);
         assert_eq!(input.problem.groups.len(), 4);
         assert_eq!(input.problem.people.len(), 8);
-        assert!(matches!(
-            input.solver.solver_params,
-            crate::models::SolverParams::Solver6(_)
-        ));
+        match input.solver.solver_params {
+            crate::models::SolverParams::Solver6(params) => assert!(params.cache.is_none()),
+            _ => panic!("benchmark input should use solver6 params"),
+        }
     }
 
     #[test]
