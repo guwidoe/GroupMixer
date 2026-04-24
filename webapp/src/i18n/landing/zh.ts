@@ -10,7 +10,7 @@ const OPTIMIZER_FEATURES = [
   '部分出席',
   '按场次设置小组',
   '按场次设置规则',
-  '硬 / 软约束',
+  '更细粒度的硬 / 软约束',
   '求解器设置',
   '详细结果分析',
 ];
@@ -80,7 +80,7 @@ const FAQS = {
   workspace: {
     question: '什么是场景编辑器？',
     answer:
-      '场景编辑器用于这页没有暴露的控制项，例如部分出席、按轮次设置不同分组集合和约束、硬/软规则权重、求解器设置、历史结果以及详细分析。',
+      '场景编辑器用于这页没有暴露的控制项，例如部分出席、按轮次设置不同分组集合、按轮次设置约束、更细粒度的硬/软约束、求解器设置、历史结果以及详细分析。',
   },
 };
 
@@ -111,7 +111,7 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: '需要超出此页面的控制吗？',
+      eyebrow: '还需要更多控制吗？',
       title: '打开完整场景编辑器。',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: '打开场景编辑器',

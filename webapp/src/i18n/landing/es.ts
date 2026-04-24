@@ -10,7 +10,7 @@ const OPTIMIZER_FEATURES = [
   'Asistencia parcial',
   'Grupos por sesión',
   'Reglas por sesión',
-  'Restricciones duras y flexibles',
+  'Restricciones duras y flexibles granulares',
   'Ajustes del solver',
   'Análisis detallado',
 ];
@@ -80,7 +80,7 @@ const FAQS = {
   workspace: {
     question: '¿Qué es el editor de escenarios?',
     answer:
-      'El editor de escenarios sirve para controles que esta página no expone: asistencia parcial, grupos y restricciones específicos por sesión, pesos duros o suaves, configuración del solver, resultados anteriores y análisis detallado.',
+      'El editor de escenarios sirve para controles que esta página no expone: asistencia parcial, grupos por sesión, restricciones específicas por sesión, restricciones duras y flexibles más granulares, configuración del solver, resultados anteriores y análisis detallado.',
   },
 };
 
@@ -111,7 +111,7 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: '¿Necesitas controles que esta página no cubre?',
+      eyebrow: '¿Necesitas todavía más control?',
       title: 'Abre el editor completo de escenarios.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Abrir editor de escenarios',

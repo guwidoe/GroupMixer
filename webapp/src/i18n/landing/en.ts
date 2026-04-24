@@ -14,7 +14,7 @@ const OPTIMIZER_FEATURES = [
   'Partial attendance',
   'Session-specific group sets',
   'Session-specific constraints',
-  'Hard + soft constraint weights',
+  'Granular hard + soft constraints',
   'Solver settings',
   'Detailed result analysis',
 ];
@@ -113,7 +113,7 @@ const FAQS = {
   workspace: {
     question: 'When should I use the scenario editor?',
     answer:
-      'Use the scenario editor for controls this page does not expose, such as partial attendance, per-session group sets and constraints, hard vs. soft rule weights, solver settings, previous results, and detailed analysis.',
+      'Use the scenario editor for controls this page does not expose, such as partial attendance, per-session group sets, session-specific constraints, granular hard and soft constraints, solver settings, previous results, and detailed analysis.',
   },
 };
 
@@ -153,7 +153,7 @@ function createContent({
       trustBullets,
     },
     optimizerCta: optimizerCta ?? {
-      eyebrow: 'Need controls beyond this page?',
+      eyebrow: 'Need even more control?',
       title: 'Open the full scenario editor.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Open scenario editor',

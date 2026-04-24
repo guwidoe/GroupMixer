@@ -10,7 +10,7 @@ const OPTIMIZER_FEATURES = [
   'Participation partielle',
   'Groupes par session',
   'Règles par session',
-  'Contraintes strictes et souples',
+  'Contraintes strictes et souples granulaires',
   'Réglages du solveur',
   'Analyse détaillée',
 ];
@@ -80,7 +80,7 @@ const FAQS = {
   workspace: {
     question: 'Qu’est-ce que l’éditeur de scénarios ?',
     answer:
-      'L’éditeur de scénarios sert aux contrôles que cette page n’expose pas : présence partielle, groupes et contraintes propres à chaque session, pondération dure ou souple, réglages du solveur, résultats précédents et analyse détaillée.',
+      'L’éditeur de scénarios sert aux contrôles que cette page n’expose pas : présence partielle, groupes propres à chaque session, contraintes propres à chaque session, contraintes strictes et souples plus granulaires, réglages du solveur, résultats précédents et analyse détaillée.',
   },
 };
 
@@ -111,7 +111,7 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'Besoin de contrôles au-delà de cette page ?',
+      eyebrow: 'Besoin d’encore plus de contrôle ?',
       title: 'Ouvrez l’éditeur complet de scénario.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Ouvrir l’éditeur de scénarios',

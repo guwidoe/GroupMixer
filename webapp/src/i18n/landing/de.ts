@@ -10,7 +10,7 @@ const OPTIMIZER_FEATURES = [
   'Teilweise Anwesenheit',
   'Session-spezifische Gruppen',
   'Session-spezifische Regeln',
-  'Harte + weiche Constraints',
+  'Granulare harte + weiche Constraints',
   'Solver-Einstellungen',
   'Detaillierte Ergebnisanalyse',
 ];
@@ -80,7 +80,7 @@ const FAQS = {
   workspace: {
     question: 'Was ist der Szenario-Editor?',
     answer:
-      'Der Szenario-Editor ist für Funktionen gedacht, die diese Seite nicht abdeckt: Teilanwesenheit, session-spezifische Gruppensets und Regeln, harte vs. weiche Gewichtungen, Solver-Einstellungen, frühere Ergebnisse und detaillierte Analyse.',
+      'Der Szenario-Editor ist für Funktionen gedacht, die diese Seite nicht abdeckt: Teilanwesenheit, session-spezifische Gruppensets, session-spezifische Regeln, granulare harte und weiche Constraints, Solver-Einstellungen, frühere Ergebnisse und detaillierte Analyse.',
   },
 };
 
@@ -111,7 +111,7 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'Brauchst du Kontrolle über diese Seite hinaus?',
+      eyebrow: 'Brauchst du noch mehr Kontrolle?',
       title: 'Öffne den vollständigen Szenario-Editor.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Szenario-Editor öffnen',

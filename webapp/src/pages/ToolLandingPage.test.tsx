@@ -496,7 +496,7 @@ describe('ToolLandingPage SEO wiring', () => {
     // Advanced options are expanded by default and the scenario-editor bridge only describes controls beyond this page.
     expect(screen.getByLabelText(/keep together/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/keep apart/i)).toBeInTheDocument();
-    expect(screen.getByText(/need controls beyond this page/i)).toBeInTheDocument();
+    expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /open the full scenario editor/i })).toBeInTheDocument();
     expect(screen.getByText(/use this when you need controls the landing page does not expose/i)).toBeInTheDocument();
     expect(screen.queryByText(/groupmixer is more than a random shuffler/i)).not.toBeInTheDocument();

@@ -10,7 +10,7 @@ const OPTIMIZER_FEATURES = [
   'Partial attendance',
   'Session-specific groups',
   'Session-specific rules',
-  'Hard + soft constraints',
+  'Granular hard + soft constraints',
   'Solver settings',
   'Detailed result analysis',
 ];
@@ -80,7 +80,7 @@ const FAQS = {
   workspace: {
     question: 'Scenario Editor क्या है?',
     answer:
-      'Scenario Editor उन controls के लिए है जो इस page पर नहीं हैं: partial attendance, session-specific group sets और constraints, hard/soft rule weights, solver settings, previous results और detailed analysis।',
+      'Scenario Editor उन controls के लिए है जो इस page पर नहीं हैं: partial attendance, session-specific group sets, session-specific constraints, granular hard/soft constraints, solver settings, previous results और detailed analysis।',
   },
 };
 
@@ -111,7 +111,7 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'इस पेज से आगे की controls चाहिए?',
+      eyebrow: 'और भी ज़्यादा control चाहिए?',
       title: 'पूरा Scenario Editor खोलें।',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Scenario Editor खोलें',
