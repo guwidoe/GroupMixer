@@ -613,38 +613,8 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(checkbox).not.toBeChecked();
   });
 
-  it('loads landing-compatible example data into the quick setup form', async () => {
+  it('loads guide-aligned example data into the quick setup form', async () => {
     const user = userEvent.setup();
-    const demoFixture = {
-      demo_metadata: {
-        id: 'landing-ok',
-        display_name: 'Landing OK',
-        description: 'Compatible with landing quick setup',
-        category: 'Simple',
-      },
-      input: {
-        solver: { solver_type: 'SimulatedAnnealing' },
-        scenario: {
-          people: [
-            { id: 'Ada', attributes: { team: 'Blue' } },
-            { id: 'Grace', attributes: { team: 'Red' } },
-          ],
-          groups: [{ id: 'A', size: 1 }, { id: 'B', size: 1 }],
-          num_sessions: 2,
-        },
-        constraints: [
-          { type: 'MustStayApart', people: ['Ada', 'Grace'] },
-          { type: 'ImmovablePerson', person_id: 'Ada', group_id: 'A', sessions: [0, 1] },
-        ],
-      },
-    };
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ files: ['landing-ok.json'] }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => demoFixture })
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ files: ['landing-ok.json'] }) })
-      .mockResolvedValueOnce({ ok: true, json: async () => demoFixture })
-      .mockResolvedValueOnce({ ok: true, json: async () => demoFixture });
-    vi.stubGlobal('fetch', fetchMock);
 
     render(
       <MemoryRouter>
@@ -653,14 +623,14 @@ describe('ToolLandingPage SEO wiring', () => {
     );
 
     await user.click(screen.getByRole('button', { name: /example data/i }));
-    await user.click(await screen.findByRole('menuitem', { name: /landing ok/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /fair classroom split/i }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/participants/i)).toHaveTextContent('Ada');
+      expect(screen.getByLabelText(/participants/i)).toHaveTextContent('Alice Morgan');
     });
-    expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('team');
-    expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Ada - Grace');
-    expect(screen.getByRole('textbox', { name: /pinned people: name/i })).toHaveTextContent('Ada');
+    expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('gender');
+    expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Alice Morgan, Bruno Keller\nIsaac Ford, Julia Wolf\nYusuf Khan, Zoe Miller');
+    expect(screen.getByRole('textbox', { name: /pinned people: name/i })).toHaveTextContent('Celia Park');
     expect(screen.getByRole('textbox', { name: /pinned people: group/i })).toHaveTextContent('1');
   });
 

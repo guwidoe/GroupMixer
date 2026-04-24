@@ -9,7 +9,6 @@ import {
   readTelemetryAttributionFromSearch,
   trackLandingEvent,
 } from '../../services/landingInstrumentation';
-import { loadDemoCase } from '../../services/demoDataService';
 import { useAppStore } from '../../store';
 import { normalizeParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import { buildResultsSessionData } from '../results/buildResultsViewModel';
@@ -432,26 +431,14 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
     openAdvancedWorkspace,
   }), [controller.result, openAdvancedWorkspace]);
 
-  const handleLandingDemoCaseClick = useCallback(async (demoCaseId: string) => {
-    try {
-      const scenario = await loadDemoCase(demoCaseId);
-      const loaded = controller.loadScenarioDraft(scenario);
-      if (!loaded) {
-        addNotification({
-          type: 'error',
-          title: 'Demo case not supported here',
-          message: 'This demo uses session-aware settings that require the advanced workspace.',
-        });
-      }
-    } catch (error) {
-      console.error('Failed to load landing demo case:', error);
-      addNotification({
-        type: 'error',
-        title: 'Failed to load demo data',
-        message: 'Please try again or open the advanced workspace.',
-      });
-    }
-  }, [addNotification, controller]);
+  const handleLandingExampleClick = useCallback((exampleKey: Parameters<typeof controller.loadLandingGuideExample>[0]) => {
+    controller.loadLandingGuideExample(exampleKey);
+    trackLandingEvent('landing_example_loaded', {
+      pageKey: config.key,
+      locale: config.locale,
+      exampleKey,
+    });
+  }, [config.key, config.locale, controller]);
 
   const handleClearAllInputs = useCallback(() => {
     if (controller.hasAnyInputData && !window.confirm(ui.quickSetup.clearAllConfirmMessage)) {
@@ -491,9 +478,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
       advancedOptionsPaneRef={advancedOptionsPaneRef}
       participantInputSlotRef={setParticipantInputSlotRef}
       onClearAllInputs={handleClearAllInputs}
-      onLandingDemoCaseClick={(demoCaseId) => {
-        void handleLandingDemoCaseClick(demoCaseId);
-      }}
+      onLandingExampleClick={handleLandingExampleClick}
       onOpenAdvancedWorkspace={openAdvancedWorkspace}
       onStartToolDividerDrag={(event) => {
         event.preventDefault();

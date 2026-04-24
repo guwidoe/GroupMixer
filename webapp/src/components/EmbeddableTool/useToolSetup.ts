@@ -14,8 +14,9 @@ import {
   syncAutoBalanceTargets,
 } from '../../utils/quickSetup/attributeBalanceTargets';
 import { normalizeFixedAssignmentRows, resolveFixedAssignmentGroupId } from '../../utils/quickSetup/fixedAssignments';
-import { createQuickSetupDraftFromScenario } from '../../utils/quickSetup/landingDemo';
+import { createLandingGuideExampleDraft } from '../../utils/quickSetup/landingGuideExamples';
 import { normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
+import type { GuidePageKey } from '../../pages/guidePageTypes';
 import type { AttributeDefinition, Scenario, Solution } from '../../types';
 import type {
   QuickSetupAnalysis,
@@ -59,8 +60,7 @@ export interface ToolController {
   resetDraft: () => void;
   clearDraft: () => void;
   hasAnyInputData: boolean;
-  loadSampleData: () => void;
-  loadScenarioDraft: (scenario: Scenario) => boolean;
+  loadLandingGuideExample: (exampleKey: GuidePageKey) => void;
   exportGroupsCsv: () => void;
   exportProjectDraft: () => void;
 }
@@ -332,8 +332,6 @@ export function useToolSetup(pageConfig: ToolPageConfig): ToolController {
   const [lastSolvedScenario, setLastSolvedScenario] = useState<Scenario | null>(null);
   const [lastSolvedSolution, setLastSolvedSolution] = useState<Solution | null>(null);
   const [lastSolvedAttributeDefinitions, setLastSolvedAttributeDefinitions] = useState<AttributeDefinition[]>([]);
-  const sampleNames = useMemo(() => getLandingSampleNamesText(pageConfig.locale), [pageConfig.locale]);
-  const sampleCsv = useMemo(() => getLandingSampleCsvText(pageConfig.locale), [pageConfig.locale]);
 
   const analysis = useMemo(() => analyzeDraft(draft), [draft]);
   const participantCount = analysis.participants.length;
@@ -452,30 +450,14 @@ export function useToolSetup(pageConfig: ToolPageConfig): ToolController {
     [draft, errorMessage, pageConfig, result],
   );
 
-  const loadSampleData = useCallback(() => {
-    setDraft((current) => ({
-      ...withParticipantColumns(current, normalizeParticipantColumns({
-        participantInput: current.inputMode === 'csv' ? sampleCsv : sampleNames,
-        inputMode: current.inputMode,
-        participantColumns: undefined,
-      })),
-    }));
-  }, [sampleCsv, sampleNames, setDraft]);
-
-  const loadScenarioDraft = useCallback((scenario: Scenario) => {
-    const nextDraft = createQuickSetupDraftFromScenario(scenario, draft);
-    if (!nextDraft) {
-      return false;
-    }
-
-    setDraft(nextDraft);
+  const loadLandingGuideExample = useCallback((exampleKey: GuidePageKey) => {
+    setDraft((current) => normalizeQuickSetupDraft(createLandingGuideExampleDraft(exampleKey, current)));
     setResult(null);
     setLastSolvedScenario(null);
     setLastSolvedSolution(null);
     setLastSolvedAttributeDefinitions([]);
     setErrorMessage(null);
-    return true;
-  }, [draft, setDraft]);
+  }, [setDraft]);
 
   const exportGroupsCsv = useCallback(() => {
     if (!result) {
@@ -519,8 +501,7 @@ export function useToolSetup(pageConfig: ToolPageConfig): ToolController {
     resetDraft,
     clearDraft,
     hasAnyInputData,
-    loadSampleData,
-    loadScenarioDraft,
+    loadLandingGuideExample,
     exportGroupsCsv,
     exportProjectDraft,
   };

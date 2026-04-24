@@ -24,6 +24,7 @@ interface DemoDataDropdownProps {
   popupOwnerId?: string;
   loadCases?: () => Promise<DemoCaseWithMetrics[]>;
   includeGeneratedDemo?: boolean;
+  categoryLabels?: Partial<Record<DemoCaseWithMetrics['category'], string>>;
 }
 
 interface DropdownPosition {
@@ -48,6 +49,7 @@ export function DemoDataDropdown({
   popupOwnerId,
   loadCases,
   includeGeneratedDemo = true,
+  categoryLabels,
 }: DemoDataDropdownProps) {
   const addNotification = useAppStore((state) => state.addNotification);
   const demoDropdownRef = useRef<HTMLDivElement>(null);
@@ -342,7 +344,7 @@ export function DemoDataDropdown({
                         color: 'var(--text-tertiary)',
                       }}
                     >
-                      {category}
+                      {categoryLabels?.[category] ?? category}
                     </div>
                     {casesInCategory.map((demoCase) => (
                       <button

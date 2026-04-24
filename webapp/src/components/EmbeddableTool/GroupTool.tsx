@@ -6,9 +6,11 @@ import { Tooltip } from '../Tooltip';
 import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../ui';
 import { ResultsScheduleGrid } from '../ResultsView/ResultsScheduleGrid';
 import { interpolate } from '../../i18n/interpolate';
+import type { GuidePageKey } from '../../pages/guidePageTypes';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import type { ResultsSessionData } from '../../services/results/buildResultsModel';
+import { loadLandingGuideExampleCasesWithMetrics } from '../../utils/quickSetup/landingGuideExamples';
 import { nextAttributeColumnId, normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import { ParticipantColumnsInput } from './ParticipantColumnsInput';
 import { ResizableTextarea } from './ResizableTextarea';
@@ -55,7 +57,7 @@ interface GroupToolProps {
   participantInputSlotRef: (node: HTMLDivElement | null) => void;
   onClearAllInputs: () => void;
   onParticipantInputManualLayoutAdjustment: () => void;
-  onLandingDemoCaseClick: (demoCaseId: string) => void;
+  onLandingExampleClick: (exampleKey: GuidePageKey) => void;
   onOpenAdvancedWorkspace: (target: 'results' | 'people') => void;
   onStartToolDividerDrag: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onGenerateGroups: () => void;
@@ -131,7 +133,7 @@ export function GroupTool({
   participantInputSlotRef,
   onClearAllInputs,
   onParticipantInputManualLayoutAdjustment,
-  onLandingDemoCaseClick,
+  onLandingExampleClick,
   onOpenAdvancedWorkspace,
   onStartToolDividerDrag,
   onGenerateGroups,
@@ -521,7 +523,7 @@ export function GroupTool({
                     {ui.quickSetup.clearAllLabel}
                   </button>
                   <DemoDataDropdown
-                    onDemoCaseClick={onLandingDemoCaseClick}
+                    onDemoCaseClick={(exampleKey) => onLandingExampleClick(exampleKey as GuidePageKey)}
                     variant="default"
                     triggerLabel="Example data"
                     triggerButtonSize="sm"
@@ -529,8 +531,9 @@ export function GroupTool({
                     triggerClassName="landing-example-data-trigger min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
                     triggerChevronClassName="h-3 w-3"
                     showTriggerIcon={false}
-                    loadCases={loadLandingCompatibleDemoCasesWithMetrics}
+                    loadCases={loadLandingGuideExampleCasesWithMetrics}
                     includeGeneratedDemo={false}
+                    categoryLabels={{ Simple: 'Guide examples' }}
                   />
                 </div>
               )}
@@ -820,9 +823,4 @@ export function GroupTool({
       {resultsSection}
     </>
   );
-}
-
-async function loadLandingCompatibleDemoCasesWithMetrics() {
-  const { loadLandingCompatibleDemoCasesWithMetrics } = await import('../../services/demoDataService');
-  return loadLandingCompatibleDemoCasesWithMetrics();
 }

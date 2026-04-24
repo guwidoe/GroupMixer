@@ -7,7 +7,6 @@ import {
   extractAttributesFromScenario,
   loadDemoCase,
   loadDemoCasesWithMetrics,
-  loadLandingCompatibleDemoCasesWithMetrics,
   mergeAttributeDefinitions,
 } from './demoDataService';
 
@@ -84,90 +83,6 @@ describe('demoDataService', () => {
         sessionCount: 3,
       }),
     ]);
-  });
-
-  it('filters landing demo cases down to all-session-compatible scenarios', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse({ files: ['landing-ok.json', 'session-aware.json', 'fixed-ok.json'] }))
-      .mockResolvedValueOnce(
-        jsonResponse({
-          demo_metadata: {
-            id: 'landing-ok',
-            display_name: 'Landing OK',
-            description: 'Compatible with landing quick setup',
-            category: 'Simple',
-          },
-          input: {
-            solver: { solver_type: 'SimulatedAnnealing' },
-            scenario: {
-              people: [
-                { id: 'Ada', attributes: { team: 'Blue' } },
-                { id: 'Grace', attributes: { team: 'Red' } },
-              ],
-              groups: [{ id: 'G1', size: 1 }, { id: 'G2', size: 1 }],
-              num_sessions: 2,
-            },
-            constraints: [{ type: 'MustStayApart', people: ['Ada', 'Grace'] }],
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          demo_metadata: {
-            id: 'session-aware',
-            display_name: 'Session Aware',
-            description: 'Has session scoped people',
-            category: 'Simple',
-          },
-          input: {
-            solver: { solver_type: 'SimulatedAnnealing' },
-            scenario: {
-              people: [{ id: 'Ada', attributes: {}, sessions: [0] }],
-              groups: [{ id: 'G1', size: 1 }],
-              num_sessions: 2,
-            },
-            constraints: [],
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          demo_metadata: {
-            id: 'fixed-ok',
-            display_name: 'Fixed OK',
-            description: 'Has all-session pinned people constraints',
-            category: 'Simple',
-          },
-          input: {
-            solver: { solver_type: 'SimulatedAnnealing' },
-            scenario: {
-              people: [{ id: 'Ada', attributes: {} }, { id: 'Grace', attributes: {} }],
-              groups: [{ id: 'G1', size: 1 }, { id: 'G2', size: 1 }],
-              num_sessions: 1,
-            },
-            constraints: [{ type: 'ImmovablePerson', person_id: 'Ada', group_id: 'G1', sessions: [0] }],
-          },
-        }),
-      );
-    vi.stubGlobal('fetch', fetchMock);
-
-    const demoCases = await loadLandingCompatibleDemoCasesWithMetrics();
-
-    expect(demoCases).toHaveLength(2);
-    expect(demoCases).toEqual(expect.arrayContaining([
-      expect.objectContaining({
-        id: 'landing-ok',
-        peopleCount: 2,
-        groupCount: 2,
-        sessionCount: 2,
-      }),
-      expect.objectContaining({
-        id: 'fixed-ok',
-        peopleCount: 2,
-        groupCount: 2,
-        sessionCount: 1,
-      }),
-    ]));
   });
 
   it('supports legacy demo fixtures that still use input.problem', async () => {
