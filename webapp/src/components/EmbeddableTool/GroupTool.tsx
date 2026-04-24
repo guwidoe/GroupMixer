@@ -12,7 +12,6 @@ import { nextAttributeColumnId, normalizeParticipantColumns, withParticipantColu
 import { ParticipantColumnsInput } from './ParticipantColumnsInput';
 import { ResizableTextarea } from './ResizableTextarea';
 import { AdvancedOptions } from './AdvancedOptions';
-import { ScenarioEditorCta } from './ScenarioEditorCta';
 import type { QuickSetupParticipantColumn } from './types';
 import type { ToolController } from './useToolSetup';
 
@@ -140,13 +139,6 @@ export function GroupTool({
 }: GroupToolProps) {
   const { draft } = controller;
   const solvedSolution = controller.workspacePayload.solution ?? null;
-
-  const optimizerCtaCard = (
-    <ScenarioEditorCta
-      content={config.optimizerCta}
-      onOpen={() => onOpenAdvancedWorkspace('people')}
-    />
-  );
 
   const resultsSection = controller.result ? (
     <div
@@ -639,14 +631,16 @@ export function GroupTool({
           ) : null}
 
           <div ref={advancedOptionsPaneRef} className={canResizeToolColumns ? 'pl-2' : undefined}>
-            <AdvancedOptions controller={controller} />
+            <AdvancedOptions
+              controller={controller}
+              scenarioEditorCtaContent={config.optimizerCta}
+              onOpenScenarioEditor={() => onOpenAdvancedWorkspace('people')}
+            />
           </div>
         </div>
       </div>
 
       {resultsSection}
-
-      <div className={controller.result ? 'order-5' : 'order-4'}>{optimizerCtaCard}</div>
     </>
   );
 }

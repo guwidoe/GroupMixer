@@ -11,6 +11,7 @@ interface ResizableTextareaProps {
   className?: string;
   style?: React.CSSProperties;
   textareaClassName?: string;
+  horizontalScroll?: boolean;
   clipFieldBorder?: boolean;
   interactiveSurface?: boolean;
   onManualLayoutAdjustment?: () => void;
@@ -27,6 +28,7 @@ export function ResizableTextarea({
   className,
   style,
   textareaClassName,
+  horizontalScroll = false,
   clipFieldBorder = false,
   interactiveSurface = false,
   onManualLayoutAdjustment,
@@ -87,14 +89,21 @@ export function ResizableTextarea({
         onChange={onChange ? (event) => onChange(event.target.value) : undefined}
         placeholder={placeholder}
         readOnly={readOnly}
+        wrap={horizontalScroll ? 'off' : undefined}
         className={['theme-scrollbar landing-resizable-textarea__field', textareaClassName].filter(Boolean).join(' ')}
         style={clipFieldBorder
           ? {
             width: 'calc(100% + 2px)',
             height: `calc(${height}px + 2px)`,
             margin: '-1px -1px -1px',
+            overflowX: horizontalScroll ? 'auto' : undefined,
+            whiteSpace: horizontalScroll ? 'pre' : undefined,
           }
-          : { height: `${height}px` }}
+          : {
+            height: `${height}px`,
+            overflowX: horizontalScroll ? 'auto' : undefined,
+            whiteSpace: horizontalScroll ? 'pre' : undefined,
+          }}
       />
       <div
         className="landing-resizable-textarea__resize-handle"

@@ -57,7 +57,7 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         'groups of 4',
         '4 rounds',
         'avoid repeat pairings enabled',
-        'optional CSV balancing by role, department, or experience',
+        'optional attribute balancing by role, department, or experience',
       ],
     },
     setup: {
@@ -65,7 +65,7 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       intro:
         'For this kind of workshop, start with the quick setup and use the advanced options only where they add real value.',
       steps: [
-        'Paste the participant list or switch to CSV if you need balancing fields.',
+        'Paste the participant list and add attributes if you need balancing fields.',
         'Set the group size or number of groups for a single round.',
         'Increase the number of sessions to the number of workshop rounds you plan to run.',
         'Enable “Avoid repeat pairings” so the tool tries to keep participants meeting new people.',
@@ -255,7 +255,7 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       details: [
         '28 students',
         'groups of 4',
-        'balance by a CSV column such as reading level, confidence, or subject strength',
+        'balance by an attribute such as reading level, confidence, or subject strength',
         'optional together/apart rules for classroom dynamics',
         'optional fixed students for group leaders or anchor roles',
       ],
@@ -265,7 +265,7 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       intro:
         'For balanced classroom groups, start simple and only add the inputs that actually improve the outcome for the activity you are running.',
       steps: [
-        'Paste the class roster or switch to CSV input if you want to balance by a classroom attribute.',
+        'Paste the class roster and add classroom attributes if you want to balance group composition.',
         'Choose the number of groups or group size for the activity.',
         'If you have balancing data, select the attribute you want to spread more evenly across the groups.',
         'Add together/apart rules if there are classroom dynamics you already know you need to manage.',
@@ -464,7 +464,7 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       intro:
         'Start with the student-group flow, then add only the structure that helps this specific class activity feel fairer and easier to run.',
       steps: [
-        'Paste the class list or switch to CSV input if you want to use classroom attributes for balancing.',
+        'Paste the class list and add classroom attributes when you want to balance group composition.',
         'Choose the number of groups or group size that fits the task.',
         'Use balancing when fairness depends on spreading skill, confidence, or another known attribute across groups.',
         'Use together/apart rules only for classroom dynamics you already know matter.',
@@ -645,7 +645,7 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         '36 participants',
         '6 breakout rooms',
         '3 repeated breakout rounds',
-        'optional CSV balancing by role, location, or experience',
+        'optional attribute balancing by role, location, or experience',
         'optional fixed hosts or facilitators assigned to rooms',
       ],
     },
@@ -658,7 +658,7 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         'Set the number of groups to the number of breakout rooms, or set the people per room.',
         'Use multiple sessions for repeated breakout rounds.',
         'Enable avoid-repeat pairings when repeated rooms should introduce new conversations.',
-        'Use CSV attributes or pinned people only when facilitators, roles, or experience levels matter.',
+        'Use participant attributes or pinned people only when facilitators, roles, or experience levels matter.',
       ],
     },
     advanced: {
@@ -739,7 +739,7 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       details: [
         '24 participants',
         '4 teams',
-        'optional CSV columns for skill, role, department, or experience',
+        'optional attributes for skill, role, department, or experience',
         'balance by one useful attribute at a time',
         'optional together/apart rules for known team dynamics',
       ],
@@ -749,7 +749,7 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       intro:
         'For balanced teams, start with the target team count, then add attributes only when they improve the split.',
       steps: [
-        'Paste names for a quick team split, or switch to CSV when you need skills or roles.',
+        'Paste names for a quick team split, or add attributes when you need skills or roles.',
         'Set the number of teams or the desired people per team.',
         'Choose an attribute to balance when composition matters.',
         'Add keep-together or keep-apart rules only for known team requirements.',

@@ -11,7 +11,7 @@ const HOME_FEATURE_SUMMARY =
 
 const OPTIMIZER_FEATURES = [
   'Partial attendance',
-  'Custom capacities by group and session',
+  'Custom group capacities',
   'Session-specific constraints',
   'Weighted soft constraints',
   'Pair encounter targets',
@@ -107,10 +107,10 @@ const FAQS = {
     answer:
       'Yes. Open the advanced options to add keep-together groups, avoid-pairing rules, multiple sessions, and attribute balancing.',
   },
-  csvBalance: {
-    question: 'Can I balance by role, skill, gender, or department from CSV?',
+  attributeBalance: {
+    question: 'Can I balance by role, skill, gender, or department?',
     answer:
-      'Yes. Switch to CSV input mode, add columns such as role, skill, gender, or department, then choose which attribute to balance across groups.',
+      'Yes. Add attributes such as role, skill, gender, or department to your participants, then choose which attribute to balance across groups.',
   },
   fixedPeople: {
     question: 'Can I fix certain people to groups?',
@@ -130,7 +130,7 @@ const FAQS = {
 };
 
 const CORE_TRUST_FAQS = [FAQS.free, FAQS.limits, FAQS.account, FAQS.privacy, FAQS.offline];
-const CONTROL_FAQS = [FAQS.constraints, FAQS.csvBalance, FAQS.fixedPeople, FAQS.multiSession, FAQS.workspace];
+const CONTROL_FAQS = [FAQS.constraints, FAQS.attributeBalance, FAQS.fixedPeople, FAQS.multiSession, FAQS.workspace];
 
 function createContent({
   title,

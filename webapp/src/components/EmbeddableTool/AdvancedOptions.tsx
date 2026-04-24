@@ -16,11 +16,15 @@ import {
   resolveFixedAssignmentGroupId,
 } from '../../utils/quickSetup/fixedAssignments';
 import { ResizableTextarea } from './ResizableTextarea';
+import { ScenarioEditorCta } from './ScenarioEditorCta';
 import { useLayoutAutoResizeSuppression } from './layoutAutoResizeSuppression';
 import type { ToolController } from './useToolSetup';
+import type { ToolPageOptimizerCtaContent } from '../../pages/toolPageTypes';
 
 interface AdvancedOptionsProps {
   controller: ToolController;
+  scenarioEditorCtaContent: ToolPageOptimizerCtaContent;
+  onOpenScenarioEditor: () => void;
 }
 
 function SectionLabelWithTooltip({
@@ -51,7 +55,7 @@ function SectionLabelWithTooltip({
   );
 }
 
-export function AdvancedOptions({ controller }: AdvancedOptionsProps) {
+export function AdvancedOptions({ controller, scenarioEditorCtaContent, onOpenScenarioEditor }: AdvancedOptionsProps) {
   const { draft, analysis } = controller;
   const labels = controller.ui.advancedOptions;
   const balanceGroups = buildGroups(analysis.participants.length, draft);
@@ -86,6 +90,7 @@ export function AdvancedOptions({ controller }: AdvancedOptionsProps) {
             onChange={(value) => controller.updateDraft((current) => ({ ...current, keepTogetherInput: value }))}
             placeholder={labels.keepTogetherPlaceholder}
             minHeight={96}
+            horizontalScroll
             clipFieldBorder
             interactiveSurface
             className="rounded-2xl"
@@ -107,6 +112,7 @@ export function AdvancedOptions({ controller }: AdvancedOptionsProps) {
             onChange={(value) => controller.updateDraft((current) => ({ ...current, avoidPairingsInput: value }))}
             placeholder={labels.avoidPairingPlaceholder}
             minHeight={96}
+            horizontalScroll
             clipFieldBorder
             interactiveSurface
             className="rounded-2xl"
@@ -227,6 +233,16 @@ export function AdvancedOptions({ controller }: AdvancedOptionsProps) {
             )}
           </div>
         )}
+
+        <div
+          className="border-t pt-4"
+          style={{ gridColumn: '1 / -1', borderColor: 'var(--border-primary)' }}
+        >
+          <ScenarioEditorCta
+            content={scenarioEditorCtaContent}
+            onOpen={onOpenScenarioEditor}
+          />
+        </div>
 
     </div>
   );

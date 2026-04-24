@@ -497,12 +497,13 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByLabelText(/keep together/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/keep apart/i)).toBeInTheDocument();
     expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /open the full scenario editor/i })).toBeInTheDocument();
-    expect(screen.getByText(/use this when you need controls this page does not expose/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open the full scenario editor/i })).toBeInTheDocument();
+    expect(screen.queryByText(/use this when you need controls this page does not expose/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/your participants, rules, and configuration come with you/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /explain partial attendance/i })).toBeInTheDocument();
     expect(screen.getByText(/set which participants attend which sessions/i)).toHaveClass('sr-only');
     expect(screen.queryByText(/groupmixer is more than a random shuffler/i)).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /open scenario editor/i }).some((button) => button.className.includes('btn-primary'))).toBe(true);
+    expect(screen.getByRole('button', { name: /open the full scenario editor/i })).toBeInTheDocument();
   }, 10000);
 
   it('keeps the tool divider aligned with the pointer when dragging starts', async () => {
@@ -850,7 +851,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-4');
     expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /open the full scenario editor/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open the full scenario editor/i })).toBeInTheDocument();
     expect(screen.getByTestId('landing-hero')).toHaveClass('order-1');
   });
 

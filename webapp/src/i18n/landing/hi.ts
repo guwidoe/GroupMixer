@@ -8,7 +8,7 @@ const TRUST_BULLETS = [
 
 const OPTIMIZER_FEATURES = [
   'Partial attendance',
-  'Custom capacities by group and session',
+  'Custom group capacities',
   'Session-specific rules',
   'Weighted soft constraints',
   'Pair encounter targets',

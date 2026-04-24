@@ -32,6 +32,7 @@ export function LandingGuidesSection({ locale }: LandingGuidesSectionProps) {
 
   return (
     <section
+      id="guides"
       className="border-t px-4 py-12 sm:px-6 lg:py-16"
       style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
     >
