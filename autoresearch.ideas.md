@@ -7,7 +7,7 @@
 - Re-evaluate small, principled scaffold-disruption weights only if paired with a structural candidate-risk/fill-order change; simple scalar retuning has had diminishing returns.
 - Evaluate multiple top template candidates only with strong hard-feasibility/risk/contact tradeoffs; naive top-3 projection-score and lowest-disruption-frontier selectors were both negative.
 - Add benchmark telemetry for oracle outcome/template dimensions per case to understand whether regressions come from candidate choice, projection, merge displacement, or hard repair.
-- If revisiting projection convergence, pair it with synthetic/constrained-SGP safeguards; one extra assignment/alignment pass alone improved Sailing/transfer but worsened primary metric.
+- Do not add the simple extra projection assignment/alignment convergence pass; it worsened both before and after batch repair despite some sentinel gains.
 - Avoid scaffold-cohort pressure in repair; even a modest term after batch assignment was basin-hostile.
 - Do not continue scalar tuning of batch repair's preferred-group prior; 1.0 and 3.0 both worsened versus kept 2.0.
 - Do not combine hard selected-region target priority with batch repair; it was much worse than with greedy repair.
