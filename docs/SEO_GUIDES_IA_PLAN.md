@@ -4,14 +4,12 @@ _Date: 2026-04-23_
 
 ## Decision summary
 
-GroupMixer should treat practical guide pages as the main next SEO lane.
-
-We are **not** deleting the existing tool landing pages, but we are also **not** treating many near-keyword-clone landing pages as the main growth bet anymore.
+GroupMixer treats practical guide pages as the main SEO lane beyond the homepage.
 
 The current strategy is:
 
-- keep the homepage and existing tool landing pages live
-- let the homepage and core tool pages carry direct tool intent
+- keep the homepage as the only tool landing page
+- let the homepage carry direct tool intent
 - add a new guide layer that captures richer workflow/use-case intent
 - connect those guides back into the tool cleanly
 
@@ -107,8 +105,7 @@ How to run speed networking rounds without repeat conversations
 
 - strong event/workshop query intent
 - naturally showcases repeated-round optimization
-- aligns with an existing high-value tool page
-- good candidate for links from `/speed-networking-generator`
+- captures a high-value workflow without creating a separate tool landing page
 
 **Primary query intent:**
 
@@ -118,7 +115,7 @@ How to run speed networking rounds without repeat conversations
 
 **Main tool tie-in:**
 
-- `/speed-networking-generator`
+- homepage tool
 - multi-session setup with avoid-repeat pairings
 
 ---
@@ -142,7 +139,7 @@ How to make balanced student groups
 
 **Main tool tie-in:**
 
-- `/student-group-generator`
+- homepage tool
 - CSV/attribute balancing + simple classroom workflows
 
 ---
@@ -167,8 +164,6 @@ Random groups vs balanced groups vs constrained groups
 **Main tool tie-in:**
 
 - homepage
-- `/random-group-generator`
-- `/group-generator-with-constraints`
 - scenario editor handoff explanation
 
 ---
@@ -192,7 +187,7 @@ How to split a class into fair groups
 
 **Main tool tie-in:**
 
-- `/student-group-generator`
+- homepage tool
 - simple roster input + optional balancing
 
 ## Recommended execution order

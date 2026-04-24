@@ -3,7 +3,10 @@ export type GuidePageKey =
   | 'run-speed-networking-rounds'
   | 'make-balanced-student-groups'
   | 'random-vs-balanced-vs-constrained-groups'
-  | 'split-a-class-into-fair-groups';
+  | 'split-a-class-into-fair-groups'
+  | 'make-random-pairs-from-a-list'
+  | 'assign-breakout-rooms-for-online-workshops'
+  | 'create-balanced-random-teams';
 
 export interface GuidePageLink {
   label: string;
@@ -69,8 +72,8 @@ export interface GuidePageConfig {
   example: GuidePageExampleSection;
   setup: GuidePageSetupSection;
   advanced: GuidePageAdvancedSection;
-  cta: GuidePageCtaSection;
-  relatedTools: {
+  cta?: GuidePageCtaSection;
+  relatedTools?: {
     title: string;
     links: GuidePageLink[];
   };

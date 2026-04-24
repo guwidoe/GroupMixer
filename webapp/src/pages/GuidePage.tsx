@@ -31,6 +31,7 @@ interface GuidePageProps {
 export default function GuidePage({ pageKey }: GuidePageProps) {
   const config = getGuidePageConfig(pageKey);
   const relatedGuideLinks = config.relatedGuides?.links ?? [];
+  const relatedToolLinks = config.relatedTools?.links ?? [];
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
@@ -139,7 +140,9 @@ export default function GuidePage({ pageKey }: GuidePageProps) {
                 ['Example', '#example'],
                 ['Setup', '#setup'],
                 ['Advanced', '#advanced'],
-                ['Next', '#next'],
+                ...(config.cta ? [['Next', '#next']] : []),
+                ...(relatedToolLinks.length > 0 ? [['Tools', '#tools']] : []),
+                ...(relatedGuideLinks.length > 0 ? [['Guides', '#guides']] : []),
               ].map(([label, href]) => (
                 <a
                   key={href}
@@ -273,32 +276,36 @@ export default function GuidePage({ pageKey }: GuidePageProps) {
               </div>
             </section>
 
-            <section id="next" className="scroll-mt-24 border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
-              <div className="rounded-lg border p-6 sm:p-8" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
-                <h2 className="text-2xl font-semibold tracking-normal">{config.cta.title}</h2>
-                <p className="mt-4 max-w-3xl text-base leading-8" style={{ color: 'var(--text-secondary)' }}>
-                  {config.cta.body}
-                </p>
-                <Link
-                  to={config.cta.href}
-                  className="btn-primary mt-6 inline-flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold"
-                >
-                  {config.cta.buttonLabel}
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              </div>
-            </section>
+            {config.cta ? (
+              <section id="next" className="scroll-mt-24 border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
+                <div className="rounded-lg border p-6 sm:p-8" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+                  <h2 className="text-2xl font-semibold tracking-normal">{config.cta.title}</h2>
+                  <p className="mt-4 max-w-3xl text-base leading-8" style={{ color: 'var(--text-secondary)' }}>
+                    {config.cta.body}
+                  </p>
+                  <Link
+                    to={config.cta.href}
+                    className="btn-primary mt-6 inline-flex items-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold"
+                  >
+                    {config.cta.buttonLabel}
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </div>
+              </section>
+            ) : null}
 
-            <section className="border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
-              <div className="flex items-center gap-3">
-                <GuideSectionIcon icon={<Link2 className="h-5 w-5" />} />
-                <h2 className="text-2xl font-semibold tracking-normal">{config.relatedTools.title}</h2>
-              </div>
-              <GuideRelatedLinkGrid links={config.relatedTools.links} columns="three" />
-            </section>
+            {relatedToolLinks.length > 0 ? (
+              <section id="tools" className="scroll-mt-24 border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
+                <div className="flex items-center gap-3">
+                  <GuideSectionIcon icon={<Link2 className="h-5 w-5" />} />
+                  <h2 className="text-2xl font-semibold tracking-normal">{config.relatedTools?.title}</h2>
+                </div>
+                <GuideRelatedLinkGrid links={relatedToolLinks} columns="three" />
+              </section>
+            ) : null}
 
             {relatedGuideLinks.length > 0 ? (
-              <section className="border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
+              <section id="guides" className="scroll-mt-24 border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
                 <div className="flex items-center gap-3">
                   <GuideSectionIcon icon={<BookOpenText className="h-5 w-5" />} />
                   <h2 className="text-2xl font-semibold tracking-normal">{config.relatedGuides?.title}</h2>
@@ -310,7 +317,7 @@ export default function GuidePage({ pageKey }: GuidePageProps) {
         </div>
       </main>
 
-      <LandingFooter expertWorkspaceTo={config.cta.href} expertWorkspaceLabel={config.cta.buttonLabel} />
+      <LandingFooter />
     </div>
   );
 }

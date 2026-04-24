@@ -63,51 +63,27 @@ describe("App routing", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders SEO entry routes with the shared tool shell", async () => {
-    renderWithRouter(<App />, { route: "/random-team-generator" });
+  it("registers localized home routes on the shared landing shell", async () => {
+    renderWithRouter(<App />, { route: "/es" });
 
     expect(
-      await screen.findByText("Tool landing test stub: en:random-team-generator")
+      await screen.findByText("Tool landing test stub: es:home")
     ).toBeInTheDocument();
   });
 
-  it("renders additional intent routes with the same shared shell", async () => {
-    renderWithRouter(<App />, { route: "/speed-networking-generator" });
+  it("registers Simplified Chinese home route on the shared landing shell", async () => {
+    renderWithRouter(<App />, { route: "/zh" });
 
     expect(
-      await screen.findByText("Tool landing test stub: en:speed-networking-generator")
+      await screen.findByText("Tool landing test stub: zh:home")
     ).toBeInTheDocument();
   });
 
-  it("registers newly added English rollout routes with the shared landing shell", async () => {
-    renderWithRouter(<App />, { route: "/random-pair-generator" });
+  it("registers German home route on the shared landing shell", async () => {
+    renderWithRouter(<App />, { route: "/de" });
 
     expect(
-      await screen.findByText("Tool landing test stub: en:random-pair-generator")
-    ).toBeInTheDocument();
-  });
-
-  it("registers localized SEO routes on the shared landing shell", async () => {
-    renderWithRouter(<App />, { route: "/es/random-team-generator" });
-
-    expect(
-      await screen.findByText("Tool landing test stub: es:random-team-generator")
-    ).toBeInTheDocument();
-  });
-
-  it("registers newly approved Asian locale routes on the shared landing shell", async () => {
-    renderWithRouter(<App />, { route: "/zh/random-team-generator" });
-
-    expect(
-      await screen.findByText("Tool landing test stub: zh:random-team-generator")
-    ).toBeInTheDocument();
-  });
-
-  it("registers German locale routes on the shared landing shell", async () => {
-    renderWithRouter(<App />, { route: "/de/random-team-generator" });
-
-    expect(
-      await screen.findByText("Tool landing test stub: de:random-team-generator")
+      await screen.findByText("Tool landing test stub: de:home")
     ).toBeInTheDocument();
   });
 

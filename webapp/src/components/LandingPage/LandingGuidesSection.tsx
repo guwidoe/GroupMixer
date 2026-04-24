@@ -9,6 +9,7 @@ interface LandingGuidesSectionProps {
 }
 
 export function LandingGuidesSection({ locale }: LandingGuidesSectionProps) {
+  const guideTopics = ['All', 'Workshops', 'Classrooms', 'Networking', 'Constraints', 'Pairs', 'Breakouts', 'Teams'];
   const guideLinks = useMemo<LandingGuideCardLink[]>(() => {
     if (locale !== DEFAULT_LOCALE) {
       return [];
@@ -29,18 +30,16 @@ export function LandingGuidesSection({ locale }: LandingGuidesSectionProps) {
     return null;
   }
 
-  const [featuredGuide, ...supportingGuides] = guideLinks;
-
   return (
     <section
-      className="border-t px-4 py-12 sm:px-6 lg:py-14"
+      className="border-t px-4 py-12 sm:px-6 lg:py-16"
       style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
     >
-      <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.5fr)] lg:items-start">
-        <div className="min-w-0">
-          <div className="flex items-center gap-3">
+      <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-3xl text-center">
+          <div className="flex items-center justify-center gap-3">
             <div
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border"
+              className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border"
               style={{
                 borderColor: 'color-mix(in srgb, var(--color-accent) 35%, var(--border-primary) 65%)',
                 backgroundColor: 'color-mix(in srgb, var(--color-accent) 10%, var(--bg-primary) 90%)',
@@ -48,42 +47,37 @@ export function LandingGuidesSection({ locale }: LandingGuidesSectionProps) {
               }}
               aria-hidden="true"
             >
-              <BookOpenText className="h-5 w-5" />
+              <BookOpenText className="h-6 w-6" />
             </div>
-            <h2 className="text-2xl font-semibold tracking-tight">Guides</h2>
+            <h2 className="text-3xl font-semibold tracking-tight">Guides</h2>
           </div>
-          <p className="mt-3 max-w-xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
+          <p className="mt-3 text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
             Practical playbooks for workshops, classrooms, and repeated group assignments.
           </p>
-          <div
-            className="mt-6 grid grid-cols-3 divide-x divide-[var(--border-primary)] overflow-hidden rounded-lg border text-center"
-            style={{ borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}
-            aria-label="Guide library summary"
-          >
-            <div className="px-3 py-3">
-              <div className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                {guideLinks.length}
-              </div>
-              <div className="mt-0.5 text-xs font-medium">topics</div>
-            </div>
-            <div className="px-3 py-3">
-              <div className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                3
-              </div>
-              <div className="mt-0.5 text-xs font-medium">settings</div>
-            </div>
-            <div className="px-3 py-3">
-              <div className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>
-                1
-              </div>
-              <div className="mt-0.5 text-xs font-medium">tool</div>
-            </div>
-          </div>
         </div>
 
-        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
-          <LandingGuideCard guide={featuredGuide} featured />
-          {supportingGuides.map((guide) => (
+        <div className="mt-8 flex flex-wrap justify-center gap-2" aria-label="Guide topics">
+          {guideTopics.map((topic, index) => (
+            <span
+              key={topic}
+              className="rounded-lg border px-3 py-1.5 text-sm font-medium"
+              style={{
+                borderColor: index === 0
+                  ? 'color-mix(in srgb, var(--color-accent) 42%, var(--border-primary) 58%)'
+                  : 'var(--border-primary)',
+                backgroundColor: index === 0
+                  ? 'color-mix(in srgb, var(--color-accent) 12%, var(--bg-primary) 88%)'
+                  : 'var(--bg-primary)',
+                color: index === 0 ? 'var(--text-primary)' : 'var(--text-secondary)',
+              }}
+            >
+              {topic}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-10 grid min-w-0 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {guideLinks.map((guide) => (
             <LandingGuideCard key={guide.key} guide={guide} />
           ))}
         </div>

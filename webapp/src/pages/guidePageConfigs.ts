@@ -77,33 +77,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       body:
         'Use the advanced options when you need a few practical rules, such as fixed facilitators or people who should stay apart. Move into the scenario editor when the workshop has competing constraints, session-specific requirements, or you need deeper review of the generated schedule.',
     },
-    cta: {
-      title: 'Try this setup in the workshop group generator',
-      body:
-        'Start with the workshop-focused entry point, then enable multiple sessions and avoid repeat pairings.',
-      buttonLabel: 'Open workshop group generator',
-      href: '/workshop-group-generator',
-    },
-    relatedTools: {
-      title: 'Related tools',
-      links: [
-        {
-          label: 'Workshop Group Generator',
-          description: 'Start from the workshop-focused tool entry point for breakouts and repeated rounds.',
-          href: '/workshop-group-generator',
-        },
-        {
-          label: 'Speed Networking Generator',
-          description: 'Use the networking-focused tool when the main objective is maximizing new conversations.',
-          href: '/speed-networking-generator',
-        },
-        {
-          label: 'Group Generator with Constraints',
-          description: 'Use the constraint-focused page when workshop logistics matter as much as novelty.',
-          href: '/group-generator-with-constraints',
-        },
-      ],
-    },
     relatedGuides: {
       title: 'Related guides',
       links: [
@@ -203,33 +176,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       title: 'When to use advanced options or the scenario editor',
       body:
         'Use the advanced options when you need practical controls such as fixed hosts, repeated rounds, or simple relationship rules. Move into the scenario editor when the event has stronger constraints, such as session-specific requirements, facilitator assignments, or multiple competing objectives.',
-    },
-    cta: {
-      title: 'Try this setup in the speed networking generator',
-      body:
-        'Start with the networking-focused tool, then set the round count and enable repeat avoidance before generating the schedule.',
-      buttonLabel: 'Open speed networking generator',
-      href: '/speed-networking-generator',
-    },
-    relatedTools: {
-      title: 'Related tools',
-      links: [
-        {
-          label: 'Speed Networking Generator',
-          description: 'Use the networking-focused tool entry point for repeated short rounds with fewer repeat conversations.',
-          href: '/speed-networking-generator',
-        },
-        {
-          label: 'Workshop Group Generator',
-          description: 'Use the workshop-focused tool when the format includes breakout rounds beyond pure networking.',
-          href: '/workshop-group-generator',
-        },
-        {
-          label: 'Breakout Room Generator',
-          description: 'Use the breakout-room tool for remote or hybrid round-based discussion formats.',
-          href: '/breakout-room-generator',
-        },
-      ],
     },
     relatedGuides: {
       title: 'Related guides',
@@ -331,33 +277,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       body:
         'Use together/apart rules when you already know some student combinations help or hurt the activity. Use pinned people when a leader, helper, or anchor student should stay in a known group. Move into the scenario editor when the class grouping problem becomes more complex than a single quick setup pass.',
     },
-    cta: {
-      title: 'Try this setup in the student group generator',
-      body:
-        'Start with the classroom-focused tool, then add balancing or simple pairing rules only where they improve the activity outcome.',
-      buttonLabel: 'Open student group generator',
-      href: '/student-group-generator',
-    },
-    relatedTools: {
-      title: 'Related tools',
-      links: [
-        {
-          label: 'Student Group Generator',
-          description: 'Use the classroom-focused tool entry point for fast roster-based grouping with optional balancing.',
-          href: '/student-group-generator',
-        },
-        {
-          label: 'Random Group Generator',
-          description: 'Use the simpler random entry point when the activity does not need balancing or classroom rules.',
-          href: '/random-group-generator',
-        },
-        {
-          label: 'Group Generator with Constraints',
-          description: 'Use the constraint-focused tool when classroom relationships or balancing requirements are more demanding.',
-          href: '/group-generator-with-constraints',
-        },
-      ],
-    },
     relatedGuides: {
       title: 'Related guides',
       links: [
@@ -456,38 +375,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       title: 'When advanced setup is worth it',
       body:
         'Advanced setup is worth using when the cost of a bad grouping is high enough that manual fixes become annoying, unfair, or operationally risky. If the only goal is a quick split, stay simple. If fairness, repeated rounds, or non-negotiable rules matter, the extra setup usually pays for itself.',
-    },
-    cta: {
-      title: 'Start with the main group generator',
-      body:
-        'If you are still deciding, start with the main tool entry point. From there, you can stay with a simple setup or move into balancing and constraints as needed.',
-      buttonLabel: 'Open GroupMixer',
-      href: '/',
-    },
-    relatedTools: {
-      title: 'Related tools',
-      links: [
-        {
-          label: 'GroupMixer home',
-          description: 'Start from the main tool when you want the simplest path and decide on complexity as you go.',
-          href: '/',
-        },
-        {
-          label: 'Random Group Generator',
-          description: 'Use the random-focused entry point when speed matters more than balancing or rules.',
-          href: '/random-group-generator',
-        },
-        {
-          label: 'Student Group Generator',
-          description: 'Use the classroom-focused entry point when balance and fairness matter for student groups.',
-          href: '/student-group-generator',
-        },
-        {
-          label: 'Group Generator with Constraints',
-          description: 'Use the constraint-focused entry point when grouping rules or logistics must be respected.',
-          href: '/group-generator-with-constraints',
-        },
-      ],
     },
     relatedGuides: {
       title: 'Related guides',
@@ -589,33 +476,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
       body:
         'Stay with simple random grouping when any reasonable split is fine. Use balancing when you want a more even spread of student strengths or needs. Add together/apart rules or pinned people when you already know certain combinations help or hurt the activity. Move into the scenario editor only when the classroom problem has more constraints than a quick setup can handle cleanly.',
     },
-    cta: {
-      title: 'Try this setup in the student group generator',
-      body:
-        'Open the classroom-focused tool, start with a quick group split, and add balancing or simple rules only where they improve fairness for the activity.',
-      buttonLabel: 'Open student group generator',
-      href: '/student-group-generator',
-    },
-    relatedTools: {
-      title: 'Related tools',
-      links: [
-        {
-          label: 'Student Group Generator',
-          description: 'Use the classroom-focused entry point for fast teacher workflows with optional balancing and simple rules.',
-          href: '/student-group-generator',
-        },
-        {
-          label: 'Random Group Generator',
-          description: 'Use the simpler random tool when the classroom activity does not need balancing or relationship rules.',
-          href: '/random-group-generator',
-        },
-        {
-          label: 'Group Generator with Constraints',
-          description: 'Use the constraint-focused tool when fairness depends on stronger classroom rules or more involved setup.',
-          href: '/group-generator-with-constraints',
-        },
-      ],
-    },
     relatedGuides: {
       title: 'Related guides',
       links: [
@@ -633,6 +493,291 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
           label: 'How to avoid repeat pairings in workshops',
           description: 'Read this when the challenge is repeated rounds rather than one classroom grouping pass.',
           href: '/guides/avoid-repeat-pairings-in-workshops',
+        },
+      ],
+    },
+  },
+  'make-random-pairs-from-a-list': {
+    key: 'make-random-pairs-from-a-list',
+    slug: 'make-random-pairs-from-a-list',
+    canonicalPath: '/guides/make-random-pairs-from-a-list',
+    seo: {
+      title: 'How to Make Random Pairs From a List of Names | GroupMixer Guide',
+      description:
+        'Learn how to turn a list of names into random pairs for partner work, pair rotations, peer feedback, and repeated classroom or workshop rounds.',
+    },
+    hero: {
+      eyebrow: 'Guide for teachers, trainers, and facilitators',
+      title: 'How to make random pairs from a list of names',
+      intro:
+        'Random pairs are useful for partner work, peer review, drills, coaching conversations, and quick practice rounds. This guide explains how to create pairs, reshuffle pairs, and avoid sending the same people back together when the activity has more than one round.',
+    },
+    problem: {
+      title: 'Pairing looks simple until you need fresh partners or exceptions',
+      body:
+        'Turning a list of names into pairs is easy once. It becomes harder when the group has an odd number of people, some pairings should be avoided, or you want pair rotations where participants meet a new partner in each round.',
+      bullets: [
+        'partner work often needs pairs quickly without spreadsheet cleanup',
+        'pair rotations need memory of who already worked together',
+        'some activities still need avoid-pairing rules or fixed helpers',
+      ],
+    },
+    failureModes: {
+      title: 'Where simple pair randomizers fall short',
+      cards: [
+        {
+          title: 'They do not handle repeats across rounds',
+          body:
+            'A quick pair shuffle can work for one round, but it does not always prevent the same pair from appearing again later.',
+        },
+        {
+          title: 'Odd numbers need a decision',
+          body:
+            'When the participant count is odd, one group may need three people or one participant may need to sit out. That should be intentional, not a surprise.',
+        },
+        {
+          title: 'Manual pair fixes are easy to lose track of',
+          body:
+            'Once you start moving pairs by hand, it becomes harder to remember which combinations were already used.',
+        },
+      ],
+    },
+    example: {
+      title: 'Example pair-rotation setup',
+      summary:
+        'Imagine 17 students doing three peer-feedback rounds. You want pairs where possible, one group of three if needed, and you want each round to give students a different partner.',
+      details: [
+        '17 participants',
+        'groups of 2 where possible',
+        '3 pair-rotation rounds',
+        'avoid repeat pairings enabled for later rounds',
+        'optional apart rules for pairings that should not happen',
+      ],
+    },
+    setup: {
+      title: 'Recommended GroupMixer setup',
+      intro:
+        'For random pairs, use group size as the main control and add repeat-avoidance only when the activity has multiple rounds.',
+      steps: [
+        'Paste the list of names into the participant input.',
+        'Set the group size to 2 people per group.',
+        'Use one session for a single pair split, or multiple sessions for pair rotations.',
+        'Enable avoid-repeat pairings when participants should meet a different partner in each round.',
+        'Add avoid-pairing rules only for combinations that genuinely should not be paired.',
+      ],
+    },
+    advanced: {
+      title: 'When pair rotations need more control',
+      body:
+        'Use advanced controls when pair assignments need to respect real constraints, such as avoiding specific pairings, keeping helpers with specific participants, or spreading repeated encounters over several sessions. Keep the setup simple when you only need one quick random pairing pass.',
+    },
+    relatedGuides: {
+      title: 'Related guides',
+      links: [
+        {
+          label: 'Random groups vs balanced groups vs constrained groups',
+          description: 'Use this guide when you are deciding whether pairs are enough or whether the activity needs balancing and constraints.',
+          href: '/guides/random-vs-balanced-vs-constrained-groups',
+        },
+        {
+          label: 'How to avoid repeat pairings in workshops',
+          description: 'Use this guide when repeated pairings matter across workshop rounds, not just pair work.',
+          href: '/guides/avoid-repeat-pairings-in-workshops',
+        },
+        {
+          label: 'How to split a class into fair groups',
+          description: 'Use this guide when pair work is part of a broader classroom grouping problem.',
+          href: '/guides/split-a-class-into-fair-groups',
+        },
+      ],
+    },
+  },
+  'assign-breakout-rooms-for-online-workshops': {
+    key: 'assign-breakout-rooms-for-online-workshops',
+    slug: 'assign-breakout-rooms-for-online-workshops',
+    canonicalPath: '/guides/assign-breakout-rooms-for-online-workshops',
+    seo: {
+      title: 'How to Assign Breakout Rooms for Online Workshops | GroupMixer Guide',
+      description:
+        'Learn how to assign participants to breakout rooms for online workshops, Zoom calls, trainings, and hybrid events with room counts and repeated rounds.',
+    },
+    hero: {
+      eyebrow: 'Guide for remote facilitators and workshop hosts',
+      title: 'How to assign breakout rooms for online workshops',
+      intro:
+        'Breakout rooms work best when participants are assigned quickly and the room mix supports the activity. This guide covers room count, group size, repeated breakout rounds, and when to avoid repeat pairings in remote or hybrid sessions.',
+    },
+    problem: {
+      title: 'Breakout room assignments need to be fast, fair enough, and easy to explain',
+      body:
+        'In a live online workshop, people are waiting while rooms are created. The grouping process needs to handle the participant list, room count, and repeat rounds without turning into manual spreadsheet work.',
+      bullets: [
+        'remote facilitators often need room assignments before attention drops',
+        'room count and group size need to match the activity format',
+        'multi-round breakout rooms should avoid obvious repeated conversations',
+      ],
+    },
+    failureModes: {
+      title: 'Why manual breakout room planning gets messy',
+      cards: [
+        {
+          title: 'Room count changes under pressure',
+          body:
+            'A few missing participants can change the right number of rooms or room size, especially in live online sessions.',
+        },
+        {
+          title: 'Repeated rounds create accidental repeats',
+          body:
+            'If every breakout round is generated independently, participants can end up with the same people again.',
+        },
+        {
+          title: 'Hybrid and training sessions add constraints',
+          body:
+            'Facilitators, hosts, language needs, or experience levels may need to be distributed instead of shuffled blindly.',
+        },
+      ],
+    },
+    example: {
+      title: 'Example breakout-room setup',
+      summary:
+        'Imagine a 36-person online training with three breakout rounds. You want 6 rooms per round, a reasonable mix of experience levels, and fewer repeated conversations.',
+      details: [
+        '36 participants',
+        '6 breakout rooms',
+        '3 repeated breakout rounds',
+        'optional CSV balancing by role, location, or experience',
+        'optional fixed hosts or facilitators assigned to rooms',
+      ],
+    },
+    setup: {
+      title: 'Recommended GroupMixer setup',
+      intro:
+        'For breakout rooms, start with the room count or room size that matches the live facilitation plan.',
+      steps: [
+        'Paste the participant list before the session or after attendance is known.',
+        'Set the number of groups to the number of breakout rooms, or set the people per room.',
+        'Use multiple sessions for repeated breakout rounds.',
+        'Enable avoid-repeat pairings when repeated rooms should introduce new conversations.',
+        'Use CSV attributes or pinned people only when facilitators, roles, or experience levels matter.',
+      ],
+    },
+    advanced: {
+      title: 'When breakout rooms need constraints',
+      body:
+        'Use constraints when the room assignment has real facilitation requirements, such as fixed room hosts, people who should not be placed together, or roles that should be spread across rooms. For a simple one-round discussion, a quick random split is usually enough.',
+    },
+    relatedGuides: {
+      title: 'Related guides',
+      links: [
+        {
+          label: 'How to avoid repeat pairings in workshops',
+          description: 'Use this guide when breakout rooms are part of repeated workshop rounds.',
+          href: '/guides/avoid-repeat-pairings-in-workshops',
+        },
+        {
+          label: 'How to run speed networking rounds without repeat conversations',
+          description: 'Use this guide when the breakout-room format is closer to repeated networking rounds.',
+          href: '/guides/run-speed-networking-rounds',
+        },
+        {
+          label: 'Random groups vs balanced groups vs constrained groups',
+          description: 'Use this guide when deciding whether room assignments need balancing or explicit constraints.',
+          href: '/guides/random-vs-balanced-vs-constrained-groups',
+        },
+      ],
+    },
+  },
+  'create-balanced-random-teams': {
+    key: 'create-balanced-random-teams',
+    slug: 'create-balanced-random-teams',
+    canonicalPath: '/guides/create-balanced-random-teams',
+    seo: {
+      title: 'How to Create Balanced Random Teams | GroupMixer Guide',
+      description:
+        'Learn how to create balanced random teams from a list of names, including team count, skills or roles, managers, coaches, and simple grouping rules.',
+    },
+    hero: {
+      eyebrow: 'Guide for coaches, managers, and facilitators',
+      title: 'How to create balanced random teams',
+      intro:
+        'A random team generator is useful when you need teams quickly, but many team activities also need a reasonable spread of skills, roles, or experience. This guide explains how to keep the speed of random teams while adding enough structure to make the result usable.',
+    },
+    problem: {
+      title: 'Good team splits are usually random enough, not purely random',
+      body:
+        'Pure random teams can accidentally stack all the same skill, role, or experience level together. For coaches, managers, and facilitators, the practical goal is often to make teams quickly while keeping the team count and composition workable.',
+      bullets: [
+        'team count affects whether groups are too large or too small',
+        'skills or roles may need to be spread across teams',
+        'some team assignments need simple together/apart rules',
+      ],
+    },
+    failureModes: {
+      title: 'Why random team generation often needs a little structure',
+      cards: [
+        {
+          title: 'Skills can cluster by chance',
+          body:
+            'A pure shuffle can place several experienced people or several beginners on the same team.',
+        },
+        {
+          title: 'Roles can become uneven',
+          body:
+            'If one team gets all designers, facilitators, or senior people, the result may be random but not useful.',
+        },
+        {
+          title: 'Manual balancing undermines the speed',
+          body:
+            'If every random result needs manual swaps, the generator is no longer saving much time.',
+        },
+      ],
+    },
+    example: {
+      title: 'Example balanced-team setup',
+      summary:
+        'Imagine 24 participants split into 4 project teams. You want each team to have a reasonable mix of skills or roles without hand-building every team.',
+      details: [
+        '24 participants',
+        '4 teams',
+        'optional CSV columns for skill, role, department, or experience',
+        'balance by one useful attribute at a time',
+        'optional together/apart rules for known team dynamics',
+      ],
+    },
+    setup: {
+      title: 'Recommended GroupMixer setup',
+      intro:
+        'For balanced teams, start with the target team count, then add attributes only when they improve the split.',
+      steps: [
+        'Paste names for a quick team split, or switch to CSV when you need skills or roles.',
+        'Set the number of teams or the desired people per team.',
+        'Choose an attribute to balance when composition matters.',
+        'Add keep-together or keep-apart rules only for known team requirements.',
+        'Review the result and simplify the setup if the extra rules are not improving the teams.',
+      ],
+    },
+    advanced: {
+      title: 'When team generation becomes a constraints problem',
+      body:
+        'Use balancing when the team mix matters but the rules are soft. Use constraints when certain assignments are non-negotiable, such as people who must stay apart, fixed leaders, or repeated sessions where the same people should not keep meeting.',
+    },
+    relatedGuides: {
+      title: 'Related guides',
+      links: [
+        {
+          label: 'Random groups vs balanced groups vs constrained groups',
+          description: 'Use this guide to decide whether random teams, balanced teams, or constrained teams fit the situation.',
+          href: '/guides/random-vs-balanced-vs-constrained-groups',
+        },
+        {
+          label: 'How to make balanced student groups',
+          description: 'Use this guide when balanced teams are for classroom activities.',
+          href: '/guides/make-balanced-student-groups',
+        },
+        {
+          label: 'How to split a class into fair groups',
+          description: 'Use this guide when fairness and classroom dynamics matter more than team terminology.',
+          href: '/guides/split-a-class-into-fair-groups',
         },
       ],
     },

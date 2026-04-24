@@ -72,21 +72,22 @@ cd webapp && npx tsc --noEmit
 - after bridging, confirm `/app` shows the scratchpad banner
 
 ### 7. Public SEO routes
-Validate each route:
+Validate the public SEO routes:
 
 - `/`
-- `/random-group-generator`
-- `/random-team-generator`
-- `/breakout-room-generator`
-- `/student-group-generator`
-- `/speed-networking-generator`
-- `/group-generator-with-constraints`
+- `/de`
+- `/es`
+- `/fr`
+- `/ja`
+- `/hi`
+- `/zh`
+- `/guides/...`
 
 For each, confirm:
-- route-specific H1 and copy
-- shared tool shell renders correctly
+- H1 and copy render correctly
 - title/description/canonical update appropriately
-- FAQ content appears and route-specific schema is present
+- FAQ or guide content appears where expected
+- structured data is present only where expected
 
 ## Edge cases to test manually
 

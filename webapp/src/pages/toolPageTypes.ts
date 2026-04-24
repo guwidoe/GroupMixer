@@ -6,16 +6,7 @@ export type ToolPagePreset = 'random' | 'balanced' | 'networking';
 export type ToolPageMode = 'quick-randomizer' | 'constraint-optimizer' | 'multi-round' | 'social-golfer';
 export type ToolPageSectionSet = 'standard' | 'technical';
 
-export type ToolPageKey =
-  | 'home'
-  | 'random-group-generator'
-  | 'random-team-generator'
-  | 'random-pair-generator'
-  | 'breakout-room-generator'
-  | 'workshop-group-generator'
-  | 'student-group-generator'
-  | 'speed-networking-generator'
-  | 'group-generator-with-constraints';
+export type ToolPageKey = 'home';
 
 export interface ToolPageFaqEntry {
   question: string;

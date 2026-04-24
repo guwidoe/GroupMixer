@@ -23,8 +23,8 @@ Purpose:
 
 - [ ] choose and keep the `/guides/...` guide lane as the main next SEO surface
 - [ ] build the first guide page from `docs/SEO_GUIDES_IA_PLAN.md`
-- [ ] add clean internal links between guides and tool pages
-- [ ] add a crawlable internal-link hub for landing pages on `/`
+- [ ] add clean internal links between guides and the homepage tool
+- [ ] add a crawlable guide hub on `/`
 - [ ] track AI referral sources separately from search traffic
 
 ## Core keyword clusters
@@ -110,15 +110,11 @@ Purpose:
 - [ ] add a crawlable "Advanced grouping tools" section on `/`
 - [ ] verify these links exist in prerendered HTML, not only client-side state
 
-### Landing pages
+### Guide pages
 
-- [ ] add related-tool links on each landing page
-- [ ] ensure `random-group-generator` links to `student-group-generator`
-- [ ] ensure `random-group-generator` links to `breakout-room-generator`
-- [ ] ensure `random-group-generator` links to `random-pair-generator`
-- [ ] ensure `random-group-generator` links to `group-generator-with-constraints`
-- [ ] ensure all primary landing pages link laterally to adjacent intents
-- [ ] ensure localized pages expose localized related links where available
+- [ ] add related-guide links on each guide page
+- [ ] ensure guide pages link back to the homepage tool when the CTA plan is approved
+- [ ] ensure adjacent workflow guides link laterally where it helps users
 
 ## Content differentiation backlog
 
@@ -153,15 +149,15 @@ Purpose:
 - [ ] evaluate a page for "balance teams by skill / role / department"
 - [ ] evaluate a page for "group students while keeping certain people apart"
 
-## Existing landing-page rewrite backlog
+## Existing homepage rewrite backlog
 
 - [ ] rewrite `/` to expose broader non-brand search intents
-- [ ] rewrite `/random-group-generator` to better capture "split names into groups" language
-- [ ] rewrite `/random-team-generator` to better capture fairness / balancing language
-- [ ] rewrite `/student-group-generator` with stronger teacher-specific workflows
-- [ ] rewrite `/breakout-room-generator` with clearer remote-meeting workflows
-- [ ] rewrite `/speed-networking-generator` around multi-round / no-repeat outcomes
-- [ ] rewrite `/group-generator-with-constraints` around the strongest advanced capabilities
+- [ ] strengthen "split names into groups" language
+- [ ] strengthen fairness / balancing language
+- [ ] strengthen teacher-specific workflows through guides
+- [ ] strengthen remote-meeting workflows through guides
+- [ ] strengthen multi-round / no-repeat outcomes through guides
+- [ ] strengthen advanced-capability explanations through guides
 
 ## Differentiators to surface more aggressively
 

@@ -9,22 +9,22 @@ describe('LandingLanguageSelector', () => {
     const user = userEvent.setup();
 
     render(
-      <MemoryRouter initialEntries={['/es/random-team-generator?exp=seo-test&var=B']}>
+      <MemoryRouter initialEntries={['/es?exp=seo-test&var=B']}>
         <Routes>
           <Route
-            path="/es/random-team-generator"
+            path="/es"
             element={
               <LandingLanguageSelector
                 currentLocale="es"
                 options={[
-                  { locale: 'en', label: 'English', to: '/random-team-generator?exp=seo-test&var=B' },
-                  { locale: 'es', label: 'Español', to: '/es/random-team-generator?exp=seo-test&var=B' },
-                  { locale: 'de', label: 'Deutsch', to: '/de/random-team-generator?exp=seo-test&var=B' },
+                  { locale: 'en', label: 'English', to: '/?exp=seo-test&var=B' },
+                  { locale: 'es', label: 'Español', to: '/es?exp=seo-test&var=B' },
+                  { locale: 'de', label: 'Deutsch', to: '/de?exp=seo-test&var=B' },
                 ]}
               />
             }
           />
-          <Route path="/de/random-team-generator" element={<div>German destination</div>} />
+          <Route path="/de" element={<div>German destination</div>} />
         </Routes>
       </MemoryRouter>,
     );

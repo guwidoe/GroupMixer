@@ -165,7 +165,7 @@ describe("MainApp stateful integration routes", () => {
   });
 
   it("tracks app entry attribution from URL params on first app load", async () => {
-    renderAppRoute("/app/solver?lp=random-team-generator&exp=seo-hero-test&var=B");
+    renderAppRoute("/app/solver?lp=home&exp=seo-hero-test&var=B");
 
     expect(window.__groupmixerLandingEvents).toEqual(
       expect.arrayContaining([
@@ -173,7 +173,7 @@ describe("MainApp stateful integration routes", () => {
           name: 'app_entry',
           payload: expect.objectContaining({
             entryPath: '/app/solver',
-            landingSlug: 'random-team-generator',
+            landingSlug: 'home',
             experiment: 'seo-hero-test',
             variant: 'B',
           }),
@@ -301,7 +301,7 @@ describe("MainApp stateful integration routes", () => {
 
     expect(useAppStore.getState().scenario?.settings.solver_params).not.toHaveProperty('SimulatedAnnealing');
 
-    expect(screen.getByText(/recommended settings/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /recommended settings/i })).toBeInTheDocument();
     expect(screen.getByText(/solver 3: dense-state search/i)).toBeInTheDocument();
     expect(screen.getByText(/enable correctness lane/i)).toBeInTheDocument();
   });

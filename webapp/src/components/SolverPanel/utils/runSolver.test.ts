@@ -201,7 +201,7 @@ describe('runSolver', () => {
   it('uses the shared solve service, emits telemetry, and saves via the active store scenario id', async () => {
     window.sessionStorage.setItem(
       'groupmixer-telemetry-attribution',
-      JSON.stringify({ landingSlug: 'random-team-generator', experiment: 'seo-hero-test', variant: 'B' }),
+      JSON.stringify({ landingSlug: 'home', experiment: 'seo-hero-test', variant: 'B' }),
     );
     const args = createArgs({ useRecommended: true, currentScenarioId: null });
 
@@ -230,7 +230,7 @@ describe('runSolver', () => {
         expect.objectContaining({
           name: 'solver_started',
           payload: expect.objectContaining({
-            landingSlug: 'random-team-generator',
+            landingSlug: 'home',
             experiment: 'seo-hero-test',
             variant: 'B',
             mode: 'automatic',
@@ -239,7 +239,7 @@ describe('runSolver', () => {
         expect.objectContaining({
           name: 'solver_completed',
           payload: expect.objectContaining({
-            landingSlug: 'random-team-generator',
+            landingSlug: 'home',
             experiment: 'seo-hero-test',
             variant: 'B',
             mode: 'automatic',

@@ -1,4 +1,4 @@
-import { ArrowRight, GitBranch, GraduationCap, Network, Shuffle, UsersRound } from 'lucide-react';
+import { ArrowRight, BriefcaseBusiness, GitBranch, GraduationCap, Handshake, MonitorUp, Network, Shuffle, UsersRound } from 'lucide-react';
 import { type ComponentType, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type { GuidePageKey } from '../../pages/guidePageConfigs';
@@ -16,6 +16,9 @@ const GUIDE_ICON_BY_KEY: Record<GuidePageKey, ComponentType<{ className?: string
   'make-balanced-student-groups': GraduationCap,
   'random-vs-balanced-vs-constrained-groups': GitBranch,
   'split-a-class-into-fair-groups': Shuffle,
+  'make-random-pairs-from-a-list': Handshake,
+  'assign-breakout-rooms-for-online-workshops': MonitorUp,
+  'create-balanced-random-teams': BriefcaseBusiness,
 };
 
 interface LandingGuideCardProps {

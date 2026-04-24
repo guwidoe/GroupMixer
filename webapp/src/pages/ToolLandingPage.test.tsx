@@ -8,7 +8,7 @@ import { solveScenario } from '../services/solver/solveScenario';
 import { createSampleScenario, createSampleSolverSettings } from '../test/fixtures';
 import { buildScenarioFromDraft } from '../utils/quickSetup/buildScenarioFromDraft';
 import ToolLandingPage from './ToolLandingPage';
-import { getToolPageConfig, TOOL_PAGE_CONFIGS } from './toolPageConfigs';
+import { getToolPageConfig } from './toolPageConfigs';
 
 const scrollIntoViewMock = vi.fn();
 
@@ -60,18 +60,18 @@ afterEach(() => {
 
 describe('ToolLandingPage SEO wiring', () => {
   it('renders route-specific copy and updates document metadata from config', async () => {
-    const config = TOOL_PAGE_CONFIGS['random-team-generator'];
+    const config = getToolPageConfig('home', 'en');
 
     render(
-      <MemoryRouter initialEntries={['/random-team-generator?exp=seo-hero-test&var=B']}>
-        <ToolLandingPage pageKey="random-team-generator" locale="en" />
+      <MemoryRouter initialEntries={['/?exp=seo-hero-test&var=B']}>
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
     expect(
       await screen.findByRole('heading', {
         level: 1,
-        name: config.hero.title,
+        name: config.seo.title,
       }),
     ).toBeInTheDocument();
 
@@ -80,10 +80,10 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(config.seo.description);
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
-      'https://www.groupmixer.app/random-team-generator',
+      'https://www.groupmixer.app/',
     );
     expect(document.querySelector('meta[property="og:title"]')?.getAttribute('content')).toBe(
-      'Random Team Generator - Create Balanced Teams',
+      config.seo.title,
     );
 
     const schema = document.getElementById('groupmixer-route-schema');
@@ -95,7 +95,7 @@ describe('ToolLandingPage SEO wiring', () => {
         expect.objectContaining({
           name: 'landing_view',
           payload: expect.objectContaining({
-            landingSlug: 'random-team-generator',
+            landingSlug: 'home',
             experiment: 'seo-hero-test',
             variant: 'B',
           }),
@@ -104,16 +104,16 @@ describe('ToolLandingPage SEO wiring', () => {
     );
     expect(screen.getByRole('link', { name: /scenario editor/i })).toHaveAttribute(
       'href',
-      '/app?lp=random-team-generator&exp=seo-hero-test&var=B',
+      '/app?lp=home&exp=seo-hero-test&var=B',
     );
   });
 
   it('renders localized Spanish metadata and hreflang wiring on the shared landing engine', async () => {
-    const config = getToolPageConfig('random-team-generator', 'es');
+    const config = getToolPageConfig('home', 'es');
 
     render(
-      <MemoryRouter initialEntries={['/es/random-team-generator?exp=seo-es-test&var=A']}>
-        <ToolLandingPage pageKey="random-team-generator" locale="es" />
+      <MemoryRouter initialEntries={['/es?exp=seo-es-test&var=A']}>
+        <ToolLandingPage pageKey="home" locale="es" />
       </MemoryRouter>,
     );
 
@@ -122,19 +122,19 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(document.documentElement.lang).toBe('es');
     expect(document.title).toBe(config.seo.title);
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
-      'https://www.groupmixer.app/es/random-team-generator',
+      'https://www.groupmixer.app/es',
     );
     expect(document.querySelector('link[rel="alternate"][hreflang="fr"]')?.getAttribute('href')).toBe(
-      'https://www.groupmixer.app/fr/random-team-generator',
+      'https://www.groupmixer.app/fr',
     );
     expect(window.__groupmixerLandingEvents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: 'landing_view',
           payload: expect.objectContaining({
-            pageKey: 'random-team-generator',
+            pageKey: 'home',
             locale: 'es',
-            landingSlug: 'random-team-generator',
+            landingSlug: 'home',
           }),
         }),
       ]),
@@ -147,8 +147,8 @@ describe('ToolLandingPage SEO wiring', () => {
     const user = userEvent.setup();
 
     render(
-      <MemoryRouter initialEntries={['/es/random-team-generator']}>
-        <ToolLandingPage pageKey="random-team-generator" locale="es" />
+      <MemoryRouter initialEntries={['/es']}>
+        <ToolLandingPage pageKey="home" locale="es" />
       </MemoryRouter>,
     );
 
@@ -165,11 +165,11 @@ describe('ToolLandingPage SEO wiring', () => {
   }, 10000);
 
   it('renders Simplified Chinese metadata with zh-Hans language tagging on the shared landing engine', async () => {
-    const config = getToolPageConfig('random-team-generator', 'zh');
+    const config = getToolPageConfig('home', 'zh');
 
     render(
-      <MemoryRouter initialEntries={['/zh/random-team-generator?exp=seo-zh-test&var=C']}>
-        <ToolLandingPage pageKey="random-team-generator" locale="zh" />
+      <MemoryRouter initialEntries={['/zh?exp=seo-zh-test&var=C']}>
+        <ToolLandingPage pageKey="home" locale="zh" />
       </MemoryRouter>,
     );
 
@@ -177,19 +177,19 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(document.documentElement.lang).toBe('zh-Hans');
     expect(document.title).toBe(config.seo.title);
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
-      'https://www.groupmixer.app/zh/random-team-generator',
+      'https://www.groupmixer.app/zh',
     );
     expect(document.querySelector('link[rel="alternate"][hreflang="zh-Hans"]')?.getAttribute('href')).toBe(
-      'https://www.groupmixer.app/zh/random-team-generator',
+      'https://www.groupmixer.app/zh',
     );
     expect(window.__groupmixerLandingEvents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: 'landing_view',
           payload: expect.objectContaining({
-            pageKey: 'random-team-generator',
+            pageKey: 'home',
             locale: 'zh',
-            landingSlug: 'random-team-generator',
+            landingSlug: 'home',
           }),
         }),
       ]),
@@ -198,8 +198,8 @@ describe('ToolLandingPage SEO wiring', () => {
 
   it('shows a language selector in the title bar for pages with multiple live locales', async () => {
     render(
-      <MemoryRouter initialEntries={['/random-team-generator']}>
-        <ToolLandingPage pageKey="random-team-generator" locale="en" />
+      <MemoryRouter initialEntries={['/']}>
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
@@ -589,35 +589,6 @@ describe('ToolLandingPage SEO wiring', () => {
     getBoundingClientRectMock.mockRestore();
   });
 
-  it('uses explicit en-only constraint-page defaults without involving localized behavior', () => {
-    const config = getToolPageConfig('group-generator-with-constraints', 'en');
-
-    expect(config.mode).toBe('constraint-optimizer');
-    expect(config.sectionSet).toBe('standard');
-    expect(config.liveLocales).toEqual(['en']);
-    expect(() => getToolPageConfig('group-generator-with-constraints', 'de')).toThrow(/not live for locale de/);
-
-    render(
-      <MemoryRouter>
-        <ToolLandingPage pageKey="group-generator-with-constraints" locale="en" />
-      </MemoryRouter>,
-    );
-
-    expect(screen.getByRole('heading', { level: 1, name: 'Group Generator with Constraints' })).toBeInTheDocument();
-    expect(screen.getByLabelText(/participants/i)).toHaveTextContent('Alex');
-    expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('team');
-    expect(screen.getByLabelText('Attribute column 2')).toHaveTextContent('role');
-    expect(screen.queryByRole('button', { name: /switch to names/i })).not.toBeInTheDocument();
-    expect(screen.getAllByText(/balance groups by attribute/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/^role$/i).length).toBeGreaterThan(1);
-    expect(screen.getByRole('checkbox', { name: /auto distribute attribute: team/i })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: /auto distribute attribute: role/i })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: /minimize repeat pairings/i })).toBeChecked();
-    const pinnedPeopleLabel = screen.getAllByText(/pinned people/i)[0];
-    const balanceGroupsLabel = screen.getAllByText(/balance groups by attribute/i)[0];
-    expect(pinnedPeopleLabel.compareDocumentPosition(balanceGroupsLabel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
   it('lets users toggle repeat-pairing minimization from the sessions row', async () => {
     const user = userEvent.setup();
 
@@ -636,25 +607,6 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(checkbox);
 
     expect(checkbox).not.toBeChecked();
-  });
-
-  it('switches attribute auto-distribution off after a manual balance edit', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <MemoryRouter>
-        <ToolLandingPage pageKey="group-generator-with-constraints" locale="en" />
-      </MemoryRouter>,
-    );
-
-    const checkbox = screen.getByRole('checkbox', { name: /auto distribute attribute: team/i });
-    expect(checkbox).toBeChecked();
-
-    fireEvent.change(screen.getAllByLabelText(/blue count/i)[0], { target: { value: '2' } });
-    expect(checkbox).not.toBeChecked();
-
-    await user.click(checkbox);
-    expect(checkbox).toBeChecked();
   });
 
   it('loads landing-compatible example data into the quick setup form', async () => {
@@ -739,26 +691,6 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(confirmSpy).not.toHaveBeenCalled();
   });
 
-  it('lets users remove attribute columns from the structured participant editor', async () => {
-    const user = userEvent.setup();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
-
-    render(
-      <MemoryRouter>
-        <ToolLandingPage pageKey="group-generator-with-constraints" locale="en" />
-      </MemoryRouter>,
-    );
-
-    await user.click(screen.getByRole('button', { name: /remove attribute: role/i }));
-
-    expect(confirmSpy).toHaveBeenCalledWith('Remove "role" and all entered values?');
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
-    expect(screen.queryByLabelText('Attribute column 2')).not.toBeInTheDocument();
-    expect(screen.queryByText('role')).not.toBeInTheDocument();
-
-    confirmSpy.mockRestore();
-  });
-
   it('lets users enter pinned people assignments from the landing tool', async () => {
     const user = userEvent.setup();
 
@@ -792,25 +724,6 @@ describe('ToolLandingPage SEO wiring', () => {
         }),
       }),
     );
-  });
-
-  it('does not remove a populated attribute column when the warning is cancelled', async () => {
-    const user = userEvent.setup();
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
-
-    render(
-      <MemoryRouter>
-        <ToolLandingPage pageKey="group-generator-with-constraints" locale="en" />
-      </MemoryRouter>,
-    );
-
-    await user.click(screen.getByRole('button', { name: /remove attribute: role/i }));
-
-    expect(confirmSpy).toHaveBeenCalledWith('Remove "role" and all entered values?');
-    expect(confirmSpy).toHaveBeenCalledTimes(1);
-    expect(screen.getByLabelText('Attribute column 2')).toBeInTheDocument();
-
-    confirmSpy.mockRestore();
   });
 
   it('removes an empty attribute column without showing a warning', async () => {
