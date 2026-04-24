@@ -1064,25 +1064,39 @@ pub enum Solver6SearchStrategy {
     ReservedRepeatAwareLocalSearch,
 }
 
-/// Explicit miss policy for the optional offline `solver6` seed catalog.
+/// Explicit miss policy for the optional `solver6` progressive incumbent cache.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
-pub enum Solver6SeedCatalogMissPolicy {
-    /// Fail explicitly when no compatible catalog entry exists.
+pub enum Solver6CacheMissPolicy {
+    /// Build a fresh seed and continue solving when no compatible incumbent exists.
     #[default]
+    BuildFresh,
+    /// Fail explicitly when no compatible incumbent exists.
     Error,
-    /// Fall back explicitly to live seed synthesis when no compatible catalog entry exists.
-    FallBackToLiveSeed,
 }
 
-/// Optional catalog-backed seed source for `solver6`.
+/// Write policy for the optional `solver6` progressive incumbent cache.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver6CacheWritePolicy {
+    /// Read existing incumbents and write improved incumbents back.
+    #[default]
+    ReadWrite,
+    /// Read existing incumbents but do not write new or improved incumbents.
+    ReadOnly,
+}
+
+/// Optional progressive incumbent cache for `solver6`.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
-pub struct Solver6SeedCatalogParams {
-    /// Path to the catalog manifest JSON file.
-    pub manifest_path: String,
+pub struct Solver6CacheParams {
+    /// Directory containing one cache entry per pure-SGP shape.
+    pub root_path: String,
     /// Explicit miss behavior when a compatible entry is absent.
     #[serde(default)]
-    pub miss_policy: Solver6SeedCatalogMissPolicy,
+    pub miss_policy: Solver6CacheMissPolicy,
+    /// Explicit write behavior after a live solve or resumed incumbent improves the cache.
+    #[serde(default)]
+    pub write_policy: Solver6CacheWritePolicy,
 }
 
 /// Parameters for the internal `solver6` family.
@@ -1105,9 +1119,15 @@ pub struct Solver6Params {
     /// Search-driver selection for the reserved hybrid pipeline.
     #[serde(default)]
     pub search_strategy: Solver6SearchStrategy,
-    /// Optional offline seed catalog used as an explicit seed source.
+    /// Optional progressive incumbent cache used as an explicit solver6-native cache.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub seed_catalog: Option<Solver6SeedCatalogParams>,
+    pub cache: Option<Solver6CacheParams>,
+    /// Optional hard deadline for seed construction on cache misses, in seconds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seed_time_limit_seconds: Option<u64>,
+    /// Optional local-search deadline, in seconds. Local-search timeout returns the incumbent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_search_time_limit_seconds: Option<u64>,
 }
 
 pub const fn default_solver6_exact_construction_handoff_enabled() -> bool {
@@ -1122,7 +1142,9 @@ impl Default for Solver6Params {
             seed_strategy: Solver6SeedStrategy::default(),
             pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::default(),
             search_strategy: Solver6SearchStrategy::default(),
-            seed_catalog: None,
+            cache: None,
+            seed_time_limit_seconds: None,
+            local_search_time_limit_seconds: None,
         }
     }
 }

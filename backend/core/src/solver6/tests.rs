@@ -1,16 +1,15 @@
 use super::catalog::{
-    synthesize_catalog_artifact_for_input, Solver6SeedCatalogManifest,
-    SOLVER6_SEED_CATALOG_SCHEMA_VERSION, SOLVER6_SEED_POLICY_VERSION,
+    store_cache_incumbent, Solver6CacheIncumbentStatus, SOLVER6_CACHE_POLICY_VERSION,
 };
+use super::problem::PureSgpProblem;
 use super::SearchEngine;
 use crate::models::{
     ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
-    Solver6PairRepeatPenaltyModel, Solver6Params, Solver6SearchStrategy,
-    Solver6SeedCatalogMissPolicy, Solver6SeedCatalogParams, Solver6SeedStrategy,
+    Solver6CacheMissPolicy, Solver6CacheParams, Solver6CacheWritePolicy,
+    Solver6PairRepeatPenaltyModel, Solver6Params, Solver6SearchStrategy, Solver6SeedStrategy,
     SolverConfiguration, SolverKind, SolverParams, StopConditions,
 };
 use std::collections::HashMap;
-use std::fs;
 
 fn solver6_config() -> SolverConfiguration {
     SolverConfiguration {
@@ -64,6 +63,26 @@ fn pure_input(groups: usize, group_size: usize, weeks: usize) -> ApiInput {
     }
 }
 
+fn cache_params(root_path: String, miss_policy: Solver6CacheMissPolicy) -> Solver6CacheParams {
+    Solver6CacheParams {
+        root_path,
+        miss_policy,
+        write_policy: Solver6CacheWritePolicy::ReadWrite,
+    }
+}
+
+fn exact_block_params(cache: Option<Solver6CacheParams>) -> Solver6Params {
+    Solver6Params {
+        exact_construction_handoff_enabled: false,
+        seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
+        pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
+        search_strategy: Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
+        cache,
+        seed_time_limit_seconds: None,
+        local_search_time_limit_seconds: None,
+    }
+}
+
 #[test]
 fn solver6_hands_exact_cells_through_solver5_scaffold() {
     let input = pure_input(2, 2, 3);
@@ -90,13 +109,7 @@ fn solver6_reports_reserved_pipeline_for_non_exact_cells() {
 #[test]
 fn solver6_exact_block_search_returns_an_impossible_case_result() {
     let mut input = pure_input(8, 4, 20);
-    input.solver.solver_params = SolverParams::Solver6(Solver6Params {
-        exact_construction_handoff_enabled: false,
-        seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
-        pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
-        search_strategy: Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
-        seed_catalog: None,
-    });
+    input.solver.solver_params = SolverParams::Solver6(exact_block_params(None));
 
     let result = SearchEngine::new(&input.solver)
         .solve(&input)
@@ -111,11 +124,8 @@ fn solver6_exact_block_search_returns_an_impossible_case_result() {
 fn solver6_exact_block_search_supports_non_linear_objective_modes() {
     let mut input = pure_input(8, 4, 20);
     input.solver.solver_params = SolverParams::Solver6(Solver6Params {
-        exact_construction_handoff_enabled: false,
-        seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
         pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::TriangularRepeatExcess,
-        search_strategy: Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
-        seed_catalog: None,
+        ..exact_block_params(None)
     });
 
     let result = SearchEngine::new(&input.solver)
@@ -130,13 +140,7 @@ fn solver6_exact_block_search_handles_non_multiple_horizons_via_mixed_seeds() {
     let mut input = pure_input(8, 3, 21);
     input.solver.stop_conditions.max_iterations = Some(60);
     input.solver.stop_conditions.no_improvement_iterations = Some(20);
-    input.solver.solver_params = SolverParams::Solver6(Solver6Params {
-        exact_construction_handoff_enabled: false,
-        seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
-        pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
-        search_strategy: Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
-        seed_catalog: None,
-    });
+    input.solver.solver_params = SolverParams::Solver6(exact_block_params(None));
 
     let result = SearchEngine::new(&input.solver)
         .solve(&input)
@@ -148,130 +152,68 @@ fn solver6_exact_block_search_handles_non_multiple_horizons_via_mixed_seeds() {
 }
 
 #[test]
-fn solver6_catalog_miss_with_error_policy_fails_explicitly() {
-    let manifest_dir =
-        std::env::temp_dir().join(format!("solver6-catalog-miss-{}", uuid::Uuid::new_v4()));
-    fs::create_dir_all(&manifest_dir).expect("temp dir should exist");
-    let manifest_path = manifest_dir.join("manifest.json");
-    let manifest = Solver6SeedCatalogManifest {
-        schema_version: SOLVER6_SEED_CATALOG_SCHEMA_VERSION,
-        generated_by: "test".into(),
-        seed_policy_version: SOLVER6_SEED_POLICY_VERSION.into(),
-        configured_threshold_micros: 100_000,
-        entries: Vec::new(),
-    };
-    fs::write(
-        &manifest_path,
-        serde_json::to_vec(&manifest).expect("manifest should serialize"),
-    )
-    .expect("manifest should write");
-
+fn solver6_cache_miss_with_error_policy_fails_explicitly() {
+    let cache_dir =
+        std::env::temp_dir().join(format!("solver6-cache-miss-{}", uuid::Uuid::new_v4()));
     let mut input = pure_input(8, 4, 20);
-    input.solver.solver_params = SolverParams::Solver6(Solver6Params {
-        exact_construction_handoff_enabled: false,
-        seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
-        pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
-        search_strategy: Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
-        seed_catalog: Some(Solver6SeedCatalogParams {
-            manifest_path: manifest_path.to_string_lossy().into_owned(),
-            miss_policy: Solver6SeedCatalogMissPolicy::Error,
-        }),
-    });
+    input.solver.solver_params = SolverParams::Solver6(exact_block_params(Some(cache_params(
+        cache_dir.to_string_lossy().into_owned(),
+        Solver6CacheMissPolicy::Error,
+    ))));
 
     let err = SearchEngine::new(&input.solver)
         .solve(&input)
-        .expect_err("catalog miss should fail explicitly under error policy");
-    assert!(err.to_string().contains("seed catalog miss"));
+        .expect_err("cache miss should fail explicitly under error policy");
+    assert!(err.to_string().contains("solver6 cache miss"));
 }
 
 #[test]
-fn solver6_catalog_miss_can_fall_back_to_live_seed() {
-    let manifest_dir =
-        std::env::temp_dir().join(format!("solver6-catalog-fallback-{}", uuid::Uuid::new_v4()));
-    fs::create_dir_all(&manifest_dir).expect("temp dir should exist");
-    let manifest_path = manifest_dir.join("manifest.json");
-    let manifest = Solver6SeedCatalogManifest {
-        schema_version: SOLVER6_SEED_CATALOG_SCHEMA_VERSION,
-        generated_by: "test".into(),
-        seed_policy_version: SOLVER6_SEED_POLICY_VERSION.into(),
-        configured_threshold_micros: 100_000,
-        entries: Vec::new(),
-    };
-    fs::write(
-        &manifest_path,
-        serde_json::to_vec(&manifest).expect("manifest should serialize"),
-    )
-    .expect("manifest should write");
-
+fn solver6_cache_miss_can_build_fresh_and_write_incumbent() {
+    let cache_dir =
+        std::env::temp_dir().join(format!("solver6-cache-build-{}", uuid::Uuid::new_v4()));
     let mut input = pure_input(8, 4, 20);
-    input.solver.solver_params = SolverParams::Solver6(Solver6Params {
-        exact_construction_handoff_enabled: false,
-        seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
-        pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
-        search_strategy: Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
-        seed_catalog: Some(Solver6SeedCatalogParams {
-            manifest_path: manifest_path.to_string_lossy().into_owned(),
-            miss_policy: Solver6SeedCatalogMissPolicy::FallBackToLiveSeed,
-        }),
-    });
+    input.solver.solver_params = SolverParams::Solver6(exact_block_params(Some(cache_params(
+        cache_dir.to_string_lossy().into_owned(),
+        Solver6CacheMissPolicy::BuildFresh,
+    ))));
 
     let result = SearchEngine::new(&input.solver)
         .solve(&input)
-        .expect("fallback policy should continue with live seed synthesis");
+        .expect("build-fresh cache policy should continue with live seed synthesis");
     assert_eq!(result.schedule.len(), 20);
+    assert!(cache_dir.join("entries/g08_p04_w20.json").exists());
 }
 
 #[test]
-fn solver6_can_load_a_matching_catalog_seed() {
-    let mut input = pure_input(8, 4, 20);
-    input.solver.solver_params = SolverParams::Solver6(Solver6Params {
-        exact_construction_handoff_enabled: false,
-        seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
-        pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
-        search_strategy: Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
-        seed_catalog: None,
-    });
-    let (manifest_entry, entry) = synthesize_catalog_artifact_for_input(&input, 0.0, None)
-        .expect("catalog artifact should synthesize");
-
-    let manifest_dir =
-        std::env::temp_dir().join(format!("solver6-catalog-hit-{}", uuid::Uuid::new_v4()));
-    let entry_path = manifest_dir.join(&manifest_entry.relative_entry_path);
-    fs::create_dir_all(entry_path.parent().expect("entry parent"))
-        .expect("entry parent should exist");
-    fs::write(
-        &entry_path,
-        serde_json::to_vec(&entry).expect("entry should serialize"),
+fn solver6_can_load_a_matching_complete_cached_incumbent() {
+    let cache_dir =
+        std::env::temp_dir().join(format!("solver6-cache-hit-{}", uuid::Uuid::new_v4()));
+    let mut input = pure_input(2, 2, 2);
+    let problem = PureSgpProblem::from_input(&input).expect("pure input");
+    let schedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
+    let params = cache_params(
+        cache_dir.to_string_lossy().into_owned(),
+        Solver6CacheMissPolicy::Error,
+    );
+    store_cache_incumbent(
+        &params,
+        &problem,
+        schedule,
+        Solver6CacheIncumbentStatus::KnownOptimal,
+        None,
+        None,
+        None,
     )
-    .expect("entry should write");
-    let manifest = Solver6SeedCatalogManifest {
-        schema_version: SOLVER6_SEED_CATALOG_SCHEMA_VERSION,
-        generated_by: "test".into(),
-        seed_policy_version: SOLVER6_SEED_POLICY_VERSION.into(),
-        configured_threshold_micros: 0,
-        entries: vec![manifest_entry],
-    };
-    let manifest_path = manifest_dir.join("manifest.json");
-    fs::write(
-        &manifest_path,
-        serde_json::to_vec(&manifest).expect("manifest should serialize"),
-    )
-    .expect("manifest should write");
+    .expect("cache entry should store");
 
-    let mut catalog_input = pure_input(8, 4, 20);
-    catalog_input.solver.solver_params = SolverParams::Solver6(Solver6Params {
-        exact_construction_handoff_enabled: false,
-        seed_strategy: Solver6SeedStrategy::Solver5ExactBlockComposition,
-        pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
-        search_strategy: Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
-        seed_catalog: Some(Solver6SeedCatalogParams {
-            manifest_path: manifest_path.to_string_lossy().into_owned(),
-            miss_policy: Solver6SeedCatalogMissPolicy::Error,
-        }),
-    });
-
-    let result = SearchEngine::new(&catalog_input.solver)
-        .solve(&catalog_input)
-        .expect("matching catalog artifact should seed solver6 successfully");
-    assert_eq!(result.schedule.len(), 20);
+    input.solver.solver_params = SolverParams::Solver6(exact_block_params(Some(params)));
+    let result = SearchEngine::new(&input.solver)
+        .solve(&input)
+        .expect("matching cache artifact should satisfy solver6 successfully");
+    assert_eq!(result.schedule.len(), 2);
+    assert_eq!(
+        result.stop_reason.map(|reason| format!("{reason:?}")),
+        Some("OptimalScoreReached".into())
+    );
+    assert_eq!(SOLVER6_CACHE_POLICY_VERSION, "solver6_cache_policy_v1");
 }

@@ -1,4 +1,4 @@
-use super::catalog::Solver6SeedCatalogPairTelemetry;
+use super::catalog::Solver6CacheMetrics;
 use super::execute_solver6_run;
 use super::problem::PureSgpProblem;
 use super::score::{
@@ -233,7 +233,7 @@ impl ScoreMetrics {
         };
         Self {
             active_penalty_model: penalty_model_label(telemetry.active_penalty_model).into(),
-            active_penalty_score: telemetry.active_penalty_score,
+            active_penalty_score: telemetry.linear_repeat_excess,
             linear_repeat_excess: telemetry.linear_repeat_excess,
             linear_repeat_lower_bound: telemetry.linear_repeat_lower_bound,
             linear_repeat_lower_bound_gap: telemetry.linear_repeat_lower_bound_gap,
@@ -249,10 +249,7 @@ impl ScoreMetrics {
         }
     }
 
-    fn from_catalog_seed_telemetry(
-        problem: &PureSgpProblem,
-        telemetry: &Solver6SeedCatalogPairTelemetry,
-    ) -> Self {
+    fn from_cache_metrics(problem: &PureSgpProblem, telemetry: &Solver6CacheMetrics) -> Self {
         let total_distinct_pairs = problem.num_groups * problem.group_size;
         let universe_pairs =
             total_distinct_pairs.saturating_mul(total_distinct_pairs.saturating_sub(1)) / 2;
@@ -265,8 +262,8 @@ impl ScoreMetrics {
             (universe_pairs as u64 - r) * q * q + r * (q + 1) * (q + 1)
         };
         Self {
-            active_penalty_model: telemetry.active_penalty_model.clone(),
-            active_penalty_score: telemetry.active_penalty_score,
+            active_penalty_model: "linear_repeat_excess".to_string(),
+            active_penalty_score: telemetry.linear_repeat_excess,
             linear_repeat_excess: telemetry.linear_repeat_excess,
             linear_repeat_lower_bound: telemetry.linear_repeat_lower_bound,
             linear_repeat_lower_bound_gap: telemetry.linear_repeat_lower_bound_gap,
@@ -399,18 +396,11 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
     };
     let exact_handoff = executed.exact_handoff_atom.is_some();
     let (seed_family, seed_source_detail, seed_metrics, mixed_seed_candidates) =
-        if let Some(hit) = executed.catalog_seed_hit.as_ref() {
+        if let Some(hit) = executed.cache_hit.as_ref() {
             (
-                format!("catalog:{}", hit.selected_family),
-                Some(format!(
-                    "manifest={}, entry={}",
-                    hit.manifest_path.display(),
-                    hit.entry_path.display()
-                )),
-                ScoreMetrics::from_catalog_seed_telemetry(
-                    &executed.problem,
-                    &hit.diagnostics.pair_telemetry,
-                ),
+                format!("cache:{:?}", hit.entry.status).to_ascii_lowercase(),
+                Some(format!("entry={}", hit.entry_path.display())),
+                ScoreMetrics::from_cache_metrics(&executed.problem, &hit.entry.metrics),
                 Vec::new(),
             )
         } else if let Some(selection) = executed.seed_selection.as_ref() {
@@ -610,7 +600,9 @@ pub fn pure_input_for_benchmark(
                 pair_repeat_penalty_model: benchmark.active_penalty_model,
                 search_strategy:
                     crate::models::Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
-                seed_catalog: None,
+                cache: None,
+                seed_time_limit_seconds: None,
+                local_search_time_limit_seconds: None,
             }),
             logging: Default::default(),
             telemetry: Default::default(),
