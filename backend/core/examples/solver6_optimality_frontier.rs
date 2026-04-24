@@ -1,4 +1,6 @@
-use gm_core::solver6::reporting::{build_matrix_artifact, Solver6BenchmarkConfig};
+use gm_core::solver6::reporting::{
+    build_matrix_artifact, MatrixBounds, MatrixViewDefinition, Solver6BenchmarkConfig,
+};
 use std::env;
 use std::fs;
 
@@ -29,6 +31,26 @@ fn main() {
                     .expect("--max-people requires a value")
                     .parse()
                     .expect("--max-people must parse as usize");
+            }
+            "--matrix-axis-max" => {
+                idx += 1;
+                let axis_max = args
+                    .get(idx)
+                    .expect("--matrix-axis-max requires a value")
+                    .parse()
+                    .expect("--matrix-axis-max must parse as usize");
+                config.matrices = vec![MatrixViewDefinition {
+                    title: format!("Frontier view: g=2..{axis_max}, p=2..{axis_max}"),
+                    subtitle: format!(
+                        "Full bounded pure-SGP view through g,p <= {axis_max}. Cells beyond the configured people budget remain explicit gray not-run regions."
+                    ),
+                    bounds: MatrixBounds {
+                        g_min: 2,
+                        g_max: axis_max,
+                        p_min: 2,
+                        p_max: axis_max,
+                    },
+                }];
             }
             "--jobs" => {
                 idx += 1;
