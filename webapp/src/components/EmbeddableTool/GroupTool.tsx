@@ -571,7 +571,7 @@ export function GroupTool({
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-2 rounded-xl px-3 py-2.5 text-center text-sm" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl px-3 py-1.5 text-center text-sm" style={{ backgroundColor: 'var(--bg-secondary)' }}>
               <div>
                 <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.peopleStatLabel}</div>
                 <div className="text-lg font-semibold">{participantCount}</div>
@@ -586,7 +586,7 @@ export function GroupTool({
               </div>
             </div>
 
-            <div className="mt-5 flex gap-2">
+            <div className="mt-4 flex gap-2">
               <button
                 type="button"
                 onClick={onGenerateGroups}
