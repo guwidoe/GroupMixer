@@ -10,6 +10,7 @@
 - If revisiting projection convergence, pair it with synthetic/constrained-SGP safeguards; one extra assignment/alignment pass alone improved Sailing/transfer but worsened primary metric.
 - Avoid scaffold-cohort pressure in repair; even a modest term after batch assignment was basin-hostile.
 - Do not continue scalar tuning of batch repair's preferred-group prior; 1.0 and 3.0 both worsened versus kept 2.0.
+- Do not combine hard selected-region target priority with batch repair; it was much worse than with greedy repair.
 - Explore adaptive warmup only with a fundamentally different signal (not just budget size); both blind 2s and budget-guarded 2s were negative.
 
 ## De-emphasized / recently negative
