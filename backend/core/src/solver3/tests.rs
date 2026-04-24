@@ -528,17 +528,20 @@ fn constraint_scenario_oracle_constructor_returns_cs_scaffold() {
 }
 
 #[test]
-fn constraint_scenario_oracle_constructor_runs_on_mixed_partial_workload() {
+fn constraint_scenario_oracle_constructor_errors_when_no_oracle_block_exists() {
     let mut input = representative_input();
     input.initial_schedule = None;
     if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
         params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
     }
 
-    let state = RuntimeState::from_input(&input).unwrap();
-    validate_invariants(&state).unwrap();
-    assert_eq!(state.compiled.num_sessions, 3);
-    assert!(!state.compiled.person_participation[state.compiled.person_id_to_idx["p5"]][0]);
+    let error = RuntimeState::from_input(&input).unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("could not select an oracleizable block"),
+        "unexpected error: {error}"
+    );
 }
 
 #[test]

@@ -393,74 +393,43 @@ impl RuntimeState {
             &signals,
             &scaffold_mask,
         );
-        let baseline_schedule = self.build_constructed_schedule(
-            effective_seed,
-            ConstructionHeuristicSelection::BaselineLegacy,
-        )?;
-        let baseline_score = self
-            .score_constructed_schedule(&baseline_schedule)?
-            .total_score;
-        let mut selected_schedule = baseline_schedule;
-        let mut selected_score = baseline_score;
-        if best.real_score < selected_score - 1e-9 {
-            selected_schedule = best.schedule.clone();
-            selected_score = best.real_score;
-        }
-        let mut outcome = ConstraintScenarioOracleOutcomeKind::ConstraintScenarioOnly;
-        let mut oracle_relabel_score = None;
-        let mut merge_improvement_over_cs = None;
-        let mut oracle_merge_attempted = false;
-        let mut oracle_merge_accepted = false;
-        let mut oracle_merge_failed = false;
-        if let Some(block) = oracle_block.as_ref() {
-            let oracle_schedule =
-                Solver6PureStructureOracle.solve(&PureStructureOracleRequest {
-                    num_groups: block.num_groups,
-                    group_size: block.group_size,
-                    num_sessions: block.num_sessions(),
-                    seed: effective_seed ^ 0x5eed_600d_u64,
-                })?;
-            let relabeling = relabel_oracle_schedule_to_block(
-                &self.compiled,
-                &signals,
-                block,
-                &oracle_schedule,
-            )?;
-            oracle_relabel_score = Some(relabeling.score);
-            oracle_merge_attempted = true;
-            match merge_relabelled_oracle_into_scaffold(
-                &self.compiled,
-                &best.schedule,
-                &signals,
-                &scaffold_mask,
-                block,
-                &oracle_schedule,
-                &relabeling,
+        let block = oracle_block.as_ref().ok_or_else(|| {
+            SolverError::ValidationError(
+                "solver3 constraint-scenario oracle-guided construction could not select an oracleizable block".into(),
             )
-            .and_then(|merge| {
-                let mut repaired_schedule = merge.schedule;
-                self.repair_hard_constraints_in_schedule(
-                    &mut repaired_schedule,
-                    effective_seed ^ 0x4f72_6163_6c65_u64,
-                )?;
-                let snapshot = self.score_constructed_schedule(&repaired_schedule)?;
-                Ok((repaired_schedule, snapshot.total_score))
-            }) {
-                Ok((merged_schedule, merged_score)) => {
-                    let improvement = best.real_score - merged_score;
-                    merge_improvement_over_cs = Some(improvement);
-                    if merged_score < selected_score - 1e-9 {
-                        selected_schedule = merged_schedule;
-                        outcome = ConstraintScenarioOracleOutcomeKind::OracleMerged;
-                        oracle_merge_accepted = true;
-                    }
-                }
-                Err(_) => {
-                    oracle_merge_failed = true;
-                    merge_improvement_over_cs = Some(0.0);
-                }
-            }
-        }
+        })?;
+        let oracle_schedule = Solver6PureStructureOracle.solve(&PureStructureOracleRequest {
+            num_groups: block.num_groups,
+            group_size: block.group_size,
+            num_sessions: block.num_sessions(),
+            seed: effective_seed ^ 0x5eed_600d_u64,
+        })?;
+        let relabeling =
+            relabel_oracle_schedule_to_block(&self.compiled, &signals, block, &oracle_schedule)?;
+        let oracle_relabel_score = Some(relabeling.score);
+        let (selected_schedule, merged_score) = merge_relabelled_oracle_into_scaffold(
+            &self.compiled,
+            &best.schedule,
+            &signals,
+            &scaffold_mask,
+            block,
+            &oracle_schedule,
+            &relabeling,
+        )
+        .and_then(|merge| {
+            let mut repaired_schedule = merge.schedule;
+            self.repair_hard_constraints_in_schedule(
+                &mut repaired_schedule,
+                effective_seed ^ 0x4f72_6163_6c65_u64,
+            )?;
+            let snapshot = self.score_constructed_schedule(&repaired_schedule)?;
+            Ok((repaired_schedule, snapshot.total_score))
+        })?;
+        let merge_improvement_over_cs = Some(best.real_score - merged_score);
+        let outcome = ConstraintScenarioOracleOutcomeKind::OracleMerged;
+        let oracle_merge_attempted = true;
+        let oracle_merge_accepted = true;
+        let oracle_merge_failed = false;
         Ok(ConstraintScenarioOracleConstructionResult {
             schedule: selected_schedule,
             telemetry: ConstraintScenarioOracleTelemetry {
