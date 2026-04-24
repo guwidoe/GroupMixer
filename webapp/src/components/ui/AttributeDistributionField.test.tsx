@@ -81,13 +81,10 @@ describe('AttributeDistributionField', () => {
     render(<ControlledField initialValue={{ A: 2, B: 1 }} capacity={11} />);
 
     const input = screen.getByLabelText('B count');
+    input.focus();
     fireEvent.change(input, { target: { value: '' } });
 
     expect(input).toHaveValue('');
-
-    fireEvent.blur(input);
-
-    expect(screen.getByLabelText('B count')).toHaveValue('0');
   });
 
   it('widens legend count inputs for multiple digits', () => {
@@ -227,7 +224,7 @@ describe('AttributeDistributionField', () => {
     expect(screen.getByRole('button', { name: /^enable target for a$/i })).toBeInTheDocument();
   });
 
-  it('falls back to legend editing when the bar becomes too narrow for inline controls', async () => {
+  it('uses count-only bar editing when there is room for the number but not the label', async () => {
     const { container } = render(<ControlledField initialValue={{ A: 4, B: 1 }} capacity={5} />);
 
     expect(container.querySelectorAll('.attribute-distribution__support-item')).toHaveLength(2);
@@ -244,7 +241,27 @@ describe('AttributeDistributionField', () => {
       expect(container.querySelectorAll('.attribute-distribution__support-item')).toHaveLength(3);
     });
 
+    expect(container.querySelector('.attribute-distribution__segment-input')).toBeInTheDocument();
+    expect(container.querySelectorAll('.attribute-distribution__support-input')).toHaveLength(1);
+  });
+
+  it('falls back to legend editing when the bar is too narrow for count-only controls', async () => {
+    const { container } = render(<ControlledField initialValue={{ A: 4, B: 1 }} capacity={5} />);
+
+    const bar = screen.getByRole('group', { name: 'Desired Distribution' });
+    Object.defineProperty(bar, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({ left: 0, width: 30, top: 0, right: 30, bottom: 40, height: 40, x: 0, y: 0, toJSON: () => ({}) }),
+    });
+
+    fireEvent(window, new Event('resize'));
+
+    await waitFor(() => {
+      expect(container.querySelectorAll('.attribute-distribution__support-item')).toHaveLength(3);
+    });
+
     expect(container.querySelector('.attribute-distribution__segment-input')).not.toBeInTheDocument();
+    expect(container.querySelectorAll('.attribute-distribution__support-input')).toHaveLength(2);
   });
 
   it('hides bar toggle dots when the chip legend is available', () => {

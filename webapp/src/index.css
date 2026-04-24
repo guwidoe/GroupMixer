@@ -1359,22 +1359,23 @@
   }
 
   .attribute-distribution__segment-input {
-    width: 2.2rem;
+    width: 1.35rem;
     min-width: 0;
-    padding: 0.12rem 0.22rem;
-    border: 1px solid color-mix(in srgb, currentColor 34%, transparent);
-    border-radius: 999px;
-    background: color-mix(in srgb, currentColor 12%, transparent);
-    color: currentColor;
+    padding: 0;
+    border: none !important;
+    border-radius: 0.25rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
     text-align: center;
-    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.2;
     font-variant-numeric: tabular-nums;
   }
 
   .attribute-distribution__segment-input:focus {
     outline: none;
-    border-color: color-mix(in srgb, currentColor 72%, transparent);
-    background: color-mix(in srgb, currentColor 18%, transparent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg-primary) 42%, var(--color-accent) 58%);
   }
 
   .attribute-distribution__handle {

@@ -12,7 +12,10 @@ import {
 
 const INLINE_LABEL_PERCENT_THRESHOLD = 24;
 const INLINE_EDITOR_MIN_PX = 112;
+const INLINE_COUNT_EDITOR_MIN_PX = 28;
 const COMPACT_SEGMENT_LABEL_MIN_PX = 72;
+
+type BucketControlPlacement = 'bar-full' | 'bar-count' | 'legend';
 
 function getCountInputWidth(value: string) {
   return `calc(${Math.max(1, value.length)}ch + 0.35rem)`;
@@ -38,9 +41,8 @@ interface ActiveDistributionDrag {
 }
 
 interface FrozenBucketLayoutState {
-  canInlineEdit: boolean;
-  showInlineLabel: boolean;
-  needsLegend: boolean;
+  placement: BucketControlPlacement;
+  showLegend: boolean;
 }
 
 interface AttributeDistributionFieldProps {
@@ -177,11 +179,21 @@ export function AttributeDistributionField({
     const isActive = Object.prototype.hasOwnProperty.call(localValue, bucket.key);
     const widthPercent = summary.capacity > 0 ? (count / summary.capacity) * 100 : 0;
     const segmentWidthPx = barWidth > 0 ? (widthPercent / 100) * barWidth : null;
-    const canInlineEdit = allowInlineEdit
+    const canInlineFullEdit = allowInlineEdit
       && isActive
       && count > 0
       && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD
       && (segmentWidthPx == null || segmentWidthPx >= INLINE_EDITOR_MIN_PX);
+    const canInlineCountEdit = allowInlineEdit
+      && isActive
+      && count > 0
+      && (segmentWidthPx == null || segmentWidthPx >= INLINE_COUNT_EDITOR_MIN_PX);
+    const placement: BucketControlPlacement = canInlineFullEdit
+      ? 'bar-full'
+      : canInlineCountEdit
+        ? 'bar-count'
+        : 'legend';
+    const showLegend = !isActive || count === 0 || placement !== 'bar-full';
     const frozenState = frozenBucketLayout?.[bucket.key];
 
     return {
@@ -193,9 +205,8 @@ export function AttributeDistributionField({
       textColor: getSegmentTextColor(index, bucket.kind),
       widthPercent,
       segmentWidthPx,
-      canInlineEdit: frozenState?.canInlineEdit ?? canInlineEdit,
-      showInlineLabel: frozenState?.showInlineLabel ?? (canInlineEdit && widthPercent >= INLINE_LABEL_PERCENT_THRESHOLD),
-      needsLegend: frozenState?.needsLegend ?? (!canInlineEdit || !isActive || count === 0),
+      placement: frozenState?.placement ?? placement,
+      showLegend: frozenState?.showLegend ?? showLegend,
     };
   }), [allowInlineEdit, attributeBuckets, barWidth, frozenBucketLayout, localValue, summary.capacity]);
   const bucketStateByKey = useMemo(
@@ -215,9 +226,8 @@ export function AttributeDistributionField({
 
   const freezeCurrentLayout = React.useCallback(() => {
     setFrozenBucketLayout(Object.fromEntries(bucketStates.map((state) => [state.bucket.key, {
-      canInlineEdit: state.canInlineEdit,
-      showInlineLabel: state.showInlineLabel,
-      needsLegend: state.needsLegend,
+      placement: state.placement,
+      showLegend: state.showLegend,
     }])));
   }, [bucketStates]);
 
@@ -309,19 +319,20 @@ export function AttributeDistributionField({
     }));
 
     const rounded = nextRaw === '' ? 0 : Math.max(0, Math.round(Number(nextRaw)));
-    const nextWillInlineEdit = allowInlineEdit
+    const nextWidthPercent = summary.capacity > 0 ? (rounded / summary.capacity) * 100 : 0;
+    const nextSegmentWidthPx = barWidth > 0 ? (nextWidthPercent / 100) * barWidth : null;
+    const nextWillUseBar = allowInlineEdit
       && rounded > 0
-      && summary.capacity > 0
-      && ((rounded / summary.capacity) * 100) >= INLINE_LABEL_PERCENT_THRESHOLD;
+      && (nextSegmentWidthPx == null || nextSegmentWidthPx >= INLINE_COUNT_EDITOR_MIN_PX);
     if (
-      (pendingFocusMode === 'when-inline' && nextWillInlineEdit)
-      || (pendingFocusMode === 'when-legend' && !nextWillInlineEdit)
+      (pendingFocusMode === 'when-inline' && nextWillUseBar)
+      || (pendingFocusMode === 'when-legend' && !nextWillUseBar)
     ) {
       pendingFocusKeyRef.current = bucketKey;
     }
 
     queueValueChange(setAttributeBucketCount(localValueRef.current, buckets, bucketKey, rounded), 'immediate');
-  }, [allowInlineEdit, buckets, queueValueChange, summary.capacity]);
+  }, [allowInlineEdit, barWidth, buckets, queueValueChange, summary.capacity]);
 
   useEffect(() => {
     const lastSentValue = lastSentValueRef.current;
@@ -510,9 +521,9 @@ export function AttributeDistributionField({
                       }}
                     >
                       {bucket.kind === 'attribute' ? (
-                        bucketState?.canInlineEdit ? (
+                        bucketState && bucketState.placement !== 'legend' ? (
                           <>
-                            {bucketState.showInlineLabel ? (
+                            {bucketState.placement === 'bar-full' ? (
                               <button
                                 type="button"
                                 className="attribute-distribution__segment-label-button"
@@ -620,7 +631,7 @@ export function AttributeDistributionField({
 
       {resolvedShowChips ? (
         <div className="attribute-distribution__support-legend">
-          {bucketStates.filter((state) => state.needsLegend).map((state) => {
+          {bucketStates.filter((state) => state.showLegend).map((state) => {
             const displayValue = countInputDrafts[state.bucket.key] ?? String(state.count);
             return (
               <div
@@ -644,7 +655,7 @@ export function AttributeDistributionField({
                 >
                   <span className="attribute-distribution__support-label">{state.bucket.label}</span>
                 </button>
-                {state.isActive ? (
+                {state.isActive && state.placement === 'legend' ? (
                   <input
                     type="text"
                     inputMode="numeric"
