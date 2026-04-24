@@ -7,6 +7,12 @@ from pathlib import Path
 
 
 LAYER_CONFIG = {
+    "overview": {
+        "label": "Dual objective overview",
+        "summary_key": "linear_summary",
+        "status_key": "linear_status",
+        "description": "Each tiny square is split diagonally: upper-left is the linear-objective run, lower-right is the selected squared-objective result. The center glyph shows schedule relationship (= same/tight, → squared run improved, ! linear cost/failure).",
+    },
     "linear": {
         "label": "Linear lower-bound attainment",
         "summary_key": "linear_summary",
@@ -38,13 +44,38 @@ def status_class(status: str) -> str:
         "error": "week-unavailable",
         "not_run": "week-unavailable",
         "same_schedule_both_tight": "week-tight",
-        "same_schedule": "week-miss",
-        "different_schedule_same_scores": "week-miss",
-        "squared_improves_with_no_linear_loss": "week-exact",
-        "squared_improves_with_linear_loss": "week-miss",
+        "same_schedule": "week-same",
+        "different_schedule_same_scores": "week-same",
+        "squared_improves_with_no_linear_loss": "week-improve",
+        "squared_improves_with_linear_loss": "week-tradeoff",
         "squared_run_did_not_improve": "week-miss",
         "squared_run_failed": "week-unavailable",
     }.get(status, "week-unavailable")
+
+
+def status_color(status: str) -> str:
+    return {
+        "exact": "var(--exact)",
+        "lower_bound_tight": "var(--tight)",
+        "miss": "var(--miss)",
+        "unsupported": "var(--na)",
+        "timeout": "var(--na)",
+        "error": "var(--na)",
+        "not_run": "var(--na)",
+    }.get(status, "var(--na)")
+
+
+def agreement_glyph(status: str) -> str:
+    return {
+        "same_schedule_both_tight": "=",
+        "same_schedule": "=",
+        "different_schedule_same_scores": "≈",
+        "squared_improves_with_no_linear_loss": "→",
+        "squared_improves_with_linear_loss": "!",
+        "squared_run_did_not_improve": "·",
+        "squared_run_failed": "!",
+        "not_run": "",
+    }.get(status, "·")
 
 
 def build_cell_map(cells):
@@ -63,6 +94,8 @@ def empty_summary():
 
 
 def render_week_grid(cell, layer_key, week_cap):
+    if layer_key == "overview":
+        return render_dual_objective_week_grid(cell, week_cap)
     status_key = LAYER_CONFIG[layer_key]["status_key"]
     rows = max(1, math.ceil(week_cap / 10))
     total_slots = rows * 10
@@ -98,21 +131,77 @@ def render_week_grid(cell, layer_key, week_cap):
     return "".join(parts)
 
 
+def render_dual_objective_week_grid(cell, week_cap):
+    rows = max(1, math.ceil(week_cap / 10))
+    total_slots = rows * 10
+    parts = [f"<div class='mini-grid mini-grid-rows-{rows} dual-mini-grid'>"]
+    for index in range(total_slots):
+        if index < len(cell["week_results"]):
+            week = cell["week_results"][index]
+            linear_status = week.get("linear_status", "not_run")
+            squared_status = week.get("squared_status", "not_run")
+            agreement = week.get("objective_agreement_status", "not_run")
+            tooltip = (
+                f"week {week['week']}: linear={linear_status.replace('_', ' ')}"
+                f" | squared={squared_status.replace('_', ' ')}"
+                f" | relation={agreement.replace('_', ' ')}"
+            )
+            if week.get("objective_relationship"):
+                rel = week["objective_relationship"]
+                tooltip += f" | same_schedule={rel['same_schedule']}"
+                if rel.get("squared_run_improved_squared_gap_by") is not None:
+                    tooltip += f" | Δsquared={rel['squared_run_improved_squared_gap_by']}"
+                if rel.get("squared_run_linear_gap_delta") is not None:
+                    tooltip += f" | Δlinear={rel['squared_run_linear_gap_delta']}"
+            selected = week.get("selected_squared_result") or {}
+            metrics = selected.get("final_metrics") or week.get("final_metrics")
+            if metrics:
+                tooltip += (
+                    f" | linear gap={metrics['linear_repeat_lower_bound_gap']}"
+                    f" | squared instance gap={metrics.get('squared_instance_lower_bound_gap', metrics['squared_repeat_lower_bound_gap'])}"
+                )
+            parts.append(
+                "<span class='dual-mini-week' "
+                f"style='--linear-color:{status_color(linear_status)};--squared-color:{status_color(squared_status)}' "
+                f"title='{html.escape(tooltip)}'><span class='dual-glyph'>{html.escape(agreement_glyph(agreement))}</span></span>"
+            )
+        else:
+            parts.append("<span class='mini-week mini-week-empty'></span>")
+    parts.append("</div>")
+    return "".join(parts)
+
+
 def render_outer_cell(cell, layer_key, week_cap, matrix_index):
     summary = cell.get(LAYER_CONFIG[layer_key]["summary_key"], empty_summary())
-    title = (
-        f"{cell['g']}-{cell['p']} | frontier={summary['contiguous_frontier']}"
-        f" | best_observed={summary['best_observed_hit']}"
-        f" | exact_weeks={summary['exact_week_count']}"
-        f" | tight_weeks={summary['lower_bound_tight_week_count']}"
-    )
+    if layer_key == "overview":
+        linear_summary = cell.get("linear_summary", empty_summary())
+        squared_summary = cell.get("squared_summary", empty_summary())
+        agreement_summary = cell.get("objective_agreement_summary", empty_summary())
+        headline = (
+            f"L {linear_summary['headline_label']} · "
+            f"S {squared_summary['headline_label']} · "
+            f"≡ {agreement_summary['headline_label']}"
+        )
+        title = (
+            f"{cell['g']}-{cell['p']} | linear={linear_summary['headline_label']}"
+            f" | squared={squared_summary['headline_label']}"
+            f" | same_schedule={agreement_summary['headline_label']}"
+        )
+    else:
+        headline = summary["headline_label"]
+        title = (
+            f"{cell['g']}-{cell['p']} | frontier={summary['contiguous_frontier']}"
+            f" | best_observed={summary['best_observed_hit']}"
+            f" | exact_weeks={summary['exact_week_count']}"
+            f" | tight_weeks={summary['lower_bound_tight_week_count']}"
+        )
     if cell.get("skip_reason"):
         title += f" | {cell['skip_reason']}"
     return (
         f"<button class='outer-cell{' benchmark-skipped' if not cell['benchmark_eligible'] else ''}'"
         f" title='{html.escape(title)}'"
         f" data-matrix-index='{matrix_index}' data-g='{cell['g']}' data-p='{cell['p']}'>"
-        f"<div class='outer-cell-headline'>{html.escape(summary['headline_label'])}</div>"
+        f"<div class='outer-cell-headline{' outer-cell-headline-overview' if layer_key == 'overview' else ''}'>{html.escape(headline)}</div>"
         f"<div class='outer-cell-subtitle'>{cell['g']}-{cell['p']}</div>"
         f"{render_week_grid(cell, layer_key, week_cap)}"
         "</button>"
@@ -175,6 +264,9 @@ def render_html(artifact):
       --exact: #166534;
       --tight: #22c55e;
       --miss: #ef4444;
+      --tradeoff: #eab308;
+      --improve: #38bdf8;
+      --same: #a3e635;
       --na: #64748b;
       --na2: #475569;
       --accent: #38bdf8;
@@ -242,6 +334,7 @@ def render_html(artifact):
     .outer-cell:hover {{ border-color: rgba(56,189,248,0.65); transform: translateY(-1px); }}
     .outer-cell-subtitle {{ color: var(--muted); font-size: 12px; margin-bottom: 6px; }}
     .outer-cell-headline {{ font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 4px; }}
+    .outer-cell-headline-overview {{ font-size: 14px; line-height: 1.25; white-space: normal; }}
     .benchmark-skipped .outer-cell-headline {{ color: #cbd5e1; }}
     .mini-grid, .large-grid {{
       display: grid;
@@ -254,7 +347,38 @@ def render_html(artifact):
     .week-exact {{ background: var(--exact); }}
     .week-tight {{ background: var(--tight); }}
     .week-miss {{ background: var(--miss); }}
+    .week-tradeoff {{ background: var(--tradeoff); }}
+    .week-improve {{ background: var(--improve); }}
+    .week-same {{ background: var(--same); }}
     .week-unavailable {{ background: var(--na); }}
+    .dual-mini-week, .dual-large-week {{
+      aspect-ratio: 1 / 1;
+      border-radius: 3px;
+      position: relative;
+      display: block;
+      background: linear-gradient(135deg, var(--linear-color) 0 48%, rgba(15,23,42,0.9) 48% 52%, var(--squared-color) 52% 100%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16);
+      overflow: hidden;
+    }}
+    .dual-large-week {{ border-radius: 6px; }}
+    .dual-glyph {{
+      position: absolute;
+      inset: 50% auto auto 50%;
+      transform: translate(-50%, -50%);
+      min-width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2,6,23,0.78);
+      color: white;
+      font-size: 9px;
+      font-weight: 900;
+      line-height: 1;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    }}
+    .dual-large-week .dual-glyph {{ min-width: 20px; height: 20px; font-size: 13px; }}
     .modal-backdrop {{
       position: fixed;
       inset: 0;
@@ -329,11 +453,13 @@ def render_html(artifact):
     </div>
   </section>
   <div class='tab-row'>
-    <button class='tab-button is-active' data-layer-target='linear'>{html.escape(LAYER_CONFIG['linear']['label'])}</button>
+    <button class='tab-button is-active' data-layer-target='overview'>{html.escape(LAYER_CONFIG['overview']['label'])}</button>
+    <button class='tab-button' data-layer-target='linear'>{html.escape(LAYER_CONFIG['linear']['label'])}</button>
     <button class='tab-button' data-layer-target='squared'>{html.escape(LAYER_CONFIG['squared']['label'])}</button>
     <button class='tab-button' data-layer-target='agreement'>{html.escape(LAYER_CONFIG['agreement']['label'])}</button>
   </div>
   <div id='report-root'>
+    {render_layer(artifact, 'overview')}
     {render_layer(artifact, 'linear')}
     {render_layer(artifact, 'squared')}
     {render_layer(artifact, 'agreement')}
@@ -359,7 +485,7 @@ def render_html(artifact):
     const detailTitle = document.getElementById('detail-title');
     const detailSubtitle = document.getElementById('detail-subtitle');
     const detailBody = document.getElementById('detail-body');
-    let currentLayer = 'linear';
+    let currentLayer = 'overview';
 
     function setLayer(layer) {{
       currentLayer = layer;
@@ -377,13 +503,38 @@ def render_html(artifact):
         error: 'week-unavailable',
         not_run: 'week-unavailable',
         same_schedule_both_tight: 'week-tight',
-        same_schedule: 'week-miss',
-        different_schedule_same_scores: 'week-miss',
-        squared_improves_with_no_linear_loss: 'week-exact',
-        squared_improves_with_linear_loss: 'week-miss',
+        same_schedule: 'week-same',
+        different_schedule_same_scores: 'week-same',
+        squared_improves_with_no_linear_loss: 'week-improve',
+        squared_improves_with_linear_loss: 'week-tradeoff',
         squared_run_did_not_improve: 'week-miss',
         squared_run_failed: 'week-unavailable',
       }}[status] || 'week-unavailable';
+    }}
+
+    function statusColor(status) {{
+      return {{
+        exact: 'var(--exact)',
+        lower_bound_tight: 'var(--tight)',
+        miss: 'var(--miss)',
+        unsupported: 'var(--na)',
+        timeout: 'var(--na)',
+        error: 'var(--na)',
+        not_run: 'var(--na)',
+      }}[status] || 'var(--na)';
+    }}
+
+    function agreementGlyph(status) {{
+      return {{
+        same_schedule_both_tight: '=',
+        same_schedule: '=',
+        different_schedule_same_scores: '≈',
+        squared_improves_with_no_linear_loss: '→',
+        squared_improves_with_linear_loss: '!',
+        squared_run_did_not_improve: '·',
+        squared_run_failed: '!',
+        not_run: '',
+      }}[status] || '·';
     }}
 
     function statusPill(status) {{
@@ -441,8 +592,15 @@ def render_html(artifact):
       for (let index = 0; index < totalSlots; index += 1) {{
         if (index < cell.week_results.length) {{
           const week = cell.week_results[index];
-          const status = week[statusKey] || 'not_run';
-          html += `<div class="large-week ${'{'}statusClass(status){'}'}" title="week ${'{'}week.week{'}'}: ${'{'}status.replace(/_/g, ' '){'}'}"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+          if (layer === 'overview') {{
+            const linearStatus = week.linear_status || 'not_run';
+            const squaredStatus = week.squared_status || 'not_run';
+            const agreement = week.objective_agreement_status || 'not_run';
+            html += `<div class="dual-large-week" style="--linear-color:${'{'}statusColor(linearStatus){'}'};--squared-color:${'{'}statusColor(squaredStatus){'}'}" title="week ${'{'}week.week{'}'}: linear=${'{'}linearStatus.replace(/_/g, ' '){'}'} | squared=${'{'}squaredStatus.replace(/_/g, ' '){'}'} | relation=${'{'}agreement.replace(/_/g, ' '){'}'}"><span class="dual-glyph">${'{'}agreementGlyph(agreement){'}'}</span><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+          }} else {{
+            const status = week[statusKey] || 'not_run';
+            html += `<div class="large-week ${'{'}statusClass(status){'}'}" title="week ${'{'}week.week{'}'}: ${'{'}status.replace(/_/g, ' '){'}'}"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+          }}
         }} else {{
           html += `<div class="large-week empty week-unavailable"></div>`;
         }}
@@ -584,7 +742,7 @@ def render_html(artifact):
     window.addEventListener('keydown', event => {{
       if (event.key === 'Escape') backdrop.classList.remove('is-open');
     }});
-    setLayer('linear');
+    setLayer('overview');
   </script>
 </body>
 </html>
