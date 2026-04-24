@@ -44,8 +44,10 @@ The script runs the broad benchmark suite, parses the generated run report, and 
 ## Files in Scope
 Primary heuristic/code paths:
 
-- `backend/core/src/solver3/runtime_state.rs` — construction orchestration, warmup scaffold, hard repair handoff.
+Primary research target:
 - `backend/core/src/solver_support/construction/constraint_scenario_oracle/*.rs` — projection, merge, template generation, oracle backend, signal extraction, shared telemetry/types.
+Only in exceptional cases and with very compelling reason:
+- `backend/core/src/solver3/runtime_state.rs` — construction orchestration, warmup scaffold, hard repair handoff.
 - `backend/core/src/solver_support/construction/baseline/mod.rs` — baseline constructor behavior and fill order, if needed to implement oracle-guided baseline fill.
 - `backend/core/src/solver_support/construction/freedom_aware/mod.rs` — reference only unless a small reusable idea is clearly beneficial.
 - `backend/core/src/models.rs` — only for internal telemetry/config structure needed by the constructor; no user-facing knobs without explicit approval.
@@ -86,6 +88,9 @@ Benchmark/autoresearch support:
 - Fixed hard constraint semantics after construction.
 - Made no-template cases feasible: when repeat pressure exists but no meaningful pure-contact template can be generated, the constructor returns the scaffold with outcome `ConstraintScenarioOnly` instead of erroring.
 - Increased broad-suite construction budget fraction to 30%; this made the broad suite pass `35/35` after earlier 20% runs still had SGP construction-budget failures.
+- Kept a 3x penalty on oracle template scaffold disruption: broad log score improved from `103.92` to `101.93`, likely by preserving more search-friendly basins.
+- Tried 5x scaffold-disruption penalty: discarded; too conservative and worse than 3x.
+- Tried 2x scaffold-disruption penalty: discarded; improved Sailing/raw total but worsened broad log aggregate through small/constrained-case regressions.
 
 Current suspected improvement direction:
 

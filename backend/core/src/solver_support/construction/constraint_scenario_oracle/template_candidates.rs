@@ -72,6 +72,7 @@ pub(crate) fn generate_oracle_template_candidates(
                                 compiled,
                                 scaffold,
                                 signals,
+                                mask,
                                 sessions[session_pos],
                                 slots,
                             )
@@ -225,13 +226,21 @@ fn template_scaffold_disruption_risk(
     compiled: &CompiledProblem,
     scaffold: &PackedSchedule,
     signals: &ConstraintScenarioSignals,
+    mask: &ConstraintScenarioScaffoldMask,
     session_idx: usize,
     slots: &[OracleGroupTemplateSlot],
 ) -> f64 {
     slots
         .iter()
         .flat_map(|slot| scaffold[session_idx][slot.group_idx].iter().copied())
-        .map(|person_idx| signals.rigidity(compiled, session_idx, person_idx))
+        .map(|person_idx| {
+            signals.rigidity(compiled, session_idx, person_idx)
+                + if mask.is_frozen(compiled, session_idx, person_idx) {
+                    1.0
+                } else {
+                    0.0
+                }
+        })
         .sum()
 }
 
