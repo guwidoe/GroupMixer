@@ -144,9 +144,18 @@ def gradient_color(value: float, max_value: float, *, exact_zero_distinct: bool 
     else:
         t = math.log1p(value) / math.log1p(max_value)
     # Nonzero values start at a pale yellow-green so exact zero/agreement can stand out.
-    start = (217, 249, 157)
-    end = (239, 68, 68)
-    channel = lambda idx: round(start[idx] + (end[idx] - start[idx]) * t)
+    # Low-end gradient color intentionally matches --tight / lower-bound-tight green
+    # so runtime/delta views align with the linear lower-bound legend.
+    low = (34, 197, 94)
+    mid = (234, 179, 8)
+    high = (239, 68, 68)
+    if t <= 0.5:
+        local_t = t * 2.0
+        start, end = low, mid
+    else:
+        local_t = (t - 0.5) * 2.0
+        start, end = mid, high
+    channel = lambda idx: round(start[idx] + (end[idx] - start[idx]) * local_t)
     return f"rgb({channel(0)}, {channel(1)}, {channel(2)})"
 
 
@@ -504,7 +513,7 @@ def render_legends(quadratic_delta_max, linear_runtime_max, quadratic_runtime_ma
     </div>
     <div class='legend-panel' data-legend='quadratic_delta'>
       <span class='legend-chip'><span class='legend-swatch' style='background:#008a22'></span>perfect quadratic-score agreement (|ΔQ| = 0)</span>
-      <span class='legend-chip'><span class='legend-swatch gradient-swatch'></span>nonzero |ΔQ|, pale green → yellow → red as difference grows</span>
+      <span class='legend-chip'><span class='legend-swatch gradient-swatch'></span>nonzero |ΔQ|, lower-bound-tight green → yellow → red as difference grows</span>
       <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>no comparison available</span>
       <span class='legend-note'>Current max |ΔQ| scale: {format_delta(quadratic_delta_max)}</span>
     </div>
@@ -603,7 +612,7 @@ def render_html(artifact):
     .legend-chip {{ display:inline-flex; align-items:center; gap:8px; margin-right:16px; margin-bottom:8px; }}
     .legend-swatch {{ width:16px; height:16px; border-radius:4px; display:inline-block; border:1px solid rgba(255,255,255,0.15); flex: 0 0 auto; }}
     .dual-legend-swatch {{ background: linear-gradient(135deg, var(--linear-color) 0 48%, rgba(15,23,42,0.9) 48% 52%, var(--squared-color) 52% 100%); }}
-    .gradient-swatch {{ width: 72px; background: linear-gradient(90deg, #d9f99d, #facc15, #ef4444); }}
+    .gradient-swatch {{ width: 72px; background: linear-gradient(90deg, var(--tight), var(--tradeoff), var(--miss)); }}
     .legend-note {{ color: var(--muted); font-size: 12px; }}
     .matrix-scroll {{ width: 100%; overflow-x: auto; overflow-y: visible; contain: layout paint; }}
     table.outer-matrix {{ border-collapse: collapse; width: max-content; min-width: 100%; table-layout: fixed; margin-bottom: 28px; }}
@@ -848,9 +857,13 @@ def render_html(artifact):
     function gradientColor(value, maxValue, exactZeroDistinct = false) {{
       if (value === 0 && exactZeroDistinct) return '#008a22';
       const t = maxValue <= 0 ? 0 : Math.log1p(value) / Math.log1p(maxValue);
-      const start = [217, 249, 157];
-      const end = [239, 68, 68];
-      const channel = idx => Math.round(start[idx] + (end[idx] - start[idx]) * t);
+      const low = [34, 197, 94];
+      const mid = [234, 179, 8];
+      const high = [239, 68, 68];
+      const localT = t <= 0.5 ? t * 2 : (t - 0.5) * 2;
+      const start = t <= 0.5 ? low : mid;
+      const end = t <= 0.5 ? mid : high;
+      const channel = idx => Math.round(start[idx] + (end[idx] - start[idx]) * localT);
       return `rgb(${{channel(0)}}, ${{channel(1)}}, ${{channel(2)}})`;
     }}
 
