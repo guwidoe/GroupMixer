@@ -17,6 +17,17 @@ const OPTIMIZER_FEATURES = [
   'Result analysis',
 ];
 
+const OPTIMIZER_FEATURE_EXPLANATIONS = [
+  'Choose which participants attend which sessions instead of assuming everyone is present in every round.',
+  'Set capacities per group and override them per session when room sizes or staffing changes.',
+  'Apply together, apart, pinned, repeat, and balance rules only to the sessions where they matter.',
+  'Add preferences that may be broken when needed, then tune their weights against other goals.',
+  'Target how often specific pairs should meet, including exact, minimum, or maximum encounter counts.',
+  'Fine-tune repeat limits, attribute-balance modes, penalties, and other constraint details.',
+  'Adjust runtime limits, deterministic seeds, solver family, and other optimization settings.',
+  'Inspect score breakdowns, constraint compliance, penalties, and saved results in more detail.',
+];
+
 const CHROME = {
   expertWorkspaceLabel: 'Scenario Editor',
   faqHeading: 'अक्सर पूछे जाने वाले सवाल',
@@ -116,6 +127,7 @@ function createContent({
       eyebrow: 'और भी ज़्यादा control चाहिए?',
       title: 'पूरा Scenario Editor खोलें।',
       featureBullets: OPTIMIZER_FEATURES,
+      featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'Scenario Editor खोलें',
       supportingText: 'जब इस पेज से ज़्यादा control चाहिए तब इस्तेमाल करें। Participants, groups, sessions और rules साथ चले जाते हैं।',
     },

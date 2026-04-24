@@ -43,6 +43,7 @@ export interface ToolPageOptimizerCtaContent {
   eyebrow: string;
   title: string;
   featureBullets: string[];
+  featureExplanations: string[];
   buttonLabel: string;
   supportingText: string;
 }

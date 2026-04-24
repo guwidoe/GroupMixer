@@ -21,6 +21,17 @@ const OPTIMIZER_FEATURES = [
   'Result analysis',
 ];
 
+const OPTIMIZER_FEATURE_EXPLANATIONS = [
+  'Set which participants attend which sessions instead of assuming everyone is present every round.',
+  'Give each group its own capacity and override those capacities for specific sessions when room sizes or staffing change.',
+  'Apply together, apart, pinned, repeat, and balance rules only to the sessions where they matter.',
+  'Add preferences that can be violated when needed, then tune their weights relative to other goals.',
+  'Target how often specific pairs should meet across the schedule, including exact, minimum, or maximum encounter counts.',
+  'Fine-tune repeat limits, attribute-balance modes, penalties, and other constraint details beyond the landing-page controls.',
+  'Adjust runtime limits, deterministic seeds, solver family, and other optimization settings.',
+  'Inspect score breakdowns, constraint compliance, penalties, and saved results in more detail.',
+];
+
 const CHROME = {
   expertWorkspaceLabel: 'Scenario editor',
   faqHeading: 'Frequently asked questions',
@@ -158,6 +169,7 @@ function createContent({
       eyebrow: 'Need even more control?',
       title: 'Open the full scenario editor.',
       featureBullets: OPTIMIZER_FEATURES,
+      featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'Open scenario editor',
       supportingText:
         'Use this when you need controls the landing page does not expose. Your participants, groups, sessions, and rules come with you.',

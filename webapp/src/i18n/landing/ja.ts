@@ -17,6 +17,17 @@ const OPTIMIZER_FEATURES = [
   '結果分析',
 ];
 
+const OPTIMIZER_FEATURE_EXPLANATIONS = [
+  '全員が毎回参加する前提ではなく、参加者ごとに出席するセッションを設定できます。',
+  'グループごとの定員を設定し、部屋や担当者が変わる場合はセッションごとに上書きできます。',
+  '同席、分離、固定配置、繰り返し、バランスのルールを必要なセッションだけに適用できます。',
+  '必要なら破ってもよい希望条件を追加し、他の目標に対する重みを調整できます。',
+  '特定のペアが何回出会うべきかを、ちょうど・最小・最大の目標として指定できます。',
+  '繰り返し制限、属性バランスのモード、ペナルティなど、制約の詳細を調整できます。',
+  '実行時間、再現用シード、ソルバー種別などの最適化設定を調整できます。',
+  'スコア内訳、制約の達成状況、ペナルティ、保存済み結果を詳しく確認できます。',
+];
+
 const CHROME = {
   expertWorkspaceLabel: 'シナリオエディター',
   faqHeading: 'よくある質問',
@@ -116,6 +127,7 @@ function createContent({
       eyebrow: 'さらに細かく制御しますか？',
       title: 'フルシナリオエディターを開く',
       featureBullets: OPTIMIZER_FEATURES,
+      featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'シナリオエディターを開く',
       supportingText: 'このページにない高度な設定に使います。参加者、グループ、セッション、ルールはそのまま引き継がれます。',
     },

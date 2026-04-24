@@ -49,6 +49,10 @@ function composeEventHandlers<E>(
   };
 }
 
+function mergeDescribedBy(existing: string | undefined, next: string): string {
+  return existing ? `${existing} ${next}` : next;
+}
+
 function getPlacementOrder(preferred: TooltipPlacement): TooltipPlacement[] {
   switch (preferred) {
     case 'bottom':
@@ -240,6 +244,7 @@ export function Tooltip({
   const tooltipMaxWidth = typeof window === 'undefined'
     ? maxWidth
     : Math.min(maxWidth, window.innerWidth - VIEWPORT_PADDING * 2);
+  const describedBy = disabled || content == null ? undefined : tooltipId;
   const child = React.isValidElement<TooltipTriggerProps>(children)
     ? React.cloneElement(children, {
       onMouseEnter: composeEventHandlers<React.MouseEvent>(children.props.onMouseEnter, showTooltip),
@@ -248,7 +253,9 @@ export function Tooltip({
       onPointerDown: composeEventHandlers<React.PointerEvent>(children.props.onPointerDown, showTooltip),
       onTouchStart: composeEventHandlers<React.TouchEvent>(children.props.onTouchStart, showTooltip),
       onClick: composeEventHandlers<React.MouseEvent>(children.props.onClick, showTooltip),
-      'aria-describedby': isVisible ? tooltipId : children.props['aria-describedby'],
+      'aria-describedby': describedBy
+        ? mergeDescribedBy(children.props['aria-describedby'], describedBy)
+        : children.props['aria-describedby'],
     })
     : children;
 
@@ -258,15 +265,20 @@ export function Tooltip({
         ref={triggerRef}
         className={wrapperClassName}
         onMouseLeave={hideTooltip}
-        aria-describedby={isVisible ? tooltipId : undefined}
+        aria-describedby={describedBy}
       >
         {child}
       </span>
 
+      {describedBy ? (
+        <span id={describedBy} className="sr-only">
+          {content}
+        </span>
+      ) : null}
+
       {isVisible && typeof document !== 'undefined' && createPortal(
         <div
           ref={tooltipRef}
-          id={tooltipId}
           role="tooltip"
           data-placement={position?.placement ?? placement}
           className="pointer-events-none fixed z-[90] rounded-md border px-2.5 py-2 text-xs font-medium shadow-lg"

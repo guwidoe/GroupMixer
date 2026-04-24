@@ -249,10 +249,17 @@ function assertOptimizerCtaContent(value: unknown, path: string): ToolPageOptimi
     failConfig(`${path} must be an object.`);
   }
 
+  const featureBullets = assertStringArray((value as { featureBullets?: unknown }).featureBullets, `${path}.featureBullets`);
+  const featureExplanations = assertStringArray((value as { featureExplanations?: unknown }).featureExplanations, `${path}.featureExplanations`);
+  if (featureBullets.length !== featureExplanations.length) {
+    failConfig(`${path}.featureExplanations must have the same length as ${path}.featureBullets.`);
+  }
+
   return {
     eyebrow: assertNonEmptyString((value as { eyebrow?: unknown }).eyebrow, `${path}.eyebrow`),
     title: assertNonEmptyString((value as { title?: unknown }).title, `${path}.title`),
-    featureBullets: assertStringArray((value as { featureBullets?: unknown }).featureBullets, `${path}.featureBullets`),
+    featureBullets,
+    featureExplanations,
     buttonLabel: assertNonEmptyString((value as { buttonLabel?: unknown }).buttonLabel, `${path}.buttonLabel`),
     supportingText: assertNonEmptyString((value as { supportingText?: unknown }).supportingText, `${path}.supportingText`),
   };

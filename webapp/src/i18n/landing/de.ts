@@ -17,6 +17,17 @@ const OPTIMIZER_FEATURES = [
   'Ergebnisanalyse',
 ];
 
+const OPTIMIZER_FEATURE_EXPLANATIONS = [
+  'Lege fest, welche Personen in welchen Sessions teilnehmen, statt alle in jeder Runde einzuplanen.',
+  'Gib jeder Gruppe eine eigene Kapazität und überschreibe sie pro Session, wenn Raumgrößen oder Betreuung wechseln.',
+  'Wende Zusammenhalten-, Trennen-, Pinning-, Wiederholungs- und Balance-Regeln nur auf relevante Sessions an.',
+  'Füge Präferenzen hinzu, die bei Bedarf verletzt werden dürfen, und gewichte sie gegenüber anderen Zielen.',
+  'Steuere, wie oft bestimmte Paare sich im Plan begegnen sollen, inklusive exakter, minimaler oder maximaler Zielwerte.',
+  'Feinsteuere Wiederholungslimits, Attribut-Balance-Modi, Penalties und weitere Constraint-Details.',
+  'Passe Laufzeitlimits, deterministische Seeds, Solver-Familie und weitere Optimierungseinstellungen an.',
+  'Prüfe Score-Aufschlüsselungen, Constraint-Erfüllung, Penalties und gespeicherte Ergebnisse genauer.',
+];
+
 const CHROME = {
   expertWorkspaceLabel: 'Szenario-Editor',
   faqHeading: 'Häufige Fragen',
@@ -116,6 +127,7 @@ function createContent({
       eyebrow: 'Brauchst du noch mehr Kontrolle?',
       title: 'Öffne den vollständigen Szenario-Editor.',
       featureBullets: OPTIMIZER_FEATURES,
+      featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'Szenario-Editor öffnen',
       supportingText: 'Nutze ihn für Möglichkeiten, die diese Seite nicht abdeckt. Deine Eingaben werden direkt übernommen.',
     },

@@ -17,6 +17,17 @@ const OPTIMIZER_FEATURES = [
   '结果分析',
 ];
 
+const OPTIMIZER_FEATURE_EXPLANATIONS = [
+  '为每位参与者设置参加哪些场次，而不是默认每个人每轮都在场。',
+  '为每个小组设置容量，并在房间或主持人安排变化时按场次覆盖容量。',
+  '只在需要的场次应用同组、分开、固定分配、重复限制和属性平衡规则。',
+  '添加必要时可以被违反的偏好，并调整它们相对于其他目标的权重。',
+  '设置特定两人应见面的次数目标，包括精确、至少或至多。',
+  '进一步调整重复限制、属性平衡模式、惩罚权重和其他约束细节。',
+  '调整运行限制、确定性种子、求解器类型以及其他优化设置。',
+  '更详细地查看分数拆解、约束满足情况、惩罚和保存的结果。',
+];
+
 const CHROME = {
   expertWorkspaceLabel: '场景编辑器',
   faqHeading: '常见问题',
@@ -116,6 +127,7 @@ function createContent({
       eyebrow: '还需要更多控制吗？',
       title: '打开完整场景编辑器。',
       featureBullets: OPTIMIZER_FEATURES,
+      featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: '打开场景编辑器',
       supportingText: '当你需要此页面未提供的高级控制时使用。参与者、小组、场次和规则会一起带过去。',
     },

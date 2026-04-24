@@ -157,9 +157,19 @@ export function GroupTool({
         </h2>
 
         <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-          {config.optimizerCta.featureBullets.map((feature) => (
-            <span key={feature} className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-              {feature}
+          {config.optimizerCta.featureBullets.map((feature, index) => (
+            <span key={feature} className="inline-flex items-center gap-1 rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              <span>{feature}</span>
+              <Tooltip content={config.optimizerCta.featureExplanations[index]} offset={6} maxWidth={340}>
+                <button
+                  type="button"
+                  aria-label={`Explain ${feature}`}
+                  className="inline-flex h-4 min-w-4 items-center justify-center rounded-full leading-none"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  <CircleHelp className="h-3.5 w-3.5" />
+                </button>
+              </Tooltip>
             </span>
           ))}
         </div>

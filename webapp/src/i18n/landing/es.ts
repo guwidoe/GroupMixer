@@ -17,6 +17,17 @@ const OPTIMIZER_FEATURES = [
   'Análisis de resultados',
 ];
 
+const OPTIMIZER_FEATURE_EXPLANATIONS = [
+  'Define qué participantes asisten a cada sesión en lugar de asumir que todos están presentes en todas las rondas.',
+  'Asigna capacidad propia a cada grupo y cámbiala por sesión cuando varíen salas, mesas o facilitadores.',
+  'Aplica reglas de unir, separar, fijar, repetir o equilibrar solo en las sesiones donde importan.',
+  'Añade preferencias que pueden romperse si hace falta y ajusta su peso frente a otros objetivos.',
+  'Define cuántas veces deberían encontrarse pares concretos, con objetivos exactos, mínimos o máximos.',
+  'Ajusta límites de repetición, modos de equilibrio por atributo, penalizaciones y otros detalles de restricciones.',
+  'Configura límites de ejecución, semillas deterministas, familia de solver y otros ajustes de optimización.',
+  'Revisa desglose de puntuación, cumplimiento de restricciones, penalizaciones y resultados guardados con más detalle.',
+];
+
 const CHROME = {
   expertWorkspaceLabel: 'Editor de escenarios',
   faqHeading: 'Preguntas frecuentes',
@@ -116,6 +127,7 @@ function createContent({
       eyebrow: '¿Necesitas todavía más control?',
       title: 'Abre el editor completo de escenarios.',
       featureBullets: OPTIMIZER_FEATURES,
+      featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'Abrir editor de escenarios',
       supportingText: 'Úsalo para opciones más avanzadas. Tus participantes, grupos, sesiones y reglas se mantienen cuando entras.',
     },

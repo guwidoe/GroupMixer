@@ -499,6 +499,8 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /open the full scenario editor/i })).toBeInTheDocument();
     expect(screen.getByText(/use this when you need controls the landing page does not expose/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /explain partial attendance/i })).toBeInTheDocument();
+    expect(screen.getByText(/set which participants attend which sessions/i)).toHaveClass('sr-only');
     expect(screen.queryByText(/groupmixer is more than a random shuffler/i)).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /open scenario editor/i }).some((button) => button.className.includes('btn-primary'))).toBe(true);
   }, 10000);

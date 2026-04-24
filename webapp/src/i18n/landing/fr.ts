@@ -17,6 +17,17 @@ const OPTIMIZER_FEATURES = [
   'Analyse des résultats',
 ];
 
+const OPTIMIZER_FEATURE_EXPLANATIONS = [
+  'Définissez quels participants sont présents à quelles sessions au lieu de supposer que tout le monde participe à chaque tour.',
+  'Donnez une capacité propre à chaque groupe et remplacez-la par session lorsque les salles ou l’encadrement changent.',
+  'Appliquez les règles ensemble, séparés, assignation fixe, répétition et équilibrage uniquement aux sessions concernées.',
+  'Ajoutez des préférences qui peuvent être violées si nécessaire, puis ajustez leur poids face aux autres objectifs.',
+  'Ciblez le nombre de rencontres de certaines paires, avec des objectifs exacts, minimums ou maximums.',
+  'Affinez les limites de répétition, les modes d’équilibrage par attribut, les pénalités et autres détails de contraintes.',
+  'Ajustez les limites de temps, les graines déterministes, la famille de solveur et les autres réglages d’optimisation.',
+  'Inspectez les scores, le respect des contraintes, les pénalités et les résultats enregistrés plus en détail.',
+];
+
 const CHROME = {
   expertWorkspaceLabel: 'Éditeur de scénarios',
   faqHeading: 'Questions fréquentes',
@@ -116,6 +127,7 @@ function createContent({
       eyebrow: 'Besoin d’encore plus de contrôle ?',
       title: 'Ouvrez l’éditeur complet de scénario.',
       featureBullets: OPTIMIZER_FEATURES,
+      featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'Ouvrir l’éditeur de scénarios',
       supportingText: 'Utilisez-le pour les options que cette page ne couvre pas. Vos participants, groupes, sessions et règles vous suivent.',
     },
