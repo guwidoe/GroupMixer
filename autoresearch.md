@@ -25,16 +25,23 @@ Latest pre-autoresearch broad run after the scaffold fallback and 30% constructi
 
 ## Metrics
 - **Primary**: `broad_log_score` (unitless, lower is better) — sum over all benchmark cases of `ln(1 + final_score)` after construction+search, plus `1000` per failed case. This balances very small and very large cases without letting one giant raw score dominate the whole objective. Failures are catastrophic.
-- **Secondary**:
+- **Secondary safety/operability monitors**:
   - `failure_count`
-  - `total_final_score`
-  - `mean_final_score`
-  - `max_final_score`
   - `runtime_seconds`
   - `construction_seconds_total`
-  - every individual final score as `final_score_<sanitized_case_id>`.
+- **Key final-score sentinels** tracked every run:
+  - `score_sailing_real` — real Sailing workload / search-basin sentinel.
+  - `score_synthetic_152p` — hardest partial-attendance/capacity-pressure stretch case.
+  - `score_large_gender_immovable_110p` — large heterogeneous immovable-anchor case.
+  - `score_transfer_attribute_111p` — large attribute-balance workload.
+  - `score_google_cp` — mixed-constraint Google-CP-equivalent fixture.
+  - `score_ui_demo` and `score_ui_demo_no_attr` — representative product-sized cases with/without attribute pressure.
+  - `score_clique_swap_35p` — nontrivial clique/path constraint behavior.
+  - `score_sgp_169x13x14` — large pure SGP oracle/exact-structure sentinel; should remain zero.
+  - `score_sgp_32x8x20_constrained`, `score_sgp_49x7x8_constrained`, `score_sgp_169x13x14_constrained` — constrained SGP geometry/scaling sentinels.
+  - `score_no_template_clique_immovable`, `score_no_template_constraint_heavy_partial`, `score_no_template_late_arrivals` — oracle-inapplicable feasible-case sentinels.
 
-Individual scores are monitors, not the primary objective. Prefer changes that improve `broad_log_score` without introducing catastrophic regressions in important canonical cases.
+Raw aggregate/mean/max final score is intentionally not tracked because raw score scales are not comparable between benchmark cases. The full run report still contains every per-case score for deeper analysis.
 
 ## How to Run
 `./autoresearch.sh`

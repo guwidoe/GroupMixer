@@ -33,9 +33,26 @@ fi
 python3 - "$report_path" <<'PY'
 import json
 import math
-import re
 import sys
 from pathlib import Path
+
+KEY_CASE_METRICS = {
+    "score_sailing_real": "stretch.sailing-trip-demo-real",
+    "score_synthetic_152p": "stretch.synthetic-partial-attendance-capacity-pressure-152p",
+    "score_large_gender_immovable_110p": "stretch.large-gender-immovable-110p",
+    "score_transfer_attribute_111p": "adversarial.transfer-attribute-balance-111p",
+    "score_google_cp": "stretch.google-cp-equivalent",
+    "score_ui_demo": "representative.ui-demo-data",
+    "score_ui_demo_no_attr": "representative.ui-demo-data-no-attr",
+    "score_clique_swap_35p": "adversarial.clique-swap-functionality-35p",
+    "score_sgp_169x13x14": "stretch.social-golfer-169x13x14",
+    "score_sgp_32x8x20_constrained": "stretch.social-golfer-32x8x20-constrained",
+    "score_sgp_49x7x8_constrained": "stretch.social-golfer-49x7x8-constrained",
+    "score_sgp_169x13x14_constrained": "stretch.social-golfer-169x13x14-constrained",
+    "score_no_template_clique_immovable": "path.construction.clique-immovable",
+    "score_no_template_constraint_heavy_partial": "adversarial.constraint-heavy-partial-attendance",
+    "score_no_template_late_arrivals": "adversarial.correctness-late-arrivals-early-departures",
+}
 
 report_path = Path(sys.argv[1])
 report = json.loads(report_path.read_text())
@@ -46,9 +63,9 @@ if not cases:
 failure_penalty = 1000.0
 broad_log_score = 0.0
 failure_count = 0
-scores = []
 construction_total = 0.0
 runtime_total = 0.0
+case_scores = {}
 
 print(f"REPORT {report_path}")
 
@@ -69,28 +86,21 @@ for case in cases:
         else:
             score = max(0.0, score)
             broad_log_score += math.log1p(score)
-    scores.append(score)
+    case_scores[case_id] = score
 
     timing = case.get("timing") or {}
     runtime_total += float(case.get("runtime_seconds") or timing.get("total_seconds") or 0.0)
     # In two-phase artifacts, construction is included in initialization time.
     construction_total += float(timing.get("initialization_seconds") or 0.0)
 
-    safe_case_id = re.sub(r"[^A-Za-z0-9]+", "_", case_id).strip("_").lower()
-    print(f"METRIC final_score_{safe_case_id}={score:.6f}")
-
-if failure_count:
-    broad_log_score += failure_count * failure_penalty
-
-total_score = sum(scores)
-mean_score = total_score / len(scores)
-max_score = max(scores)
+missing = sorted(set(KEY_CASE_METRICS.values()) - set(case_scores))
+if missing:
+    raise SystemExit(f"benchmark report missing key cases: {', '.join(missing)}")
 
 print(f"METRIC broad_log_score={broad_log_score:.9f}")
 print(f"METRIC failure_count={failure_count}")
-print(f"METRIC total_final_score={total_score:.6f}")
-print(f"METRIC mean_final_score={mean_score:.9f}")
-print(f"METRIC max_final_score={max_score:.6f}")
 print(f"METRIC runtime_seconds={runtime_total:.9f}")
 print(f"METRIC construction_seconds_total={construction_total:.9f}")
+for metric_name, case_id in KEY_CASE_METRICS.items():
+    print(f"METRIC {metric_name}={case_scores[case_id]:.6f}")
 PY
