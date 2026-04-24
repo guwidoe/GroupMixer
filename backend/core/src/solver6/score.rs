@@ -8,12 +8,13 @@ pub fn pure_sgp_linear_repeat_excess_lower_bound(
     total_distinct_pairs: usize,
     total_pair_incidences: usize,
 ) -> u64 {
-    counting_linear_repeat_excess_lower_bound(total_distinct_pairs, total_pair_incidences)
-        .max(two_week_structural_linear_repeat_excess_lower_bound(
+    counting_linear_repeat_excess_lower_bound(total_distinct_pairs, total_pair_incidences).max(
+        two_week_structural_linear_repeat_excess_lower_bound(
             num_groups,
             group_size,
             represented_weeks,
-        ))
+        ),
+    )
 }
 
 pub fn two_week_structural_linear_repeat_excess_lower_bound(
@@ -27,8 +28,8 @@ pub fn two_week_structural_linear_repeat_excess_lower_bound(
 
     let quotient = group_size / num_groups;
     let remainder = group_size % num_groups;
-    let per_group_repeat_floor = remainder * choose2(quotient + 1)
-        + (num_groups - remainder) * choose2(quotient);
+    let per_group_repeat_floor =
+        remainder * choose2(quotient + 1) + (num_groups - remainder) * choose2(quotient);
     (num_groups * per_group_repeat_floor) as u64
 }
 
@@ -115,7 +116,10 @@ impl PairMultiplicityHistogram {
     }
 
     pub fn count_at_frequency(&self, frequency: usize) -> usize {
-        self.counts_by_frequency.get(frequency).copied().unwrap_or(0)
+        self.counts_by_frequency
+            .get(frequency)
+            .copied()
+            .unwrap_or(0)
     }
 
     pub fn max_frequency(&self) -> usize {
@@ -241,9 +245,7 @@ impl PairFrequencyState {
     pub fn score_for_model(&self, model: Solver6PairRepeatPenaltyModel) -> u64 {
         match model {
             Solver6PairRepeatPenaltyModel::LinearRepeatExcess => self.linear_repeat_excess,
-            Solver6PairRepeatPenaltyModel::TriangularRepeatExcess => {
-                self.triangular_repeat_excess
-            }
+            Solver6PairRepeatPenaltyModel::TriangularRepeatExcess => self.triangular_repeat_excess,
             Solver6PairRepeatPenaltyModel::SquaredRepeatExcess => self.squared_repeat_excess,
         }
     }
@@ -259,7 +261,7 @@ impl PairFrequencyState {
     }
 
     pub fn squared_repeat_excess_lower_bound(&self) -> u64 {
-        squared_repeat_excess_lower_bound(
+        squared_repeat_excess_lower_bound_for_linear_excess(
             self.universe.total_distinct_pairs(),
             self.linear_repeat_excess(),
         )
@@ -278,7 +280,8 @@ impl PairFrequencyState {
     ) -> Result<i64, SolverError> {
         let old_count = self.pair_count_by_index(pair_idx)?;
         let new_count = adjusted_pair_count(old_count, delta)?;
-        Ok(pair_penalty_for_model(model, new_count) as i64 - pair_penalty_for_model(model, old_count) as i64)
+        Ok(pair_penalty_for_model(model, new_count) as i64
+            - pair_penalty_for_model(model, old_count) as i64)
     }
 
     pub(crate) fn score_delta_for_pair_change_known_valid(
@@ -300,7 +303,8 @@ impl PairFrequencyState {
             _ => unreachable!("validated fast score-delta path only supports +/-1"),
         };
 
-        pair_penalty_for_model(model, new_count) as i64 - pair_penalty_for_model(model, old_count) as i64
+        pair_penalty_for_model(model, new_count) as i64
+            - pair_penalty_for_model(model, old_count) as i64
     }
 
     pub(crate) fn linear_score_delta_for_pair_change_known_valid(
@@ -322,15 +326,21 @@ impl PairFrequencyState {
         }
     }
 
-    pub fn apply_pair_count_delta(&mut self, pair_idx: usize, delta: i8) -> Result<(), SolverError> {
+    pub fn apply_pair_count_delta(
+        &mut self,
+        pair_idx: usize,
+        delta: i8,
+    ) -> Result<(), SolverError> {
         let old_count = self.pair_count_by_index(pair_idx)?;
         let new_count = adjusted_pair_count(old_count, delta)?;
 
         if new_count as usize >= self.multiplicity_histogram.len() {
-            self.multiplicity_histogram.resize(new_count as usize + 1, 0);
+            self.multiplicity_histogram
+                .resize(new_count as usize + 1, 0);
         }
 
-        self.multiplicity_histogram[old_count as usize] = self.multiplicity_histogram[old_count as usize]
+        self.multiplicity_histogram[old_count as usize] = self.multiplicity_histogram
+            [old_count as usize]
             .checked_sub(1)
             .ok_or_else(|| {
                 SolverError::ValidationError(format!(
@@ -343,20 +353,34 @@ impl PairFrequencyState {
             self.distinct_pairs_covered += 1;
         }
         if old_count > 0 && new_count == 0 {
-            self.distinct_pairs_covered = self
-                .distinct_pairs_covered
-                .checked_sub(1)
-                .ok_or_else(|| {
+            self.distinct_pairs_covered =
+                self.distinct_pairs_covered.checked_sub(1).ok_or_else(|| {
                     SolverError::ValidationError(
                         "solver6 pair state distinct-pair count underflowed".into(),
                     )
                 })?;
         }
 
-        self.total_pair_incidences = adjusted_total_pair_incidences(self.total_pair_incidences, delta)?;
-        self.linear_repeat_excess = adjusted_total_penalty(self.linear_repeat_excess, old_count, new_count, linear_repeat_penalty)?;
-        self.triangular_repeat_excess = adjusted_total_penalty(self.triangular_repeat_excess, old_count, new_count, triangular_repeat_penalty)?;
-        self.squared_repeat_excess = adjusted_total_penalty(self.squared_repeat_excess, old_count, new_count, squared_repeat_penalty)?;
+        self.total_pair_incidences =
+            adjusted_total_pair_incidences(self.total_pair_incidences, delta)?;
+        self.linear_repeat_excess = adjusted_total_penalty(
+            self.linear_repeat_excess,
+            old_count,
+            new_count,
+            linear_repeat_penalty,
+        )?;
+        self.triangular_repeat_excess = adjusted_total_penalty(
+            self.triangular_repeat_excess,
+            old_count,
+            new_count,
+            triangular_repeat_penalty,
+        )?;
+        self.squared_repeat_excess = adjusted_total_penalty(
+            self.squared_repeat_excess,
+            old_count,
+            new_count,
+            squared_repeat_penalty,
+        )?;
 
         self.pair_counts[pair_idx] = new_count;
         if new_count > self.max_pair_frequency {
@@ -391,11 +415,13 @@ fn adjusted_total_pair_incidences(total: usize, delta: i8) -> Result<usize, Solv
     if delta >= 0 {
         Ok(total + delta as usize)
     } else {
-        total.checked_sub(delta.unsigned_abs() as usize).ok_or_else(|| {
-            SolverError::ValidationError(
-                "solver6 pair state total pair incidences underflowed".into(),
-            )
-        })
+        total
+            .checked_sub(delta.unsigned_abs() as usize)
+            .ok_or_else(|| {
+                SolverError::ValidationError(
+                    "solver6 pair state total pair incidences underflowed".into(),
+                )
+            })
     }
 }
 
@@ -408,7 +434,9 @@ fn adjusted_total_penalty(
     total
         .checked_sub(penalty(old_count))
         .and_then(|without_old| without_old.checked_add(penalty(new_count)))
-        .ok_or_else(|| SolverError::ValidationError("solver6 pair state penalty total overflowed".into()))
+        .ok_or_else(|| {
+            SolverError::ValidationError("solver6 pair state penalty total overflowed".into())
+        })
 }
 
 fn pair_penalty_for_model(model: Solver6PairRepeatPenaltyModel, count: u16) -> u64 {
@@ -563,7 +591,7 @@ impl PairFrequencySummary {
     }
 
     pub fn squared_repeat_excess_lower_bound(&self) -> u64 {
-        squared_repeat_excess_lower_bound(
+        squared_repeat_excess_lower_bound_for_linear_excess(
             self.universe.total_distinct_pairs(),
             self.linear_repeat_excess(),
         )
@@ -575,7 +603,10 @@ impl PairFrequencySummary {
     }
 }
 
-fn squared_repeat_excess_lower_bound(total_distinct_pairs: usize, repeat_excess: u64) -> u64 {
+pub(crate) fn squared_repeat_excess_lower_bound_for_linear_excess(
+    total_distinct_pairs: usize,
+    repeat_excess: u64,
+) -> u64 {
     if total_distinct_pairs == 0 || repeat_excess == 0 {
         return 0;
     }

@@ -2,7 +2,8 @@ use super::catalog::{Solver6CacheMetrics, Solver6CacheStoreOutcome};
 use super::execute_solver6_run;
 use super::problem::PureSgpProblem;
 use super::score::{
-    pure_sgp_linear_repeat_excess_lower_bound, PairFrequencyState, PairFrequencySummary,
+    pure_sgp_linear_repeat_excess_lower_bound, squared_repeat_excess_lower_bound_for_linear_excess,
+    PairFrequencyState, PairFrequencySummary,
 };
 use super::seed::SeedPairTelemetry;
 use crate::models::{
@@ -121,6 +122,27 @@ pub enum LayerWeekStatus {
     NotRun,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ObjectiveAgreementStatus {
+    SameScheduleBothTight,
+    SameSchedule,
+    DifferentScheduleSameScores,
+    SquaredImprovesWithNoLinearLoss,
+    SquaredImprovesWithLinearLoss,
+    SquaredRunDidNotImprove,
+    SquaredRunFailed,
+    NotRun,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SquaredResultSource {
+    LinearReused,
+    LinearSelected,
+    SquaredRun,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ScoreMetrics {
     pub active_penalty_model: String,
@@ -129,8 +151,18 @@ pub struct ScoreMetrics {
     pub linear_repeat_lower_bound: u64,
     pub linear_repeat_lower_bound_gap: u64,
     pub squared_repeat_excess: u64,
+    /// Backward-compatible alias for `squared_concentration_lower_bound`.
     pub squared_repeat_lower_bound: u64,
+    /// Backward-compatible alias for `squared_concentration_lower_bound_gap`.
     pub squared_repeat_lower_bound_gap: u64,
+    /// Instance-level squared lower bound implied by the instance linear lower bound.
+    pub squared_instance_lower_bound: u64,
+    /// Gap from the instance-level squared lower bound; comparable across schedules.
+    pub squared_instance_lower_bound_gap: u64,
+    /// Conditional squared lower bound given this schedule's observed linear excess.
+    pub squared_concentration_lower_bound: u64,
+    /// Extra squared penalty from avoidable concentration beyond observed linear excess.
+    pub squared_concentration_lower_bound_gap: u64,
     pub distinct_pairs_covered: usize,
     pub total_pair_incidences: usize,
     pub max_pair_frequency: usize,
@@ -168,6 +200,15 @@ impl ScoreMetrics {
             summary.universe().total_distinct_pairs(),
             summary.total_pair_incidences(),
         );
+        let squared_repeat_excess = summary.squared_repeat_excess();
+        let squared_concentration_lower_bound = summary.squared_repeat_excess_lower_bound();
+        let squared_concentration_lower_bound_gap = summary.squared_repeat_excess_lower_bound_gap();
+        let squared_instance_lower_bound = squared_repeat_excess_lower_bound_for_linear_excess(
+            summary.universe().total_distinct_pairs(),
+            linear_repeat_lower_bound,
+        );
+        let squared_instance_lower_bound_gap =
+            squared_repeat_excess.saturating_sub(squared_instance_lower_bound);
         Self {
             active_penalty_model: penalty_model_label(active_penalty_model).into(),
             active_penalty_score: summary.score_for_model(active_penalty_model),
@@ -176,9 +217,13 @@ impl ScoreMetrics {
             linear_repeat_lower_bound_gap: summary
                 .linear_repeat_excess()
                 .saturating_sub(linear_repeat_lower_bound),
-            squared_repeat_excess: summary.squared_repeat_excess(),
-            squared_repeat_lower_bound: summary.squared_repeat_excess_lower_bound(),
-            squared_repeat_lower_bound_gap: summary.squared_repeat_excess_lower_bound_gap(),
+            squared_repeat_excess,
+            squared_repeat_lower_bound: squared_concentration_lower_bound,
+            squared_repeat_lower_bound_gap: squared_concentration_lower_bound_gap,
+            squared_instance_lower_bound,
+            squared_instance_lower_bound_gap,
+            squared_concentration_lower_bound,
+            squared_concentration_lower_bound_gap,
             distinct_pairs_covered: summary.distinct_pairs_covered(),
             total_pair_incidences: summary.total_pair_incidences(),
             max_pair_frequency: summary.max_pair_frequency(),
@@ -201,6 +246,16 @@ impl ScoreMetrics {
             pair_state.universe().total_distinct_pairs(),
             pair_state.total_pair_incidences(),
         );
+        let squared_repeat_excess = pair_state.squared_repeat_excess();
+        let squared_concentration_lower_bound = pair_state.squared_repeat_excess_lower_bound();
+        let squared_concentration_lower_bound_gap =
+            pair_state.squared_repeat_excess_lower_bound_gap();
+        let squared_instance_lower_bound = squared_repeat_excess_lower_bound_for_linear_excess(
+            pair_state.universe().total_distinct_pairs(),
+            linear_repeat_lower_bound,
+        );
+        let squared_instance_lower_bound_gap =
+            squared_repeat_excess.saturating_sub(squared_instance_lower_bound);
         Self {
             active_penalty_model: penalty_model_label(active_penalty_model).into(),
             active_penalty_score: pair_state.score_for_model(active_penalty_model),
@@ -209,9 +264,13 @@ impl ScoreMetrics {
             linear_repeat_lower_bound_gap: pair_state
                 .linear_repeat_excess()
                 .saturating_sub(linear_repeat_lower_bound),
-            squared_repeat_excess: pair_state.squared_repeat_excess(),
-            squared_repeat_lower_bound: pair_state.squared_repeat_excess_lower_bound(),
-            squared_repeat_lower_bound_gap: pair_state.squared_repeat_excess_lower_bound_gap(),
+            squared_repeat_excess,
+            squared_repeat_lower_bound: squared_concentration_lower_bound,
+            squared_repeat_lower_bound_gap: squared_concentration_lower_bound_gap,
+            squared_instance_lower_bound,
+            squared_instance_lower_bound_gap,
+            squared_concentration_lower_bound,
+            squared_concentration_lower_bound_gap,
             distinct_pairs_covered: pair_state.distinct_pairs_covered(),
             total_pair_incidences: pair_state.total_pair_incidences(),
             max_pair_frequency: pair_state.max_pair_frequency(),
@@ -223,14 +282,20 @@ impl ScoreMetrics {
         let total_distinct_pairs = problem.num_groups * problem.group_size;
         let universe_pairs =
             total_distinct_pairs.saturating_mul(total_distinct_pairs.saturating_sub(1)) / 2;
-        let squared_repeat_lower_bound = if universe_pairs == 0 {
-            0
-        } else {
-            let repeat_excess = telemetry.linear_repeat_excess;
-            let q = repeat_excess / universe_pairs as u64;
-            let r = repeat_excess % universe_pairs as u64;
-            (universe_pairs as u64 - r) * q * q + r * (q + 1) * (q + 1)
-        };
+        let squared_concentration_lower_bound = squared_repeat_excess_lower_bound_for_linear_excess(
+            universe_pairs,
+            telemetry.linear_repeat_excess,
+        );
+        let squared_concentration_lower_bound_gap = telemetry
+            .squared_repeat_excess
+            .saturating_sub(squared_concentration_lower_bound);
+        let squared_instance_lower_bound = squared_repeat_excess_lower_bound_for_linear_excess(
+            universe_pairs,
+            telemetry.linear_repeat_lower_bound,
+        );
+        let squared_instance_lower_bound_gap = telemetry
+            .squared_repeat_excess
+            .saturating_sub(squared_instance_lower_bound);
         Self {
             active_penalty_model: penalty_model_label(telemetry.active_penalty_model).into(),
             active_penalty_score: telemetry.linear_repeat_excess,
@@ -238,10 +303,12 @@ impl ScoreMetrics {
             linear_repeat_lower_bound: telemetry.linear_repeat_lower_bound,
             linear_repeat_lower_bound_gap: telemetry.linear_repeat_lower_bound_gap,
             squared_repeat_excess: telemetry.squared_repeat_excess,
-            squared_repeat_lower_bound,
-            squared_repeat_lower_bound_gap: telemetry
-                .squared_repeat_excess
-                .saturating_sub(squared_repeat_lower_bound),
+            squared_repeat_lower_bound: squared_concentration_lower_bound,
+            squared_repeat_lower_bound_gap: squared_concentration_lower_bound_gap,
+            squared_instance_lower_bound,
+            squared_instance_lower_bound_gap,
+            squared_concentration_lower_bound,
+            squared_concentration_lower_bound_gap,
             distinct_pairs_covered: telemetry.distinct_pairs_covered,
             total_pair_incidences: telemetry.total_pair_incidences,
             max_pair_frequency: telemetry.max_pair_frequency,
@@ -253,14 +320,20 @@ impl ScoreMetrics {
         let total_distinct_pairs = problem.num_groups * problem.group_size;
         let universe_pairs =
             total_distinct_pairs.saturating_mul(total_distinct_pairs.saturating_sub(1)) / 2;
-        let squared_repeat_lower_bound = if universe_pairs == 0 {
-            0
-        } else {
-            let repeat_excess = telemetry.linear_repeat_excess;
-            let q = repeat_excess / universe_pairs as u64;
-            let r = repeat_excess % universe_pairs as u64;
-            (universe_pairs as u64 - r) * q * q + r * (q + 1) * (q + 1)
-        };
+        let squared_concentration_lower_bound = squared_repeat_excess_lower_bound_for_linear_excess(
+            universe_pairs,
+            telemetry.linear_repeat_excess,
+        );
+        let squared_concentration_lower_bound_gap = telemetry
+            .squared_repeat_excess
+            .saturating_sub(squared_concentration_lower_bound);
+        let squared_instance_lower_bound = squared_repeat_excess_lower_bound_for_linear_excess(
+            universe_pairs,
+            telemetry.linear_repeat_lower_bound,
+        );
+        let squared_instance_lower_bound_gap = telemetry
+            .squared_repeat_excess
+            .saturating_sub(squared_instance_lower_bound);
         Self {
             active_penalty_model: "linear_repeat_excess".to_string(),
             active_penalty_score: telemetry.linear_repeat_excess,
@@ -268,10 +341,12 @@ impl ScoreMetrics {
             linear_repeat_lower_bound: telemetry.linear_repeat_lower_bound,
             linear_repeat_lower_bound_gap: telemetry.linear_repeat_lower_bound_gap,
             squared_repeat_excess: telemetry.squared_repeat_excess,
-            squared_repeat_lower_bound,
-            squared_repeat_lower_bound_gap: telemetry
-                .squared_repeat_excess
-                .saturating_sub(squared_repeat_lower_bound),
+            squared_repeat_lower_bound: squared_concentration_lower_bound,
+            squared_repeat_lower_bound_gap: squared_concentration_lower_bound_gap,
+            squared_instance_lower_bound,
+            squared_instance_lower_bound_gap,
+            squared_concentration_lower_bound,
+            squared_concentration_lower_bound_gap,
             distinct_pairs_covered: telemetry.distinct_pairs_covered,
             total_pair_incidences: telemetry.total_pair_incidences,
             max_pair_frequency: telemetry.max_pair_frequency,
@@ -297,6 +372,41 @@ pub struct SearchTelemetrySummary {
     pub max_scan_micros: u64,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ObjectiveRunArtifact {
+    pub objective: String,
+    pub execution_status: ExecutionStatus,
+    pub objective_status: LayerWeekStatus,
+    pub seed_family: Option<String>,
+    pub seed_source_detail: Option<String>,
+    pub seed_metrics: Option<ScoreMetrics>,
+    pub final_metrics: Option<ScoreMetrics>,
+    pub schedule_hash: Option<String>,
+    pub stop_reason: Option<String>,
+    pub runtime_seconds: Option<f64>,
+    pub error_message: Option<String>,
+    pub exact_handoff: bool,
+    pub mixed_seed_candidates: Vec<MixedSeedCandidateArtifact>,
+    pub search_telemetry: Option<SearchTelemetrySummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct SelectedSquaredResultArtifact {
+    pub source: SquaredResultSource,
+    pub objective_status: LayerWeekStatus,
+    pub final_metrics: ScoreMetrics,
+    pub schedule_hash: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ObjectiveRelationshipArtifact {
+    pub agreement_status: ObjectiveAgreementStatus,
+    pub same_schedule: bool,
+    pub linear_schedule_also_squared_tight: bool,
+    pub squared_run_improved_squared_gap_by: Option<i64>,
+    pub squared_run_linear_gap_delta: Option<i64>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct MixedSeedCandidateArtifact {
     pub family: String,
@@ -317,6 +427,7 @@ pub struct Solver6BenchmarkInspection {
     pub final_metrics: ScoreMetrics,
     pub stop_reason: String,
     pub runtime_seconds: f64,
+    pub schedule_hash: String,
     pub exact_handoff: bool,
     pub mixed_seed_candidates: Vec<MixedSeedCandidateArtifact>,
     pub search_telemetry: Option<SearchTelemetrySummary>,
@@ -328,7 +439,12 @@ pub struct WeekResultArtifact {
     pub execution_status: ExecutionStatus,
     pub linear_status: LayerWeekStatus,
     pub squared_status: LayerWeekStatus,
+    pub objective_agreement_status: ObjectiveAgreementStatus,
     pub exact_zero_repeat: bool,
+    pub linear_run: Option<ObjectiveRunArtifact>,
+    pub squared_run: Option<ObjectiveRunArtifact>,
+    pub selected_squared_result: Option<SelectedSquaredResultArtifact>,
+    pub objective_relationship: Option<ObjectiveRelationshipArtifact>,
     pub seed_family: Option<String>,
     pub seed_source_detail: Option<String>,
     pub seed_metrics: Option<ScoreMetrics>,
@@ -359,6 +475,7 @@ pub struct CellArtifact {
     pub skip_reason: Option<String>,
     pub linear_summary: LayerFrontierSummary,
     pub squared_summary: LayerFrontierSummary,
+    pub objective_agreement_summary: LayerFrontierSummary,
     pub week_results: Vec<WeekResultArtifact>,
 }
 
@@ -469,7 +586,7 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
     );
     let squared_status = classify_layer_status(
         final_metrics.squared_repeat_excess,
-        final_metrics.squared_repeat_lower_bound_gap,
+        final_metrics.squared_instance_lower_bound_gap,
         executed.stop_reason,
     );
     let execution_status = match linear_status {
@@ -491,6 +608,7 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
         final_metrics,
         stop_reason: stop_reason_label(executed.stop_reason).into(),
         runtime_seconds,
+        schedule_hash: canonical_schedule_hash(&executed.final_schedule),
         exact_handoff,
         mixed_seed_candidates,
         search_telemetry: executed.local_search_outcome.as_ref().map(|outcome| {
@@ -510,6 +628,267 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
                 max_scan_micros: outcome.telemetry.max_scan_micros,
             }
         }),
+    })
+}
+
+fn objective_label(model: Solver6PairRepeatPenaltyModel) -> &'static str {
+    match model {
+        Solver6PairRepeatPenaltyModel::LinearRepeatExcess => "linear",
+        Solver6PairRepeatPenaltyModel::TriangularRepeatExcess => "triangular",
+        Solver6PairRepeatPenaltyModel::SquaredRepeatExcess => "squared",
+    }
+}
+
+fn objective_status_for_metrics(
+    metrics: &ScoreMetrics,
+    model: Solver6PairRepeatPenaltyModel,
+    stop_reason: &str,
+) -> LayerWeekStatus {
+    let stop_reason = match stop_reason {
+        "time_limit_reached" => StopReason::TimeLimitReached,
+        "max_iterations_reached" => StopReason::MaxIterationsReached,
+        "no_improvement_limit_reached" => StopReason::NoImprovementLimitReached,
+        "optimal_score_reached" => StopReason::OptimalScoreReached,
+        _ => StopReason::NoImprovementLimitReached,
+    };
+    match model {
+        Solver6PairRepeatPenaltyModel::LinearRepeatExcess => classify_layer_status(
+            metrics.linear_repeat_excess,
+            metrics.linear_repeat_lower_bound_gap,
+            stop_reason,
+        ),
+        Solver6PairRepeatPenaltyModel::SquaredRepeatExcess => classify_layer_status(
+            metrics.squared_repeat_excess,
+            metrics.squared_instance_lower_bound_gap,
+            stop_reason,
+        ),
+        Solver6PairRepeatPenaltyModel::TriangularRepeatExcess => classify_layer_status(
+            metrics.active_penalty_score,
+            metrics.active_penalty_score,
+            stop_reason,
+        ),
+    }
+}
+
+fn execution_status_for_layer_status(status: LayerWeekStatus) -> ExecutionStatus {
+    match status {
+        LayerWeekStatus::Exact | LayerWeekStatus::LowerBoundTight => ExecutionStatus::Success,
+        LayerWeekStatus::Miss => ExecutionStatus::Miss,
+        LayerWeekStatus::Timeout => ExecutionStatus::Timeout,
+        LayerWeekStatus::Unsupported => ExecutionStatus::Unsupported,
+        LayerWeekStatus::Error => ExecutionStatus::Error,
+        LayerWeekStatus::NotRun => ExecutionStatus::NotRun,
+    }
+}
+
+fn run_artifact_from_inspection(
+    objective: Solver6PairRepeatPenaltyModel,
+    inspection: Solver6BenchmarkInspection,
+) -> ObjectiveRunArtifact {
+    let objective_status = objective_status_for_metrics(
+        &inspection.final_metrics,
+        objective,
+        &inspection.stop_reason,
+    );
+    ObjectiveRunArtifact {
+        objective: objective_label(objective).into(),
+        execution_status: execution_status_for_layer_status(objective_status),
+        objective_status,
+        seed_family: Some(inspection.seed_family),
+        seed_source_detail: inspection.seed_source_detail,
+        seed_metrics: Some(inspection.seed_metrics),
+        final_metrics: Some(inspection.final_metrics),
+        schedule_hash: Some(inspection.schedule_hash),
+        stop_reason: Some(inspection.stop_reason),
+        runtime_seconds: Some(inspection.runtime_seconds),
+        error_message: None,
+        exact_handoff: inspection.exact_handoff,
+        mixed_seed_candidates: inspection.mixed_seed_candidates,
+        search_telemetry: inspection.search_telemetry,
+    }
+}
+
+fn run_artifact_from_error(
+    objective: Solver6PairRepeatPenaltyModel,
+    error: SolverError,
+) -> ObjectiveRunArtifact {
+    let message = error.to_string();
+    let execution_status = classify_error_status(&message);
+    ObjectiveRunArtifact {
+        objective: objective_label(objective).into(),
+        execution_status,
+        objective_status: layer_status_for_execution_failure(execution_status),
+        seed_family: None,
+        seed_source_detail: None,
+        seed_metrics: None,
+        final_metrics: None,
+        schedule_hash: None,
+        stop_reason: None,
+        runtime_seconds: None,
+        error_message: Some(message),
+        exact_handoff: false,
+        mixed_seed_candidates: Vec::new(),
+        search_telemetry: None,
+    }
+}
+
+fn inspect_objective_run(
+    groups: usize,
+    group_size: usize,
+    week: usize,
+    config: &Solver6BenchmarkConfig,
+    objective: Solver6PairRepeatPenaltyModel,
+) -> ObjectiveRunArtifact {
+    let input =
+        pure_input_for_benchmark_with_penalty_model(groups, group_size, week, config, objective);
+    match inspect_benchmark_run(&input) {
+        Ok(inspection) => run_artifact_from_inspection(objective, inspection),
+        Err(error) => run_artifact_from_error(objective, error),
+    }
+}
+
+fn objective_hit(status: LayerWeekStatus) -> bool {
+    matches!(
+        status,
+        LayerWeekStatus::Exact | LayerWeekStatus::LowerBoundTight
+    )
+}
+
+fn squared_result_is_better(left: &ScoreMetrics, right: &ScoreMetrics) -> bool {
+    (
+        left.squared_instance_lower_bound_gap,
+        left.squared_repeat_excess,
+        left.squared_concentration_lower_bound_gap,
+        left.linear_repeat_lower_bound_gap,
+        left.linear_repeat_excess,
+        left.max_pair_frequency,
+    ) < (
+        right.squared_instance_lower_bound_gap,
+        right.squared_repeat_excess,
+        right.squared_concentration_lower_bound_gap,
+        right.linear_repeat_lower_bound_gap,
+        right.linear_repeat_excess,
+        right.max_pair_frequency,
+    )
+}
+
+fn squared_status_for_run(run: &ObjectiveRunArtifact, metrics: &ScoreMetrics) -> LayerWeekStatus {
+    objective_status_for_metrics(
+        metrics,
+        Solver6PairRepeatPenaltyModel::SquaredRepeatExcess,
+        run.stop_reason
+            .as_deref()
+            .unwrap_or("no_improvement_limit_reached"),
+    )
+}
+
+fn build_selected_squared_result(
+    linear_run: &ObjectiveRunArtifact,
+    squared_run: Option<&ObjectiveRunArtifact>,
+) -> Option<SelectedSquaredResultArtifact> {
+    let linear_metrics = linear_run.final_metrics.as_ref();
+    let linear_hash = linear_run.schedule_hash.as_ref();
+    let squared_metrics = squared_run.and_then(|run| run.final_metrics.as_ref());
+    let squared_hash = squared_run.and_then(|run| run.schedule_hash.as_ref());
+
+    match (linear_metrics, linear_hash, squared_metrics, squared_hash) {
+        (Some(metrics), Some(hash), _, _) if metrics.squared_instance_lower_bound_gap == 0 => {
+            Some(SelectedSquaredResultArtifact {
+                source: SquaredResultSource::LinearReused,
+                objective_status: squared_status_for_run(linear_run, metrics),
+                final_metrics: metrics.clone(),
+                schedule_hash: hash.clone(),
+            })
+        }
+        (Some(linear), Some(_linear_hash), Some(squared), Some(squared_hash))
+            if squared_result_is_better(squared, linear) =>
+        {
+            Some(SelectedSquaredResultArtifact {
+                source: SquaredResultSource::SquaredRun,
+                objective_status: squared_run
+                    .map(|run| run.objective_status)
+                    .unwrap_or_else(|| squared_status_for_run(linear_run, squared)),
+                final_metrics: squared.clone(),
+                schedule_hash: squared_hash.clone(),
+            })
+        }
+        (Some(metrics), Some(hash), _, _) => Some(SelectedSquaredResultArtifact {
+            source: SquaredResultSource::LinearSelected,
+            objective_status: squared_status_for_run(linear_run, metrics),
+            final_metrics: metrics.clone(),
+            schedule_hash: hash.clone(),
+        }),
+        (None, None, Some(metrics), Some(hash)) => Some(SelectedSquaredResultArtifact {
+            source: SquaredResultSource::SquaredRun,
+            objective_status: squared_run
+                .map(|run| run.objective_status)
+                .unwrap_or_else(|| squared_status_for_run(linear_run, metrics)),
+            final_metrics: metrics.clone(),
+            schedule_hash: hash.clone(),
+        }),
+        _ => None,
+    }
+}
+
+fn build_objective_relationship(
+    linear_run: &ObjectiveRunArtifact,
+    squared_run: Option<&ObjectiveRunArtifact>,
+    selected_squared: Option<&SelectedSquaredResultArtifact>,
+) -> Option<ObjectiveRelationshipArtifact> {
+    let linear_metrics = linear_run.final_metrics.as_ref()?;
+    let linear_hash = linear_run.schedule_hash.as_ref()?;
+    let selected = selected_squared?;
+    let same_schedule = linear_hash == &selected.schedule_hash;
+    let linear_schedule_also_squared_tight = linear_metrics.squared_instance_lower_bound_gap == 0;
+    let squared_run_improved_squared_gap_by = squared_run
+        .and_then(|run| run.final_metrics.as_ref())
+        .map(|metrics| {
+            linear_metrics.squared_instance_lower_bound_gap as i64
+                - metrics.squared_instance_lower_bound_gap as i64
+        });
+    let squared_run_linear_gap_delta =
+        squared_run
+            .and_then(|run| run.final_metrics.as_ref())
+            .map(|metrics| {
+                metrics.linear_repeat_lower_bound_gap as i64
+                    - linear_metrics.linear_repeat_lower_bound_gap as i64
+            });
+
+    let agreement_status = if same_schedule
+        && objective_hit(linear_run.objective_status)
+        && objective_hit(selected.objective_status)
+    {
+        ObjectiveAgreementStatus::SameScheduleBothTight
+    } else if same_schedule {
+        ObjectiveAgreementStatus::SameSchedule
+    } else if squared_run
+        .and_then(|run| run.final_metrics.as_ref())
+        .is_some_and(|metrics| {
+            metrics.squared_instance_lower_bound_gap
+                == linear_metrics.squared_instance_lower_bound_gap
+                && metrics.linear_repeat_lower_bound_gap
+                    == linear_metrics.linear_repeat_lower_bound_gap
+        })
+    {
+        ObjectiveAgreementStatus::DifferentScheduleSameScores
+    } else if matches!(selected.source, SquaredResultSource::SquaredRun) {
+        if squared_run_linear_gap_delta.unwrap_or(0) <= 0 {
+            ObjectiveAgreementStatus::SquaredImprovesWithNoLinearLoss
+        } else {
+            ObjectiveAgreementStatus::SquaredImprovesWithLinearLoss
+        }
+    } else if squared_run.is_some() {
+        ObjectiveAgreementStatus::SquaredRunDidNotImprove
+    } else {
+        ObjectiveAgreementStatus::SquaredRunFailed
+    };
+
+    Some(ObjectiveRelationshipArtifact {
+        agreement_status,
+        same_schedule,
+        linear_schedule_also_squared_tight,
+        squared_run_improved_squared_gap_by,
+        squared_run_linear_gap_delta,
     })
 }
 
@@ -587,6 +966,22 @@ pub fn pure_input_for_benchmark(
     weeks: usize,
     benchmark: &Solver6BenchmarkConfig,
 ) -> ApiInput {
+    pure_input_for_benchmark_with_penalty_model(
+        groups,
+        group_size,
+        weeks,
+        benchmark,
+        benchmark.active_penalty_model,
+    )
+}
+
+fn pure_input_for_benchmark_with_penalty_model(
+    groups: usize,
+    group_size: usize,
+    weeks: usize,
+    benchmark: &Solver6BenchmarkConfig,
+    active_penalty_model: Solver6PairRepeatPenaltyModel,
+) -> ApiInput {
     ApiInput {
         problem: ProblemDefinition {
             people: (0..(groups * group_size))
@@ -622,7 +1017,7 @@ pub fn pure_input_for_benchmark(
             solver_params: SolverParams::Solver6(Solver6Params {
                 exact_construction_handoff_enabled: true,
                 seed_strategy: crate::models::Solver6SeedStrategy::Solver5ExactBlockComposition,
-                pair_repeat_penalty_model: benchmark.active_penalty_model,
+                pair_repeat_penalty_model: active_penalty_model,
                 search_strategy:
                     crate::models::Solver6SearchStrategy::DeterministicBestImprovingHillClimb,
                 cache: None,
@@ -662,7 +1057,12 @@ fn build_cell_artifact(
                 execution_status: ExecutionStatus::NotRun,
                 linear_status: LayerWeekStatus::NotRun,
                 squared_status: LayerWeekStatus::NotRun,
+                objective_agreement_status: ObjectiveAgreementStatus::NotRun,
                 exact_zero_repeat: false,
+                linear_run: None,
+                squared_run: None,
+                selected_squared_result: None,
+                objective_relationship: None,
                 seed_family: None,
                 seed_source_detail: None,
                 seed_metrics: None,
@@ -676,44 +1076,73 @@ fn build_cell_artifact(
             continue;
         }
 
-        let input = pure_input_for_benchmark(groups, group_size, week, config);
-        week_results.push(match inspect_benchmark_run(&input) {
-            Ok(inspection) => WeekResultArtifact {
+        let linear_run = inspect_objective_run(
+            groups,
+            group_size,
+            week,
+            config,
+            Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
+        );
+        let should_run_squared = linear_run
+            .final_metrics
+            .as_ref()
+            .is_none_or(|metrics| metrics.squared_instance_lower_bound_gap != 0);
+        let squared_run = should_run_squared.then(|| {
+            inspect_objective_run(
+                groups,
+                group_size,
                 week,
-                execution_status: inspection.execution_status,
-                linear_status: inspection.linear_status,
-                squared_status: inspection.squared_status,
-                exact_zero_repeat: inspection.final_metrics.linear_repeat_excess == 0,
-                seed_family: Some(inspection.seed_family),
-                seed_source_detail: inspection.seed_source_detail,
-                seed_metrics: Some(inspection.seed_metrics),
-                final_metrics: Some(inspection.final_metrics),
-                stop_reason: Some(inspection.stop_reason),
-                runtime_seconds: Some(inspection.runtime_seconds),
-                error_message: None,
-                mixed_seed_candidates: inspection.mixed_seed_candidates,
-                search_telemetry: inspection.search_telemetry,
-            },
-            Err(error) => {
-                let message = error.to_string();
-                let execution_status = classify_error_status(&message);
-                WeekResultArtifact {
-                    week,
-                    execution_status,
-                    linear_status: layer_status_for_execution_failure(execution_status),
-                    squared_status: layer_status_for_execution_failure(execution_status),
-                    exact_zero_repeat: false,
-                    seed_family: None,
-                    seed_source_detail: None,
-                    seed_metrics: None,
-                    final_metrics: None,
-                    stop_reason: None,
-                    runtime_seconds: None,
-                    error_message: Some(message),
-                    mixed_seed_candidates: Vec::new(),
-                    search_telemetry: None,
-                }
-            }
+                config,
+                Solver6PairRepeatPenaltyModel::SquaredRepeatExcess,
+            )
+        });
+        let selected_squared_result =
+            build_selected_squared_result(&linear_run, squared_run.as_ref());
+        let objective_relationship = build_objective_relationship(
+            &linear_run,
+            squared_run.as_ref(),
+            selected_squared_result.as_ref(),
+        );
+        let linear_status = linear_run.objective_status;
+        let squared_status = selected_squared_result
+            .as_ref()
+            .map(|result| result.objective_status)
+            .unwrap_or_else(|| {
+                squared_run
+                    .as_ref()
+                    .map(|run| run.objective_status)
+                    .unwrap_or(LayerWeekStatus::Error)
+            });
+        let execution_status = linear_run.execution_status;
+        let exact_zero_repeat = linear_run
+            .final_metrics
+            .as_ref()
+            .is_some_and(|metrics| metrics.linear_repeat_excess == 0);
+        let objective_agreement_status = objective_relationship
+            .as_ref()
+            .map(|relationship| relationship.agreement_status)
+            .unwrap_or(ObjectiveAgreementStatus::SquaredRunFailed);
+
+        week_results.push(WeekResultArtifact {
+            week,
+            execution_status,
+            linear_status,
+            squared_status,
+            objective_agreement_status,
+            exact_zero_repeat,
+            seed_family: linear_run.seed_family.clone(),
+            seed_source_detail: linear_run.seed_source_detail.clone(),
+            seed_metrics: linear_run.seed_metrics.clone(),
+            final_metrics: linear_run.final_metrics.clone(),
+            stop_reason: linear_run.stop_reason.clone(),
+            runtime_seconds: linear_run.runtime_seconds,
+            error_message: linear_run.error_message.clone(),
+            mixed_seed_candidates: linear_run.mixed_seed_candidates.clone(),
+            search_telemetry: linear_run.search_telemetry.clone(),
+            linear_run: Some(linear_run),
+            squared_run,
+            selected_squared_result,
+            objective_relationship,
         });
     }
 
@@ -725,6 +1154,7 @@ fn build_cell_artifact(
         skip_reason,
         linear_summary: summarize_layer(&week_results, |week| week.linear_status),
         squared_summary: summarize_layer(&week_results, |week| week.squared_status),
+        objective_agreement_summary: summarize_agreement_layer(&week_results),
         week_results,
     })
 }
@@ -782,6 +1212,19 @@ fn summarize_layer(
             week_results.len(),
         ),
     }
+}
+
+fn summarize_agreement_layer(week_results: &[WeekResultArtifact]) -> LayerFrontierSummary {
+    summarize_layer(week_results, |week| match week.objective_agreement_status {
+        ObjectiveAgreementStatus::SameScheduleBothTight => LayerWeekStatus::LowerBoundTight,
+        ObjectiveAgreementStatus::NotRun => LayerWeekStatus::NotRun,
+        ObjectiveAgreementStatus::SquaredRunFailed => LayerWeekStatus::Error,
+        ObjectiveAgreementStatus::SameSchedule
+        | ObjectiveAgreementStatus::DifferentScheduleSameScores
+        | ObjectiveAgreementStatus::SquaredImprovesWithNoLinearLoss
+        | ObjectiveAgreementStatus::SquaredImprovesWithLinearLoss
+        | ObjectiveAgreementStatus::SquaredRunDidNotImprove => LayerWeekStatus::Miss,
+    })
 }
 
 fn frontier_headline_label(
@@ -857,6 +1300,36 @@ fn stop_reason_label(reason: StopReason) -> &'static str {
     }
 }
 
+fn canonical_schedule_hash(schedule: &[Vec<Vec<usize>>]) -> String {
+    let mut canonical = schedule.to_vec();
+    for week in &mut canonical {
+        for group in week.iter_mut() {
+            group.sort_unstable();
+        }
+        week.sort_unstable();
+    }
+    canonical.sort_unstable();
+
+    let mut hash = 0xcbf2_9ce4_8422_2325u64;
+    for week in &canonical {
+        hash = fnv1a_mix(hash, 0xff);
+        for group in week {
+            hash = fnv1a_mix(hash, 0xfe);
+            for &person in group {
+                for byte in person.to_le_bytes() {
+                    hash = fnv1a_mix(hash, byte);
+                }
+                hash = fnv1a_mix(hash, 0xfd);
+            }
+        }
+    }
+    format!("{hash:016x}")
+}
+
+fn fnv1a_mix(hash: u64, byte: u8) -> u64 {
+    (hash ^ u64::from(byte)).wrapping_mul(0x0000_0100_0000_01b3)
+}
+
 fn penalty_model_label(model: Solver6PairRepeatPenaltyModel) -> &'static str {
     match model {
         Solver6PairRepeatPenaltyModel::LinearRepeatExcess => "linear_repeat_excess",
@@ -916,7 +1389,12 @@ mod tests {
                 execution_status: ExecutionStatus::Success,
                 linear_status: LayerWeekStatus::Exact,
                 squared_status: LayerWeekStatus::Exact,
+                objective_agreement_status: super::ObjectiveAgreementStatus::SameScheduleBothTight,
                 exact_zero_repeat: true,
+                linear_run: None,
+                squared_run: None,
+                selected_squared_result: None,
+                objective_relationship: None,
                 seed_family: None,
                 seed_source_detail: None,
                 seed_metrics: None,
@@ -932,7 +1410,12 @@ mod tests {
                 execution_status: ExecutionStatus::Success,
                 linear_status: LayerWeekStatus::LowerBoundTight,
                 squared_status: LayerWeekStatus::LowerBoundTight,
+                objective_agreement_status: super::ObjectiveAgreementStatus::SameScheduleBothTight,
                 exact_zero_repeat: false,
+                linear_run: None,
+                squared_run: None,
+                selected_squared_result: None,
+                objective_relationship: None,
                 seed_family: None,
                 seed_source_detail: None,
                 seed_metrics: None,
@@ -948,7 +1431,12 @@ mod tests {
                 execution_status: ExecutionStatus::Miss,
                 linear_status: LayerWeekStatus::Miss,
                 squared_status: LayerWeekStatus::Miss,
+                objective_agreement_status: super::ObjectiveAgreementStatus::SameSchedule,
                 exact_zero_repeat: false,
+                linear_run: None,
+                squared_run: None,
+                selected_squared_result: None,
+                objective_relationship: None,
                 seed_family: None,
                 seed_source_detail: None,
                 seed_metrics: None,
@@ -964,7 +1452,12 @@ mod tests {
                 execution_status: ExecutionStatus::Success,
                 linear_status: LayerWeekStatus::LowerBoundTight,
                 squared_status: LayerWeekStatus::LowerBoundTight,
+                objective_agreement_status: super::ObjectiveAgreementStatus::SameScheduleBothTight,
                 exact_zero_repeat: false,
+                linear_run: None,
+                squared_run: None,
+                selected_squared_result: None,
+                objective_relationship: None,
                 seed_family: None,
                 seed_source_detail: None,
                 seed_metrics: None,
@@ -1098,6 +1591,28 @@ mod tests {
         assert_eq!(inspection.final_metrics.linear_repeat_excess, 2);
         assert_eq!(inspection.final_metrics.linear_repeat_lower_bound, 2);
         assert_eq!(inspection.final_metrics.linear_repeat_lower_bound_gap, 0);
+        assert_eq!(inspection.final_metrics.squared_instance_lower_bound, 2);
+        assert_eq!(inspection.final_metrics.squared_instance_lower_bound_gap, 0);
+        assert_eq!(
+            inspection.final_metrics.squared_concentration_lower_bound,
+            2
+        );
+        assert_eq!(
+            inspection
+                .final_metrics
+                .squared_concentration_lower_bound_gap,
+            0
+        );
+        assert_eq!(
+            inspection.final_metrics.squared_repeat_lower_bound,
+            inspection.final_metrics.squared_concentration_lower_bound
+        );
+        assert_eq!(
+            inspection.final_metrics.squared_repeat_lower_bound_gap,
+            inspection
+                .final_metrics
+                .squared_concentration_lower_bound_gap
+        );
     }
 
     #[test]

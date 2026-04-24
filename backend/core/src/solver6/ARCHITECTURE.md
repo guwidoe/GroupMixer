@@ -104,7 +104,10 @@ Current review expectations:
 
 - benchmark week sweeps explicitly up to a fixed cap (currently `100` by default)
 - treat **linear lower-bound attainment** as the primary optimality layer
-- treat **squared lower-bound attainment** as a parallel secondary layer
+- treat **squared instance lower-bound attainment** as a separate objective layer,
+  running squared-mode solver6 when the linear schedule is not already squared-tight
+- expose **linear = squared schedule agreement** as its own layer, with conditional
+  squared concentration gaps available as diagnostics
 - keep the week axis visible through an embedded per-cell `10x10` week matrix
 - make seed-vs-search contribution inspectable through click-through cell detail
 

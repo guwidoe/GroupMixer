@@ -81,7 +81,8 @@ for cell in eligible_cells:
             not_run_runs += 1
 
         runtime_ms = int(round((week.get("runtime_seconds") or 0.0) * 1000.0))
-        total_runtime_ms += runtime_ms
+        squared_runtime_ms = int(round((((week.get("squared_run") or {}).get("runtime_seconds")) or 0.0) * 1000.0))
+        total_runtime_ms += runtime_ms + squared_runtime_ms
 
         family = week.get("seed_family")
         if family:
@@ -112,7 +113,15 @@ for cell in eligible_cells:
         final_metrics = week.get("final_metrics")
         if final_metrics:
             linear_gap_sum += int(final_metrics.get("linear_repeat_lower_bound_gap") or 0)
-            squared_gap_sum += int(final_metrics.get("squared_repeat_lower_bound_gap") or 0)
+        selected_squared = week.get("selected_squared_result") or {}
+        selected_squared_metrics = selected_squared.get("final_metrics")
+        if selected_squared_metrics:
+            squared_gap_sum += int(
+                selected_squared_metrics.get("squared_instance_lower_bound_gap")
+                if selected_squared_metrics.get("squared_instance_lower_bound_gap") is not None
+                else selected_squared_metrics.get("squared_repeat_lower_bound_gap")
+                or 0
+            )
 
 objective_cost = (
     error_runs * 10_000_000_000_000

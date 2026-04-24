@@ -1,4 +1,5 @@
 use super::problem::PureSgpProblem;
+use super::score::squared_repeat_excess_lower_bound_for_linear_excess;
 use super::seed::{validate_full_schedule_shape, SeedPairTelemetry};
 use crate::models::{Solver6CacheParams, Solver6CacheWritePolicy, Solver6PairRepeatPenaltyModel};
 use crate::solver_support::SolverError;
@@ -8,7 +9,7 @@ use std::cmp::Ordering;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub const SOLVER6_CACHE_SCHEMA_VERSION: u32 = 1;
+pub const SOLVER6_CACHE_SCHEMA_VERSION: u32 = 2;
 pub const SOLVER6_CACHE_POLICY_VERSION: &str = "solver6_cache_policy_v1";
 
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
@@ -51,6 +52,14 @@ pub struct Solver6CacheMetrics {
     pub total_pair_incidences: usize,
     pub linear_repeat_lower_bound: u64,
     pub linear_repeat_lower_bound_gap: u64,
+    /// Instance-level squared lower bound implied by the instance linear lower bound.
+    pub squared_instance_lower_bound: u64,
+    /// Gap from the instance-level squared lower bound; comparable across schedules.
+    pub squared_instance_lower_bound_gap: u64,
+    /// Conditional squared lower bound given this schedule's observed linear excess.
+    pub squared_concentration_lower_bound: u64,
+    /// Extra squared penalty from avoidable concentration beyond observed linear excess.
+    pub squared_concentration_lower_bound_gap: u64,
     pub multiplicity_histogram: Vec<usize>,
 }
 
@@ -308,6 +317,22 @@ fn metrics_from_schedule(
         schedule,
         Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
     )?;
+    let num_people = problem.num_groups.saturating_mul(problem.group_size);
+    let universe_pairs = num_people.saturating_mul(num_people.saturating_sub(1)) / 2;
+    let squared_concentration_lower_bound = squared_repeat_excess_lower_bound_for_linear_excess(
+        universe_pairs,
+        telemetry.linear_repeat_excess,
+    );
+    let squared_concentration_lower_bound_gap = telemetry
+        .squared_repeat_excess
+        .saturating_sub(squared_concentration_lower_bound);
+    let squared_instance_lower_bound = squared_repeat_excess_lower_bound_for_linear_excess(
+        universe_pairs,
+        telemetry.linear_repeat_lower_bound,
+    );
+    let squared_instance_lower_bound_gap = telemetry
+        .squared_repeat_excess
+        .saturating_sub(squared_instance_lower_bound);
     Ok(Solver6CacheMetrics {
         linear_repeat_excess: telemetry.linear_repeat_excess,
         triangular_repeat_excess: telemetry.triangular_repeat_excess,
@@ -317,6 +342,10 @@ fn metrics_from_schedule(
         total_pair_incidences: telemetry.total_pair_incidences,
         linear_repeat_lower_bound: telemetry.linear_repeat_lower_bound,
         linear_repeat_lower_bound_gap: telemetry.linear_repeat_lower_bound_gap,
+        squared_instance_lower_bound,
+        squared_instance_lower_bound_gap,
+        squared_concentration_lower_bound,
+        squared_concentration_lower_bound_gap,
         multiplicity_histogram: telemetry.multiplicity_histogram,
     })
 }

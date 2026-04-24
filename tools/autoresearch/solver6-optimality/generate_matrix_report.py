@@ -14,10 +14,16 @@ LAYER_CONFIG = {
         "description": "Dark green = exact zero-repeat, green = lower-bound tight with nonzero repeats, red = miss, gray = unsupported / timeout / error / not-run.",
     },
     "squared": {
-        "label": "Squared lower-bound attainment",
+        "label": "Squared instance lower-bound attainment",
         "summary_key": "squared_summary",
         "status_key": "squared_status",
-        "description": "Same visual grammar, but success is judged against the perfect balanced squared-repeat lower bound.",
+        "description": "Same visual grammar, but success is judged against the instance-level squared-repeat lower bound. Conditional repeat-concentration gaps remain visible in details.",
+    },
+    "agreement": {
+        "label": "Linear = squared schedule agreement",
+        "summary_key": "objective_agreement_summary",
+        "status_key": "objective_agreement_status",
+        "description": "Highlights weeks where the canonical linear-objective schedule is also the selected squared-objective schedule and both objective lower bounds are tight.",
     },
 }
 
@@ -31,11 +37,29 @@ def status_class(status: str) -> str:
         "timeout": "week-unavailable",
         "error": "week-unavailable",
         "not_run": "week-unavailable",
+        "same_schedule_both_tight": "week-tight",
+        "same_schedule": "week-miss",
+        "different_schedule_same_scores": "week-miss",
+        "squared_improves_with_no_linear_loss": "week-exact",
+        "squared_improves_with_linear_loss": "week-miss",
+        "squared_run_did_not_improve": "week-miss",
+        "squared_run_failed": "week-unavailable",
     }.get(status, "week-unavailable")
 
 
 def build_cell_map(cells):
     return {(cell["g"], cell["p"]): cell for cell in cells}
+
+
+def empty_summary():
+    return {
+        "contiguous_frontier": 0,
+        "best_observed_hit": 0,
+        "exact_week_count": 0,
+        "lower_bound_tight_week_count": 0,
+        "first_miss_week": None,
+        "headline_label": "—",
+    }
 
 
 def render_week_grid(cell, layer_key, week_cap):
@@ -46,13 +70,24 @@ def render_week_grid(cell, layer_key, week_cap):
     for index in range(total_slots):
         if index < len(cell["week_results"]):
             week = cell["week_results"][index]
-            status = week[status_key]
+            status = week.get(status_key, "not_run")
             tooltip = f"week {week['week']}: {status.replace('_', ' ')}"
-            if week.get("final_metrics"):
-                metrics = week["final_metrics"]
+            metrics = week.get("final_metrics")
+            if layer_key == "squared" and week.get("selected_squared_result"):
+                metrics = week["selected_squared_result"]["final_metrics"]
+                tooltip += f" | source={week['selected_squared_result']['source']}"
+            if layer_key == "agreement" and week.get("objective_relationship"):
+                rel = week["objective_relationship"]
+                tooltip += f" | same_schedule={rel['same_schedule']}"
+                if rel.get("squared_run_improved_squared_gap_by") is not None:
+                    tooltip += f" | Δsquared={rel['squared_run_improved_squared_gap_by']}"
+                if rel.get("squared_run_linear_gap_delta") is not None:
+                    tooltip += f" | Δlinear={rel['squared_run_linear_gap_delta']}"
+            if metrics:
                 tooltip += (
                     f" | linear gap={metrics['linear_repeat_lower_bound_gap']}"
-                    f" | squared gap={metrics['squared_repeat_lower_bound_gap']}"
+                    f" | squared instance gap={metrics.get('squared_instance_lower_bound_gap', metrics['squared_repeat_lower_bound_gap'])}"
+                    f" | squared concentration gap={metrics.get('squared_concentration_lower_bound_gap', metrics['squared_repeat_lower_bound_gap'])}"
                 )
             parts.append(
                 f"<span class='mini-week {status_class(status)}' title='{html.escape(tooltip)}'></span>"
@@ -64,7 +99,7 @@ def render_week_grid(cell, layer_key, week_cap):
 
 
 def render_outer_cell(cell, layer_key, week_cap, matrix_index):
-    summary = cell[LAYER_CONFIG[layer_key]["summary_key"]]
+    summary = cell.get(LAYER_CONFIG[layer_key]["summary_key"], empty_summary())
     title = (
         f"{cell['g']}-{cell['p']} | frontier={summary['contiguous_frontier']}"
         f" | best_observed={summary['best_observed_hit']}"
@@ -296,10 +331,12 @@ def render_html(artifact):
   <div class='tab-row'>
     <button class='tab-button is-active' data-layer-target='linear'>{html.escape(LAYER_CONFIG['linear']['label'])}</button>
     <button class='tab-button' data-layer-target='squared'>{html.escape(LAYER_CONFIG['squared']['label'])}</button>
+    <button class='tab-button' data-layer-target='agreement'>{html.escape(LAYER_CONFIG['agreement']['label'])}</button>
   </div>
   <div id='report-root'>
     {render_layer(artifact, 'linear')}
     {render_layer(artifact, 'squared')}
+    {render_layer(artifact, 'agreement')}
   </div>
   <div class='modal-backdrop' id='detail-backdrop'>
     <div class='detail-modal'>
@@ -339,6 +376,13 @@ def render_html(artifact):
         timeout: 'week-unavailable',
         error: 'week-unavailable',
         not_run: 'week-unavailable',
+        same_schedule_both_tight: 'week-tight',
+        same_schedule: 'week-miss',
+        different_schedule_same_scores: 'week-miss',
+        squared_improves_with_no_linear_loss: 'week-exact',
+        squared_improves_with_linear_loss: 'week-miss',
+        squared_run_did_not_improve: 'week-miss',
+        squared_run_failed: 'week-unavailable',
       }}[status] || 'week-unavailable';
     }}
 
@@ -350,6 +394,10 @@ def render_html(artifact):
         ? 'pill pill-tight'
         : status === 'miss'
         ? 'pill pill-miss'
+        : status === 'same_schedule_both_tight'
+        ? 'pill pill-tight'
+        : status === 'squared_improves_with_no_linear_loss'
+        ? 'pill pill-exact'
         : 'pill pill-na';
       return `<span class="${{cls}}">${{label}}</span>`;
     }}
@@ -360,8 +408,8 @@ def render_html(artifact):
       }}
       const seedLinearGap = week.seed_metrics.linear_repeat_lower_bound_gap;
       const finalLinearGap = week.final_metrics.linear_repeat_lower_bound_gap;
-      const seedSquaredGap = week.seed_metrics.squared_repeat_lower_bound_gap;
-      const finalSquaredGap = week.final_metrics.squared_repeat_lower_bound_gap;
+      const seedSquaredGap = week.seed_metrics.squared_instance_lower_bound_gap ?? week.seed_metrics.squared_repeat_lower_bound_gap;
+      const finalSquaredGap = week.final_metrics.squared_instance_lower_bound_gap ?? week.final_metrics.squared_repeat_lower_bound_gap;
       if (seedLinearGap === 0 && finalLinearGap === 0 && seedSquaredGap === 0 && finalSquaredGap === 0) {{
         return 'seed already tight; search only needed to confirm / preserve the optimum';
       }}
@@ -380,6 +428,10 @@ def render_html(artifact):
       return 'search changed the incumbent, but the final result is not better on every tracked gap';
     }}
 
+    function emptySummary() {{
+      return {{ contiguous_frontier: 0, best_observed_hit: 0, exact_week_count: 0, lower_bound_tight_week_count: 0, first_miss_week: null, headline_label: '—' }};
+    }}
+
     function renderLargeGrid(cell, layer) {{
       const statusKey = LAYER_CONFIG[layer].status_key;
       const weekCap = ARTIFACT.config.week_cap;
@@ -389,7 +441,7 @@ def render_html(artifact):
       for (let index = 0; index < totalSlots; index += 1) {{
         if (index < cell.week_results.length) {{
           const week = cell.week_results[index];
-          const status = week[statusKey];
+          const status = week[statusKey] || 'not_run';
           html += `<div class="large-week ${'{'}statusClass(status){'}'}" title="week ${'{'}week.week{'}'}: ${'{'}status.replace(/_/g, ' '){'}'}"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
         }} else {{
           html += `<div class="large-week empty week-unavailable"></div>`;
@@ -406,8 +458,15 @@ def render_html(artifact):
     function renderWeekRows(cell, layer) {{
       const statusKey = LAYER_CONFIG[layer].status_key;
       return cell.week_results.map(week => {{
+        const rowStatus = week[statusKey] || 'not_run';
         const seed = week.seed_metrics;
         const finalMetrics = week.final_metrics;
+        const linearRun = week.linear_run;
+        const squaredRun = week.squared_run;
+        const selectedSquared = week.selected_squared_result;
+        const relation = week.objective_relationship;
+        const squaredRunMetrics = squaredRun ? squaredRun.final_metrics : null;
+        const selectedSquaredMetrics = selectedSquared ? selectedSquared.final_metrics : null;
         const candidates = (week.mixed_seed_candidates || []).map(candidate =>
           `${'{'}candidate.family{'}'}:${'{'}candidate.linear_repeat_lower_bound_gap{'}'}`
         ).join(', ');
@@ -421,13 +480,23 @@ def render_html(artifact):
           : '—';
         return `<tr>
           <td class="mono">${'{'}week.week{'}'}</td>
-          <td>${'{'}statusPill(week[statusKey]){'}'}</td>
+          <td>${'{'}statusPill(rowStatus){'}'}</td>
           <td>${'{'}week.seed_family || '—'{'}'}</td>
           <td class="mono">${'{'}seed ? seed.linear_repeat_lower_bound_gap : '—'{'}'}</td>
           <td class="mono">${'{'}finalMetrics ? finalMetrics.linear_repeat_lower_bound_gap : '—'{'}'}</td>
-          <td class="mono">${'{'}seed ? seed.squared_repeat_lower_bound_gap : '—'{'}'}</td>
-          <td class="mono">${'{'}finalMetrics ? finalMetrics.squared_repeat_lower_bound_gap : '—'{'}'}</td>
+          <td class="mono">${'{'}seed ? (seed.squared_instance_lower_bound_gap ?? seed.squared_repeat_lower_bound_gap) : '—'{'}'}</td>
+          <td class="mono">${'{'}finalMetrics ? (finalMetrics.squared_instance_lower_bound_gap ?? finalMetrics.squared_repeat_lower_bound_gap) : '—'{'}'}</td>
+          <td class="mono">${'{'}seed ? (seed.squared_concentration_lower_bound_gap ?? seed.squared_repeat_lower_bound_gap) : '—'{'}'}</td>
+          <td class="mono">${'{'}finalMetrics ? (finalMetrics.squared_concentration_lower_bound_gap ?? finalMetrics.squared_repeat_lower_bound_gap) : '—'{'}'}</td>
+          <td class="mono">${'{'}selectedSquaredMetrics ? selectedSquaredMetrics.squared_instance_lower_bound_gap : '—'{'}'}</td>
+          <td class="mono">${'{'}squaredRunMetrics ? squaredRunMetrics.squared_instance_lower_bound_gap : '—'{'}'}</td>
+          <td class="mono">${'{'}squaredRunMetrics ? squaredRunMetrics.linear_repeat_lower_bound_gap : '—'{'}'}</td>
+          <td>${'{'}selectedSquared ? selectedSquared.source.replace(/_/g, ' ') : '—'{'}'}</td>
+          <td>${'{'}relation ? relation.agreement_status.replace(/_/g, ' ') : '—'{'}'}</td>
+          <td class="mono">${'{'}relation && relation.squared_run_improved_squared_gap_by != null ? relation.squared_run_improved_squared_gap_by : '—'{'}'}</td>
+          <td class="mono">${'{'}relation && relation.squared_run_linear_gap_delta != null ? relation.squared_run_linear_gap_delta : '—'{'}'}</td>
           <td class="mono">${'{'}week.runtime_seconds == null ? '—' : week.runtime_seconds.toFixed(3){'}'}</td>
+          <td class="mono">${'{'}squaredRun && squaredRun.runtime_seconds != null ? squaredRun.runtime_seconds.toFixed(3) : '—'{'}'}</td>
           <td class="mono">${'{'}week.stop_reason || '—'{'}'}</td>
           <td class="contribution-note">${'{'}contributionNarrative(week){'}'}</td>
           <td class="contribution-note">${'{'}candidates || '—'{'}'}</td>
@@ -440,7 +509,7 @@ def render_html(artifact):
       const matrix = ARTIFACT.matrices[Number(matrixIndex)];
       const cell = matrix.cells.find(candidate => candidate.g === Number(g) && candidate.p === Number(p));
       if (!cell) return;
-      const summary = cell[LAYER_CONFIG[currentLayer].summary_key];
+      const summary = cell[LAYER_CONFIG[currentLayer].summary_key] || emptySummary();
       detailTitle.textContent = `${'{'}cell.g{'}'}-${'{'}cell.p{'}'} · ${'{'}LAYER_CONFIG[currentLayer].label{'}'}`;
       detailSubtitle.textContent = `people=${'{'}cell.num_people{'}'} · frontier=${'{'}summary.contiguous_frontier{'}'} · best observed=${'{'}summary.best_observed_hit{'}'} · first miss=${'{'}summary.first_miss_week ?? '—'{'}'}`;
       detailBody.innerHTML = `
@@ -474,9 +543,19 @@ def render_html(artifact):
                       <th>seed family</th>
                       <th>seed linear gap</th>
                       <th>final linear gap</th>
-                      <th>seed squared gap</th>
-                      <th>final squared gap</th>
-                      <th>runtime (s)</th>
+                      <th>seed squared instance gap</th>
+                      <th>final squared instance gap</th>
+                      <th>seed squared concentration gap</th>
+                      <th>linear-run squared concentration gap</th>
+                      <th>selected squared instance gap</th>
+                      <th>squared-run squared instance gap</th>
+                      <th>squared-run linear gap</th>
+                      <th>squared source</th>
+                      <th>relationship</th>
+                      <th>Δ squared gap</th>
+                      <th>Δ linear gap</th>
+                      <th>linear runtime (s)</th>
+                      <th>squared runtime (s)</th>
                       <th>stop reason</th>
                       <th>seed vs search</th>
                       <th>mixed candidates</th>

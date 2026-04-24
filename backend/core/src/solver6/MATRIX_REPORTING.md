@@ -53,15 +53,19 @@ report should show `≥100` rather than claiming a mathematical infinity.
 
 ## 3. Per-week status model
 
-For each `(g, p, w)` run, compute and store:
+For each `(g, p, w)` case, compute and store objective-aware runs:
+
+1. a **linear run** with `pair_repeat_penalty_model = linear_repeat_excess`
+2. a **squared run** with `pair_repeat_penalty_model = squared_repeat_excess`, skipped only when the linear-run schedule is already squared-instance tight
 
 ### Input / execution metadata
 
 - solver configuration
 - benchmark budget / iteration policy
-- runtime
-- selected seed family
+- runtime for each executed objective run
+- selected seed family for each executed objective run
 - key search telemetry
+- canonical schedule hashes for comparing objective agreement
 
 ### Seed metrics
 
@@ -71,8 +75,10 @@ Before local search:
 - linear lower bound
 - linear gap
 - squared repeat score
-- squared lower bound
-- squared gap
+- squared instance lower bound
+- squared instance gap
+- squared concentration lower bound
+- squared concentration gap
 - max pair frequency
 - multiplicity histogram summary
 
@@ -84,8 +90,10 @@ After local search:
 - linear lower bound
 - linear gap
 - squared repeat score
-- squared lower bound
-- squared gap
+- squared instance lower bound
+- squared instance gap
+- squared concentration lower bound
+- squared concentration gap
 - max pair frequency
 - multiplicity histogram summary
 
@@ -101,8 +109,8 @@ For the **linear layer**:
 For the **squared layer**:
 
 - `exact` — final squared score is zero
-- `lb_tight` — final squared gap is zero but final score is nonzero
-- `miss` — final squared gap is positive
+- `lb_tight` — final squared instance gap is zero but final score is nonzero
+- `miss` — final squared instance gap is positive
 - `unsupported` / `error` / `timeout`
 
 ---
@@ -119,19 +127,29 @@ A week count `w` is a linear-layer success iff:
 
 ### Squared lower bound
 
-For total pair universe size `U` and total repeat excess `E`, the perfect
-balanced lower bound for squared repeat excess is:
+For total pair universe size `U` and repeat excess `E`, the perfect balanced
+lower bound for squared repeat excess is:
 
 - `q = E / U`
 - `r = E % U`
 - `squared_lower_bound = (U - r) * q^2 + r * (q + 1)^2`
 
+Solver6 reports two squared bounds:
+
+- **instance squared lower bound**: uses the instance-level linear lower bound as
+  `E`. This gap is comparable across schedules for the same `(g, p, w)` case and
+  is the squared matrix layer status metric.
+- **concentration squared lower bound**: uses the schedule's observed linear
+  repeat excess as `E`. This gap answers whether the achieved repeats are as
+  evenly dispersed as possible, conditional on the current linear score.
+
 A week count `w` is a squared-layer success iff:
 
-- `squared_repeat_excess_gap == 0`
+- `squared_instance_lower_bound_gap == 0`
 
-The squared layer is secondary. The linear layer remains the primary solver6
-headline report.
+The legacy `squared_repeat_lower_bound[_gap]` artifact fields are aliases for the
+concentration bound/gap. The squared layer is secondary. The linear layer remains
+the primary solver6 headline report.
 
 ---
 
@@ -263,21 +281,36 @@ Cell success means:
 
 - final linear gap = `0`
 
-### Tab 2 — Squared lower-bound attainment
+### Tab 2 — Squared instance lower-bound attainment
 
-Secondary view.
+Secondary view. This uses the selected squared result: the linear schedule when it is already squared-instance tight, otherwise the better squared result from the squared-mode run when available.
 
 Cell success means:
 
-- final squared gap = `0`
+- selected squared result has final squared instance gap = `0`
 
-### Tab 3 — Raw metrics / diagnostics (optional but recommended)
+### Tab 3 — Linear = squared schedule agreement
+
+Agreement view.
+
+Cell success means:
+
+- the canonical linear-run schedule is also the selected squared schedule
+- the linear objective is tight
+- the squared objective is tight
+
+Per-week details should show whether the squared run was skipped, improved the squared metric, incurred linear cost, failed, or produced the same canonical schedule.
+
+### Tab 4 — Raw metrics / diagnostics (optional but recommended)
 
 Examples:
 
 - average final linear gap
-- average final squared gap
-- runtime summary
+- average selected squared instance gap
+- average selected squared concentration gap
+- squared-run improvement over linear-run schedule
+- linear objective cost paid by squared-mode optimization
+- runtime summary split by linear run and squared run
 - seed-vs-search improvement summary
 - selected seed-family mix
 
@@ -344,10 +377,11 @@ Implement the benchmark sweep and structured per-week result model.
 
 Required outputs:
 
-- per `(g, p, w)` seed metrics
-- per `(g, p, w)` final metrics
-- linear and squared lower-bound gaps
-- per-cell contiguous frontier and best observed hit
+- per `(g, p, w)` linear-run seed/final metrics
+- per `(g, p, w)` squared-run seed/final metrics when a separate squared run is needed
+- selected squared result metrics
+- linear lower-bound gaps, selected squared instance gaps, squared concentration gaps, and objective-agreement status
+- per-cell contiguous frontier and best observed hit for linear, squared, and same-schedule agreement views
 
 ### Step 2 — Outer matrix report
 
@@ -355,7 +389,7 @@ Render the outer `(g, p)` matrix with:
 
 - headline frontier label
 - tiny `10 x 10` internal week matrix
-- separate linear and squared views
+- separate linear, squared, and objective-agreement views
 
 ### Step 3 — Click-through detail analytics
 
