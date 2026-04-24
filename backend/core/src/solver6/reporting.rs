@@ -1,4 +1,4 @@
-use super::catalog::Solver6CacheMetrics;
+use super::catalog::{Solver6CacheMetrics, Solver6CacheStoreOutcome};
 use super::execute_solver6_run;
 use super::problem::PureSgpProblem;
 use super::score::{
@@ -377,6 +377,22 @@ pub struct Solver6MatrixArtifact {
     pub matrices: Vec<MatrixViewArtifact>,
 }
 
+fn cache_store_detail(outcome: Option<&Solver6CacheStoreOutcome>) -> Option<String> {
+    match outcome? {
+        Solver6CacheStoreOutcome::Disabled => Some("cache_store=disabled".into()),
+        Solver6CacheStoreOutcome::Wrote { entry_path, entry } => Some(format!(
+            "cache_store=wrote, cache_entry={}, cache_status={:?}",
+            entry_path.display(), entry.status
+        )),
+        Solver6CacheStoreOutcome::SkippedExistingBetterOrEqual { entry_path, existing } => {
+            Some(format!(
+                "cache_store=skipped_existing_better_or_equal, cache_entry={}, cache_status={:?}",
+                entry_path.display(), existing.status
+            ))
+        }
+    }
+}
+
 pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspection, SolverError> {
     let start = Instant::now();
     let executed = execute_solver6_run(input, &input.solver)?;
@@ -395,18 +411,24 @@ pub fn inspect_benchmark_run(input: &ApiInput) -> Result<Solver6BenchmarkInspect
         )?
     };
     let exact_handoff = executed.exact_handoff_atom.is_some();
+    let cache_store_detail = cache_store_detail(executed.cache_store_outcome.as_ref());
     let (seed_family, seed_source_detail, seed_metrics, mixed_seed_candidates) =
         if let Some(hit) = executed.cache_hit.as_ref() {
+            let mut detail = format!("entry={}", hit.entry_path.display());
+            if let Some(cache_store_detail) = cache_store_detail.as_ref() {
+                detail.push_str(", ");
+                detail.push_str(cache_store_detail);
+            }
             (
                 format!("cache:{:?}", hit.entry.status).to_ascii_lowercase(),
-                Some(format!("entry={}", hit.entry_path.display())),
+                Some(detail),
                 ScoreMetrics::from_cache_metrics(&executed.problem, &hit.entry.metrics),
                 Vec::new(),
             )
         } else if let Some(selection) = executed.seed_selection.as_ref() {
             (
                 selection.selected_family.label().to_string(),
-                None,
+                cache_store_detail.clone(),
                 ScoreMetrics::from_seed_telemetry(
                     &executed.problem,
                     selection
