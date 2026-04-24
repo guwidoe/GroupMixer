@@ -36,6 +36,7 @@ interface EmbeddableToolProps {
   locale: SupportedLocale;
   initialGuideExampleKey?: GuidePageKey;
   storageScope?: string;
+  autoFocusParticipantInput?: boolean;
 }
 
 interface ToolDividerDragState {
@@ -121,7 +122,7 @@ async function copyText(value: string) {
 }
 
 export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolProps>(function EmbeddableTool(
-  { pageKey, locale, initialGuideExampleKey, storageScope },
+  { pageKey, locale, initialGuideExampleKey, storageScope, autoFocusParticipantInput = true },
   ref,
 ) {
   const config = getToolPageConfig(pageKey, locale);
@@ -464,6 +465,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
       displayedPeoplePerGroup={displayedPeoplePerGroup}
       participantInputAutoOuterHeight={participantInputAutoOuterHeight}
       participantInputAutoResizeSuppressed={participantInputLayout.autoResizeSuppressed}
+      autoFocusParticipantInput={autoFocusParticipantInput}
       onParticipantInputManualLayoutAdjustment={participantInputLayout.recordManualLayoutAdjustment}
       canResizeToolColumns={canResizeToolColumns}
       toolColumnsStyle={toolColumnsStyle}

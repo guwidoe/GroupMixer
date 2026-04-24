@@ -40,6 +40,7 @@ interface GroupToolProps {
   displayedPeoplePerGroup: number;
   participantInputAutoOuterHeight: number | null;
   participantInputAutoResizeSuppressed: boolean;
+  autoFocusParticipantInput?: boolean;
   canResizeToolColumns: boolean;
   toolColumnsStyle?: CSSProperties;
   isDraggingToolDivider: boolean;
@@ -116,6 +117,7 @@ export function GroupTool({
   displayedPeoplePerGroup,
   participantInputAutoOuterHeight,
   participantInputAutoResizeSuppressed,
+  autoFocusParticipantInput = true,
   canResizeToolColumns,
   toolColumnsStyle,
   isDraggingToolDivider,
@@ -551,6 +553,7 @@ export function GroupTool({
               minHeight={130}
               autoOuterHeight={participantInputAutoOuterHeight}
               autoResizeSuppressed={participantInputAutoResizeSuppressed}
+              autoFocusOnMount={autoFocusParticipantInput}
               outerRef={participantInputSlotRef}
               onManualLayoutAdjustment={onParticipantInputManualLayoutAdjustment}
               onAddAttribute={() => {

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
 import { EmbeddableTool } from '../components/EmbeddableTool/Tool';
+import { GuideHeroVisual } from '../components/GuidePage/GuideHeroVisual';
 import {
   HEADER_ACTION_BUTTON_CLASS,
   HEADER_ACTION_DIVIDER_CLASS,
@@ -22,86 +23,6 @@ import { getGuidePageConfig } from './guidePageConfigs';
 
 interface GuidePageProps {
   pageKey: GuidePageKey;
-}
-
-function GuideHeroVisual({ details }: { details: string[] }) {
-  const visibleDetails = details.slice(0, 5);
-
-  return (
-    <div
-      className="overflow-hidden rounded-lg border"
-      style={{
-        borderColor: 'var(--border-primary)',
-        backgroundColor: 'color-mix(in srgb, var(--color-accent) 5%, var(--bg-primary) 95%)',
-        boxShadow: 'var(--shadow-lg)',
-      }}
-      aria-label="Example GroupMixer schedule preview"
-    >
-      <div className="border-b px-4 py-3" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#2563eb' }} />
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#14b8a6' }} />
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: '#f59e0b' }} />
-          </div>
-          <span className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-tertiary)' }}>
-            GroupMixer setup
-          </span>
-        </div>
-      </div>
-
-      <div className="grid gap-0 md:grid-cols-[minmax(0,0.82fr)_minmax(15rem,0.68fr)]">
-        <div className="border-b p-5 md:border-b-0 md:border-r sm:p-6" style={{ borderColor: 'var(--border-primary)' }}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {['Group 1', 'Group 2', 'Group 3', 'Group 4'].map((group, groupIndex) => (
-              <div
-                key={group}
-                className={['rounded-lg border p-3', groupIndex > 1 ? 'hidden sm:block' : ''].filter(Boolean).join(' ')}
-                style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-              >
-                <div className="flex items-center justify-between gap-3 border-b pb-2" style={{ borderColor: 'var(--border-primary)' }}>
-                  <p className="text-sm font-semibold">{group}</p>
-                  <p className="text-xs font-medium" style={{ color: 'var(--text-tertiary)' }}>Round {groupIndex + 1}</p>
-                </div>
-                <div className="mt-3 space-y-2">
-                  {[0, 1, 2].map((itemIndex) => (
-                    <div key={itemIndex} className="flex items-center gap-2">
-                      <span
-                        className="h-6 w-6 rounded-full"
-                        style={{
-                          backgroundColor: [
-                            'color-mix(in srgb, #2563eb 18%, var(--bg-primary) 82%)',
-                            'color-mix(in srgb, #14b8a6 18%, var(--bg-primary) 82%)',
-                            'color-mix(in srgb, #f59e0b 20%, var(--bg-primary) 80%)',
-                          ][(groupIndex + itemIndex) % 3],
-                        }}
-                      />
-                      <span
-                        className="h-2.5 flex-1 rounded-full"
-                        style={{ backgroundColor: 'color-mix(in srgb, var(--text-tertiary) 16%, transparent)' }}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="p-5 sm:p-6">
-          <p className="text-sm font-semibold">Guide setup</p>
-          <ul className="mt-4 space-y-3">
-            {visibleDetails.map((detail) => (
-              <li key={detail} className="flex items-start gap-3 text-sm leading-6">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" style={{ color: 'var(--color-accent)' }} aria-hidden="true" />
-                <span style={{ color: 'var(--text-secondary)' }}>{detail}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 export default function GuidePage({ pageKey }: GuidePageProps) {
@@ -206,7 +127,7 @@ export default function GuidePage({ pageKey }: GuidePageProps) {
             </p>
 
             <div className="mt-9">
-              <GuideHeroVisual details={config.example.details} />
+              <GuideHeroVisual pageKey={config.key} />
             </div>
           </header>
 
@@ -280,6 +201,7 @@ export default function GuidePage({ pageKey }: GuidePageProps) {
                   locale="en"
                   initialGuideExampleKey={config.key}
                   storageScope={`guide.${config.key}`}
+                  autoFocusParticipantInput={false}
                 />
               </div>
             </section>

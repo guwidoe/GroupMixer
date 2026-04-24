@@ -25,6 +25,7 @@ interface ParticipantColumnsInputProps {
   minHeight: number;
   autoOuterHeight?: number | null;
   autoResizeSuppressed?: boolean;
+  autoFocusOnMount?: boolean;
   outerRef?: (node: HTMLDivElement | null) => void;
   onManualLayoutAdjustment?: () => void;
 }
@@ -190,6 +191,7 @@ export function ParticipantColumnsInput({
   minHeight,
   autoOuterHeight = null,
   autoResizeSuppressed = false,
+  autoFocusOnMount = true,
   outerRef,
   onManualLayoutAdjustment,
 }: ParticipantColumnsInputProps) {
@@ -505,7 +507,7 @@ export function ParticipantColumnsInput({
   }, [focusColumnHeader, pendingFocusRequest]);
 
   useLayoutEffect(() => {
-    if (hasAppliedInitialBodyFocusRef.current) {
+    if (!autoFocusOnMount || hasAppliedInitialBodyFocusRef.current) {
       return undefined;
     }
 
@@ -529,7 +531,7 @@ export function ParticipantColumnsInput({
       window.cancelAnimationFrame(animationFrameId);
       timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
     };
-  }, [focusPrimaryBodyInput]);
+  }, [autoFocusOnMount, focusPrimaryBodyInput]);
 
   const handleResizePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
