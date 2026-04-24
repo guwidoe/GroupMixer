@@ -40,6 +40,7 @@ pub(crate) fn merge_projected_oracle_template_into_scaffold(
         let accepted_target_by_person = accepted_template_targets_for_session(
             compiled,
             scaffold,
+            signals,
             mask,
             candidate,
             oracle_schedule,
@@ -131,6 +132,7 @@ pub(crate) fn merge_projected_oracle_template_into_scaffold(
 fn accepted_template_targets_for_session(
     compiled: &CompiledProblem,
     scaffold: &PackedSchedule,
+    signals: &ConstraintScenarioSignals,
     mask: &ConstraintScenarioScaffoldMask,
     candidate: &OracleTemplateCandidate,
     oracle_schedule: &PureStructureOracleSchedule,
@@ -139,6 +141,7 @@ fn accepted_template_targets_for_session(
     real_session_idx: usize,
 ) -> Vec<Option<usize>> {
     let mut remaining_capacity_by_group = vec![0usize; compiled.num_groups];
+    let selected_groups = &projection.real_group_by_session_oracle_group[session_pos];
     for &group_idx in &projection.real_group_by_session_oracle_group[session_pos] {
         let frozen_occupancy = scaffold[real_session_idx][group_idx]
             .iter()
@@ -149,6 +152,8 @@ fn accepted_template_targets_for_session(
             .saturating_sub(frozen_occupancy);
     }
 
+    let mut candidate_people_by_group = vec![Vec::<usize>::new(); compiled.num_groups];
+    let mut seen_candidate = vec![false; compiled.num_people];
     let mut accepted_target_by_person = vec![None; compiled.num_people];
     for oracle_group_idx in 0..candidate.num_groups {
         let real_group_idx =
@@ -163,16 +168,107 @@ fn accepted_template_targets_for_session(
             ) else {
                 continue;
             };
-            if remaining_capacity_by_group[real_group_idx] == 0
-                || accepted_target_by_person[real_person_idx].is_some()
-            {
+            if seen_candidate[real_person_idx] {
                 continue;
             }
-            remaining_capacity_by_group[real_group_idx] -= 1;
+            seen_candidate[real_person_idx] = true;
+            candidate_people_by_group[real_group_idx].push(real_person_idx);
+        }
+    }
+
+    for &real_group_idx in selected_groups {
+        candidate_people_by_group[real_group_idx].sort_by(|&left, &right| {
+            let left_score = template_target_acceptance_score(
+                compiled,
+                scaffold,
+                signals,
+                real_session_idx,
+                left,
+                real_group_idx,
+                selected_groups,
+            );
+            let right_score = template_target_acceptance_score(
+                compiled,
+                scaffold,
+                signals,
+                real_session_idx,
+                right,
+                real_group_idx,
+                selected_groups,
+            );
+            right_score
+                .partial_cmp(&left_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| left.cmp(&right))
+        });
+
+        for &real_person_idx in candidate_people_by_group[real_group_idx]
+            .iter()
+            .take(remaining_capacity_by_group[real_group_idx])
+        {
             accepted_target_by_person[real_person_idx] = Some(real_group_idx);
         }
     }
     accepted_target_by_person
+}
+
+fn template_target_acceptance_score(
+    compiled: &CompiledProblem,
+    scaffold: &PackedSchedule,
+    signals: &ConstraintScenarioSignals,
+    session_idx: usize,
+    person_idx: usize,
+    target_group_idx: usize,
+    selected_groups: &[usize],
+) -> f64 {
+    let current_group_idx = current_group_in_session(scaffold, session_idx, person_idx);
+    let keep_bonus = if current_group_idx == Some(target_group_idx) {
+        3.0
+    } else {
+        0.0
+    };
+    let selected_region_move_bonus = current_group_idx
+        .filter(|group_idx| selected_groups.contains(group_idx))
+        .map(|_| 0.5)
+        .unwrap_or(0.0);
+    let outside_region_move_penalty = current_group_idx
+        .filter(|&group_idx| group_idx != target_group_idx && !selected_groups.contains(&group_idx))
+        .map(|_| 1.0)
+        .unwrap_or(0.0);
+    keep_bonus
+        + selected_region_move_bonus
+        + signals.placement_frequency(compiled, session_idx, person_idx, target_group_idx)
+        + target_group_pair_pressure(
+            compiled,
+            scaffold,
+            signals,
+            session_idx,
+            person_idx,
+            target_group_idx,
+        )
+        - outside_region_move_penalty
+}
+
+fn target_group_pair_pressure(
+    compiled: &CompiledProblem,
+    scaffold: &PackedSchedule,
+    signals: &ConstraintScenarioSignals,
+    session_idx: usize,
+    person_idx: usize,
+    target_group_idx: usize,
+) -> f64 {
+    scaffold[session_idx][target_group_idx]
+        .iter()
+        .copied()
+        .filter(|&other_idx| other_idx != person_idx)
+        .map(|other_idx| {
+            signals.pair_pressure(
+                compiled,
+                session_idx,
+                compiled.pair_idx(person_idx, other_idx),
+            )
+        })
+        .sum::<f64>()
 }
 
 fn validate_template_projection_for_merge(
@@ -232,6 +328,16 @@ fn remove_person_from_session(
         }
     }
     None
+}
+
+fn current_group_in_session(
+    schedule: &PackedSchedule,
+    session_idx: usize,
+    person_idx: usize,
+) -> Option<usize> {
+    schedule[session_idx]
+        .iter()
+        .position(|members| members.contains(&person_idx))
 }
 
 fn push_person_if_capacity(

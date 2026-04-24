@@ -539,10 +539,315 @@ impl RuntimeState {
     ) -> Result<(), SolverError> {
         for session_idx in 0..self.compiled.num_sessions {
             if self.session_has_hard_constraint_violation(schedule, session_idx) {
-                self.rebuild_session_with_clique_integrity(schedule, session_idx, effective_seed)?;
+                let locally_repaired =
+                    self.try_repair_session_hard_constraints_locally(schedule, session_idx)?;
+                if !locally_repaired
+                    || self.session_has_hard_constraint_violation(schedule, session_idx)
+                {
+                    self.rebuild_session_with_clique_integrity(
+                        schedule,
+                        session_idx,
+                        effective_seed,
+                    )?;
+                }
             }
         }
         Ok(())
+    }
+
+    fn try_repair_session_hard_constraints_locally(
+        &self,
+        schedule: &mut PackedSchedule,
+        session_idx: usize,
+    ) -> Result<bool, SolverError> {
+        let mut changed_any = false;
+        for _ in 0..4 {
+            if !self.session_has_hard_constraint_violation(schedule, session_idx) {
+                return Ok(true);
+            }
+
+            let mut changed_this_pass = false;
+            changed_this_pass |= self.repair_immovable_violations_locally(schedule, session_idx)?;
+            changed_this_pass |= self.repair_split_cliques_locally(schedule, session_idx)?;
+            changed_any |= changed_this_pass;
+
+            if !self.session_has_hard_constraint_violation(schedule, session_idx) {
+                return Ok(true);
+            }
+            if !changed_this_pass {
+                return Ok(false);
+            }
+        }
+
+        Ok(changed_any && !self.session_has_hard_constraint_violation(schedule, session_idx))
+    }
+
+    fn repair_immovable_violations_locally(
+        &self,
+        schedule: &mut PackedSchedule,
+        session_idx: usize,
+    ) -> Result<bool, SolverError> {
+        let mut changed = false;
+        let protected = self.session_displacement_protection(session_idx);
+
+        for assignment in self
+            .compiled
+            .immovable_assignments
+            .iter()
+            .filter(|assignment| assignment.session_idx == session_idx)
+        {
+            if !self.compiled.person_participation[assignment.person_idx][session_idx] {
+                continue;
+            }
+            if find_person_group_in_schedule(schedule, session_idx, assignment.person_idx)
+                == Some(assignment.group_idx)
+            {
+                continue;
+            }
+            if !self.move_person_to_group_locally(
+                schedule,
+                session_idx,
+                assignment.person_idx,
+                assignment.group_idx,
+                &protected,
+            ) {
+                return Ok(changed);
+            }
+            changed = true;
+        }
+
+        Ok(changed)
+    }
+
+    fn repair_split_cliques_locally(
+        &self,
+        schedule: &mut PackedSchedule,
+        session_idx: usize,
+    ) -> Result<bool, SolverError> {
+        let mut changed = false;
+
+        for clique in &self.compiled.cliques {
+            if let Some(sessions) = &clique.sessions {
+                if !sessions.contains(&session_idx) {
+                    continue;
+                }
+            }
+
+            let active_members = clique
+                .members
+                .iter()
+                .copied()
+                .filter(|&member| self.compiled.person_participation[member][session_idx])
+                .collect::<Vec<_>>();
+            if active_members.len() < 2
+                || !self.active_clique_is_split(schedule, session_idx, &active_members)
+            {
+                continue;
+            }
+
+            let Some(target_group) =
+                self.choose_local_clique_repair_group(schedule, session_idx, &active_members)?
+            else {
+                return Ok(changed);
+            };
+
+            let mut protected = self.session_displacement_protection(session_idx);
+            for &member in &active_members {
+                protected[member] = true;
+            }
+
+            for &member in &active_members {
+                if find_person_group_in_schedule(schedule, session_idx, member)
+                    == Some(target_group)
+                {
+                    continue;
+                }
+                if !self.move_person_to_group_locally(
+                    schedule,
+                    session_idx,
+                    member,
+                    target_group,
+                    &protected,
+                ) {
+                    return Ok(changed);
+                }
+                changed = true;
+            }
+        }
+
+        Ok(changed)
+    }
+
+    fn choose_local_clique_repair_group(
+        &self,
+        schedule: &PackedSchedule,
+        session_idx: usize,
+        active_members: &[usize],
+    ) -> Result<Option<usize>, SolverError> {
+        let mut required_group = None;
+        for &member in active_members {
+            if let Some(group_idx) = self.compiled.immovable_group(session_idx, member) {
+                match required_group {
+                    Some(existing) if existing != group_idx => {
+                        return Err(SolverError::ValidationError(format!(
+                            "conflicting immovable groups for clique in session {}",
+                            session_idx
+                        )));
+                    }
+                    Some(_) => {}
+                    None => required_group = Some(group_idx),
+                }
+            }
+        }
+        if let Some(group_idx) = required_group {
+            return Ok((self.compiled.group_capacity(session_idx, group_idx)
+                >= active_members.len())
+            .then_some(group_idx));
+        }
+
+        let mut groups = (0..self.compiled.num_groups).collect::<Vec<_>>();
+        groups.sort_by(|&left, &right| {
+            let left_score =
+                self.local_clique_repair_group_score(schedule, session_idx, active_members, left);
+            let right_score =
+                self.local_clique_repair_group_score(schedule, session_idx, active_members, right);
+            right_score.cmp(&left_score).then_with(|| left.cmp(&right))
+        });
+
+        Ok(groups.into_iter().find(|&group_idx| {
+            self.compiled.group_capacity(session_idx, group_idx) >= active_members.len()
+        }))
+    }
+
+    fn local_clique_repair_group_score(
+        &self,
+        schedule: &PackedSchedule,
+        session_idx: usize,
+        active_members: &[usize],
+        group_idx: usize,
+    ) -> usize {
+        let current_members_in_group = active_members
+            .iter()
+            .filter(|&&member| {
+                find_person_group_in_schedule(schedule, session_idx, member) == Some(group_idx)
+            })
+            .count();
+        let free_capacity = self
+            .compiled
+            .group_capacity(session_idx, group_idx)
+            .saturating_sub(schedule[session_idx][group_idx].len());
+        current_members_in_group * self.compiled.num_people + free_capacity
+    }
+
+    fn active_clique_is_split(
+        &self,
+        schedule: &PackedSchedule,
+        session_idx: usize,
+        active_members: &[usize],
+    ) -> bool {
+        let mut groups = active_members
+            .iter()
+            .filter_map(|&member| find_person_group_in_schedule(schedule, session_idx, member))
+            .collect::<Vec<_>>();
+        groups.sort_unstable();
+        groups.dedup();
+        groups.len() > 1
+    }
+
+    fn session_displacement_protection(&self, session_idx: usize) -> Vec<bool> {
+        let mut protected = vec![false; self.compiled.num_people];
+
+        for assignment in self
+            .compiled
+            .immovable_assignments
+            .iter()
+            .filter(|assignment| assignment.session_idx == session_idx)
+        {
+            protected[assignment.person_idx] = true;
+        }
+
+        for clique in &self.compiled.cliques {
+            if let Some(sessions) = &clique.sessions {
+                if !sessions.contains(&session_idx) {
+                    continue;
+                }
+            }
+
+            let active_members = clique
+                .members
+                .iter()
+                .copied()
+                .filter(|&member| self.compiled.person_participation[member][session_idx])
+                .collect::<Vec<_>>();
+            if active_members.len() >= 2 {
+                for member in active_members {
+                    protected[member] = true;
+                }
+            }
+        }
+
+        protected
+    }
+
+    fn move_person_to_group_locally(
+        &self,
+        schedule: &mut PackedSchedule,
+        session_idx: usize,
+        person_idx: usize,
+        target_group_idx: usize,
+        protected_from_displacement: &[bool],
+    ) -> bool {
+        let current_group = find_person_group_in_schedule(schedule, session_idx, person_idx);
+        if current_group == Some(target_group_idx) {
+            return true;
+        }
+        if !self.compiled.person_participation[person_idx][session_idx] {
+            return false;
+        }
+
+        if schedule[session_idx][target_group_idx].len()
+            < self.compiled.group_capacity(session_idx, target_group_idx)
+        {
+            if let Some(group_idx) = current_group {
+                remove_person_from_schedule_group(schedule, session_idx, group_idx, person_idx);
+            }
+            schedule[session_idx][target_group_idx].push(person_idx);
+            return true;
+        }
+
+        let Some(displaced_person_idx) = schedule[session_idx][target_group_idx]
+            .iter()
+            .copied()
+            .find(|&candidate| candidate != person_idx && !protected_from_displacement[candidate])
+        else {
+            return false;
+        };
+
+        let replacement_group = if let Some(group_idx) = current_group {
+            group_idx
+        } else {
+            let Some(group_idx) = (0..self.compiled.num_groups).find(|&group_idx| {
+                group_idx != target_group_idx
+                    && schedule[session_idx][group_idx].len()
+                        < self.compiled.group_capacity(session_idx, group_idx)
+            }) else {
+                return false;
+            };
+            group_idx
+        };
+
+        remove_person_from_schedule_group(
+            schedule,
+            session_idx,
+            target_group_idx,
+            displaced_person_idx,
+        );
+        if let Some(group_idx) = current_group {
+            remove_person_from_schedule_group(schedule, session_idx, group_idx, person_idx);
+        }
+        schedule[session_idx][target_group_idx].push(person_idx);
+        schedule[session_idx][replacement_group].push(displaced_person_idx);
+        true
     }
 
     fn session_has_hard_constraint_violation(
@@ -922,6 +1227,32 @@ impl RuntimeState {
 
         schedule
     }
+}
+
+fn find_person_group_in_schedule(
+    schedule: &PackedSchedule,
+    session_idx: usize,
+    person_idx: usize,
+) -> Option<usize> {
+    schedule[session_idx]
+        .iter()
+        .position(|members| members.contains(&person_idx))
+}
+
+fn remove_person_from_schedule_group(
+    schedule: &mut PackedSchedule,
+    session_idx: usize,
+    group_idx: usize,
+    person_idx: usize,
+) -> bool {
+    let Some(position) = schedule[session_idx][group_idx]
+        .iter()
+        .position(|&member| member == person_idx)
+    else {
+        return false;
+    };
+    schedule[session_idx][group_idx].swap_remove(position);
+    true
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -859,7 +859,7 @@ fn oracle_template_merge_injects_projected_contacts_into_flexible_scaffold() {
 }
 
 #[test]
-fn oracle_template_projection_leaves_structurally_frozen_people_as_dummies() {
+fn oracle_template_projection_uses_structurally_frozen_people_as_anchors() {
     let mut input = minimal_input();
     input.constraints.extend([
         Constraint::ImmovablePerson(ImmovablePersonParams {
@@ -922,8 +922,28 @@ fn oracle_template_projection_leaves_structurally_frozen_people_as_dummies() {
         &oracle_schedule,
     )
     .unwrap();
-    assert_eq!(projection.mapped_real_people, 0);
-    assert_eq!(projection.dummy_oracle_people, candidate.oracle_capacity);
+    assert_eq!(projection.mapped_real_people, 4);
+    assert_eq!(projection.dummy_oracle_people, 0);
+    let mut projected_people = projection
+        .real_person_by_oracle_person
+        .iter()
+        .filter_map(|&person_idx| person_idx)
+        .collect::<Vec<_>>();
+    projected_people.sort_unstable();
+    assert_eq!(projected_people, vec![0, 1, 2, 3]);
+
+    let merged = merge_projected_oracle_template_into_scaffold(
+        &compiled,
+        &schedule_a,
+        &signals,
+        &mask,
+        &candidate,
+        &oracle_schedule,
+        &projection,
+    )
+    .unwrap();
+    assert_eq!(merged.schedule, schedule_a);
+    assert_eq!(merged.changed_placement_count, 0);
 }
 
 #[test]
