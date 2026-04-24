@@ -71,6 +71,7 @@ describe('PeopleDirectory', () => {
     const user = userEvent.setup();
     const onEditPerson = vi.fn();
     const onDeletePerson = vi.fn();
+    const onApplyGridPeople = vi.fn();
 
     render(
       <PeopleDirectory
@@ -84,6 +85,7 @@ describe('PeopleDirectory', () => {
           attributeDefinitions: [createAttributeDefinition('role', ['dev'], 'attr-role')],
           onEditPerson,
           onDeletePerson,
+          onApplyGridPeople,
         })}
       />,
     );
@@ -108,7 +110,10 @@ describe('PeopleDirectory', () => {
     expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: /delete alex/i })[0]!);
-    expect(onDeletePerson).toHaveBeenCalledWith('p1');
+    expect(onDeletePerson).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+    expect(onApplyGridPeople).toHaveBeenCalledWith([]);
   });
 
   it('shows list-view attributes even when stored keys differ in casing', async () => {

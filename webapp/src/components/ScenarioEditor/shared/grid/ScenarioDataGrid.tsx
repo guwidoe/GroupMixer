@@ -161,14 +161,19 @@ export function ScenarioDataGrid<T>({
       ? workspace.toolbarActions(workspaceMode)
       : workspace.toolbarActions;
   }, [workspace, workspaceMode]);
+  const handleDeleteDraftRow = React.useCallback((targetRow: T) => {
+    setDraftRows((current) => current.filter((candidate) => candidate !== targetRow));
+  }, [setDraftRows]);
   const { activeColumnFilters, csvColumns, exportRows, filteredCount, table, totalCount } = useScenarioDataTable({
     activeRows,
     columnFilters,
     columnSizing,
     columnVisibility,
+    deleteDraftRowLabel: draftConfig?.deleteRowLabel,
     effectiveEditMode,
     globalFilter: mergedQuery,
     materializedColumns,
+    onDeleteDraftRow: draftConfig?.canDeleteRows ? handleDeleteDraftRow : undefined,
     pageSize,
     rowKey,
     setColumnFilters,

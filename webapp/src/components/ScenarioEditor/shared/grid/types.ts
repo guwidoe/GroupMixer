@@ -37,7 +37,9 @@ export interface ScenarioDataGridDraftCsvConfig {
 
 export interface ScenarioDataGridDraftConfig<T> {
   onApply: (rows: T[]) => void;
-  createRow?: () => T;
+  createRow?: (currentRows: T[]) => T;
+  canDeleteRows?: boolean;
+  deleteRowLabel?: (row: T) => string;
   csv?: ScenarioDataGridDraftCsvConfig;
 }
 

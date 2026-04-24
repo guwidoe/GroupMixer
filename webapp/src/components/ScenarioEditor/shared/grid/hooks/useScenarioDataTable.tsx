@@ -16,6 +16,8 @@ import {
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table';
+import { Trash2 } from 'lucide-react';
+import { Button } from '../../../../ui';
 import { InlineEditorCell } from '../components/editors/InlineEditorCell';
 import type { MaterializedScenarioDataGridColumn } from '../model/columnMaterialization';
 import { isCustomColumn, isPrimitiveColumn } from '../model/columnMaterialization';
@@ -34,6 +36,8 @@ interface UseScenarioDataTableArgs<T> {
   materializedColumns: Array<MaterializedScenarioDataGridColumn<T>>;
   pageSize: number;
   rowKey: (row: T, index: number) => string;
+  onDeleteDraftRow?: (row: T) => void;
+  deleteDraftRowLabel?: (row: T) => string;
   setColumnFilters: OnChangeFn<ColumnFiltersState>;
   setColumnSizing: OnChangeFn<ColumnSizingState>;
   setColumnVisibility: OnChangeFn<VisibilityState>;
@@ -52,6 +56,8 @@ export function useScenarioDataTable<T>({
   materializedColumns,
   pageSize,
   rowKey,
+  onDeleteDraftRow,
+  deleteDraftRowLabel,
   setColumnFilters,
   setColumnSizing,
   setColumnVisibility,
@@ -59,8 +65,8 @@ export function useScenarioDataTable<T>({
   sorting,
   setSorting,
 }: UseScenarioDataTableArgs<T>) {
-  const tableColumns = React.useMemo<ColumnDef<T>[]>(() =>
-    materializedColumns.map((column) => ({
+  const tableColumns = React.useMemo<ColumnDef<T>[]>(() => {
+    const dataColumns: ColumnDef<T>[] = materializedColumns.map((column) => ({
       id: column.id,
       header: column.header,
       accessorFn: (row) => {
@@ -169,7 +175,39 @@ export function useScenarioDataTable<T>({
         }
         return column.cell(row.original);
       },
-    })), [effectiveEditMode, materializedColumns, rowKey, setDraftRows]);
+    }));
+
+    if (!effectiveEditMode || !onDeleteDraftRow) {
+      return dataColumns;
+    }
+
+    return [
+      ...dataColumns,
+      {
+        id: '__draft_row_actions',
+        header: 'Actions',
+        enableSorting: false,
+        enableColumnFilter: false,
+        enableHiding: false,
+        size: 96,
+        minSize: 80,
+        meta: { align: 'right' },
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={deleteDraftRowLabel?.(row.original) ?? `Delete row ${rowKey(row.original, row.index)}`}
+              onClick={() => onDeleteDraftRow(row.original)}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" />
+              <span className="sr-only">Delete</span>
+            </Button>
+          </div>
+        ),
+      },
+    ];
+  }, [deleteDraftRowLabel, effectiveEditMode, materializedColumns, onDeleteDraftRow, rowKey, setDraftRows]);
 
   const globalFilterFn = React.useCallback<FilterFn<T>>(
     (row: Row<T>, _columnId: string, filterValue: string) => matchesQuery(row.original, materializedColumns, String(filterValue ?? '')),

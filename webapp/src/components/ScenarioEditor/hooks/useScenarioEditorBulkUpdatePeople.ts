@@ -46,8 +46,8 @@ export function useScenarioEditorBulkUpdatePeople({
   addNotification,
   setScenarioDocument,
 }: UseScenarioEditorBulkUpdatePeopleArgs) {
-  const createRow = () => ({
-    id: generateUniquePersonId(scenario?.people),
+  const createRow = (currentRows: Person[] = []) => ({
+    id: generateUniquePersonId(currentRows.length > 0 ? currentRows : scenario?.people),
     name: '',
     attributes: {},
     sessions: undefined,

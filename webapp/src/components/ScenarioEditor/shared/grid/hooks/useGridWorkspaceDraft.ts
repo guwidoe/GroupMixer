@@ -106,7 +106,7 @@ export function useGridWorkspaceDraft<T>({ browseModeEnabled, rows, workspace, d
       let nextRow = rowIndex < sourceRows.length
         ? cloneRow(sourceRows[rowIndex] as T)
         : draftConfig?.createRow
-          ? cloneRow(draftConfig.createRow())
+          ? cloneRow(draftConfig.createRow(sourceRows))
           : null;
 
       if (!nextRow) {
@@ -251,7 +251,7 @@ export function useGridWorkspaceDraft<T>({ browseModeEnabled, rows, workspace, d
     if (!draftConfig?.createRow) {
       return;
     }
-    setDraftRows((current) => [...current, cloneRow(draftConfig.createRow!())]);
+    setDraftRows((current) => [cloneRow(draftConfig.createRow!(current)), ...current]);
   }, [draftConfig, setDraftRows]);
 
   React.useEffect(() => {

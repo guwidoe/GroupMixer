@@ -234,6 +234,8 @@ export function PeopleDirectory({
               draft: {
                 onApply: onApplyGridPeople,
                 createRow: createGridPersonRow,
+                canDeleteRows: true,
+                deleteRowLabel: (person) => `Delete ${person.name || person.id || 'row'}`,
                 csv: {
                   ariaLabel: 'People grid CSV',
                   placeholder: 'Name,Weight,Sessions,...',
@@ -310,7 +312,7 @@ export function PeopleDirectory({
                   width: 180,
                 };
               }),
-              {
+              ...(gridWorkspaceMode === 'edit' ? [] : [{
                 kind: 'display' as const,
                 id: 'actions',
                 header: 'Actions',
@@ -322,10 +324,10 @@ export function PeopleDirectory({
                     />
                   </div>
                 ),
-                align: 'right',
+                align: 'right' as const,
                 hideable: false,
                 width: 180,
-              },
+              }]),
             ]}
           />
         )
