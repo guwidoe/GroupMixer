@@ -570,32 +570,35 @@ export function GroupTool({
             opacity: showStickyGenerateMeta ? 1 : 0,
           }}
         >
-          <div className="leading-tight sm:hidden">
+          <div className="leading-tight text-center sm:hidden">
             <div className="truncate">
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{participantCount}</span>
-              <span aria-hidden="true"> </span>
-              {ui.quickSetup.peopleStatLabel.toLowerCase()}
+              <span className="inline-flex items-baseline gap-1">
+                <span>{ui.quickSetup.peopleStatLabel}</span>
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{participantCount}</span>
+              </span>
               <span className="mx-1.5" style={{ color: 'var(--text-tertiary)' }} aria-hidden="true">·</span>
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{estimatedGroupCount}</span>
-              <span aria-hidden="true"> </span>
-              {ui.quickSetup.groupsStatLabel.toLowerCase()}
+              <span className="inline-flex items-baseline gap-1">
+                <span>{ui.quickSetup.groupsStatLabel}</span>
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{estimatedGroupCount}</span>
+              </span>
             </div>
-            <div className="truncate text-center" style={{ color: 'var(--text-tertiary)' }}>
-              {ui.quickSetup.approxSizeStatLabel}
-              <span aria-hidden="true"> </span>
-              <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{estimatedGroupSize}</span>
+            <div className="truncate" style={{ color: 'var(--text-tertiary)' }}>
+              <span className="inline-flex items-baseline gap-1">
+                <span>{ui.quickSetup.approxSizeStatLabel}</span>
+                <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{estimatedGroupSize}</span>
+              </span>
             </div>
           </div>
 
           <div className="hidden min-w-0 flex-wrap items-center gap-x-3 gap-y-1 sm:flex">
             <span className="inline-flex items-baseline gap-1 leading-none">
+              {ui.quickSetup.peopleStatLabel.toLowerCase()}
               <span className="text-base font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>{participantCount}</span>
-              <span>{ui.quickSetup.peopleStatLabel.toLowerCase()}</span>
             </span>
             <span className="h-4 w-px" style={{ backgroundColor: 'var(--border-primary)' }} aria-hidden="true" />
             <span className="inline-flex items-baseline gap-1 leading-none">
-              <span className="text-base font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>{estimatedGroupCount}</span>
               <span>{ui.quickSetup.groupsStatLabel.toLowerCase()}</span>
+              <span className="text-base font-semibold tabular-nums" style={{ color: 'var(--text-primary)' }}>{estimatedGroupCount}</span>
             </span>
             <span className="h-4 w-px" style={{ backgroundColor: 'var(--border-primary)' }} aria-hidden="true" />
             <span className="inline-flex items-baseline gap-1 leading-none">
