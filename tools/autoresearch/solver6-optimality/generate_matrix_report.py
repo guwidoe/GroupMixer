@@ -163,7 +163,7 @@ def render_dual_objective_week_grid(cell, week_cap):
             parts.append(
                 "<span class='dual-mini-week' "
                 f"style='--linear-color:{status_color(linear_status)};--squared-color:{status_color(squared_status)}' "
-                f"title='{html.escape(tooltip)}'><span class='dual-glyph'>{html.escape(agreement_glyph(agreement))}</span></span>"
+                f"title='{html.escape(tooltip)}'></span>"
             )
         else:
             parts.append("<span class='mini-week mini-week-empty'></span>")
@@ -178,9 +178,15 @@ def render_outer_cell(cell, layer_key, week_cap, matrix_index, dense=False):
         squared_summary = cell.get("squared_summary", empty_summary())
         agreement_summary = cell.get("objective_agreement_summary", empty_summary())
         headline = (
-            f"L{linear_summary['headline_label']} "
-            f"S{squared_summary['headline_label']} "
-            f"≡{agreement_summary['headline_label']}"
+            "<span class='headline-metric'>"
+            f"<span class='headline-label'>L</span><span>{html.escape(linear_summary['headline_label'])}</span>"
+            "</span>"
+            "<span class='headline-metric'>"
+            f"<span class='headline-label'>S</span><span>{html.escape(squared_summary['headline_label'])}</span>"
+            "</span>"
+            "<span class='headline-metric'>"
+            f"<span class='headline-label'>≡</span><span>{html.escape(agreement_summary['headline_label'])}</span>"
+            "</span>"
         )
         title = (
             f"{cell['g']}-{cell['p']} | linear={linear_summary['headline_label']}"
@@ -201,7 +207,7 @@ def render_outer_cell(cell, layer_key, week_cap, matrix_index, dense=False):
         f"<button class='outer-cell{' outer-cell-dense' if dense else ''}{' benchmark-skipped' if not cell['benchmark_eligible'] else ''}'"
         f" title='{html.escape(title)}'"
         f" data-matrix-index='{matrix_index}' data-g='{cell['g']}' data-p='{cell['p']}'>"
-        f"<div class='outer-cell-headline{' outer-cell-headline-overview' if layer_key == 'overview' else ''}'>{html.escape(headline)}</div>"
+        f"<div class='outer-cell-headline{' outer-cell-headline-overview' if layer_key == 'overview' else ''}'>{headline if layer_key == 'overview' else html.escape(headline)}</div>"
         f"<div class='outer-cell-subtitle'>{cell['g']}-{cell['p']}</div>"
         f"{render_week_grid(cell, layer_key, week_cap)}"
         "</button>"
@@ -344,9 +350,11 @@ def render_html(artifact):
     .outer-cell-subtitle {{ color: var(--muted); font-size: 12px; margin-bottom: 6px; }}
     .outer-cell-dense .outer-cell-subtitle {{ font-size: 10px; margin-bottom: 3px; }}
     .outer-cell-headline {{ font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 4px; white-space: nowrap; }}
-    .outer-cell-headline-overview {{ font-size: 12px; line-height: 1.1; white-space: nowrap; letter-spacing: -0.04em; }}
+    .outer-cell-headline-overview {{ display: grid; grid-template-columns: auto max-content; justify-content: center; column-gap: 4px; row-gap: 1px; font-size: 11px; line-height: 1.05; white-space: normal; letter-spacing: 0; }}
+    .headline-metric {{ display: contents; }}
+    .headline-label {{ color: #bae6fd; text-align: right; font-weight: 900; }}
     .outer-cell-dense .outer-cell-headline {{ font-size: 16px; margin-bottom: 2px; }}
-    .outer-cell-dense .outer-cell-headline-overview {{ font-size: 9px; }}
+    .outer-cell-dense .outer-cell-headline-overview {{ font-size: 9px; column-gap: 3px; }}
     .benchmark-skipped .outer-cell-headline {{ color: #cbd5e1; }}
     .mini-grid, .large-grid {{
       display: grid;
