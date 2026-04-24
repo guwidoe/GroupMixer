@@ -23,6 +23,8 @@ export type ToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
 const STICKY_GENERATE_CTA_SAFE_ZONE_PX = 96;
 const STICKY_GENERATE_STABLE_SCROLL_MAX_PX_PER_MS = 0.45;
+const STICKY_GENERATE_SCROLL_SETTLED_AGE_MS = 80;
+const STICKY_GENERATE_RETURN_MAX_SETTLE_MS = 240;
 const STICKY_GENERATE_RETURN_TARGET_MARGIN_PX = 16;
 
 interface ToolDisplaySession {
@@ -152,6 +154,7 @@ export function GroupTool({
   const generateButtonRef = useRef<HTMLButtonElement | null>(null);
   const stickyGenerateButtonRef = useRef<HTMLButtonElement | null>(null);
   const stickyGenerateAnimationTimeoutRef = useRef<number | null>(null);
+  const stickyGenerateReturnDelayTimeoutRef = useRef<number | null>(null);
   const stickyGenerateScrollSampleRef = useRef({ at: 0, velocity: 0, y: 0 });
   const [showStickyGenerateButton, setShowStickyGenerateButton] = useState(false);
   const [renderStickyGenerateButton, setRenderStickyGenerateButton] = useState(false);
@@ -225,6 +228,9 @@ export function GroupTool({
       if (stickyGenerateAnimationTimeoutRef.current !== null) {
         window.clearTimeout(stickyGenerateAnimationTimeoutRef.current);
       }
+      if (stickyGenerateReturnDelayTimeoutRef.current !== null) {
+        window.clearTimeout(stickyGenerateReturnDelayTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -236,6 +242,10 @@ export function GroupTool({
     if (stickyGenerateAnimationTimeoutRef.current !== null) {
       window.clearTimeout(stickyGenerateAnimationTimeoutRef.current);
       stickyGenerateAnimationTimeoutRef.current = null;
+    }
+    if (stickyGenerateReturnDelayTimeoutRef.current !== null) {
+      window.clearTimeout(stickyGenerateReturnDelayTimeoutRef.current);
+      stickyGenerateReturnDelayTimeoutRef.current = null;
     }
 
     const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -287,43 +297,70 @@ export function GroupTool({
 
     setShowStickyGenerateMeta(false);
 
-    const stickyRect = stickyGenerateButtonRef.current?.getBoundingClientRect() ?? null;
-    const targetRect = generateButtonRef.current?.getBoundingClientRect() ?? null;
-    const scrollSample = stickyGenerateScrollSampleRef.current;
-    const scrollIsStable = scrollSample.velocity <= STICKY_GENERATE_STABLE_SCROLL_MAX_PX_PER_MS;
-    const targetIsComfortablyVisible = Boolean(
-      targetRect
-      && targetRect.top >= STICKY_GENERATE_RETURN_TARGET_MARGIN_PX
-      && targetRect.bottom <= window.innerHeight - STICKY_GENERATE_RETURN_TARGET_MARGIN_PX,
-    );
-    const canMorphBack = Boolean(
-      stickyRect
-      && targetRect
-      && targetIsComfortablyVisible
-      && scrollIsStable,
-    );
-
-    if (stickyRect && targetRect && canMorphBack && !prefersReducedMotion) {
-      setStickyGenerateButtonStyle({
-        opacity: 0.92,
-        transform: `translate(${targetRect.left - stickyRect.left}px, ${targetRect.top - stickyRect.top}px) scale(${targetRect.width / stickyRect.width}, ${targetRect.height / stickyRect.height})`,
-        transformOrigin: 'top left',
-        transition: 'transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 240ms ease',
-      });
-    } else {
+    const fadeOutStickyGenerateButton = () => {
       setStickyGenerateButtonStyle({
         opacity: 0,
         transform: 'translate(0, 14px) scale(0.98)',
         transformOrigin: 'bottom right',
         transition: 'transform 280ms ease, opacity 220ms ease',
       });
+
+      stickyGenerateAnimationTimeoutRef.current = window.setTimeout(() => {
+        stickyGenerateAnimationTimeoutRef.current = null;
+        setRenderStickyGenerateButton(false);
+        setStickyGenerateButtonStyle({});
+      }, 400);
+    };
+
+    if (prefersReducedMotion) {
+      fadeOutStickyGenerateButton();
+      return;
     }
 
-    stickyGenerateAnimationTimeoutRef.current = window.setTimeout(() => {
-      stickyGenerateAnimationTimeoutRef.current = null;
-      setRenderStickyGenerateButton(false);
-      setStickyGenerateButtonStyle({});
-    }, 400);
+    const returnStartedAt = performance.now();
+
+    const animateBackWhenScrollSettles = () => {
+      stickyGenerateReturnDelayTimeoutRef.current = null;
+
+      const now = performance.now();
+      const scrollSample = stickyGenerateScrollSampleRef.current;
+      const scrollSampleAge = now - scrollSample.at;
+      const scrollIsSettled = scrollSample.velocity <= STICKY_GENERATE_STABLE_SCROLL_MAX_PX_PER_MS
+        || scrollSampleAge >= STICKY_GENERATE_SCROLL_SETTLED_AGE_MS;
+
+      if (!scrollIsSettled && now - returnStartedAt < STICKY_GENERATE_RETURN_MAX_SETTLE_MS) {
+        stickyGenerateReturnDelayTimeoutRef.current = window.setTimeout(animateBackWhenScrollSettles, 40);
+        return;
+      }
+
+      const stickyRect = stickyGenerateButtonRef.current?.getBoundingClientRect() ?? null;
+      const targetRect = generateButtonRef.current?.getBoundingClientRect() ?? null;
+      const targetIsComfortablyVisible = Boolean(
+        targetRect
+        && targetRect.top >= STICKY_GENERATE_RETURN_TARGET_MARGIN_PX
+        && targetRect.bottom <= window.innerHeight - STICKY_GENERATE_RETURN_TARGET_MARGIN_PX,
+      );
+
+      if (!stickyRect || !targetRect || !targetIsComfortablyVisible || !scrollIsSettled) {
+        fadeOutStickyGenerateButton();
+        return;
+      }
+
+      setStickyGenerateButtonStyle({
+        opacity: 0.92,
+        transform: `translate(${targetRect.left - stickyRect.left}px, ${targetRect.top - stickyRect.top}px) scale(${targetRect.width / stickyRect.width}, ${targetRect.height / stickyRect.height})`,
+        transformOrigin: 'top left',
+        transition: 'transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 240ms ease',
+      });
+
+      stickyGenerateAnimationTimeoutRef.current = window.setTimeout(() => {
+        stickyGenerateAnimationTimeoutRef.current = null;
+        setRenderStickyGenerateButton(false);
+        setStickyGenerateButtonStyle({});
+      }, 400);
+    };
+
+    animateBackWhenScrollSettles();
   }, [renderStickyGenerateButton, showStickyGenerateButton]);
 
   const resultsSection = controller.result ? (
