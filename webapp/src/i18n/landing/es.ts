@@ -10,7 +10,9 @@ const OPTIMIZER_FEATURES = [
   'Asistencia parcial',
   'Grupos por sesión',
   'Reglas por sesión',
-  'Restricciones duras y flexibles granulares',
+  'Reglas obligatorias de unir/separar',
+  'Preferencias flexibles de unir/separar',
+  'Objetivos de encuentros por pareja',
   'Ajustes del solver',
   'Análisis detallado',
 ];
@@ -80,7 +82,7 @@ const FAQS = {
   workspace: {
     question: '¿Qué es el editor de escenarios?',
     answer:
-      'El editor de escenarios sirve para controles que esta página no expone: asistencia parcial, grupos por sesión, restricciones específicas por sesión, restricciones duras y flexibles más granulares, configuración del solver, resultados anteriores y análisis detallado.',
+      'El editor de escenarios sirve para controles que esta página no expone: asistencia parcial, grupos por sesión, restricciones específicas por sesión, reglas obligatorias para unir o separar personas, preferencias flexibles, objetivos de encuentros por pareja, configuración del solver, resultados anteriores y análisis detallado.',
   },
 };
 

@@ -14,7 +14,9 @@ const OPTIMIZER_FEATURES = [
   'Partial attendance',
   'Session-specific group sets',
   'Session-specific constraints',
-  'Granular hard + soft constraints',
+  'Required together/apart rules',
+  'Soft together/apart preferences',
+  'Pair meeting count targets',
   'Solver settings',
   'Detailed result analysis',
 ];
@@ -113,7 +115,7 @@ const FAQS = {
   workspace: {
     question: 'When should I use the scenario editor?',
     answer:
-      'Use the scenario editor for controls this page does not expose, such as partial attendance, per-session group sets, session-specific constraints, granular hard and soft constraints, solver settings, previous results, and detailed analysis.',
+      'Use the scenario editor for controls this page does not expose, such as partial attendance, per-session group sets, session-specific constraints, required together/apart rules, soft together/apart preferences, pair meeting count targets, solver settings, previous results, and detailed analysis.',
   },
 };
 
