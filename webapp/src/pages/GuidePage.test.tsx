@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import GuidePage from './GuidePage';
 import { getGuidePageConfig, GUIDE_PAGE_ROUTES } from './guidePageConfigs';
@@ -11,8 +11,15 @@ const GUIDE_CASES = GUIDE_PAGE_ROUTES.map((route) => ({
 }));
 
 describe('GuidePage', () => {
+  const scrollToMock = vi.fn();
+
   beforeEach(() => {
     window.localStorage.clear();
+    scrollToMock.mockClear();
+    Object.defineProperty(window, 'scrollTo', {
+      configurable: true,
+      value: scrollToMock,
+    });
   });
 
   it.each(GUIDE_CASES)('renders guide SEO metadata for $route.key', ({ config }) => {
@@ -43,6 +50,18 @@ describe('GuidePage', () => {
 
       expect(links.every((href) => href.startsWith('/guides/'))).toBe(true);
     }
+  });
+
+  it('resets scroll to the top when a guide opens', () => {
+    const config = getGuidePageConfig('avoid-repeat-pairings-in-workshops');
+
+    render(
+      <MemoryRouter initialEntries={[config.canonicalPath]}>
+        <GuidePage pageKey={config.key} />
+      </MemoryRouter>,
+    );
+
+    expect(scrollToMock).toHaveBeenCalledWith({ top: 0, left: 0, behavior: 'auto' });
   });
 
   it('embeds the shared tool with the current guide example and isolated storage', async () => {

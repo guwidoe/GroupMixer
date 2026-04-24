@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -29,6 +30,10 @@ export default function GuidePage({ pageKey }: GuidePageProps) {
   const config = getGuidePageConfig(pageKey);
   const relatedGuideLinks = config.relatedGuides?.links ?? [];
   const relatedToolLinks = config.relatedTools?.links ?? [];
+
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [pageKey]);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
