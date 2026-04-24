@@ -4,7 +4,6 @@ import type { Person } from '../../../../types';
 import { PeopleEmptyState } from './PeopleEmptyState';
 import { PeopleSearchSummary } from './PeopleSearchSummary';
 import { SetupCardGrid, SetupItemActions, SetupItemCard, SetupKeyValueList, SetupSessionsBadgeList } from '../../shared/cards';
-import { SetupPersonName } from '../../shared/personDisplay';
 
 interface PeopleGridProps {
   people: Person[];
@@ -68,7 +67,7 @@ export function PeopleGrid({
             return (
               <SetupItemCard
                 key={person.id}
-                title={<SetupPersonName people={people} personId={person.id} className="font-semibold" />}
+                title={<span className="font-semibold" title={displayName}>{displayName}</span>}
                 onOpen={() => onEditPerson(person)}
                 openLabel={`Edit ${displayName}`}
                 actions={

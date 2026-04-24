@@ -92,6 +92,22 @@ export function findAttributeDefinition(
   );
 }
 
+function buildAttributeDefinitionNameMap(definitions: AttributeDefinition[]): Map<string, AttributeDefinition> {
+  const byName = new Map<string, AttributeDefinition>();
+
+  for (const definition of definitions) {
+    const name = getAttributeDefinitionName(definition);
+    if (name) {
+      byName.set(normalizeAttributeName(name), definition);
+    }
+    if (definition.key) {
+      byName.set(normalizeAttributeName(definition.key), definition);
+    }
+  }
+
+  return byName;
+}
+
 export function getPersonAttributeValue(
   person: Person,
   definitions: AttributeDefinition[],
@@ -150,7 +166,11 @@ export function normalizePersonName(value: string, fallback = 'Person'): string 
   return value.trim() || fallback;
 }
 
-function buildPersonProjectedAttributes(person: Person, definitions: AttributeDefinition[]): Record<string, string> {
+function buildPersonProjectedAttributes(
+  person: Person,
+  definitions: AttributeDefinition[],
+  definitionsByName: Map<string, AttributeDefinition>,
+): Record<string, string> {
   const projected: Record<string, string> = {};
 
   for (const definition of definitions) {
@@ -165,7 +185,7 @@ function buildPersonProjectedAttributes(person: Person, definitions: AttributeDe
       continue;
     }
 
-    const definition = findAttributeDefinitionByName(definitions, key);
+    const definition = definitionsByName.get(normalizeAttributeName(key));
     if (!definition) {
       projected[key] = value;
     }
@@ -174,7 +194,11 @@ function buildPersonProjectedAttributes(person: Person, definitions: AttributeDe
   return projected;
 }
 
-export function reconcilePersonAttributeState(person: Person, definitions: AttributeDefinition[]): Person {
+function reconcilePersonAttributeStateWithMap(
+  person: Person,
+  definitions: AttributeDefinition[],
+  definitionsByName: Map<string, AttributeDefinition>,
+): Person {
   const attributeValues = { ...(person.attributeValues ?? {}) };
   const name = readCanonicalPersonName(person);
 
@@ -183,7 +207,7 @@ export function reconcilePersonAttributeState(person: Person, definitions: Attri
       continue;
     }
 
-    const definition = findAttributeDefinitionByName(definitions, key);
+    const definition = definitionsByName.get(normalizeAttributeName(key));
     if (definition && attributeValues[definition.id] === undefined) {
       attributeValues[definition.id] = value;
     }
@@ -197,8 +221,12 @@ export function reconcilePersonAttributeState(person: Person, definitions: Attri
 
   return {
     ...nextPerson,
-    attributes: buildPersonProjectedAttributes(nextPerson, definitions),
+    attributes: buildPersonProjectedAttributes(nextPerson, definitions, definitionsByName),
   };
+}
+
+export function reconcilePersonAttributeState(person: Person, definitions: AttributeDefinition[]): Person {
+  return reconcilePersonAttributeStateWithMap(person, definitions, buildAttributeDefinitionNameMap(definitions));
 }
 
 function reconcileAttributeBalanceConstraint(
@@ -227,8 +255,9 @@ function reconcileAttributeBalanceConstraint(
 
 export function reconcileScenarioAttributeState(scenario: Scenario, definitions: AttributeDefinition[]): Scenario {
   const seenNames = new Map<string, number>();
+  const definitionsByName = buildAttributeDefinitionNameMap(definitions);
   const people = scenario.people.map((person) => {
-    const reconciled = reconcilePersonAttributeState(person, definitions);
+    const reconciled = reconcilePersonAttributeStateWithMap(person, definitions, definitionsByName);
     return {
       ...reconciled,
       name: makeUniquePersonName(reconciled.name, seenNames),
@@ -240,6 +269,40 @@ export function reconcileScenarioAttributeState(scenario: Scenario, definitions:
     people,
     constraints: scenario.constraints.map((constraint) => reconcileAttributeBalanceConstraint(constraint, definitions)),
   };
+}
+
+function scenarioNeedsPersonNameMigration(scenario: Pick<Scenario, 'people'>): boolean {
+  const seenNames = new Set<string>();
+
+  for (const person of scenario.people) {
+    const directName = String((person as Person & { name?: unknown }).name ?? '').trim();
+    const normalizedName = normalizeAttributeName(directName);
+
+    if (!directName || seenNames.has(normalizedName)) {
+      return true;
+    }
+    seenNames.add(normalizedName);
+
+    if (Object.keys(person.attributes ?? {}).some((key) => normalizeAttributeName(key) === ATTRIBUTE_DEFINITION_NAME_KEY)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function savedScenarioNeedsAttributeMigration(savedScenario: SavedScenario): boolean {
+  if (savedScenario.attributeDefinitions.some((definition) => normalizeAttributeName(getAttributeDefinitionName(definition)) === ATTRIBUTE_DEFINITION_NAME_KEY)) {
+    return true;
+  }
+
+  if (scenarioNeedsPersonNameMigration(savedScenario.scenario)) {
+    return true;
+  }
+
+  return savedScenario.results.some((result) => (
+    result.scenarioSnapshot ? scenarioNeedsPersonNameMigration(result.scenarioSnapshot) : false
+  ));
 }
 
 export function resolveScenarioWorkspaceState(

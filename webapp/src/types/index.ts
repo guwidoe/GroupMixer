@@ -355,6 +355,7 @@ export interface SavedScenario {
   scenario: Scenario;
   attributeDefinitions: AttributeDefinition[];
   results: ScenarioResult[];
+  draftIdentityHash?: string;
   createdAt: number;
   updatedAt: number;
   isTemplate?: boolean; // Mark as template for easy duplication

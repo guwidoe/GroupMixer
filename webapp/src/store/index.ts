@@ -18,7 +18,7 @@ import { devtools } from 'zustand/middleware';
 import { temporal, type TemporalState } from 'zundo';
 import type { AppStore } from './types';
 import type { AttributeDefinition, Scenario, Solution } from '../types';
-import { buildScenarioContentHash, scenarioStorage } from '../services/scenarioStorage';
+import { buildScenarioContentHash, buildScenarioDraftIdentityHash, scenarioStorage } from '../services/scenarioStorage';
 import { createDefaultSolverSettings } from '../services/solverUi';
 
 import {
@@ -228,6 +228,7 @@ export const useAppStore = create<AppStore>()(
             name: scenarioName,
             scenario: nextDocument.scenario,
             attributeDefinitions: nextDocument.attributeDefinitions,
+            draftIdentityHash: buildScenarioDraftIdentityHash(scenarioName, nextDocument.scenario),
           };
           scenarioStorage.saveScenario(savedScenario);
         } else {
