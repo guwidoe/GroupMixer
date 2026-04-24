@@ -19,9 +19,11 @@ interface ScenarioListProps {
   scenarios: ScenarioSummary[];
   searchTerm: string;
   selectedScenarioId: string | null;
+  selectedScenarioIds: Set<string>;
   editingId: string | null;
   editingName: string;
   setEditingName: React.Dispatch<React.SetStateAction<string>>;
+  onToggleSelected: (id: string) => void;
   onSaveRename: () => void;
   onCancelRename: () => void;
   onRenameStart: (id: string, currentName: string) => void;
@@ -45,9 +47,11 @@ export function ScenarioList({
   scenarios,
   searchTerm,
   selectedScenarioId,
+  selectedScenarioIds,
   editingId,
   editingName,
   setEditingName,
+  onToggleSelected,
   onSaveRename,
   onCancelRename,
   onRenameStart,
@@ -76,11 +80,21 @@ export function ScenarioList({
       {scenarios.map((scenario) => (
         <div
           key={scenario.id}
-          className={`card hover:shadow-md transition-shadow cursor-pointer ${
-            scenario.id === selectedScenarioId ? 'ring-2 ring-blue-500' : ''
+          className={`card hover:shadow-md transition-shadow ${
+            scenario.id === selectedScenarioId ? 'ring-2 ring-blue-500' : selectedScenarioIds.has(scenario.id) ? 'ring-2 ring-[var(--color-accent)]' : ''
           }`}
         >
           <div className="flex items-start justify-between mb-3">
+            <label className="mr-3 mt-0.5 inline-flex cursor-pointer items-center" onClick={(event) => event.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={selectedScenarioIds.has(scenario.id)}
+                onChange={() => onToggleSelected(scenario.id)}
+                aria-label={`Select ${scenario.name}`}
+                className="h-4 w-4 rounded"
+                style={{ accentColor: 'var(--color-accent)' }}
+              />
+            </label>
             <div className="flex-1 min-w-0">
               {editingId === scenario.id ? (
                 <div className="flex items-center space-x-2">
