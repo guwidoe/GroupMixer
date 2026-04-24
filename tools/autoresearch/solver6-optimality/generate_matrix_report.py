@@ -320,11 +320,12 @@ def render_html(artifact):
     .layer-panel.is-active {{ display:block; }}
     .legend-chip {{ display:inline-flex; align-items:center; gap:8px; margin-right:16px; margin-bottom:8px; }}
     .legend-swatch {{ width:16px; height:16px; border-radius:4px; display:inline-block; border:1px solid rgba(255,255,255,0.15); }}
-    .matrix-scroll {{ width: 100%; overflow: auto; overscroll-behavior: contain; contain: layout paint; }}
-    table.outer-matrix {{ border-collapse: collapse; width: 100%; table-layout: fixed; margin-bottom: 28px; }}
-    table.outer-matrix th, table.outer-matrix td {{ border: 1px solid var(--line); padding: 6px; text-align: center; vertical-align: top; }}
-    table.outer-matrix-dense {{ min-width: 1320px; }}
-    table.outer-matrix-dense th, table.outer-matrix-dense td {{ padding: 3px; }}
+    .matrix-scroll {{ width: 100%; overflow-x: auto; overflow-y: visible; contain: layout paint; }}
+    table.outer-matrix {{ border-collapse: collapse; width: max-content; min-width: 100%; table-layout: fixed; margin-bottom: 28px; }}
+    table.outer-matrix th, table.outer-matrix td {{ border: 1px solid var(--line); padding: 6px; text-align: center; vertical-align: top; width: 86px; min-width: 86px; max-width: 86px; }}
+    table.outer-matrix th:first-child, table.outer-matrix td:first-child {{ width: 58px; min-width: 58px; max-width: 58px; }}
+    table.outer-matrix-dense th, table.outer-matrix-dense td {{ padding: 3px; width: 76px; min-width: 76px; max-width: 76px; }}
+    table.outer-matrix-dense th:first-child, table.outer-matrix-dense td:first-child {{ width: 52px; min-width: 52px; max-width: 52px; }}
     table.outer-matrix th {{ color: var(--muted); background: rgba(255,255,255,0.02); font-weight: 600; }}
     .outer-cell {{
       width: 100%;
