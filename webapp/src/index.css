@@ -574,6 +574,50 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
 
+  .landing-guide-card {
+    will-change: transform;
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .landing-guide-card:hover,
+  .landing-guide-card:focus-visible {
+    background-color: color-mix(in srgb, var(--color-accent) 5%, var(--bg-primary) 95%) !important;
+    border-color: color-mix(in srgb, var(--color-accent) 56%, var(--border-primary) 44%) !important;
+    box-shadow: 0 18px 36px -18px color-mix(in srgb, var(--color-accent) 36%, transparent), var(--shadow-lg) !important;
+    transform: translateY(-3px);
+  }
+
+  .landing-guide-card:active {
+    transform: translateY(-1px);
+  }
+
+  .landing-guide-card:hover .landing-guide-card__bar,
+  .landing-guide-card:focus-visible .landing-guide-card__bar {
+    height: 0.375rem;
+    opacity: 1;
+  }
+
+  .landing-guide-card:hover .landing-guide-card__icon,
+  .landing-guide-card:focus-visible .landing-guide-card__icon {
+    border-color: color-mix(in srgb, var(--color-accent) 58%, var(--border-primary) 42%) !important;
+    background-color: color-mix(in srgb, var(--color-accent) 16%, var(--bg-primary) 84%) !important;
+  }
+
+  .landing-guide-card:hover .landing-guide-card__arrow,
+  .landing-guide-card:focus-visible .landing-guide-card__arrow {
+    color: var(--color-accent) !important;
+    transform: translateX(0.25rem);
+  }
+
+  .landing-guide-card:hover .landing-guide-card__link-label,
+  .landing-guide-card:focus-visible .landing-guide-card__link-label {
+    color: var(--color-accent-hover) !important;
+  }
+
   .landing-chip-button {
     cursor: pointer;
     transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;

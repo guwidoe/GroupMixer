@@ -498,7 +498,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByLabelText(/keep apart/i)).toBeInTheDocument();
     expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /open the full scenario editor/i })).toBeInTheDocument();
-    expect(screen.getByText(/use this when you need controls the landing page does not expose/i)).toBeInTheDocument();
+    expect(screen.getByText(/use this when you need controls this page does not expose/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /explain partial attendance/i })).toBeInTheDocument();
     expect(screen.getByText(/set which participants attend which sessions/i)).toHaveClass('sr-only');
     expect(screen.queryByText(/groupmixer is more than a random shuffler/i)).not.toBeInTheDocument();
@@ -936,6 +936,8 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.click(screen.getByRole('button', { name: /generate groups/i }));
 
     expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-4');
+    expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /open the full scenario editor/i })).toBeInTheDocument();
     expect(screen.getByTestId('landing-hero')).toHaveClass('order-1');
   });
 

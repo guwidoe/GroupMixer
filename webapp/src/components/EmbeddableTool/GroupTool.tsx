@@ -141,12 +141,12 @@ export function GroupTool({
   const { draft } = controller;
   const solvedSolution = controller.workspacePayload.solution ?? null;
 
-  const optimizerCtaCard = !controller.result ? (
+  const optimizerCtaCard = (
     <ScenarioEditorCta
       content={config.optimizerCta}
       onOpen={() => onOpenAdvancedWorkspace('people')}
     />
-  ) : null;
+  );
 
   const resultsSection = controller.result ? (
     <div
@@ -644,9 +644,9 @@ export function GroupTool({
         </div>
       </div>
 
-      {optimizerCtaCard && <div className="order-4">{optimizerCtaCard}</div>}
-
       {resultsSection}
+
+      <div className={controller.result ? 'order-5' : 'order-4'}>{optimizerCtaCard}</div>
     </>
   );
 }
