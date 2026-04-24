@@ -8,8 +8,8 @@ const TRUST_BULLETS = [
 
 const OPTIMIZER_FEATURES = [
   'Partial attendance',
-  'Session-specific group sizes',
   'Group-specific capacities',
+  'Session-specific group sizes',
   'Session-specific rules',
   'Soft constraints with configurable weights',
   'Pair meeting count targets',
@@ -82,7 +82,7 @@ const FAQS = {
   workspace: {
     question: 'Scenario Editor क्या है?',
     answer:
-      'Scenario Editor उन controls के लिए है जो इस page पर नहीं हैं: partial attendance, session-specific group sizes, group-specific capacities, session-specific constraints, soft constraints with configurable weights, pair meeting count targets, solver settings, previous results और detailed analysis।',
+      'Scenario Editor उन controls के लिए है जो इस page पर नहीं हैं: partial attendance, group-specific capacities, session-specific group sizes, session-specific constraints, soft constraints with configurable weights, pair meeting count targets, solver settings, previous results और detailed analysis।',
   },
 };
 
