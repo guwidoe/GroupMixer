@@ -146,18 +146,20 @@ fn execute_solver6_run(
                     )));
                 }
                 Solver6CacheMissPolicy::BuildFresh => {
-                    let seed_started = Instant::now();
-                    let selection = build_preferred_mixed_seed(input)?;
-                    seed_runtime_micros = Some(seed_started.elapsed().as_micros() as u64);
+                    let (selection, runtime_micros) = build_preferred_mixed_seed_with_deadline(
+                        input,
+                        params.seed_time_limit_seconds,
+                    )?;
+                    seed_runtime_micros = Some(runtime_micros);
                     let schedule = selection.seed.schedule.clone();
                     (Some(selection), schedule)
                 }
             },
         }
     } else {
-        let seed_started = Instant::now();
-        let selection = build_preferred_mixed_seed(input)?;
-        seed_runtime_micros = Some(seed_started.elapsed().as_micros() as u64);
+        let (selection, runtime_micros) =
+            build_preferred_mixed_seed_with_deadline(input, params.seed_time_limit_seconds)?;
+        seed_runtime_micros = Some(runtime_micros);
         let schedule = selection.seed.schedule.clone();
         (Some(selection), schedule)
     };
@@ -203,6 +205,27 @@ fn execute_solver6_run(
         seed_selection: selection,
         local_search_outcome: Some(outcome),
     })
+}
+
+fn build_preferred_mixed_seed_with_deadline(
+    input: &ApiInput,
+    seed_time_limit_seconds: Option<u64>,
+) -> Result<(MixedSeedSelection, u64), SolverError> {
+    if seed_time_limit_seconds == Some(0) {
+        return Err(SolverError::ValidationError(
+            "solver6 seed timeout reached before seed construction could start".into(),
+        ));
+    }
+    let seed_started = Instant::now();
+    let selection = build_preferred_mixed_seed(input)?;
+    let runtime_micros = seed_started.elapsed().as_micros() as u64;
+    if seed_time_limit_seconds.is_some_and(|seconds| seed_started.elapsed().as_secs() >= seconds) {
+        return Err(SolverError::ValidationError(format!(
+            "solver6 seed timeout reached after {:.3}s while constructing the initial incumbent",
+            seed_started.elapsed().as_secs_f64()
+        )));
+    }
+    Ok((selection, runtime_micros))
 }
 
 fn cache_status_for_stop_reason(stop_reason: StopReason) -> Solver6CacheIncumbentStatus {

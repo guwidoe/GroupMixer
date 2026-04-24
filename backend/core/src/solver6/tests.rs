@@ -83,7 +83,9 @@ fn exact_block_params(cache: Option<Solver6CacheParams>) -> Solver6Params {
     }
 }
 
-fn exact_block_params_with_local_timeout(local_search_time_limit_seconds: Option<u64>) -> Solver6Params {
+fn exact_block_params_with_local_timeout(
+    local_search_time_limit_seconds: Option<u64>,
+) -> Solver6Params {
     Solver6Params {
         local_search_time_limit_seconds,
         ..exact_block_params(None)
@@ -172,6 +174,26 @@ fn solver6_exact_block_search_handles_non_multiple_horizons_via_mixed_seeds() {
     assert_eq!(result.schedule.len(), 21);
     assert!(result.repetition_penalty > 0);
     assert!(result.final_score > 0.0);
+}
+
+#[test]
+fn solver6_seed_timeout_hard_fails_without_cache_write() {
+    let cache_dir =
+        std::env::temp_dir().join(format!("solver6-seed-timeout-{}", uuid::Uuid::new_v4()));
+    let mut params = exact_block_params(Some(cache_params(
+        cache_dir.to_string_lossy().into_owned(),
+        Solver6CacheMissPolicy::BuildFresh,
+    )));
+    params.seed_time_limit_seconds = Some(0);
+
+    let mut input = pure_input(8, 4, 20);
+    input.solver.solver_params = SolverParams::Solver6(params);
+
+    let err = SearchEngine::new(&input.solver)
+        .solve(&input)
+        .expect_err("zero seed budget should hard-fail before seed construction");
+    assert!(err.to_string().contains("solver6 seed timeout"));
+    assert!(!cache_dir.join("entries/g08_p04_w20.json").exists());
 }
 
 #[test]
