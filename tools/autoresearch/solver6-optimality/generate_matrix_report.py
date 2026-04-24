@@ -31,6 +31,12 @@ LAYER_CONFIG = {
         "status_key": "objective_agreement_status",
         "description": "Highlights weeks where the canonical linear-objective schedule is also the selected squared-objective schedule and both objective lower bounds are tight.",
     },
+    "quadratic_delta": {
+        "label": "Quadratic score difference",
+        "summary_key": "linear_summary",
+        "status_key": "linear_status",
+        "description": "Per-week absolute squared-score difference between the linear run and the squared run/selected squared result. Perfect agreement is saturated green; nonzero differences fade from pale green through yellow to red.",
+    },
 }
 
 
@@ -78,6 +84,60 @@ def agreement_glyph(status: str) -> str:
     }.get(status, "·")
 
 
+def format_delta(value: int) -> str:
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M"
+    if value >= 1_000:
+        return f"{value / 1_000:.1f}k"
+    return str(value)
+
+
+def quadratic_delta_info(week):
+    linear_run = week.get("linear_run") or {}
+    linear_metrics = linear_run.get("final_metrics") or week.get("final_metrics")
+    squared_run = week.get("squared_run") or {}
+    selected = week.get("selected_squared_result") or {}
+    comparison_metrics = squared_run.get("final_metrics") or selected.get("final_metrics")
+    source = "squared_run" if squared_run.get("final_metrics") else selected.get("source", "none")
+    if not linear_metrics or not comparison_metrics:
+        return None
+    linear_score = int(linear_metrics.get("squared_repeat_excess") or 0)
+    quadratic_score = int(comparison_metrics.get("squared_repeat_excess") or 0)
+    signed_delta = linear_score - quadratic_score
+    return {
+        "linear_score": linear_score,
+        "quadratic_score": quadratic_score,
+        "signed_delta": signed_delta,
+        "abs_delta": abs(signed_delta),
+        "source": source,
+    }
+
+
+def max_quadratic_delta(artifact) -> int:
+    max_delta = 0
+    for matrix in artifact.get("matrices", []):
+        for cell in matrix.get("cells", []):
+            for week in cell.get("week_results", []):
+                info = quadratic_delta_info(week)
+                if info:
+                    max_delta = max(max_delta, info["abs_delta"])
+    return max_delta
+
+
+def delta_color(delta: int, max_delta: int) -> str:
+    if delta == 0:
+        return "#008a22"
+    if max_delta <= 1:
+        t = 1.0
+    else:
+        t = math.log1p(delta) / math.log1p(max_delta)
+    # Nonzero deltas start at a pale yellow-green so exact agreement is visually distinct.
+    start = (217, 249, 157)
+    end = (239, 68, 68)
+    channel = lambda idx: round(start[idx] + (end[idx] - start[idx]) * t)
+    return f"rgb({channel(0)}, {channel(1)}, {channel(2)})"
+
+
 def build_cell_map(cells):
     return {(cell["g"], cell["p"]): cell for cell in cells}
 
@@ -93,9 +153,11 @@ def empty_summary():
     }
 
 
-def render_week_grid(cell, layer_key, week_cap):
+def render_week_grid(cell, layer_key, week_cap, quadratic_delta_max=0):
     if layer_key == "overview":
         return render_dual_objective_week_grid(cell, week_cap)
+    if layer_key == "quadratic_delta":
+        return render_quadratic_delta_week_grid(cell, week_cap, quadratic_delta_max)
     status_key = LAYER_CONFIG[layer_key]["status_key"]
     rows = max(1, math.ceil(week_cap / 10))
     total_slots = rows * 10
@@ -124,6 +186,38 @@ def render_week_grid(cell, layer_key, week_cap):
                 )
             parts.append(
                 f"<span class='mini-week {status_class(status)}' title='{html.escape(tooltip)}'></span>"
+            )
+        else:
+            parts.append("<span class='mini-week mini-week-empty'></span>")
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def render_quadratic_delta_week_grid(cell, week_cap, quadratic_delta_max):
+    rows = max(1, math.ceil(week_cap / 10))
+    total_slots = rows * 10
+    parts = [f"<div class='mini-grid mini-grid-rows-{rows} quadratic-delta-grid'>"]
+    for index in range(total_slots):
+        if index < len(cell["week_results"]):
+            week = cell["week_results"][index]
+            info = quadratic_delta_info(week)
+            if info is None:
+                tooltip = f"week {week['week']}: no quadratic comparison available"
+                parts.append(
+                    f"<span class='mini-week week-unavailable' title='{html.escape(tooltip)}'></span>"
+                )
+                continue
+            color = delta_color(info["abs_delta"], quadratic_delta_max)
+            tooltip = (
+                f"week {week['week']}: |ΔQ|={info['abs_delta']}"
+                f" | signed ΔQ linear-quadratic={info['signed_delta']}"
+                f" | linear Q={info['linear_score']}"
+                f" | quadratic Q={info['quadratic_score']}"
+                f" | source={info['source']}"
+            )
+            parts.append(
+                "<span class='mini-week quadratic-delta-week' "
+                f"style='background:{color}' title='{html.escape(tooltip)}'></span>"
             )
         else:
             parts.append("<span class='mini-week mini-week-empty'></span>")
@@ -171,9 +265,28 @@ def render_dual_objective_week_grid(cell, week_cap):
     return "".join(parts)
 
 
-def render_outer_cell(cell, layer_key, week_cap, matrix_index, dense=False):
+def render_outer_cell(cell, layer_key, week_cap, matrix_index, dense=False, quadratic_delta_max=0):
     summary = cell.get(LAYER_CONFIG[layer_key]["summary_key"], empty_summary())
-    if layer_key == "overview":
+    if layer_key == "quadratic_delta":
+        deltas = [
+            info["abs_delta"]
+            for week in cell.get("week_results", [])
+            if (info := quadratic_delta_info(week)) is not None
+        ]
+        max_delta = max(deltas) if deltas else 0
+        nonzero = sum(1 for delta in deltas if delta > 0)
+        headline = (
+            "<span class='headline-metric'>"
+            "<span class='headline-label'>max</span>"
+            f"<span>{html.escape(format_delta(max_delta))}</span>"
+            "</span>"
+            "<span class='headline-metric'>"
+            "<span class='headline-label'>nz</span>"
+            f"<span>{nonzero}</span>"
+            "</span>"
+        )
+        title = f"{cell['g']}-{cell['p']} | max |ΔQ|={max_delta} | nonzero weeks={nonzero}"
+    elif layer_key == "overview":
         linear_summary = cell.get("linear_summary", empty_summary())
         squared_summary = cell.get("squared_summary", empty_summary())
         agreement_summary = cell.get("objective_agreement_summary", empty_summary())
@@ -207,14 +320,14 @@ def render_outer_cell(cell, layer_key, week_cap, matrix_index, dense=False):
         f"<button class='outer-cell{' outer-cell-dense' if dense else ''}{' benchmark-skipped' if not cell['benchmark_eligible'] else ''}'"
         f" title='{html.escape(title)}'"
         f" data-matrix-index='{matrix_index}' data-g='{cell['g']}' data-p='{cell['p']}'>"
-        f"<div class='outer-cell-headline{' outer-cell-headline-overview' if layer_key == 'overview' else ''}'>{headline if layer_key == 'overview' else html.escape(headline)}</div>"
+        f"<div class='outer-cell-headline{' outer-cell-headline-overview' if layer_key in {'overview', 'quadratic_delta'} else ''}'>{headline if layer_key in {'overview', 'quadratic_delta'} else html.escape(headline)}</div>"
         f"<div class='outer-cell-subtitle'>{cell['g']}-{cell['p']}</div>"
-        f"{render_week_grid(cell, layer_key, week_cap)}"
+        f"{render_week_grid(cell, layer_key, week_cap, quadratic_delta_max)}"
         "</button>"
     )
 
 
-def render_matrix_view(matrix, layer_key, week_cap, matrix_index):
+def render_matrix_view(matrix, layer_key, week_cap, matrix_index, quadratic_delta_max=0):
     bounds = matrix["bounds"]
     width = bounds["p_max"] - bounds["p_min"] + 1
     dense = width > 14
@@ -233,7 +346,9 @@ def render_matrix_view(matrix, layer_key, week_cap, matrix_index):
         parts.append(f"<tr><th>{g}</th>")
         for p in range(bounds["p_min"], bounds["p_max"] + 1):
             cell = cell_map[(g, p)]
-            parts.append(f"<td>{render_outer_cell(cell, layer_key, week_cap, matrix_index, dense)}</td>")
+            parts.append(
+                f"<td>{render_outer_cell(cell, layer_key, week_cap, matrix_index, dense, quadratic_delta_max)}</td>"
+            )
         parts.append("</tr>")
     parts.append("</tbody></table></div></section>")
     return "".join(parts)
@@ -242,12 +357,13 @@ def render_matrix_view(matrix, layer_key, week_cap, matrix_index):
 def render_layer(artifact, layer_key):
     week_cap = artifact["config"]["week_cap"]
     config = LAYER_CONFIG[layer_key]
+    quadratic_delta_max = max_quadratic_delta(artifact) if layer_key == "quadratic_delta" else 0
     parts = [
         f"<section class='layer-panel' data-layer='{layer_key}'>",
         f"<p class='meta'>{html.escape(config['description'])}</p>",
     ]
     for idx, matrix in enumerate(artifact["matrices"]):
-        parts.append(render_matrix_view(matrix, layer_key, week_cap, idx))
+        parts.append(render_matrix_view(matrix, layer_key, week_cap, idx, quadratic_delta_max))
     parts.append("</section>")
     return "".join(parts)
 
@@ -372,6 +488,7 @@ def render_html(artifact):
     .week-improve {{ background: var(--improve); }}
     .week-same {{ background: var(--same); }}
     .week-unavailable {{ background: var(--na); }}
+    .quadratic-delta-week {{ box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16); }}
     .dual-mini-week, .dual-large-week {{
       aspect-ratio: 1 / 1;
       border-radius: 3px;
@@ -479,12 +596,14 @@ def render_html(artifact):
     <button class='tab-button' data-layer-target='linear'>{html.escape(LAYER_CONFIG['linear']['label'])}</button>
     <button class='tab-button' data-layer-target='squared'>{html.escape(LAYER_CONFIG['squared']['label'])}</button>
     <button class='tab-button' data-layer-target='agreement'>{html.escape(LAYER_CONFIG['agreement']['label'])}</button>
+    <button class='tab-button' data-layer-target='quadratic_delta'>{html.escape(LAYER_CONFIG['quadratic_delta']['label'])}</button>
   </div>
   <div id='report-root'>
     {render_layer(artifact, 'overview')}
     {render_layer(artifact, 'linear')}
     {render_layer(artifact, 'squared')}
     {render_layer(artifact, 'agreement')}
+    {render_layer(artifact, 'quadratic_delta')}
   </div>
   <div class='modal-backdrop' id='detail-backdrop'>
     <div class='detail-modal'>
@@ -501,6 +620,7 @@ def render_html(artifact):
   <script>
     const ARTIFACT = {embedded_json};
     const LAYER_CONFIG = {json.dumps(LAYER_CONFIG)};
+    const QUADRATIC_DELTA_MAX = {max_quadratic_delta(artifact)};
     const tabs = document.querySelectorAll('.tab-button');
     const panels = document.querySelectorAll('.layer-panel');
     const backdrop = document.getElementById('detail-backdrop');
@@ -544,6 +664,34 @@ def render_html(artifact):
         error: 'var(--na)',
         not_run: 'var(--na)',
       }}[status] || 'var(--na)';
+    }}
+
+    function formatDelta(value) {{
+      if (value >= 1000000) return `${{(value / 1000000).toFixed(1)}}M`;
+      if (value >= 1000) return `${{(value / 1000).toFixed(1)}}k`;
+      return String(value);
+    }}
+
+    function deltaColor(delta, maxDelta) {{
+      if (delta === 0) return '#008a22';
+      const t = maxDelta <= 1 ? 1 : Math.log1p(delta) / Math.log1p(maxDelta);
+      const start = [217, 249, 157];
+      const end = [239, 68, 68];
+      const channel = idx => Math.round(start[idx] + (end[idx] - start[idx]) * t);
+      return `rgb(${{channel(0)}}, ${{channel(1)}}, ${{channel(2)}})`;
+    }}
+
+    function quadraticDeltaInfo(week) {{
+      const linearMetrics = (week.linear_run && week.linear_run.final_metrics) || week.final_metrics;
+      const squaredRunMetrics = week.squared_run && week.squared_run.final_metrics;
+      const selectedMetrics = week.selected_squared_result && week.selected_squared_result.final_metrics;
+      const comparisonMetrics = squaredRunMetrics || selectedMetrics;
+      const source = squaredRunMetrics ? 'squared_run' : ((week.selected_squared_result && week.selected_squared_result.source) || 'none');
+      if (!linearMetrics || !comparisonMetrics) return null;
+      const linearScore = linearMetrics.squared_repeat_excess || 0;
+      const quadraticScore = comparisonMetrics.squared_repeat_excess || 0;
+      const signedDelta = linearScore - quadraticScore;
+      return {{ linearScore, quadraticScore, signedDelta, absDelta: Math.abs(signedDelta), source }};
     }}
 
     function agreementGlyph(status) {{
@@ -619,6 +767,14 @@ def render_html(artifact):
             const squaredStatus = week.squared_status || 'not_run';
             const agreement = week.objective_agreement_status || 'not_run';
             html += `<div class="dual-large-week" style="--linear-color:${'{'}statusColor(linearStatus){'}'};--squared-color:${'{'}statusColor(squaredStatus){'}'}" title="week ${'{'}week.week{'}'}: linear=${'{'}linearStatus.replace(/_/g, ' '){'}'} | squared=${'{'}squaredStatus.replace(/_/g, ' '){'}'} | relation=${'{'}agreement.replace(/_/g, ' '){'}'}"><span class="dual-glyph">${'{'}agreementGlyph(agreement){'}'}</span><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+          }} else if (layer === 'quadratic_delta') {{
+            const info = quadraticDeltaInfo(week);
+            if (info) {{
+              const title = `week ${'{'}week.week{'}'}: |ΔQ|=${'{'}info.absDelta{'}'} | signed ΔQ linear-quadratic=${'{'}info.signedDelta{'}'} | linear Q=${'{'}info.linearScore{'}'} | quadratic Q=${'{'}info.quadraticScore{'}'} | source=${'{'}info.source{'}'}`;
+              html += `<div class="large-week quadratic-delta-week" style="background:${'{'}deltaColor(info.absDelta, QUADRATIC_DELTA_MAX){'}'}" title="${'{'}title{'}'}"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+            }} else {{
+              html += `<div class="large-week week-unavailable" title="week ${'{'}week.week{'}'}: no quadratic comparison"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+            }}
           }} else {{
             const status = week[statusKey] || 'not_run';
             html += `<div class="large-week ${'{'}statusClass(status){'}'}" title="week ${'{'}week.week{'}'}: ${'{'}status.replace(/_/g, ' '){'}'}"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
