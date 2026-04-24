@@ -10,9 +10,9 @@ const OPTIMIZER_FEATURES = [
   'Teilweise Anwesenheit',
   'Session-spezifische Gruppen',
   'Session-spezifische Regeln',
-  'Verpflichtende Zusammen-/Trennen-Regeln',
   'Weiche Zusammen-/Trennen-Präferenzen',
   'Zielwerte für Paar-Begegnungen',
+  'Prioritäten für weiche Constraints',
   'Solver-Einstellungen',
   'Detaillierte Ergebnisanalyse',
 ];
@@ -82,7 +82,7 @@ const FAQS = {
   workspace: {
     question: 'Was ist der Szenario-Editor?',
     answer:
-      'Der Szenario-Editor ist für Funktionen gedacht, die diese Seite nicht abdeckt: Teilanwesenheit, session-spezifische Gruppensets, session-spezifische Regeln, verpflichtende Zusammen-/Trennen-Regeln, weiche Zusammen-/Trennen-Präferenzen, Zielwerte für Paar-Begegnungen, Solver-Einstellungen, frühere Ergebnisse und detaillierte Analyse.',
+      'Der Szenario-Editor ist für Funktionen gedacht, die diese Seite nicht abdeckt: Teilanwesenheit, session-spezifische Gruppensets, session-spezifische Regeln, weiche Zusammen-/Trennen-Präferenzen, Zielwerte für Paar-Begegnungen, Prioritäten für weiche Constraints, Solver-Einstellungen, frühere Ergebnisse und detaillierte Analyse.',
   },
 };
 
