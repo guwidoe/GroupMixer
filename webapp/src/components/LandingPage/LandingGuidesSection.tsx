@@ -1,15 +1,31 @@
 import { BookOpenText } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { LandingGuideCard, type LandingGuideCardLink } from './LandingGuideCard';
 import { DEFAULT_LOCALE, type SupportedLocale } from '../../pages/toolPageConfigs';
 import { GUIDE_PAGE_ROUTES, getGuidePageConfig } from '../../pages/guidePageConfigs';
+import type { GuidePageKey } from '../../pages/guidePageTypes';
 
 interface LandingGuidesSectionProps {
   locale: SupportedLocale;
 }
 
+type GuideTopic = 'All' | 'Workshops' | 'Classrooms' | 'Networking' | 'Constraints' | 'Pairs' | 'Breakouts' | 'Teams';
+
+const GUIDE_TOPICS: GuideTopic[] = ['All', 'Workshops', 'Classrooms', 'Networking', 'Constraints', 'Pairs', 'Breakouts', 'Teams'];
+
+const GUIDE_TOPICS_BY_KEY: Record<GuidePageKey, Exclude<GuideTopic, 'All'>[]> = {
+  'avoid-repeat-pairings-in-workshops': ['Workshops', 'Networking', 'Constraints'],
+  'run-speed-networking-rounds': ['Networking'],
+  'make-balanced-student-groups': ['Classrooms', 'Teams'],
+  'random-vs-balanced-vs-constrained-groups': ['Constraints', 'Workshops', 'Teams'],
+  'split-a-class-into-fair-groups': ['Classrooms'],
+  'make-random-pairs-from-a-list': ['Pairs', 'Classrooms'],
+  'assign-breakout-rooms-for-online-workshops': ['Breakouts', 'Workshops'],
+  'create-balanced-random-teams': ['Teams'],
+};
+
 export function LandingGuidesSection({ locale }: LandingGuidesSectionProps) {
-  const guideTopics = ['All', 'Workshops', 'Classrooms', 'Networking', 'Constraints', 'Pairs', 'Breakouts', 'Teams'];
+  const [activeTopic, setActiveTopic] = useState<GuideTopic>('All');
   const guideLinks = useMemo<LandingGuideCardLink[]>(() => {
     if (locale !== DEFAULT_LOCALE) {
       return [];
@@ -25,6 +41,12 @@ export function LandingGuidesSection({ locale }: LandingGuidesSectionProps) {
       };
     });
   }, [locale]);
+  const visibleGuideLinks = useMemo(
+    () => activeTopic === 'All'
+      ? guideLinks
+      : guideLinks.filter((guide) => GUIDE_TOPICS_BY_KEY[guide.key].includes(activeTopic)),
+    [activeTopic, guideLinks],
+  );
 
   if (guideLinks.length === 0) {
     return null;
@@ -58,27 +80,34 @@ export function LandingGuidesSection({ locale }: LandingGuidesSectionProps) {
         </div>
 
         <div className="mt-8 flex flex-wrap justify-center gap-2" aria-label="Guide topics">
-          {guideTopics.map((topic, index) => (
-            <span
-              key={topic}
-              className="rounded-lg border px-3 py-1.5 text-sm font-medium"
-              style={{
-                borderColor: index === 0
-                  ? 'color-mix(in srgb, var(--color-accent) 42%, var(--border-primary) 58%)'
-                  : 'var(--border-primary)',
-                backgroundColor: index === 0
-                  ? 'color-mix(in srgb, var(--color-accent) 12%, var(--bg-primary) 88%)'
-                  : 'var(--bg-primary)',
-                color: index === 0 ? 'var(--text-primary)' : 'var(--text-secondary)',
-              }}
-            >
-              {topic}
-            </span>
-          ))}
+          {GUIDE_TOPICS.map((topic) => {
+            const isActive = activeTopic === topic;
+
+            return (
+              <button
+                key={topic}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setActiveTopic(topic)}
+                className="rounded-lg border px-3 py-1.5 text-sm font-medium"
+                style={{
+                  borderColor: isActive
+                    ? 'color-mix(in srgb, var(--color-accent) 42%, var(--border-primary) 58%)'
+                    : 'var(--border-primary)',
+                  backgroundColor: isActive
+                    ? 'color-mix(in srgb, var(--color-accent) 12%, var(--bg-primary) 88%)'
+                    : 'var(--bg-primary)',
+                  color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                }}
+              >
+                {topic}
+              </button>
+            );
+          })}
         </div>
 
         <div className="mt-10 grid min-w-0 gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {guideLinks.map((guide) => (
+          {visibleGuideLinks.map((guide) => (
             <LandingGuideCard key={guide.key} guide={guide} />
           ))}
         </div>
