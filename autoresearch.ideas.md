@@ -3,11 +3,12 @@
 ## Preferred structural experiments
 
 - Implement an oracle-guided baseline fill rather than overwrite+repair only with real objective-aware placement; oracle seed + legacy random baseline fill was not enough.
-- Add merge acceptance scoring based on estimated search-basin disruption, not final-score gating: prefer oracle placements that keep scaffold-stable/cohesive groups while preserving coherent whole-template structure.
+- Keep deterministic batch assignment for displaced merge repair; greedy repair was improved by global assignment, but adding scaffold cohort pressure was strongly negative.
 - Re-evaluate small, principled scaffold-disruption weights only if paired with a structural candidate-risk/fill-order change; simple scalar retuning has had diminishing returns.
 - Evaluate multiple top template candidates only with strong hard-feasibility/risk/contact tradeoffs; naive top-3 projection-score and lowest-disruption-frontier selectors were both negative.
 - Add benchmark telemetry for oracle outcome/template dimensions per case to understand whether regressions come from candidate choice, projection, merge displacement, or hard repair.
 - If revisiting projection convergence, pair it with synthetic/constrained-SGP safeguards; one extra assignment/alignment pass alone improved Sailing/transfer but worsened primary metric.
+- Avoid scaffold-cohort pressure in repair; even a modest term after batch assignment was basin-hostile.
 - Explore adaptive warmup only with a fundamentally different signal (not just budget size); both blind 2s and budget-guarded 2s were negative.
 
 ## De-emphasized / recently negative
