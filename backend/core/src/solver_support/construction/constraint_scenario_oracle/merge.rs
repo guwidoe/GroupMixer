@@ -233,7 +233,7 @@ fn template_target_acceptance_score(
         .unwrap_or(0.0);
     let outside_region_move_penalty = current_group_idx
         .filter(|&group_idx| group_idx != target_group_idx && !selected_groups.contains(&group_idx))
-        .map(|_| 2.0)
+        .map(|_| 1.0)
         .unwrap_or(0.0);
     keep_bonus
         + selected_region_move_bonus
