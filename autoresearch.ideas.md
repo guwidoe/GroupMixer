@@ -18,7 +18,7 @@
 - Avoid oracle-cohort pressure in target acceptance; max(scaffold target pressure, oracle co-target pressure) worsened broad quality and constrained SGP 169x13x14.
 - Keep scaffold-disruption template penalty at 3.0; lower 2.5 remained worse even with batch repair.
 - Keep the 1s full-objective warmup scaffold; skipping warmup caused a zero-baseline regression and worsened broad quality.
-- Explore adaptive warmup only with a fundamentally different signal (not just budget size); both blind 2s and budget-guarded 2s were negative.
+- Explore adaptive warmup only with a fundamentally different signal (not just budget size); blind 2s, budget-guarded 2s, and baseline/warmup consensus rigidity were negative.
 - Benchmark/search noise is material: a no-code repeat of the kept batch-repair line scored much worse. Rerun near-threshold candidates before keeping if confidence is unclear.
 
 ## De-emphasized / recently negative
