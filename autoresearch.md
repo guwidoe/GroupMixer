@@ -24,9 +24,10 @@ Latest pre-autoresearch broad run after the scaffold fallback and 30% constructi
 - Result: `35 cases: 35 ok / 0 failed`
 
 ## Metrics
-- **Primary**: `broad_relative_score` (unitless, lower is better) — weighted mean of each nonzero-baseline case's `final_score / baseline_final_score`, plus fixed penalties for zero-baseline regressions and failures. This makes a large case improvement such as Sailing `4000 -> 2000` count as a real 50% improvement instead of being mostly hidden by logarithms. Fixed per-case baselines are baked into `autoresearch.sh` from the current best constructor line (`b5fa1752`, run `solver3-constructor-broad-20260424T211040Z-6000a6ee`).
+- **Primary**: `broad_relative_score` (unitless, lower is better) — weighted mean of each nonzero-baseline case's `final_score / baseline_final_score`, plus a small logarithmic guard penalty for zero-baseline regressions and a catastrophic failure penalty. This makes a large case improvement such as Sailing `4000 -> 2000` count as a real 50% improvement instead of being mostly hidden by logarithms. Fixed per-case baselines are baked into `autoresearch.sh` from the current best constructor line (`b5fa1752`, run `solver3-constructor-broad-20260424T211040Z-6000a6ee`).
 - **Secondary normalized/safety/operability monitors**:
   - `relative_score_mean` — weighted relative mean before penalties.
+  - `zero_regression_penalty` — normalized guard penalty from zero-baseline cases that regressed above zero.
   - `failure_count`
   - `zero_regression_count` — cases whose fixed baseline is zero but current final score is nonzero.
   - `runtime_seconds`
@@ -48,7 +49,7 @@ Raw aggregate/mean/max final score is intentionally not tracked because raw scor
 Primary-metric details:
 - Cases with nonzero fixed baselines contribute `score / baseline_score`.
 - Key sentinel cases have weight `2`; other nonzero-baseline cases have weight `1`.
-- Cases with zero fixed baseline are guards: staying at zero contributes nothing, but any nonzero score adds a fixed penalty.
+- Cases with zero fixed baseline are guards: staying at zero contributes nothing, but any nonzero score adds a small normalized `log1p(score)` penalty.
 - Failed cases add a catastrophic fixed penalty.
 
 ## How to Run

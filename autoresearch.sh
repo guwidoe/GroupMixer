@@ -98,7 +98,6 @@ KEY_CASE_METRICS = {
 KEY_CASE_IDS = set(KEY_CASE_METRICS.values())
 KEY_CASE_WEIGHT = 2.0
 DEFAULT_CASE_WEIGHT = 1.0
-ZERO_BASELINE_REGRESSION_PENALTY = 10.0
 FAILURE_PENALTY = 1000.0
 
 report_path = Path(sys.argv[1])
@@ -120,6 +119,7 @@ weighted_ratio_sum = 0.0
 baseline_weight_sum = 0.0
 failure_count = 0
 zero_regression_count = 0
+zero_regression_penalty = 0.0
 construction_total = 0.0
 runtime_total = 0.0
 case_scores = {}
@@ -154,6 +154,7 @@ for case in cases:
             weighted_ratio_sum += weight * (score / baseline_score)
         elif score > 0.0:
             zero_regression_count += 1
+            zero_regression_penalty += weight * math.log1p(score) / baseline_weight_sum
 
     timing = case.get("timing") or {}
     runtime_total += float(case.get("runtime_seconds") or timing.get("total_seconds") or 0.0)
@@ -167,12 +168,13 @@ if missing_key_cases:
 relative_score_mean = weighted_ratio_sum / baseline_weight_sum
 broad_relative_score = (
     relative_score_mean
-    + zero_regression_count * ZERO_BASELINE_REGRESSION_PENALTY
+    + zero_regression_penalty
     + failure_count * FAILURE_PENALTY
 )
 
 print(f"METRIC broad_relative_score={broad_relative_score:.9f}")
 print(f"METRIC relative_score_mean={relative_score_mean:.9f}")
+print(f"METRIC zero_regression_penalty={zero_regression_penalty:.9f}")
 print(f"METRIC failure_count={failure_count}")
 print(f"METRIC zero_regression_count={zero_regression_count}")
 print(f"METRIC runtime_seconds={runtime_total:.9f}")
