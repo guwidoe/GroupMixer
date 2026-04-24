@@ -39,18 +39,7 @@ fn main() {
                     .expect("--matrix-axis-max requires a value")
                     .parse()
                     .expect("--matrix-axis-max must parse as usize");
-                config.matrices = vec![MatrixViewDefinition {
-                    title: format!("Frontier view: g=2..{axis_max}, p=2..{axis_max}"),
-                    subtitle: format!(
-                        "Full bounded pure-SGP view through g,p <= {axis_max}. Cells beyond the configured people budget remain explicit gray not-run regions."
-                    ),
-                    bounds: MatrixBounds {
-                        g_min: 2,
-                        g_max: axis_max,
-                        p_min: 2,
-                        p_max: axis_max,
-                    },
-                }];
+                config.matrices = tiled_matrix_views(axis_max);
             }
             "--jobs" => {
                 idx += 1;
@@ -134,4 +123,37 @@ fn main() {
             .expect("solver6 frontier artifact should serialize cleanly");
         fs::write(path, json).expect("should write solver6 frontier json");
     }
+}
+
+fn tiled_matrix_views(axis_max: usize) -> Vec<MatrixViewDefinition> {
+    assert!(
+        axis_max >= 2,
+        "--matrix-axis-max must be at least 2 for g,p matrix bounds"
+    );
+    let axis_min = 2;
+    let midpoint = (axis_min + axis_max) / 2;
+    let ranges = if midpoint < axis_max {
+        vec![(axis_min, midpoint), (midpoint + 1, axis_max)]
+    } else {
+        vec![(axis_min, axis_max)]
+    };
+
+    let mut matrices = Vec::new();
+    for &(g_min, g_max) in &ranges {
+        for &(p_min, p_max) in &ranges {
+            matrices.push(MatrixViewDefinition {
+                title: format!("Frontier view: g={g_min}..{g_max}, p={p_min}..{p_max}"),
+                subtitle: format!(
+                    "Bounded pure-SGP tile within g,p <= {axis_max}. Cells beyond the configured people budget remain explicit gray not-run regions."
+                ),
+                bounds: MatrixBounds {
+                    g_min,
+                    g_max,
+                    p_min,
+                    p_max,
+                },
+            });
+        }
+    }
+    matrices
 }
