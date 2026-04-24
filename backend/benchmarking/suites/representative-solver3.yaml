@@ -10,3 +10,7 @@ default_max_iterations: 60
 cases:
   - manifest: ../cases/representative/small_workshop_balanced.json
   - manifest: ../cases/representative/small_workshop_constrained.json
+  - manifest: ../cases/representative/ui_demo_data.json
+    max_iterations: 1000
+  - manifest: ../cases/representative/ui_demo_data_no_attr.json
+    max_iterations: 1000

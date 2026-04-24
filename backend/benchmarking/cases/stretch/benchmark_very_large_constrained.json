@@ -1,0 +1,271 @@
+{
+  "schema_version": 1,
+  "id": "stretch.benchmark-very-large-constrained",
+  "class": "stretch",
+  "case_role": "canonical",
+  "purpose": "objective_diagnostic.stretch.attribute_balance_30p_5g_10s",
+  "provenance": "converted_from_backend_core_tests_test_cases_benchmark_very_large_constrained_json",
+  "declared_budget": {
+    "max_iterations": 100000
+  },
+  "tags": [
+    "stretch",
+    "converted-fixture",
+    "scale",
+    "attribute-balance",
+    "constraints"
+  ],
+  "title": "Very large constrained fixture",
+  "description": "Converted data-driven performance fixture: 30 participants, 5 groups, 10 sessions, with attribute-balance pressure.",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "m0",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f1",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m2",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f3",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m4",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f5",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m6",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f7",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m8",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f9",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m10",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f11",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m12",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f13",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m14",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f15",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m16",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f17",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m18",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f19",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m20",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f21",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m22",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f23",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m24",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f25",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m26",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f27",
+          "attributes": {
+            "gender": "female"
+          }
+        },
+        {
+          "id": "m28",
+          "attributes": {
+            "gender": "male"
+          }
+        },
+        {
+          "id": "f29",
+          "attributes": {
+            "gender": "female"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "g0",
+          "size": 6
+        },
+        {
+          "id": "g1",
+          "size": 6
+        },
+        {
+          "id": "g2",
+          "size": 6
+        },
+        {
+          "id": "g3",
+          "size": 6
+        },
+        {
+          "id": "g4",
+          "size": 6
+        }
+      ],
+      "num_sessions": 10
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "AttributeBalance",
+        "attribute_key": "gender",
+        "group_id": "ALL",
+        "desired_values": {
+          "male": 3,
+          "female": 3
+        },
+        "penalty_weight": 10.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 100000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 10.0,
+        "final_temperature": 0.0001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 0,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      },
+      "seed": 3005102
+    },
+    "initial_schedule": null,
+    "construction_seed_schedule": null
+  }
+}

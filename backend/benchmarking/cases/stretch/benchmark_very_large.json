@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "id": "stretch.benchmark-very-large",
+  "class": "stretch",
+  "case_role": "canonical",
+  "purpose": "objective_diagnostic.stretch.unconstrained_30p_5g_10s",
+  "provenance": "converted_from_backend_core_tests_test_cases_benchmark_very_large_json",
+  "declared_budget": {
+    "max_iterations": 1000000
+  },
+  "tags": [
+    "stretch",
+    "converted-fixture",
+    "scale",
+    "unconstrained"
+  ],
+  "title": "Very large unconstrained fixture",
+  "description": "Converted data-driven performance fixture: 30 participants, 5 groups, 10 sessions, no constraints beyond unique-contact objective.",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "p0",
+          "attributes": {}
+        },
+        {
+          "id": "p1",
+          "attributes": {}
+        },
+        {
+          "id": "p2",
+          "attributes": {}
+        },
+        {
+          "id": "p3",
+          "attributes": {}
+        },
+        {
+          "id": "p4",
+          "attributes": {}
+        },
+        {
+          "id": "p5",
+          "attributes": {}
+        },
+        {
+          "id": "p6",
+          "attributes": {}
+        },
+        {
+          "id": "p7",
+          "attributes": {}
+        },
+        {
+          "id": "p8",
+          "attributes": {}
+        },
+        {
+          "id": "p9",
+          "attributes": {}
+        },
+        {
+          "id": "p10",
+          "attributes": {}
+        },
+        {
+          "id": "p11",
+          "attributes": {}
+        },
+        {
+          "id": "p12",
+          "attributes": {}
+        },
+        {
+          "id": "p13",
+          "attributes": {}
+        },
+        {
+          "id": "p14",
+          "attributes": {}
+        },
+        {
+          "id": "p15",
+          "attributes": {}
+        },
+        {
+          "id": "p16",
+          "attributes": {}
+        },
+        {
+          "id": "p17",
+          "attributes": {}
+        },
+        {
+          "id": "p18",
+          "attributes": {}
+        },
+        {
+          "id": "p19",
+          "attributes": {}
+        },
+        {
+          "id": "p20",
+          "attributes": {}
+        },
+        {
+          "id": "p21",
+          "attributes": {}
+        },
+        {
+          "id": "p22",
+          "attributes": {}
+        },
+        {
+          "id": "p23",
+          "attributes": {}
+        },
+        {
+          "id": "p24",
+          "attributes": {}
+        },
+        {
+          "id": "p25",
+          "attributes": {}
+        },
+        {
+          "id": "p26",
+          "attributes": {}
+        },
+        {
+          "id": "p27",
+          "attributes": {}
+        },
+        {
+          "id": "p28",
+          "attributes": {}
+        },
+        {
+          "id": "p29",
+          "attributes": {}
+        }
+      ],
+      "groups": [
+        {
+          "id": "g0",
+          "size": 6
+        },
+        {
+          "id": "g1",
+          "size": 6
+        },
+        {
+          "id": "g2",
+          "size": 6
+        },
+        {
+          "id": "g3",
+          "size": 6
+        },
+        {
+          "id": "g4",
+          "size": 6
+        }
+      ],
+      "num_sessions": 10
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 1000000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 1.0,
+        "final_temperature": 0.0001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 0,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      },
+      "seed": 3005101
+    },
+    "initial_schedule": null,
+    "construction_seed_schedule": null
+  }
+}
