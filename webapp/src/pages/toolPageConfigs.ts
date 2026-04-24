@@ -15,7 +15,6 @@ import {
   type ToolPageCardContent,
   type ToolPageDefinition,
   type ToolPageFaqEntry,
-  type ToolPageAdvancedSectionContent,
   type ToolPageHeroContent,
   type ToolPageInventoryConfig,
   type ToolPageKey,
@@ -302,16 +301,6 @@ function assertSectionContent(value: unknown, path: string): ToolPageSectionCont
   };
 }
 
-function assertAdvancedSectionContent(value: unknown, path: string): ToolPageAdvancedSectionContent {
-  const section = assertSectionContent(value, path);
-
-  return {
-    ...section,
-    buttonLabel: assertNonEmptyString((value as { buttonLabel?: unknown }).buttonLabel, `${path}.buttonLabel`),
-    supportingText: assertNonEmptyString((value as { supportingText?: unknown }).supportingText, `${path}.supportingText`),
-  };
-}
-
 function validateLocalizedContent(path: string, value: unknown): ToolPageLocalizedContent {
   if (typeof value !== 'object' || value === null) {
     failConfig(`${path} must be an object.`);
@@ -325,7 +314,6 @@ function validateLocalizedContent(path: string, value: unknown): ToolPageLocaliz
     faqEntries: assertFaqEntries(record.faqEntries, `${path}.faqEntries`),
     chrome: assertChromeContent(record.chrome, `${path}.chrome`),
     useCasesSection: assertSectionContent(record.useCasesSection, `${path}.useCasesSection`),
-    advancedSection: assertAdvancedSectionContent(record.advancedSection, `${path}.advancedSection`),
   };
 }
 

@@ -7,13 +7,12 @@ const TRUST_BULLETS = [
 ];
 
 const OPTIMIZER_FEATURES = [
-  'Zusammen halten',
-  'Bestimmte Paare vermeiden',
-  'Mehrere Runden',
-  'Durchmischung maximieren',
-  'Geschlechter balancieren',
-  'Beliebige Attribute balancieren',
-  'Ergebnisse anpassen',
+  'Teilweise Anwesenheit',
+  'Session-spezifische Gruppen',
+  'Session-spezifische Regeln',
+  'Harte + weiche Constraints',
+  'Solver-Einstellungen',
+  'Detaillierte Ergebnisanalyse',
 ];
 
 const CHROME = {
@@ -57,33 +56,6 @@ const USE_CASES_SECTION = {
   ],
 };
 
-const ADVANCED_SECTION = {
-  title: 'Mehr Kontrolle nötig?',
-  description:
-    'GroupMixer ist mehr als ein einfacher Zufallsgenerator. Wenn einfache Gruppen nicht reichen, kannst du direkt erweiterte Regeln nutzen.',
-  cards: [
-    {
-      title: 'Bestimmte Personen zusammen halten',
-      body: 'Sorge dafür, dass Freunde, Kolleg:innen oder vorab definierte Paare immer in derselben Gruppe landen.',
-    },
-    {
-      title: 'Bestimmte Personen trennen',
-      body: 'Verhindere, dass bestimmte Personen gemeinsam in einer Gruppe landen.',
-    },
-    {
-      title: 'Wiederholungen vermeiden',
-      body: 'Plane mehrere Runden, ohne dass dieselben Personen immer wieder zusammenkommen.',
-    },
-    {
-      title: 'Gruppen nach Attributen balancieren',
-      body: 'Nutze CSV-Eingaben, um Gruppen nach Rolle, Skill, Abteilung oder beliebigen Spalten auszugleichen.',
-    },
-  ],
-  buttonLabel: 'Szenario-Editor öffnen',
-  supportingText:
-    'Im Szenario-Editor steuerst du Sessions, Regeln, Solver-Einstellungen und die Detailanalyse vollständig selbst.',
-};
-
 const FAQS = {
   free: {
     question: 'Ist GroupMixer kostenlos?',
@@ -108,7 +80,7 @@ const FAQS = {
   workspace: {
     question: 'Was ist der Szenario-Editor?',
     answer:
-      'Der Szenario-Editor bietet detaillierte Kontrolle über Sessions, Regeln, Solver-Einstellungen, das Weiterarbeiten mit früheren Ergebnissen und die vollständige Ergebnisanalyse.',
+      'Der Szenario-Editor ist für Funktionen gedacht, die diese Seite nicht abdeckt: Teilanwesenheit, session-spezifische Gruppensets und Regeln, harte vs. weiche Gewichtungen, Solver-Einstellungen, frühere Ergebnisse und detaillierte Analyse.',
   },
 };
 
@@ -139,16 +111,15 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'Mehr als nur Zufall gesucht?',
-      title: 'Nutze den vollständigen Gruppen-Optimierer.',
+      eyebrow: 'Brauchst du Kontrolle über diese Seite hinaus?',
+      title: 'Öffne den vollständigen Szenario-Editor.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Szenario-Editor öffnen',
-      supportingText: 'Deine Eingaben von dieser Seite werden direkt übernommen.',
+      supportingText: 'Nutze ihn für Möglichkeiten, die diese Seite nicht abdeckt. Deine Eingaben werden direkt übernommen.',
     },
     faqEntries,
     chrome: CHROME,
     useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
   };
 }
 

@@ -670,7 +670,7 @@ export function GroupTool({
           ) : null}
 
           <div ref={advancedOptionsPaneRef} className={canResizeToolColumns ? 'pl-2' : undefined}>
-            <AdvancedOptions controller={controller} onOpenFullEditor={() => onOpenAdvancedWorkspace('people')} />
+            <AdvancedOptions controller={controller} />
           </div>
         </div>
       </div>

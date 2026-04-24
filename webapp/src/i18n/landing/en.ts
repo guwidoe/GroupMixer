@@ -12,11 +12,11 @@ const HOME_FEATURE_SUMMARY =
 
 const OPTIMIZER_FEATURES = [
   'Partial attendance',
-  'Session-specific groups',
-  'Session-specific rules',
-  'Hard + soft constraints',
-  'Advanced attribute balancing',
-  'Solver tuning',
+  'Session-specific group sets',
+  'Session-specific constraints',
+  'Hard + soft constraint weights',
+  'Solver settings',
+  'Detailed result analysis',
 ];
 
 const CHROME = {
@@ -58,33 +58,6 @@ const USE_CASES_SECTION = {
       body: 'Plan icebreaker rounds where everyone meets someone new. Keep certain people together or apart.',
     },
   ],
-};
-
-const ADVANCED_SECTION = {
-  title: 'Need more control?',
-  description:
-    "GroupMixer is more than a random shuffler. When simple groups aren't enough, unlock advanced rules without switching tools.",
-  cards: [
-    {
-      title: 'Keep certain people together',
-      body: 'Ensure friends, co-workers, or pre-assigned pairs always land in the same group.',
-    },
-    {
-      title: 'Keep certain people apart',
-      body: 'Prevent specific people from being grouped together — useful for conflict avoidance or diversity.',
-    },
-    {
-      title: 'Avoid repeat pairings',
-      body: "Run multiple rounds where the same two people don't end up together again.",
-    },
-    {
-      title: 'Balance groups by attribute',
-      body: 'Use CSV input to balance groups by role, skill level, gender, department, or any custom column.',
-    },
-  ],
-  buttonLabel: 'Open scenario editor',
-  supportingText:
-    'The scenario editor gives you full control over sessions, constraints, solver settings, and detailed result analysis.',
 };
 
 const FAQS = {
@@ -140,7 +113,7 @@ const FAQS = {
   workspace: {
     question: 'When should I use the scenario editor?',
     answer:
-      'Use the scenario editor when the quick setup is not enough. It gives you more control over sessions, constraints, solver settings, previous results, and detailed analysis.',
+      'Use the scenario editor for controls this page does not expose, such as partial attendance, per-session group sets and constraints, hard vs. soft rule weights, solver settings, previous results, and detailed analysis.',
   },
 };
 
@@ -157,7 +130,6 @@ function createContent({
   trustBullets = TRUST_BULLETS,
   optimizerCta,
   useCasesSection = USE_CASES_SECTION,
-  advancedSection = ADVANCED_SECTION,
   faqEntries,
 }: {
   title: string;
@@ -169,7 +141,6 @@ function createContent({
   trustBullets?: string[];
   optimizerCta?: ToolPageLocalizedContent['optimizerCta'];
   useCasesSection?: ToolPageLocalizedContent['useCasesSection'];
-  advancedSection?: ToolPageLocalizedContent['advancedSection'];
   faqEntries: ToolPageLocalizedContent['faqEntries'];
 }): ToolPageLocalizedContent {
   return {
@@ -182,17 +153,16 @@ function createContent({
       trustBullets,
     },
     optimizerCta: optimizerCta ?? {
-      eyebrow: 'Need even more control?',
+      eyebrow: 'Need controls beyond this page?',
       title: 'Open the full scenario editor.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Open scenario editor',
       supportingText:
-        'Bring this setup with you, then fine-tune partial attendance, session-specific groups and constraints, hard vs. soft rules, and solver details.',
+        'Use this when you need controls the landing page does not expose. Your participants, groups, sessions, and rules come with you.',
     },
     faqEntries,
     chrome: CHROME,
     useCasesSection,
-    advancedSection,
   };
 }
 

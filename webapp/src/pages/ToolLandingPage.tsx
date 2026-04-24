@@ -1,4 +1,4 @@
-import { ArrowRight, Users } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
@@ -63,10 +63,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
   const useCasesGridClassName = config.sectionSet === 'technical'
     ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3'
     : 'mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3';
-  const advancedGridClassName = config.sectionSet === 'technical'
-    ? 'mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-4'
-    : 'mt-8 grid gap-4 sm:grid-cols-2';
-
   useEffect(() => {
     persistTelemetryAttribution(telemetryAttribution);
   }, [telemetryAttribution]);
@@ -203,41 +199,6 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
                   </p>
                 </div>
               ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="border-t px-4 pb-12 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
-          <div className="mx-auto max-w-6xl">
-            <h2 className="text-2xl font-semibold tracking-tight">{config.advancedSection.title}</h2>
-            <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
-              {config.advancedSection.description}
-            </p>
-
-            <div className={advancedGridClassName}>
-              {config.advancedSection.cards.map((item) => (
-                <div key={item.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
-                  <h3 className="text-base font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-                    {item.body}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8">
-              <button
-                type="button"
-                onClick={() => openAdvancedWorkspace()}
-                className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
-              >
-                <Users className="h-4 w-4" />
-                {config.advancedSection.buttonLabel}
-                <ArrowRight className="h-4 w-4" />
-              </button>
-              <p className="mt-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                {config.advancedSection.supportingText}
-              </p>
             </div>
           </div>
         </section>

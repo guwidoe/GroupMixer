@@ -7,13 +7,12 @@ const TRUST_BULLETS = [
 ];
 
 const OPTIMIZER_FEATURES = [
-  'Mantener juntos',
-  'Evitar emparejamientos',
-  'Múltiples rondas',
-  'Maximizar mezcla',
-  'Equilibrar géneros',
-  'Equilibrar cualquier atributo',
-  'Ajustar resultados',
+  'Asistencia parcial',
+  'Grupos por sesión',
+  'Reglas por sesión',
+  'Restricciones duras y flexibles',
+  'Ajustes del solver',
+  'Análisis detallado',
 ];
 
 const CHROME = {
@@ -57,33 +56,6 @@ const USE_CASES_SECTION = {
   ],
 };
 
-const ADVANCED_SECTION = {
-  title: '¿Necesitas más control?',
-  description:
-    'GroupMixer es más que un mezclador aleatorio. Cuando los grupos simples no bastan, desbloquea reglas avanzadas sin cambiar de herramienta.',
-  cards: [
-    {
-      title: 'Mantener a ciertas personas juntas',
-      body: 'Asegura que amistades, compañeros o parejas predefinidas queden siempre en el mismo grupo.',
-    },
-    {
-      title: 'Mantener a ciertas personas separadas',
-      body: 'Evita que determinadas personas queden en el mismo grupo, útil para conflictos o diversidad.',
-    },
-    {
-      title: 'Evitar repeticiones',
-      body: 'Ejecuta varias rondas sin que las mismas dos personas vuelvan a coincidir.',
-    },
-    {
-      title: 'Equilibrar grupos por atributo',
-      body: 'Usa CSV para equilibrar por rol, nivel, género, departamento o cualquier columna personalizada.',
-    },
-  ],
-  buttonLabel: 'Abrir editor de escenarios',
-  supportingText:
-    'El editor de escenarios te da control total sobre sesiones, restricciones, configuración del solver y análisis detallado.',
-};
-
 const FAQS = {
   free: {
     question: '¿GroupMixer es gratis?',
@@ -108,7 +80,7 @@ const FAQS = {
   workspace: {
     question: '¿Qué es el editor de escenarios?',
     answer:
-      'El editor de escenarios te da control detallado sobre sesiones, restricciones, configuración del solver, reutilización de resultados anteriores y análisis completo. Usa el mismo motor potente.',
+      'El editor de escenarios sirve para controles que esta página no expone: asistencia parcial, grupos y restricciones específicos por sesión, pesos duros o suaves, configuración del solver, resultados anteriores y análisis detallado.',
   },
 };
 
@@ -139,16 +111,15 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: '¿Quieres algo mejor que aleatorio?',
-      title: 'Usa el optimizador completo de grupos.',
+      eyebrow: '¿Necesitas controles que esta página no cubre?',
+      title: 'Abre el editor completo de escenarios.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Abrir editor de escenarios',
-      supportingText: 'Tus datos de esta página se mantienen cuando entras.',
+      supportingText: 'Úsalo para opciones más avanzadas. Tus participantes, grupos, sesiones y reglas se mantienen cuando entras.',
     },
     faqEntries,
     chrome: CHROME,
     useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
   };
 }
 

@@ -7,13 +7,12 @@ const TRUST_BULLETS = [
 ];
 
 const OPTIMIZER_FEATURES = [
-  '保持在一起',
-  '避免同组',
-  '多轮分组',
-  '最大化混合',
-  '性别平衡',
-  '按任意属性平衡',
-  '手动微调结果',
+  '部分出席',
+  '按场次设置小组',
+  '按场次设置规则',
+  '硬 / 软约束',
+  '求解器设置',
+  '详细结果分析',
 ];
 
 const CHROME = {
@@ -57,33 +56,6 @@ const USE_CASES_SECTION = {
   ],
 };
 
-const ADVANCED_SECTION = {
-  title: '需要更强的控制吗？',
-  description:
-    'GroupMixer 不只是一个随机打散工具。当简单分组不够用时，你可以直接启用更高级的规则。',
-  cards: [
-    {
-      title: '让某些人保持同组',
-      body: '确保朋友、同事或预先指定的搭档始终分在同一组。',
-    },
-    {
-      title: '让某些人不要同组',
-      body: '避免特定的人出现在同一组，适合处理冲突规避或多样性需求。',
-    },
-    {
-      title: '避免重复搭配',
-      body: '在多轮分组中减少同样两个人反复在一起的情况。',
-    },
-    {
-      title: '按属性平衡分组',
-      body: '通过 CSV 按角色、技能、部门或任意自定义列来平衡每个小组。',
-    },
-  ],
-  buttonLabel: '打开场景编辑器',
-  supportingText:
-    '场景编辑器可以完整控制轮次、约束、求解器设置以及更详细的结果分析。',
-};
-
 const FAQS = {
   free: {
     question: 'GroupMixer 免费吗？',
@@ -108,7 +80,7 @@ const FAQS = {
   workspace: {
     question: '什么是场景编辑器？',
     answer:
-      '场景编辑器提供更细致的控制，包括轮次、约束、求解器设置、基于历史结果继续优化，以及更完整的结果分析。',
+      '场景编辑器用于这页没有暴露的控制项，例如部分出席、按轮次设置不同分组集合和约束、硬/软规则权重、求解器设置、历史结果以及详细分析。',
   },
 };
 
@@ -139,16 +111,15 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: '想要比随机更好的分组？',
-      title: '使用完整的分组优化器。',
+      eyebrow: '需要超出此页面的控制吗？',
+      title: '打开完整场景编辑器。',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: '打开场景编辑器',
-      supportingText: '你在这个页面输入的内容可以直接带到场景编辑器。',
+      supportingText: '当你需要此页面未提供的高级控制时使用。参与者、小组、场次和规则会一起带过去。',
     },
     faqEntries,
     chrome: CHROME,
     useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
   };
 }
 

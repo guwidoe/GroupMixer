@@ -7,13 +7,12 @@ const TRUST_BULLETS = [
 ];
 
 const OPTIMIZER_FEATURES = [
-  'Garder ensemble',
-  'Éviter certains binômes',
-  'Plusieurs tours',
-  'Maximiser le brassage',
-  'Équilibrer les genres',
-  'Équilibrer n’importe quel attribut',
-  'Ajuster les résultats',
+  'Participation partielle',
+  'Groupes par session',
+  'Règles par session',
+  'Contraintes strictes et souples',
+  'Réglages du solveur',
+  'Analyse détaillée',
 ];
 
 const CHROME = {
@@ -57,33 +56,6 @@ const USE_CASES_SECTION = {
   ],
 };
 
-const ADVANCED_SECTION = {
-  title: 'Besoin de plus de contrôle ?',
-  description:
-    'GroupMixer est plus qu’un simple mélangeur aléatoire. Quand des groupes simples ne suffisent plus, activez des règles avancées sans changer d’outil.',
-  cards: [
-    {
-      title: 'Garder certaines personnes ensemble',
-      body: 'Assurez-vous que des amis, collègues ou binômes prédéfinis restent dans le même groupe.',
-    },
-    {
-      title: 'Garder certaines personnes séparées',
-      body: 'Évitez que certaines personnes se retrouvent dans le même groupe, utile pour les conflits ou la diversité.',
-    },
-    {
-      title: 'Éviter les répétitions',
-      body: 'Lancez plusieurs tours sans que les mêmes personnes se retrouvent encore ensemble.',
-    },
-    {
-      title: 'Équilibrer les groupes par attribut',
-      body: 'Utilisez un CSV pour équilibrer selon le rôle, le niveau, le genre, le service ou toute autre colonne personnalisée.',
-    },
-  ],
-  buttonLabel: 'Ouvrir l’éditeur de scénarios',
-  supportingText:
-    'L’éditeur de scénarios donne un contrôle complet sur les sessions, les contraintes, la configuration du solveur et l’analyse détaillée.',
-};
-
 const FAQS = {
   free: {
     question: 'GroupMixer est-il gratuit ?',
@@ -108,7 +80,7 @@ const FAQS = {
   workspace: {
     question: 'Qu’est-ce que l’éditeur de scénarios ?',
     answer:
-      'L’éditeur de scénarios offre un contrôle détaillé sur les sessions, les contraintes, la configuration du solveur, la réutilisation de résultats précédents et l’analyse complète. Il utilise le même moteur puissant.',
+      'L’éditeur de scénarios sert aux contrôles que cette page n’expose pas : présence partielle, groupes et contraintes propres à chaque session, pondération dure ou souple, réglages du solveur, résultats précédents et analyse détaillée.',
   },
 };
 
@@ -139,16 +111,15 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'Vous voulez mieux qu’un tirage aléatoire ?',
-      title: 'Utilisez l’optimiseur complet de groupes.',
+      eyebrow: 'Besoin de contrôles au-delà de cette page ?',
+      title: 'Ouvrez l’éditeur complet de scénario.',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Ouvrir l’éditeur de scénarios',
-      supportingText: 'Les informations saisies sur cette page vous suivent dans l’éditeur de scénarios.',
+      supportingText: 'Utilisez-le pour les options que cette page ne couvre pas. Vos participants, groupes, sessions et règles vous suivent.',
     },
     faqEntries,
     chrome: CHROME,
     useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
   };
 }
 

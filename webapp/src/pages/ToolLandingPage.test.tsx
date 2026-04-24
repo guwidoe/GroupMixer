@@ -493,12 +493,13 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument();
     expect(screen.getByText(/^pinned people$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/balance groups by attribute/i).length).toBeGreaterThan(0);
-    // Advanced options are expanded by default and the deeper CTA still exists below the tool.
+    // Advanced options are expanded by default and the scenario-editor bridge only describes controls beyond this page.
     expect(screen.getByLabelText(/keep together/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/keep apart/i)).toBeInTheDocument();
-    expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
+    expect(screen.getByText(/need controls beyond this page/i)).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /open the full scenario editor/i })).toBeInTheDocument();
-    expect(screen.getByText(/bring this setup with you, then fine-tune partial attendance/i)).toBeInTheDocument();
+    expect(screen.getByText(/use this when you need controls the landing page does not expose/i)).toBeInTheDocument();
+    expect(screen.queryByText(/groupmixer is more than a random shuffler/i)).not.toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /open scenario editor/i }).some((button) => button.className.includes('btn-primary'))).toBe(true);
   }, 10000);
 

@@ -67,11 +67,6 @@ export interface ToolPageSectionContent {
   cards: ToolPageCardContent[];
 }
 
-export interface ToolPageAdvancedSectionContent extends ToolPageSectionContent {
-  buttonLabel: string;
-  supportingText: string;
-}
-
 export interface ToolPageQuickSetupUiContent {
   participantsLabel: string;
   participantsHelp: string;
@@ -119,8 +114,6 @@ export interface ToolPageAdvancedOptionsUiContent {
   avoidPairingLabel: string;
   avoidPairingHelp: string;
   avoidPairingPlaceholder: string;
-  fullEditorPrompt: string;
-  fullEditorButtonLabel: string;
   balanceGroupsByAttributeLabel: string;
   balanceGroupsByAttributeHelp: string;
   balanceGroupsEmptyState: string;
@@ -180,7 +173,6 @@ export interface ToolPageLocalizedContent {
   faqEntries: ToolPageFaqEntry[];
   chrome: ToolPageChromeContent;
   useCasesSection: ToolPageSectionContent;
-  advancedSection: ToolPageAdvancedSectionContent;
 }
 
 export interface ToolPageExperimentConfig {

@@ -1,4 +1,4 @@
-import { ArrowRight, CircleHelp } from 'lucide-react';
+import { CircleHelp } from 'lucide-react';
 import { Tooltip } from '../Tooltip';
 import { AttributeDistributionField, getAttributeDistributionBuckets } from '../ui';
 import { FixedAssignmentsInput } from './FixedAssignmentsInput';
@@ -21,7 +21,6 @@ import type { ToolController } from './useToolSetup';
 
 interface AdvancedOptionsProps {
   controller: ToolController;
-  onOpenFullEditor?: () => void;
 }
 
 function SectionLabelWithTooltip({
@@ -52,7 +51,7 @@ function SectionLabelWithTooltip({
   );
 }
 
-export function AdvancedOptions({ controller, onOpenFullEditor }: AdvancedOptionsProps) {
+export function AdvancedOptions({ controller }: AdvancedOptionsProps) {
   const { draft, analysis } = controller;
   const labels = controller.ui.advancedOptions;
   const balanceGroups = buildGroups(analysis.participants.length, draft);
@@ -229,25 +228,6 @@ export function AdvancedOptions({ controller, onOpenFullEditor }: AdvancedOption
           </div>
         )}
 
-        {onOpenFullEditor && (
-          <div
-            className="rounded-2xl border px-4 py-4"
-            style={{ gridColumn: '1 / -1', borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
-          >
-            <p className="text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-              {labels.fullEditorPrompt}
-            </p>
-            <button
-              type="button"
-              onClick={onOpenFullEditor}
-              className="landing-action-button mt-3 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-medium"
-              style={{ borderColor: 'var(--border-primary)' }}
-            >
-              {labels.fullEditorButtonLabel}
-              <ArrowRight className="h-4 w-4" />
-            </button>
-          </div>
-        )}
     </div>
   );
 }

@@ -7,13 +7,12 @@ const TRUST_BULLETS = [
 ];
 
 const OPTIMIZER_FEATURES = [
-  '一部メンバー固定',
-  '同じ組を避ける',
-  '複数ラウンド',
-  '交流を最大化',
-  '性別バランス',
-  '任意の属性で均衡化',
-  '結果を調整',
+  '部分参加',
+  'セッション別グループ',
+  'セッション別ルール',
+  'ハード / ソフト制約',
+  'ソルバー設定',
+  '詳細な結果分析',
 ];
 
 const CHROME = {
@@ -57,33 +56,6 @@ const USE_CASES_SECTION = {
   ],
 };
 
-const ADVANCED_SECTION = {
-  title: 'さらに細かく制御したいなら！',
-  description:
-    'GroupMixer は単なるランダム班分けツールではありません。単純なグループ分けでは足りないときに、高度なルールを追加できます。',
-  cards: [
-    {
-      title: '特定の人を同じグループにする',
-      body: '友人・同僚・事前に決めたペアを、常に同じグループにできます。',
-    },
-    {
-      title: '特定の人を離す',
-      body: '特定の人同士が同じグループにならないように設定できます。',
-    },
-    {
-      title: '同じ組み合わせの繰り返しを避ける',
-      body: '複数ラウンドでも、同じ2人が何度も一緒になりにくくできます。',
-    },
-    {
-      title: '属性でグループを均衡化する',
-      body: 'CSV を使って、役割・スキル・部署など任意の列で均等になるように分けられます。',
-    },
-  ],
-  buttonLabel: 'シナリオエディターを開く',
-  supportingText:
-    'シナリオエディターでは、セッション、制約、ソルバー設定、詳細な結果分析まで細かく操作できます。',
-};
-
 const FAQS = {
   free: {
     question: 'GroupMixer は無料ですか？',
@@ -108,7 +80,7 @@ const FAQS = {
   workspace: {
     question: 'シナリオエディターとは何ですか？',
     answer:
-      'シナリオエディターでは、セッション、制約、ソルバー設定、過去の結果の再利用、詳細分析まで同じ強力なエンジンで扱えます。',
+      'シナリオエディターは、このページにない設定が必要な場合に使います。部分参加、セッション別のグループセットや制約、ハード/ソフト制約の重み、ソルバー設定、過去結果、詳細分析を扱えます。',
   },
 };
 
@@ -139,16 +111,15 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'グループ分けをカスタマイズしたいなら！',
-      title: 'シナリオエディターで解決',
+      eyebrow: 'このページを超える設定が必要ですか？',
+      title: 'フルシナリオエディターを開く',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'シナリオエディターを開く',
-      supportingText: 'このページで入力した内容はそのまま引き継がれます。',
+      supportingText: 'このページにない高度な設定に使います。参加者、グループ、セッション、ルールはそのまま引き継がれます。',
     },
     faqEntries,
     chrome: CHROME,
     useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
   };
 }
 

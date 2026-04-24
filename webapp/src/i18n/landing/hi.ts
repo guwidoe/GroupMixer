@@ -7,13 +7,12 @@ const TRUST_BULLETS = [
 ];
 
 const OPTIMIZER_FEATURES = [
-  'साथ रखें',
-  'कुछ जोड़ों से बचें',
-  'कई राउंड',
-  'अधिकतम मिक्सिंग',
-  'जेंडर बैलेंस',
-  'किसी भी एट्रिब्यूट से संतुलन',
-  'परिणाम समायोजित करें',
+  'Partial attendance',
+  'Session-specific groups',
+  'Session-specific rules',
+  'Hard + soft constraints',
+  'Solver settings',
+  'Detailed result analysis',
 ];
 
 const CHROME = {
@@ -57,33 +56,6 @@ const USE_CASES_SECTION = {
   ],
 };
 
-const ADVANCED_SECTION = {
-  title: 'और ज़्यादा नियंत्रण चाहिए?',
-  description:
-    'GroupMixer सिर्फ़ एक रैंडम शफ़लर नहीं है। जब साधारण ग्रुपिंग काफ़ी न हो, तो बिना टूल बदले एडवांस्ड नियम इस्तेमाल करें।',
-  cards: [
-    {
-      title: 'कुछ लोगों को साथ रखें',
-      body: 'दोस्तों, सहकर्मियों या पहले से तय जोड़ों को हमेशा एक ही ग्रुप में रखें।',
-    },
-    {
-      title: 'कुछ लोगों को अलग रखें',
-      body: 'कुछ खास लोगों को एक ही ग्रुप में आने से रोकें।',
-    },
-    {
-      title: 'दोहराए गए जोड़ों से बचें',
-      body: 'कई राउंड चलाएँ ताकि वही दो लोग बार-बार साथ न आएँ।',
-    },
-    {
-      title: 'एट्रिब्यूट के आधार पर ग्रुप संतुलित करें',
-      body: 'CSV मोड से रोल, स्किल, विभाग या किसी भी कस्टम कॉलम के आधार पर समूह संतुलित करें।',
-    },
-  ],
-  buttonLabel: 'Scenario Editor खोलें',
-  supportingText:
-    'Scenario Editor में सेशंस, constraints, solver settings और detailed analysis पर पूरा नियंत्रण मिलता है।',
-};
-
 const FAQS = {
   free: {
     question: 'क्या GroupMixer मुफ़्त है?',
@@ -108,7 +80,7 @@ const FAQS = {
   workspace: {
     question: 'Scenario Editor क्या है?',
     answer:
-      'Scenario Editor में sessions, constraints, solver settings, previous results का reuse और detailed result analysis मिलता है। यह वही शक्तिशाली solver engine इस्तेमाल करता है।',
+      'Scenario Editor उन controls के लिए है जो इस page पर नहीं हैं: partial attendance, session-specific group sets और constraints, hard/soft rule weights, solver settings, previous results और detailed analysis।',
   },
 };
 
@@ -139,16 +111,15 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'सिर्फ़ रैंडम से बेहतर चाहिए?',
-      title: 'पूरा ग्रुप ऑप्टिमाइज़र इस्तेमाल करें।',
+      eyebrow: 'इस पेज से आगे की controls चाहिए?',
+      title: 'पूरा Scenario Editor खोलें।',
       featureBullets: OPTIMIZER_FEATURES,
       buttonLabel: 'Scenario Editor खोलें',
-      supportingText: 'इस पेज पर आपकी भरी हुई जानकारी साथ लेकर जाती है।',
+      supportingText: 'जब इस पेज से ज़्यादा control चाहिए तब इस्तेमाल करें। Participants, groups, sessions और rules साथ चले जाते हैं।',
     },
     faqEntries,
     chrome: CHROME,
     useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
   };
 }
 
