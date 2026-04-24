@@ -573,16 +573,16 @@ export function GroupTool({
           <div className="leading-tight sm:hidden">
             <div className="truncate">
               <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{participantCount}</span>
-              {' '}
+              <span aria-hidden="true"> </span>
               {ui.quickSetup.peopleStatLabel.toLowerCase()}
               <span className="mx-1.5" style={{ color: 'var(--text-tertiary)' }} aria-hidden="true">·</span>
               <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{estimatedGroupCount}</span>
-              {' '}
+              <span aria-hidden="true"> </span>
               {ui.quickSetup.groupsStatLabel.toLowerCase()}
             </div>
-            <div className="truncate" style={{ color: 'var(--text-tertiary)' }}>
+            <div className="truncate text-center" style={{ color: 'var(--text-tertiary)' }}>
               {ui.quickSetup.approxSizeStatLabel}
-              {' '}
+              <span aria-hidden="true"> </span>
               <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{estimatedGroupSize}</span>
             </div>
           </div>
