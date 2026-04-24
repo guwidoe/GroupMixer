@@ -16,3 +16,4 @@
 {"type":"config","name":"Improve solver3 construction relative broad-suite score","metricName":"broad_relative_score","metricUnit":"","bestDirection":"lower"}
 {"run":98,"commit":"8971df0","metric":10.977119082,"metrics":{},"status":"keep","description":"Baseline for first relative metric formula with fixed zero-regression penalty","timestamp":1777066390065,"segment":7,"confidence":null,"iterationTokens":116}
 {"type":"config","name":"Improve solver3 construction relative broad-suite score","metricName":"broad_relative_score","metricUnit":"","bestDirection":"lower"}
+{"run":99,"commit":"457b49a","metric":1.111891305,"metrics":{},"status":"keep","description":"Baseline for softened relative broad-suite construction metric","timestamp":1777066462901,"segment":8,"confidence":null,"iterationTokens":116}
