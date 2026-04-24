@@ -22,9 +22,7 @@ import type { ToolController } from './useToolSetup';
 export type ToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
 const STICKY_GENERATE_CTA_SAFE_ZONE_PX = 96;
-const STICKY_GENERATE_STABLE_SCROLL_MAX_PX_PER_MS = 0.45;
-const STICKY_GENERATE_SCROLL_SETTLED_AGE_MS = 80;
-const STICKY_GENERATE_RETURN_MAX_SETTLE_MS = 240;
+const STICKY_GENERATE_SCROLL_SETTLED_AGE_MS = 180;
 const STICKY_GENERATE_RETURN_TARGET_MARGIN_PX = 16;
 
 interface ToolDisplaySession {
@@ -155,7 +153,7 @@ export function GroupTool({
   const stickyGenerateButtonRef = useRef<HTMLButtonElement | null>(null);
   const stickyGenerateAnimationTimeoutRef = useRef<number | null>(null);
   const stickyGenerateReturnDelayTimeoutRef = useRef<number | null>(null);
-  const stickyGenerateScrollSampleRef = useRef({ at: 0, velocity: 0, y: 0 });
+  const stickyGenerateScrollSampleRef = useRef({ at: 0 });
   const [showStickyGenerateButton, setShowStickyGenerateButton] = useState(false);
   const [renderStickyGenerateButton, setRenderStickyGenerateButton] = useState(false);
   const [stickyGenerateButtonStyle, setStickyGenerateButtonStyle] = useState<CSSProperties>({});
@@ -183,13 +181,8 @@ export function GroupTool({
       frameId = window.requestAnimationFrame(() => {
         frameId = null;
         const now = performance.now();
-        const scrollY = window.scrollY;
-        const previousScrollSample = stickyGenerateScrollSampleRef.current;
-        const elapsedMs = Math.max(now - previousScrollSample.at, 1);
         stickyGenerateScrollSampleRef.current = {
           at: now,
-          velocity: Math.abs(scrollY - previousScrollSample.y) / elapsedMs,
-          y: scrollY,
         };
         const rect = button.getBoundingClientRect();
         const advancedOptionsBottom = advancedOptionsPaneRef.current?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY;
@@ -201,11 +194,13 @@ export function GroupTool({
           && scenarioEditorCtaActionRect.top < window.innerHeight
           && scenarioEditorCtaActionRect.bottom > stickySafeZoneTop,
         );
-        setShowStickyGenerateButton(
-          rect.bottom < 0
-          && advancedOptionsBottom > 0
-          && !scenarioEditorCtaActionWouldBeCovered,
-        );
+        setShowStickyGenerateButton((wasShowing) => {
+          if (advancedOptionsBottom <= 0 || scenarioEditorCtaActionWouldBeCovered) {
+            return false;
+          }
+
+          return rect.bottom < 0 || (wasShowing && rect.top < STICKY_GENERATE_RETURN_TARGET_MARGIN_PX);
+        });
       });
     };
 
@@ -317,18 +312,15 @@ export function GroupTool({
       return;
     }
 
-    const returnStartedAt = performance.now();
-
     const animateBackWhenScrollSettles = () => {
       stickyGenerateReturnDelayTimeoutRef.current = null;
 
       const now = performance.now();
       const scrollSample = stickyGenerateScrollSampleRef.current;
       const scrollSampleAge = now - scrollSample.at;
-      const scrollIsSettled = scrollSample.velocity <= STICKY_GENERATE_STABLE_SCROLL_MAX_PX_PER_MS
-        || scrollSampleAge >= STICKY_GENERATE_SCROLL_SETTLED_AGE_MS;
+      const scrollIsSettled = scrollSampleAge >= STICKY_GENERATE_SCROLL_SETTLED_AGE_MS;
 
-      if (!scrollIsSettled && now - returnStartedAt < STICKY_GENERATE_RETURN_MAX_SETTLE_MS) {
+      if (!scrollIsSettled) {
         stickyGenerateReturnDelayTimeoutRef.current = window.setTimeout(animateBackWhenScrollSettles, 40);
         return;
       }
@@ -341,7 +333,7 @@ export function GroupTool({
         && targetRect.bottom <= window.innerHeight - STICKY_GENERATE_RETURN_TARGET_MARGIN_PX,
       );
 
-      if (!stickyRect || !targetRect || !targetIsComfortablyVisible || !scrollIsSettled) {
+      if (!stickyRect || !targetRect || !targetIsComfortablyVisible) {
         fadeOutStickyGenerateButton();
         return;
       }
