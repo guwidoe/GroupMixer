@@ -584,7 +584,7 @@ fn choose_group_assignment(score_matrix: &[Vec<f64>]) -> Vec<usize> {
     solve_max_weight_assignment(score_matrix)
 }
 
-fn solve_max_weight_assignment(score_matrix: &[Vec<f64>]) -> Vec<usize> {
+pub(super) fn solve_max_weight_assignment(score_matrix: &[Vec<f64>]) -> Vec<usize> {
     let row_count = score_matrix.len();
     if row_count == 0 {
         return Vec::new();
