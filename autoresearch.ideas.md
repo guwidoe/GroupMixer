@@ -37,4 +37,4 @@
 - Budget-guarded 2s warmup (only for construction budgets >= 4s): no failure but worse primary metric and Sailing.
 - Hard-filtering projection to high-attendance people: worsened constrained SGP sentinels; attendance should be a score signal, not a hard eligibility rule.
 - Skipping oracle when scaffold has zero raw repeat penalty: too broad; oracle geometry can still help the search basin.
-- Requiring dummy-free template candidates when available: caused transfer-attribute failure; dummy burden needs risk scoring, not a hard filter.
+- Requiring dummy-free template candidates when available: caused transfer-attribute failure; negative dummy assignment score also worsened constrained SGP, so dummy burden needs candidate/fill strategy rather than hard filtering or projection pressure.
