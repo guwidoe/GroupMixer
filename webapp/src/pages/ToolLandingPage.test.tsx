@@ -493,13 +493,12 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument();
     expect(screen.getByText(/^pinned people$/i)).toBeInTheDocument();
     expect(screen.getAllByText(/balance groups by attribute/i).length).toBeGreaterThan(0);
-    // Advanced options are expanded by default and the unified control section exists below the tool.
+    // Advanced options are expanded by default and the deeper CTA still exists below the tool.
     expect(screen.getByLabelText(/keep together/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/keep apart/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /need more control/i })).toBeInTheDocument();
-    expect(screen.getByText(/bring this setup with you and fine-tune rules/i)).toBeInTheDocument();
-    expect(screen.getByText(/plan session-specific rules/i)).toBeInTheDocument();
-    expect(screen.getByText(/tune constraints and solver settings/i)).toBeInTheDocument();
+    expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /open the full scenario editor/i })).toBeInTheDocument();
+    expect(screen.getByText(/bring this setup with you, then fine-tune partial attendance/i)).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: /open scenario editor/i }).some((button) => button.className.includes('btn-primary'))).toBe(true);
   }, 10000);
 

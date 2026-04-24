@@ -1,10 +1,11 @@
-import { ArrowRight, CircleHelp, Copy, Download, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowRight, CircleHelp, Copy, Download, RotateCcw, Sparkles, Users } from 'lucide-react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { DemoDataDropdown } from '../ScenarioEditor/DemoDataDropdown';
 import { Tooltip } from '../Tooltip';
 import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../ui';
 import { ResultsScheduleGrid } from '../ResultsView/ResultsScheduleGrid';
 import { interpolate } from '../../i18n/interpolate';
+import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import type { ResultsSessionData } from '../../services/results/buildResultsModel';
 import { nextAttributeColumnId, normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
@@ -25,6 +26,7 @@ interface ToolDisplaySession {
 }
 
 interface GroupToolProps {
+  config: ToolPageConfig;
   ui: ToolPageSharedUiContent;
   controller: ToolController;
   participantColumns: QuickSetupParticipantColumn[];
@@ -100,6 +102,7 @@ function SectionLabelWithTooltip({
 }
 
 export function GroupTool({
+  config,
   ui,
   controller,
   participantColumns,
@@ -136,6 +139,48 @@ export function GroupTool({
 }: GroupToolProps) {
   const { draft } = controller;
   const solvedSolution = controller.workspacePayload.solution ?? null;
+
+  const optimizerCtaCard = !controller.result ? (
+    <div
+      className="rounded-2xl border p-5 sm:p-6"
+      style={{
+        borderColor: 'var(--border-primary)',
+        backgroundColor: 'var(--bg-primary)',
+      }}
+    >
+      <div className="max-w-3xl">
+        <div className="text-sm font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--text-secondary)' }}>
+          {config.optimizerCta.eyebrow}
+        </div>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-[1.75rem]">
+          {config.optimizerCta.title}
+        </h2>
+
+        <div className="mt-4 flex flex-wrap gap-2 text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
+          {config.optimizerCta.featureBullets.map((feature) => (
+            <span key={feature} className="rounded-full px-3 py-1" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+              {feature}
+            </span>
+          ))}
+        </div>
+
+        <div className="mt-5 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onOpenAdvancedWorkspace(controller.result ? 'results' : 'people')}
+            className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold"
+          >
+            <Users className="h-4 w-4" />
+            {config.optimizerCta.buttonLabel}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+            {config.optimizerCta.supportingText}
+          </span>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   const resultsSection = controller.result ? (
     <div
@@ -629,6 +674,8 @@ export function GroupTool({
           </div>
         </div>
       </div>
+
+      {optimizerCtaCard && <div className="order-4">{optimizerCtaCard}</div>}
 
       {resultsSection}
     </>

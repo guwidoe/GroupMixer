@@ -10,6 +10,15 @@ const TRUST_BULLETS = [
 const HOME_FEATURE_SUMMARY =
   'Paste names to generate random, balanced groups. Keep people together or apart, balance by gender or skill, and create multiple rounds with minimal repeats.';
 
+const OPTIMIZER_FEATURES = [
+  'Partial attendance',
+  'Session-specific groups',
+  'Session-specific rules',
+  'Hard + soft constraints',
+  'Advanced attribute balancing',
+  'Solver tuning',
+];
+
 const CHROME = {
   expertWorkspaceLabel: 'Scenario editor',
   faqHeading: 'Frequently asked questions',
@@ -54,7 +63,7 @@ const USE_CASES_SECTION = {
 const ADVANCED_SECTION = {
   title: 'Need more control?',
   description:
-    "GroupMixer starts as a fast group generator, then grows into a full scenario editor when simple groups aren't enough. Bring this setup with you and fine-tune rules, sessions, constraints, balancing, and solver details without switching tools.",
+    "GroupMixer is more than a random shuffler. When simple groups aren't enough, unlock advanced rules without switching tools.",
   cards: [
     {
       title: 'Keep certain people together',
@@ -72,18 +81,10 @@ const ADVANCED_SECTION = {
       title: 'Balance groups by attribute',
       body: 'Use CSV input to balance groups by role, skill level, gender, department, or any custom column.',
     },
-    {
-      title: 'Plan session-specific rules',
-      body: 'Handle partial attendance, session-specific groups, and rules that only apply to certain rounds.',
-    },
-    {
-      title: 'Tune constraints and solver settings',
-      body: 'Move into hard and soft constraints, advanced balancing, solver tuning, and detailed result analysis.',
-    },
   ],
   buttonLabel: 'Open scenario editor',
   supportingText:
-    'Your participants, groups, sessions, and rules from this page come with you.',
+    'The scenario editor gives you full control over sessions, constraints, solver settings, and detailed result analysis.',
 };
 
 const FAQS = {
@@ -181,11 +182,12 @@ function createContent({
       trustBullets,
     },
     optimizerCta: optimizerCta ?? {
-      eyebrow: advancedSection.title,
-      title: 'Open the scenario editor.',
-      featureBullets: advancedSection.cards.map((card) => card.title),
-      buttonLabel: advancedSection.buttonLabel,
-      supportingText: advancedSection.supportingText,
+      eyebrow: 'Need even more control?',
+      title: 'Open the full scenario editor.',
+      featureBullets: OPTIMIZER_FEATURES,
+      buttonLabel: 'Open scenario editor',
+      supportingText:
+        'Bring this setup with you, then fine-tune partial attendance, session-specific groups and constraints, hard vs. soft rules, and solver details.',
     },
     faqEntries,
     chrome: CHROME,

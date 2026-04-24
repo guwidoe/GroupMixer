@@ -463,6 +463,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
 
   return (
     <GroupTool
+      config={config}
       ui={ui}
       controller={controller}
       participantColumns={participantColumns}
