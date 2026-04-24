@@ -6,7 +6,7 @@ import { Tooltip } from '../Tooltip';
 import type { DemoCaseWithMetrics } from './types';
 import { useOutsideClick } from '../../hooks';
 import { getButtonClassName } from '../ui';
-import type { ButtonSize } from '../ui';
+import type { ButtonSize, ButtonVariant } from '../ui';
 import { GENERATED_DEMO_CASE_ID, GENERATED_DEMO_CASE_NAME } from '../../services/demoScenarioGenerator';
 
 interface DemoDataDropdownProps {
@@ -16,7 +16,11 @@ interface DemoDataDropdownProps {
   collapsed?: boolean;
   triggerLabel?: string;
   triggerButtonSize?: ButtonSize;
+  triggerButtonVariant?: ButtonVariant;
   triggerClassName?: string;
+  triggerChevronClassName?: string;
+  showTriggerIcon?: boolean;
+  showTriggerChevron?: boolean;
   popupOwnerId?: string;
   loadCases?: () => Promise<DemoCaseWithMetrics[]>;
   includeGeneratedDemo?: boolean;
@@ -36,7 +40,11 @@ export function DemoDataDropdown({
   collapsed = false,
   triggerLabel = 'Demo Data',
   triggerButtonSize,
+  triggerButtonVariant,
   triggerClassName,
+  triggerChevronClassName,
+  showTriggerIcon = true,
+  showTriggerChevron = true,
   popupOwnerId,
   loadCases,
   includeGeneratedDemo = true,
@@ -197,6 +205,7 @@ export function DemoDataDropdown({
     </Tooltip>
   ) : (
     <button
+      type="button"
       onClick={() => setIsOpen((open) => !open)}
       onMouseEnter={() => setIsTriggerHovered(true)}
       onMouseLeave={() => setIsTriggerHovered(false)}
@@ -204,7 +213,7 @@ export function DemoDataDropdown({
         ? 'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors'
         : [
           getButtonClassName({
-            variant: variant === 'header' ? 'toolbar' : 'secondary',
+            variant: triggerButtonVariant ?? (variant === 'header' ? 'toolbar' : 'secondary'),
             size: triggerButtonSize ?? (variant === 'header' ? 'md' : 'lg'),
           }),
           triggerClassName,
@@ -220,6 +229,8 @@ export function DemoDataDropdown({
           ? isOpen || isTriggerHovered
             ? 'var(--bg-primary)'
             : 'transparent'
+          : triggerButtonVariant
+          ? undefined
           : isOpen
             ? 'var(--bg-tertiary)'
             : 'var(--bg-primary)',
@@ -237,18 +248,26 @@ export function DemoDataDropdown({
       aria-haspopup="menu"
       aria-label={triggerLabel}
     >
-      <Zap className="w-4 h-4 flex-shrink-0" style={{ color: variant === 'menu' ? 'var(--text-tertiary)' : undefined }} />
+      {showTriggerIcon ? (
+        <Zap className="w-4 h-4 flex-shrink-0" style={{ color: variant === 'menu' ? 'var(--text-tertiary)' : undefined }} />
+      ) : null}
       <span>{triggerLabel}</span>
-      <ChevronDown
-        className={`w-4 h-4 flex-shrink-0 ${variant === 'menu' ? 'ml-auto' : ''}`}
-        style={{ color: variant === 'menu' ? 'var(--text-tertiary)' : undefined }}
-      />
+      {showTriggerChevron ? (
+        <ChevronDown
+          className={[
+            triggerChevronClassName ?? 'h-4 w-4',
+            'flex-shrink-0',
+            variant === 'menu' ? 'ml-auto' : null,
+          ].filter(Boolean).join(' ')}
+          style={{ color: variant === 'menu' ? 'var(--text-tertiary)' : undefined }}
+        />
+      ) : null}
     </button>
   );
 
   return (
     <>
-      <div className="relative" ref={demoDropdownRef}>
+      <div className="relative flex items-center" ref={demoDropdownRef}>
         {trigger}
       </div>
 

@@ -390,7 +390,10 @@ export function GroupTool({
                     variant="default"
                     triggerLabel="Example data"
                     triggerButtonSize="sm"
+                    triggerButtonVariant="ghost"
                     triggerClassName="landing-example-data-trigger min-h-0 px-2.5 py-1 text-xs leading-none shadow-none"
+                    triggerChevronClassName="h-3 w-3"
+                    showTriggerIcon={false}
                     loadCases={loadLandingCompatibleDemoCasesWithMetrics}
                     includeGeneratedDemo={false}
                   />
@@ -571,7 +574,7 @@ export function GroupTool({
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl px-3 py-1.5 text-center text-sm" style={{ backgroundColor: 'var(--bg-secondary)' }}>
+            <div className="mt-1 grid grid-cols-3 gap-2 rounded-xl px-3 py-0.5 text-center text-sm" style={{ backgroundColor: 'var(--bg-secondary)' }}>
               <div>
                 <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{ui.quickSetup.peopleStatLabel}</div>
                 <div className="text-lg font-semibold">{participantCount}</div>
@@ -586,7 +589,7 @@ export function GroupTool({
               </div>
             </div>
 
-            <div className="mt-4 flex gap-2">
+            <div className="mt-3 flex gap-2">
               <button
                 type="button"
                 onClick={onGenerateGroups}

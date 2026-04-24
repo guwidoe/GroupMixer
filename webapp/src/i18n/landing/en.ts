@@ -172,7 +172,7 @@ function createContent({
       featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'Open scenario editor',
       supportingText:
-        'Use this when you need controls the landing page does not expose. Your participants, groups, sessions, and rules come with you.',
+        'Use this when you need controls this page does not expose. Your participants, rules, and configuration come with you.',
     },
     faqEntries,
     chrome: CHROME,
