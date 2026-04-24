@@ -7,7 +7,7 @@ export type LayoutElementKey =
   | 'pinned-people';
 
 const MANUAL_LAYOUT_STORAGE_PREFIX = 'groupmixer.landing-layout.manual-adjusted-at.v1';
-const MANUAL_LAYOUT_SUPPRESSION_MS = 24 * 60 * 60 * 1000;
+export const LAYOUT_AUTO_RESIZE_SUPPRESSION_MS = 24 * 60 * 60 * 1000;
 
 function getStorageKey(elementKey: LayoutElementKey) {
   return `${MANUAL_LAYOUT_STORAGE_PREFIX}:${elementKey}`;
@@ -38,7 +38,7 @@ function getSuppressionExpiresAt(elementKey: LayoutElementKey, now = Date.now())
     return null;
   }
 
-  const expiresAt = adjustedAt + MANUAL_LAYOUT_SUPPRESSION_MS;
+  const expiresAt = adjustedAt + LAYOUT_AUTO_RESIZE_SUPPRESSION_MS;
   return expiresAt > now ? expiresAt : null;
 }
 

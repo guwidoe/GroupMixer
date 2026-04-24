@@ -134,8 +134,6 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   const participantsPaneRef = useRef<HTMLDivElement>(null);
   const participantInputSlotRef = useRef<HTMLDivElement>(null);
   const advancedOptionsPaneRef = useRef<HTMLDivElement>(null);
-  const hasBalancedInitialToolColumnsRef = useRef(false);
-  const previousParticipantAutoResizeSuppressedRef = useRef(false);
   const lastNotifiedSolverErrorRef = useRef<string | null>(null);
   const toolDividerDragStateRef = useRef<ToolDividerDragState | null>(null);
   const [resultFormat, setResultFormat] = useState<ToolResultFormat>('cards');
@@ -203,7 +201,6 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   }, []);
 
   useEffect(() => {
-    hasBalancedInitialToolColumnsRef.current = false;
     setParticipantInputAutoOuterHeight(null);
   }, [config.locale, pageKey]);
 
@@ -283,17 +280,8 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   }, []);
 
   useLayoutEffect(() => {
-    if (!participantInputLayout.autoResizeSuppressed && previousParticipantAutoResizeSuppressedRef.current) {
-      hasBalancedInitialToolColumnsRef.current = false;
-    }
-    previousParticipantAutoResizeSuppressedRef.current = participantInputLayout.autoResizeSuppressed;
-
     if (participantInputLayout.autoResizeSuppressed) {
       setParticipantInputAutoOuterHeight((previous) => (previous == null ? previous : null));
-      return undefined;
-    }
-
-    if (hasBalancedInitialToolColumnsRef.current) {
       return undefined;
     }
 
@@ -301,10 +289,6 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
     const timeoutIds: number[] = [];
 
     const measure = () => {
-      if (hasBalancedInitialToolColumnsRef.current) {
-        return;
-      }
-
       const leftPane = participantsPaneRef.current;
       const participantInput = participantInputSlotRef.current;
       const rightPane = advancedOptionsPaneRef.current;
@@ -331,12 +315,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
       }, leftRect.top);
       const leftContentHeight = leftContentBottom - leftRect.top;
       const heightDelta = rightRect.height - leftContentHeight;
-      if (heightDelta <= 1) {
-        hasBalancedInitialToolColumnsRef.current = true;
-        return;
-      }
-
-      const nextOuterHeight = Math.min(inputRect.height + heightDelta, inputRect.width);
+      const nextOuterHeight = Math.min(Math.max(0, inputRect.height + heightDelta), inputRect.width);
       setParticipantInputAutoOuterHeight((previous) => (
         previous != null && Math.abs(previous - nextOuterHeight) < 0.5 ? previous : nextOuterHeight
       ));

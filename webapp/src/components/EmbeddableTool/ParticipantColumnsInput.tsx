@@ -3,6 +3,10 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import { flushSync } from 'react-dom';
 import type { QuickSetupParticipantColumn } from './types';
 import { splitParticipantColumnValues } from '../../utils/quickSetup/participantColumns';
+import {
+  readStoredParticipantColumnsLayout,
+  writeStoredParticipantColumnsLayout,
+} from './participantColumnsLayoutStorage';
 
 interface ParticipantColumnsInputProps {
   label: string;
@@ -189,9 +193,19 @@ export function ParticipantColumnsInput({
   outerRef,
   onManualLayoutAdjustment,
 }: ParticipantColumnsInputProps) {
-  const [height, setHeight] = useState(minHeight);
-  const [columnWidths, setColumnWidths] = useState<number[]>(() => columns.map((_, index) => (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH)));
-  const [ghostColumnWidth, setGhostColumnWidth] = useState(ATTRIBUTE_COLUMN_WIDTH);
+  const initialStoredLayout = useMemo(() => readStoredParticipantColumnsLayout(), []);
+  const initialStoredColumnWidths = initialStoredLayout?.columnWidths?.length === columns.length
+    ? initialStoredLayout.columnWidths
+    : null;
+  const [height, setHeight] = useState(() => (
+    autoResizeSuppressed && initialStoredLayout?.height != null
+      ? Math.max(minHeight, initialStoredLayout.height)
+      : minHeight
+  ));
+  const [columnWidths, setColumnWidths] = useState<number[]>(() => (
+    initialStoredColumnWidths ?? columns.map((_, index) => (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH))
+  ));
+  const [ghostColumnWidth, setGhostColumnWidth] = useState(initialStoredLayout?.ghostColumnWidth ?? ATTRIBUTE_COLUMN_WIDTH);
   const [pendingFocusRequest, setPendingFocusRequest] = useState<{ columnId: string; token: number } | null>(null);
   const focusRequestTokenRef = useRef(0);
   const dragStateRef = useRef<{
@@ -210,7 +224,9 @@ export function ParticipantColumnsInput({
   const fulfilledFocusRequestTokenRef = useRef<number | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const columnsContainerRef = useRef<HTMLDivElement | null>(null);
-  const hasCustomColumnWidthsRef = useRef(false);
+  const hasCustomColumnWidthsRef = useRef(Boolean(initialStoredColumnWidths));
+  const columnWidthsRef = useRef(columnWidths);
+  const ghostColumnWidthRef = useRef(ghostColumnWidth);
   const primaryBodyInputRef = useRef<HTMLDivElement | null>(null);
   const hasAppliedInitialBodyFocusRef = useRef(false);
 
@@ -284,12 +300,16 @@ export function ParticipantColumnsInput({
 
   const contentHeight = Math.max(height - HEADER_HEIGHT - 18, maxLineCount * LINE_HEIGHT + BODY_PADDING);
 
-  useLayoutEffect(() => {
-    if (!autoResizeSuppressed) {
-      hasCustomColumnWidthsRef.current = false;
-    }
+  useEffect(() => {
+    columnWidthsRef.current = columnWidths;
+  }, [columnWidths]);
 
-    if (autoResizeSuppressed || hasCustomColumnWidthsRef.current) {
+  useEffect(() => {
+    ghostColumnWidthRef.current = ghostColumnWidth;
+  }, [ghostColumnWidth]);
+
+  useLayoutEffect(() => {
+    if (hasCustomColumnWidthsRef.current) {
       return undefined;
     }
 
@@ -299,7 +319,7 @@ export function ParticipantColumnsInput({
     }
 
     const measure = () => {
-      if (autoResizeSuppressed || hasCustomColumnWidthsRef.current) {
+      if (hasCustomColumnWidthsRef.current) {
         return;
       }
 
@@ -336,7 +356,7 @@ export function ParticipantColumnsInput({
       window.removeEventListener('resize', measure);
       observer?.disconnect();
     };
-  }, [autoResizeSuppressed, columns.length]);
+  }, [columns.length]);
 
   const getColumnWidth = useCallback(
     (index: number) => columnWidths[index] ?? (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH),
@@ -355,19 +375,24 @@ export function ParticipantColumnsInput({
     const total = dragState.leftWidth + dragState.rightWidth;
     const nextLeftWidth = Math.min(total - rightMinWidth, Math.max(leftMinWidth, dragState.leftWidth + delta));
     const nextRightWidth = total - nextLeftWidth;
+    const nextColumnWidths = [...columnWidthsRef.current];
+    nextColumnWidths[dragState.index] = nextLeftWidth;
+    const nextGhostColumnWidth = dragState.rightIsGhost ? nextRightWidth : ghostColumnWidthRef.current;
 
-    setColumnWidths((previous) => {
-      const next = [...previous];
-      next[dragState.index] = nextLeftWidth;
-      if (!dragState.rightIsGhost) {
-        next[dragState.index + 1] = nextRightWidth;
-      }
-      return next;
-    });
+    if (!dragState.rightIsGhost) {
+      nextColumnWidths[dragState.index + 1] = nextRightWidth;
+    }
 
+    columnWidthsRef.current = nextColumnWidths;
+    ghostColumnWidthRef.current = nextGhostColumnWidth;
+    setColumnWidths(nextColumnWidths);
     if (dragState.rightIsGhost) {
       setGhostColumnWidth(nextRightWidth);
     }
+    writeStoredParticipantColumnsLayout({
+      columnWidths: nextColumnWidths,
+      ghostColumnWidth: nextGhostColumnWidth,
+    });
   }, []);
 
   const stopColumnResize = useCallback(() => {
@@ -380,7 +405,6 @@ export function ParticipantColumnsInput({
   const startColumnResize = useCallback((index: number, event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     hasCustomColumnWidthsRef.current = true;
-    onManualLayoutAdjustment?.();
     const rightIsGhost = index === columns.length - 1;
     const leftElement = event.currentTarget.previousElementSibling as HTMLDivElement | null;
     const rightElement = event.currentTarget.nextElementSibling as HTMLDivElement | null;
@@ -408,6 +432,7 @@ export function ParticipantColumnsInput({
 
     const nextHeight = Math.max(minHeight, dragState.startHeight + (event.clientY - dragState.startY));
     setHeight(nextHeight);
+    writeStoredParticipantColumnsLayout({ height: nextHeight });
   }, [minHeight]);
 
   const stopResize = useCallback(() => {
@@ -511,6 +536,7 @@ export function ParticipantColumnsInput({
     event.currentTarget.setPointerCapture?.(event.pointerId);
     hasManualHeightRef.current = true;
     onManualLayoutAdjustment?.();
+    writeStoredParticipantColumnsLayout({ height });
     resizeDragStateRef.current = {
       startY: event.clientY,
       startHeight: height,
