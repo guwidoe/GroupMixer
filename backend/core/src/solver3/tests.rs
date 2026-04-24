@@ -30,14 +30,6 @@ use crate::models::{
 };
 
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
-use super::construction::constraint_scenario_oracle::{
-    build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
-    extract_constraint_scenario_signals, merge_relabelled_oracle_into_scaffold,
-    relabel_oracle_schedule_to_block, select_oracleizable_flexible_block,
-    validate_pure_oracle_schedule, ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
-    OracleRelabelingResult, OracleizableFlexibleBlock, PureStructureOracle,
-    PureStructureOracleRequest, PureStructureOracleSchedule, Solver6PureStructureOracle,
-};
 use super::moves::{
     analyze_clique_swap, analyze_transfer, apply_clique_swap_runtime_preview,
     apply_swap_runtime_preview, apply_transfer_runtime_preview,
@@ -50,6 +42,14 @@ use super::oracle::check_drift;
 use super::runtime_state::RuntimeState;
 use super::scoring::recompute::recompute_oracle_score;
 use super::validation::invariants::validate_invariants;
+use crate::solver_support::construction::constraint_scenario_oracle::{
+    build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
+    extract_constraint_scenario_signals, merge_relabelled_oracle_into_scaffold,
+    relabel_oracle_schedule_to_block, select_oracleizable_flexible_block,
+    validate_pure_oracle_schedule, ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
+    OracleRelabelingResult, OracleizableFlexibleBlock, PureStructureOracle,
+    PureStructureOracleRequest, PureStructureOracleSchedule, Solver6PureStructureOracle,
+};
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -724,7 +724,7 @@ fn solver6_pure_structure_oracle_services_exact_small_block() {
 fn oracle_relabeling_improves_pair_alignment_and_aligns_groups() {
     let input = minimal_input();
     let compiled = CompiledProblem::compile(&input).unwrap();
-    let mut signals = super::construction::constraint_scenario_oracle::ConstraintScenarioSignals {
+    let mut signals = crate::solver_support::construction::constraint_scenario_oracle::ConstraintScenarioSignals {
         pair_pressure_by_session_pair: vec![0.0; compiled.num_sessions * compiled.num_pairs],
         placement_histogram_by_person_session_group: vec![
             0.0;

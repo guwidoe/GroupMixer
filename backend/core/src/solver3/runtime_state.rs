@@ -35,18 +35,19 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha12Rng;
 
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
-use super::construction::constraint_scenario_oracle::{
+use super::oracle::maybe_cross_check_runtime_state;
+use super::scoring::recompute::recompute_oracle_score;
+use super::validation::validate_invariants;
+use crate::solver_support::construction::constraint_scenario_oracle::{
     build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
     constraint_scenario_score, extract_constraint_scenario_signals,
     merge_relabelled_oracle_into_scaffold, relabel_oracle_schedule_to_block,
     repeat_pressure_is_relevant, select_oracleizable_flexible_block, ConstraintScenarioCandidate,
-    ConstraintScenarioCandidateSource, ConstraintScenarioOracleConstructionResult,
-    ConstraintScenarioOracleOutcomeKind, ConstraintScenarioOracleTelemetry, PureStructureOracle,
-    PureStructureOracleRequest, Solver6PureStructureOracle, DEFAULT_CONSTRAINT_SCENARIO_RUNS,
+    ConstraintScenarioCandidateSource, ConstraintScenarioEnsemble,
+    ConstraintScenarioOracleConstructionResult, ConstraintScenarioOracleOutcomeKind,
+    ConstraintScenarioOracleTelemetry, PureStructureOracle, PureStructureOracleRequest,
+    Solver6PureStructureOracle, DEFAULT_CONSTRAINT_SCENARIO_RUNS,
 };
-use super::oracle::maybe_cross_check_runtime_state;
-use super::scoring::recompute::recompute_oracle_score;
-use super::validation::validate_invariants;
 
 const DEFAULT_BASELINE_CONSTRUCTION_SEED: u64 = 42;
 
@@ -466,10 +467,7 @@ impl RuntimeState {
     fn build_constraint_scenario_ensemble(
         &self,
         effective_seed: u64,
-    ) -> Result<
-        super::construction::constraint_scenario_oracle::ConstraintScenarioEnsemble,
-        SolverError,
-    > {
+    ) -> Result<ConstraintScenarioEnsemble, SolverError> {
         let mut candidates = Vec::with_capacity(DEFAULT_CONSTRAINT_SCENARIO_RUNS);
         for run_idx in 0..DEFAULT_CONSTRAINT_SCENARIO_RUNS {
             let (source, construction) = constraint_scenario_run_strategy(run_idx);

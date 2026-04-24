@@ -2,10 +2,10 @@
 //!
 //! The design is documented in
 //! `backend/core/src/solver3/CONSTRAINT_SCENARIO_ORACLE_GUIDED_CONSTRUCTION_PLAN.md`.
-//! This module owns the data contracts for the pipeline phases. The current
-//! implementation includes the repeat-relevance gate and the repeat-blind CS
-//! ensemble; later tasks fill in signal extraction, scaffold masking, oracle
-//! block selection, relabeling, and merge.
+//! This module owns the data contracts and implementation for the current
+//! constraint-scenario oracle constructor. It is housed under `solver_support`
+//! so construction heuristics have one coherent home, even though the data model
+//! is still solver3-specific today.
 
 use std::collections::HashMap;
 

@@ -592,24 +592,30 @@ Make the heuristic measurable and safe to iterate on.
 
 ---
 
-## Suggested module layout
+## Module layout
 
-A likely first layout is:
+Construction heuristics now live under `solver_support/construction/`, with one directory per heuristic family:
 
-- `backend/core/src/solver3/construction/constraint_scenario_oracle.rs`
-- `backend/core/src/solver3/construction/cs_ensemble.rs`
-- `backend/core/src/solver3/construction/cs_signals.rs`
-- `backend/core/src/solver3/construction/oracle_block.rs`
-- `backend/core/src/solver3/construction/oracle_relabel.rs`
-- `backend/core/src/solver3/construction/oracle_merge.rs`
+- `backend/core/src/solver_support/construction/baseline/`
+- `backend/core/src/solver_support/construction/freedom_aware/`
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/`
 
-And minimal wiring changes in:
+The constraint-scenario oracle module may later split internally into focused files:
+
+- `cs_ensemble.rs`
+- `cs_signals.rs`
+- `oracle_block.rs`
+- `oracle_relabel.rs`
+- `oracle_merge.rs`
+- `punctured_template.rs`
+
+Wiring remains primarily in:
 
 - `backend/core/src/models.rs`
 - `backend/core/src/solver3/runtime_state.rs`
 - reporting / benchmark surfaces as needed
 
-The heuristic should remain a solver3-owned construction path rather than another shared baseline constructor in `solver_support/`.
+The heuristic is still solver3-oriented, but it lives next to the other construction heuristics so the construction surface has one coherent home.
 
 ---
 
