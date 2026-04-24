@@ -12,7 +12,8 @@ const HOME_FEATURE_SUMMARY =
 
 const OPTIMIZER_FEATURES = [
   'Partial attendance',
-  'Session-specific group sets',
+  'Session-specific group sizes',
+  'Group-specific capacities',
   'Session-specific constraints',
   'Soft constraints with configurable weights',
   'Pair meeting count targets',
@@ -114,7 +115,7 @@ const FAQS = {
   workspace: {
     question: 'When should I use the scenario editor?',
     answer:
-      'Use the scenario editor for controls this page does not expose, such as partial attendance, per-session group sets, session-specific constraints, soft constraints with configurable weights, pair meeting count targets, solver settings, previous results, and detailed analysis.',
+      'Use the scenario editor for controls this page does not expose, such as partial attendance, session-specific group sizes, group-specific capacities, session-specific constraints, soft constraints with configurable weights, pair meeting count targets, solver settings, previous results, and detailed analysis.',
   },
 };
 
