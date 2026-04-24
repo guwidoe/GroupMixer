@@ -190,10 +190,14 @@ impl ConstraintScenarioSignals {
     }
 }
 
-/// Rigid/flexible classification over the best CS scaffold.
+/// Structural hard-freeze mask over the best CS scaffold.
+///
+/// Entropy-derived CS rigidity is deliberately *not* a hard exclusion here: on unconstrained
+/// repeat-only SGP instances, repeat-blind constructor consensus is just constructor bias, not a
+/// real placement constraint. Rigidity remains a soft prior for block scoring/alignment/repair.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ConstraintScenarioScaffoldMask {
-    /// `[session_idx * num_people + person_idx] -> true when the placement should be protected`.
+    /// `[session_idx * num_people + person_idx] -> true when the placement must be protected`.
     pub(crate) frozen_by_person_session: Vec<bool>,
     pub(crate) rigid_placement_count: usize,
     pub(crate) flexible_placement_count: usize,
@@ -424,11 +428,11 @@ pub(crate) fn extract_constraint_scenario_signals(
     }
 }
 
-/// Classifies the best CS scaffold into protected rigid placements and flexible placements.
+/// Classifies the best CS scaffold into structurally frozen and flexible placements.
 pub(crate) fn build_constraint_scenario_scaffold_mask(
     compiled: &CompiledProblem,
     scaffold: &PackedSchedule,
-    signals: &ConstraintScenarioSignals,
+    _signals: &ConstraintScenarioSignals,
 ) -> ConstraintScenarioScaffoldMask {
     let mut frozen_by_person_session = vec![false; compiled.num_sessions * compiled.num_people];
     let mut rigid_placement_count = 0usize;
@@ -441,8 +445,7 @@ pub(crate) fn build_constraint_scenario_scaffold_mask(
             }
             let slot = compiled.person_session_slot(session_idx, person_idx);
             let frozen = compiled.immovable_group(session_idx, person_idx).is_some()
-                || participates_in_active_clique(compiled, session_idx, person_idx)
-                || signals.rigidity(compiled, session_idx, person_idx) >= 0.75;
+                || participates_in_active_clique(compiled, session_idx, person_idx);
             frozen_by_person_session[slot] = frozen;
             if frozen {
                 rigid_placement_count += 1;

@@ -109,6 +109,58 @@ fn minimal_input() -> ApiInput {
     }
 }
 
+fn pure_sgp_solver3_input(num_groups: usize, group_size: usize, num_sessions: usize) -> ApiInput {
+    let num_people = num_groups * group_size;
+    ApiInput {
+        problem: ProblemDefinition {
+            people: (0..num_people)
+                .map(|idx| Person {
+                    id: format!("p{idx}"),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                })
+                .collect(),
+            groups: (0..num_groups)
+                .map(|idx| Group {
+                    id: format!("g{idx}"),
+                    size: group_size as u32,
+                    session_sizes: None,
+                })
+                .collect(),
+            num_sessions: num_sessions as u32,
+        },
+        initial_schedule: None,
+        construction_seed_schedule: None,
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".into(),
+            weight: 1.0,
+        }],
+        constraints: vec![Constraint::RepeatEncounter(RepeatEncounterParams {
+            max_allowed_encounters: 1,
+            penalty_function: "squared".into(),
+            penalty_weight: 1000.0,
+        })],
+        solver: solver3_config(),
+    }
+}
+
+fn repeated_partition_schedule(
+    num_groups: usize,
+    group_size: usize,
+    num_sessions: usize,
+) -> PackedSchedule {
+    (0..num_sessions)
+        .map(|_| {
+            (0..num_groups)
+                .map(|group_idx| {
+                    let start = group_idx * group_size;
+                    (start..start + group_size).collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
 /// 6 people, 2 groups (3 each), 3 sessions with all major constraint types.
 fn representative_input() -> ApiInput {
     let mut people = Vec::new();
@@ -574,7 +626,7 @@ fn constraint_scenario_scaffold_mask_protects_rigid_and_immovable_placements() {
     let mask = build_constraint_scenario_scaffold_mask(&compiled, &schedule_a, &signals);
 
     assert!(mask.is_frozen(&compiled, 0, 0)); // immovable
-    assert!(mask.is_frozen(&compiled, 0, 1)); // rigid across ensemble
+    assert!(!mask.is_frozen(&compiled, 0, 1)); // entropy-only rigidity is a soft prior
     assert!(!mask.is_frozen(&compiled, 1, 1)); // split evenly across groups
     assert_eq!(
         mask.rigid_placement_count + mask.flexible_placement_count,
@@ -783,8 +835,30 @@ fn oracle_merge_injects_relabelled_contacts_into_flexible_scaffold() {
 }
 
 #[test]
-fn oracle_block_selector_declines_frozen_scaffold() {
-    let input = minimal_input();
+fn oracle_block_selector_declines_structurally_frozen_scaffold() {
+    let mut input = minimal_input();
+    input.constraints.extend([
+        Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p0".into(),
+            group_id: "g0".into(),
+            sessions: Some(vec![0, 1]),
+        }),
+        Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p1".into(),
+            group_id: "g0".into(),
+            sessions: Some(vec![0, 1]),
+        }),
+        Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p2".into(),
+            group_id: "g1".into(),
+            sessions: Some(vec![0, 1]),
+        }),
+        Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p3".into(),
+            group_id: "g1".into(),
+            sessions: Some(vec![0, 1]),
+        }),
+    ]);
     let compiled = CompiledProblem::compile(&input).unwrap();
     let schedule_a: PackedSchedule =
         vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
@@ -800,6 +874,47 @@ fn oracle_block_selector_declines_frozen_scaffold() {
     let mask = build_constraint_scenario_scaffold_mask(&compiled, &schedule_a, &signals);
 
     assert!(select_oracleizable_flexible_block(&compiled, &schedule_a, &signals, &mask).is_none());
+}
+
+#[test]
+fn pure_repeat_only_sgp_selects_the_whole_problem_as_oracle_block() {
+    let input = pure_sgp_solver3_input(8, 4, 10);
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let scaffold = repeated_partition_schedule(8, 4, 10);
+    let ensemble = build_constraint_scenario_ensemble(vec![ConstraintScenarioCandidate {
+        schedule: scaffold.clone(),
+        source: ConstraintScenarioCandidateSource::BaselineLegacy,
+        seed: 1,
+        cs_score: 0.0,
+        real_score: 0.0,
+    }])
+    .unwrap();
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &scaffold, &signals);
+
+    let block = select_oracleizable_flexible_block(&compiled, &scaffold, &signals, &mask)
+        .expect("pure SGP should expose the full instance as flexible");
+    assert_eq!(block.num_people(), 32);
+    assert_eq!(block.num_sessions(), 10);
+    assert_eq!(block.num_groups, 8);
+    assert_eq!(block.group_size, 4);
+}
+
+#[test]
+fn oracle_guided_constructor_returns_solver6_perfect_sgp_incumbent() {
+    let mut input = pure_sgp_solver3_input(8, 4, 10);
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    }
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&state).unwrap();
+    assert_eq!(state.repetition_penalty_raw, 0);
+    assert!(
+        state.total_score.abs() <= 1e-9,
+        "expected perfect SGP incumbent, got score {}",
+        state.total_score
+    );
 }
 
 #[test]
