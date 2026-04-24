@@ -5,6 +5,7 @@ pub(super) fn stop_reason_name(reason: StopReason) -> &'static str {
         StopReason::MaxIterationsReached => "max_iterations_reached",
         StopReason::TimeLimitReached => "time_limit_reached",
         StopReason::NoImprovementLimitReached => "no_improvement_limit_reached",
+        StopReason::NoImprovementTimeLimitReached => "no_improvement_time_limit_reached",
         StopReason::ProgressCallbackRequestedStop => "progress_callback_requested_stop",
         StopReason::OptimalScoreReached => "optimal_score_reached",
     }

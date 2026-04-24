@@ -19,6 +19,24 @@ pub enum BenchmarkCaseSelectionPolicy {
     AllowNonCanonical,
 }
 
+#[derive(
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd, Default,
+)]
+#[serde(rename_all = "snake_case")]
+pub enum BenchmarkTimeoutPolicy {
+    /// Derive per-case wall-clock runtime from canonical problem complexity.
+    #[default]
+    ComplexityBasedWallTime,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
+#[serde(rename_all = "snake_case")]
+pub enum BenchmarkSolverPolicy {
+    /// Run solver3 in a constructor/search split: constructor must produce an incumbent, then
+    /// normal solver3 search continues from that incumbent with runtime-scaled stagnation stop.
+    Solver3ConstructThenSearch,
+}
+
 impl BenchmarkCaseSelectionPolicy {
     pub fn default_for(
         benchmark_mode: &str,
@@ -136,14 +154,16 @@ pub enum BenchmarkSuiteClass {
     Representative,
     Stretch,
     Adversarial,
+    Mixed,
 }
 
 impl BenchmarkSuiteClass {
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 5] = [
         Self::Path,
         Self::Representative,
         Self::Stretch,
         Self::Adversarial,
+        Self::Mixed,
     ];
 
     pub fn as_str(self) -> &'static str {
@@ -152,6 +172,7 @@ impl BenchmarkSuiteClass {
             Self::Representative => "representative",
             Self::Stretch => "stretch",
             Self::Adversarial => "adversarial",
+            Self::Mixed => "mixed",
         }
     }
 }
@@ -187,6 +208,10 @@ pub struct BenchmarkSuiteManifest {
     pub default_move_policy: Option<MovePolicy>,
     #[serde(default)]
     pub default_iterations: Option<u64>,
+    #[serde(default)]
+    pub timeout_policy: Option<BenchmarkTimeoutPolicy>,
+    #[serde(default)]
+    pub solver_policy: Option<BenchmarkSolverPolicy>,
     #[serde(default)]
     pub default_warmup_iterations: Option<u64>,
     pub cases: Vec<BenchmarkCaseOverride>,
@@ -341,7 +366,7 @@ pub fn load_suite_manifest(path: impl AsRef<Path>) -> Result<LoadedBenchmarkSuit
     for case_override in manifest.cases.iter().filter(|case| case.enabled) {
         let case_path = suite_dir.join(&case_override.manifest);
         let case_manifest = load_case_manifest(&case_path)?;
-        if case_manifest.class != manifest.class {
+        if manifest.class != BenchmarkSuiteClass::Mixed && case_manifest.class != manifest.class {
             bail!(
                 "benchmark case {} has class {:?}, but suite {} expects {:?}",
                 case_manifest.id,
@@ -795,6 +820,78 @@ mod tests {
             .cases
             .iter()
             .all(|case| case.manifest.class == BenchmarkSuiteClass::Path));
+    }
+
+    #[test]
+    fn solver3_constructor_broad_suite_loads_mixed_case_selection() {
+        let suite = load_suite_manifest(Path::new("suites/solver3-constructor-broad.yaml"))
+            .expect("solver3 constructor broad suite should load");
+
+        assert_eq!(suite.manifest.suite_id, "solver3-constructor-broad");
+        assert_eq!(suite.manifest.class, BenchmarkSuiteClass::Mixed);
+        assert_eq!(
+            suite.manifest.timeout_policy,
+            Some(BenchmarkTimeoutPolicy::ComplexityBasedWallTime)
+        );
+        assert_eq!(
+            suite.manifest.solver_policy,
+            Some(BenchmarkSolverPolicy::Solver3ConstructThenSearch)
+        );
+        assert_eq!(suite.cases.len(), 35);
+        assert!(suite.manifest.default_solver_family.is_none());
+        assert!(suite.manifest.default_solver.is_none());
+        assert!(suite
+            .cases
+            .iter()
+            .any(|case| case.manifest.class == BenchmarkSuiteClass::Path));
+        assert!(suite
+            .cases
+            .iter()
+            .any(|case| case.manifest.class == BenchmarkSuiteClass::Representative));
+        assert!(suite
+            .cases
+            .iter()
+            .any(|case| case.manifest.class == BenchmarkSuiteClass::Adversarial));
+        assert!(suite
+            .cases
+            .iter()
+            .any(|case| case.manifest.class == BenchmarkSuiteClass::Stretch));
+        let case_ids: Vec<&str> = suite
+            .cases
+            .iter()
+            .map(|case| case.manifest.id.as_str())
+            .collect();
+        assert!(!case_ids.contains(&"stretch.sailing_trip_demo_real.benchmark_start"));
+        assert!(!case_ids.contains(&"stretch.social-golfer-32x8x9"));
+        assert!(!case_ids.contains(&"stretch.social-golfer-32x8x10"));
+        assert!(!case_ids.contains(&"stretch.social-golfer-36x9x10"));
+        assert!(!case_ids.contains(&"stretch.social-golfer-36x9x11"));
+        assert!(!case_ids.contains(&"stretch.social-golfer-40x10x10"));
+        assert!(case_ids.contains(&"stretch.social-golfer-32x8x15"));
+        assert!(case_ids.contains(&"stretch.social-golfer-32x8x15-constrained"));
+        assert!(case_ids.contains(&"stretch.social-golfer-32x8x20"));
+        assert!(case_ids.contains(&"stretch.social-golfer-32x8x20-constrained"));
+        assert!(case_ids.contains(&"stretch.social-golfer-40x10x11"));
+        assert!(case_ids.contains(&"stretch.social-golfer-49x7x8"));
+        assert!(case_ids.contains(&"stretch.social-golfer-49x7x8-constrained"));
+        assert!(case_ids.contains(&"stretch.social-golfer-169x13x14"));
+        assert!(case_ids.contains(&"stretch.social-golfer-169x13x14-constrained"));
+
+        for case in &suite.cases {
+            let input = case
+                .manifest
+                .input
+                .as_ref()
+                .expect("constructor broad suite should contain solve-level cases only");
+            gm_core::solver_support::complexity::evaluate_problem_complexity(input).unwrap_or_else(
+                |error| {
+                    panic!(
+                        "case {} should have a valid complexity score: {error}",
+                        case.manifest.id
+                    )
+                },
+            );
+        }
     }
 
     #[test]

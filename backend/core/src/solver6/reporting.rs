@@ -648,6 +648,7 @@ fn objective_status_for_metrics(
         "time_limit_reached" => StopReason::TimeLimitReached,
         "max_iterations_reached" => StopReason::MaxIterationsReached,
         "no_improvement_limit_reached" => StopReason::NoImprovementLimitReached,
+        "no_improvement_time_limit_reached" => StopReason::NoImprovementTimeLimitReached,
         "optimal_score_reached" => StopReason::OptimalScoreReached,
         _ => StopReason::NoImprovementLimitReached,
     };
@@ -1295,6 +1296,7 @@ fn stop_reason_label(reason: StopReason) -> &'static str {
         StopReason::MaxIterationsReached => "max_iterations_reached",
         StopReason::TimeLimitReached => "time_limit_reached",
         StopReason::NoImprovementLimitReached => "no_improvement_limit_reached",
+        StopReason::NoImprovementTimeLimitReached => "no_improvement_time_limit_reached",
         StopReason::ProgressCallbackRequestedStop => "progress_callback_requested_stop",
         StopReason::OptimalScoreReached => "optimal_score_reached",
     }

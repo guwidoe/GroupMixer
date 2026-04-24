@@ -1,3 +1,4 @@
+pub mod complexity;
 pub(crate) mod construction;
 pub mod validation;
 

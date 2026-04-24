@@ -1,0 +1,53 @@
+schema_version: 1
+suite_id: solver3-constructor-broad
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: allow_non_canonical
+class: mixed
+timeout_policy: complexity_based_wall_time
+solver_policy: solver3_construct_then_search
+title: Solver3 constructor broad case-selection suite
+description: Exhaustive development suite for the new solver3 constructor heuristic. The suite derives total runtime from problem complexity, allocates a construction phase, then runs normal solver3 search from the constructed incumbent.
+cases:
+  # Path/correctness activation cases.
+  - manifest: ../cases/path/clique_swap_partial_participation.json
+  - manifest: ../cases/path/construction_clique_immovable.json
+  - manifest: ../cases/path/search_driver_allowed_sessions.json
+  - manifest: ../cases/path/swap_forbidden_pair.json
+  - manifest: ../cases/path/transfer_pair_meeting.json
+
+  # Representative workshop/UI-sized cases.
+  - manifest: ../cases/representative/small_workshop_balanced.json
+  - manifest: ../cases/representative/small_workshop_constrained.json
+  - manifest: ../cases/representative/ui_demo_data.json
+  - manifest: ../cases/representative/ui_demo_data_no_attr.json
+
+  # Adversarial/correctness-heavy cases.
+  - manifest: ../cases/adversarial/clique_swap_functionality_35p.json
+  - manifest: ../cases/adversarial/constraint_heavy_partial_attendance.json
+  - manifest: ../cases/adversarial/correctness_hard_constraints_stress.json
+  - manifest: ../cases/adversarial/correctness_late_arrivals_early_departures.json
+  - manifest: ../cases/adversarial/correctness_session_aware_group_capacities.json
+  - manifest: ../cases/adversarial/correctness_session_specific_constraints.json
+  - manifest: ../cases/adversarial/transfer_attribute_balance_111p.json
+
+  # Stretch/complex objective cases.
+  - manifest: ../cases/stretch/benchmark_very_large.json
+  - manifest: ../cases/stretch/benchmark_very_large_constrained.json
+  - manifest: ../cases/stretch/google_cp_equivalent.json
+  - manifest: ../cases/stretch/immovable_person_anchor_12p_6g_10s.json
+  - manifest: ../cases/stretch/kirkman_schoolgirls_15x5x7.json
+  - manifest: ../cases/stretch/large_gender_immovable_110p.json
+  - manifest: ../cases/stretch/medium_multi_session.json
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+  - manifest: ../cases/stretch/sailing_trip_feature_dense.json
+  - manifest: ../cases/stretch/social_golfer_32x8x15.json
+  - manifest: ../cases/stretch/social_golfer_32x8x15_constrained.json
+  - manifest: ../cases/stretch/social_golfer_32x8x20.json
+  - manifest: ../cases/stretch/social_golfer_32x8x20_constrained.json
+  - manifest: ../cases/stretch/social_golfer_40x10x11.json
+  - manifest: ../cases/stretch/social_golfer_49x7x8.json
+  - manifest: ../cases/stretch/social_golfer_49x7x8_constrained.json
+  - manifest: ../cases/stretch/social_golfer_169x13x14.json
+  - manifest: ../cases/stretch/social_golfer_169x13x14_constrained.json
+  - manifest: ../cases/stretch/synthetic_partial_attendance_capacity_pressure_152p.json

@@ -1,0 +1,1133 @@
+{
+  "schema_version": 1,
+  "id": "stretch.social-golfer-169x13x14",
+  "class": "stretch",
+  "case_role": "helper",
+  "canonical_case_id": "stretch.social-golfer-32x8x10",
+  "purpose": "diagnostic_target.stretch.social_golfer_zero_repeat_encounters_169x13x14",
+  "provenance": "constructed_for_solver3_constructor_broad_suite_as_harder_social_golfer_coverage",
+  "declared_budget": {
+    "max_iterations": 40000000,
+    "time_limit_seconds": 300
+  },
+  "tags": [
+    "stretch",
+    "social-golfer",
+    "repeat-encounter",
+    "diagnostic",
+    "13x13x14",
+    "exact-bound",
+    "large-group-size",
+    "very-large",
+    "stress"
+  ],
+  "title": "Social Golfer 169x13x14 (13-13-14)",
+  "description": "Pure Social Golfer very large exact-bound affine-plane-style stress: 169 participants into 13 groups of 13 across 14 sessions with a meet-at-most-once target.",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "golfer_001",
+          "attributes": {
+            "name": "Golfer 001"
+          }
+        },
+        {
+          "id": "golfer_002",
+          "attributes": {
+            "name": "Golfer 002"
+          }
+        },
+        {
+          "id": "golfer_003",
+          "attributes": {
+            "name": "Golfer 003"
+          }
+        },
+        {
+          "id": "golfer_004",
+          "attributes": {
+            "name": "Golfer 004"
+          }
+        },
+        {
+          "id": "golfer_005",
+          "attributes": {
+            "name": "Golfer 005"
+          }
+        },
+        {
+          "id": "golfer_006",
+          "attributes": {
+            "name": "Golfer 006"
+          }
+        },
+        {
+          "id": "golfer_007",
+          "attributes": {
+            "name": "Golfer 007"
+          }
+        },
+        {
+          "id": "golfer_008",
+          "attributes": {
+            "name": "Golfer 008"
+          }
+        },
+        {
+          "id": "golfer_009",
+          "attributes": {
+            "name": "Golfer 009"
+          }
+        },
+        {
+          "id": "golfer_010",
+          "attributes": {
+            "name": "Golfer 010"
+          }
+        },
+        {
+          "id": "golfer_011",
+          "attributes": {
+            "name": "Golfer 011"
+          }
+        },
+        {
+          "id": "golfer_012",
+          "attributes": {
+            "name": "Golfer 012"
+          }
+        },
+        {
+          "id": "golfer_013",
+          "attributes": {
+            "name": "Golfer 013"
+          }
+        },
+        {
+          "id": "golfer_014",
+          "attributes": {
+            "name": "Golfer 014"
+          }
+        },
+        {
+          "id": "golfer_015",
+          "attributes": {
+            "name": "Golfer 015"
+          }
+        },
+        {
+          "id": "golfer_016",
+          "attributes": {
+            "name": "Golfer 016"
+          }
+        },
+        {
+          "id": "golfer_017",
+          "attributes": {
+            "name": "Golfer 017"
+          }
+        },
+        {
+          "id": "golfer_018",
+          "attributes": {
+            "name": "Golfer 018"
+          }
+        },
+        {
+          "id": "golfer_019",
+          "attributes": {
+            "name": "Golfer 019"
+          }
+        },
+        {
+          "id": "golfer_020",
+          "attributes": {
+            "name": "Golfer 020"
+          }
+        },
+        {
+          "id": "golfer_021",
+          "attributes": {
+            "name": "Golfer 021"
+          }
+        },
+        {
+          "id": "golfer_022",
+          "attributes": {
+            "name": "Golfer 022"
+          }
+        },
+        {
+          "id": "golfer_023",
+          "attributes": {
+            "name": "Golfer 023"
+          }
+        },
+        {
+          "id": "golfer_024",
+          "attributes": {
+            "name": "Golfer 024"
+          }
+        },
+        {
+          "id": "golfer_025",
+          "attributes": {
+            "name": "Golfer 025"
+          }
+        },
+        {
+          "id": "golfer_026",
+          "attributes": {
+            "name": "Golfer 026"
+          }
+        },
+        {
+          "id": "golfer_027",
+          "attributes": {
+            "name": "Golfer 027"
+          }
+        },
+        {
+          "id": "golfer_028",
+          "attributes": {
+            "name": "Golfer 028"
+          }
+        },
+        {
+          "id": "golfer_029",
+          "attributes": {
+            "name": "Golfer 029"
+          }
+        },
+        {
+          "id": "golfer_030",
+          "attributes": {
+            "name": "Golfer 030"
+          }
+        },
+        {
+          "id": "golfer_031",
+          "attributes": {
+            "name": "Golfer 031"
+          }
+        },
+        {
+          "id": "golfer_032",
+          "attributes": {
+            "name": "Golfer 032"
+          }
+        },
+        {
+          "id": "golfer_033",
+          "attributes": {
+            "name": "Golfer 033"
+          }
+        },
+        {
+          "id": "golfer_034",
+          "attributes": {
+            "name": "Golfer 034"
+          }
+        },
+        {
+          "id": "golfer_035",
+          "attributes": {
+            "name": "Golfer 035"
+          }
+        },
+        {
+          "id": "golfer_036",
+          "attributes": {
+            "name": "Golfer 036"
+          }
+        },
+        {
+          "id": "golfer_037",
+          "attributes": {
+            "name": "Golfer 037"
+          }
+        },
+        {
+          "id": "golfer_038",
+          "attributes": {
+            "name": "Golfer 038"
+          }
+        },
+        {
+          "id": "golfer_039",
+          "attributes": {
+            "name": "Golfer 039"
+          }
+        },
+        {
+          "id": "golfer_040",
+          "attributes": {
+            "name": "Golfer 040"
+          }
+        },
+        {
+          "id": "golfer_041",
+          "attributes": {
+            "name": "Golfer 041"
+          }
+        },
+        {
+          "id": "golfer_042",
+          "attributes": {
+            "name": "Golfer 042"
+          }
+        },
+        {
+          "id": "golfer_043",
+          "attributes": {
+            "name": "Golfer 043"
+          }
+        },
+        {
+          "id": "golfer_044",
+          "attributes": {
+            "name": "Golfer 044"
+          }
+        },
+        {
+          "id": "golfer_045",
+          "attributes": {
+            "name": "Golfer 045"
+          }
+        },
+        {
+          "id": "golfer_046",
+          "attributes": {
+            "name": "Golfer 046"
+          }
+        },
+        {
+          "id": "golfer_047",
+          "attributes": {
+            "name": "Golfer 047"
+          }
+        },
+        {
+          "id": "golfer_048",
+          "attributes": {
+            "name": "Golfer 048"
+          }
+        },
+        {
+          "id": "golfer_049",
+          "attributes": {
+            "name": "Golfer 049"
+          }
+        },
+        {
+          "id": "golfer_050",
+          "attributes": {
+            "name": "Golfer 050"
+          }
+        },
+        {
+          "id": "golfer_051",
+          "attributes": {
+            "name": "Golfer 051"
+          }
+        },
+        {
+          "id": "golfer_052",
+          "attributes": {
+            "name": "Golfer 052"
+          }
+        },
+        {
+          "id": "golfer_053",
+          "attributes": {
+            "name": "Golfer 053"
+          }
+        },
+        {
+          "id": "golfer_054",
+          "attributes": {
+            "name": "Golfer 054"
+          }
+        },
+        {
+          "id": "golfer_055",
+          "attributes": {
+            "name": "Golfer 055"
+          }
+        },
+        {
+          "id": "golfer_056",
+          "attributes": {
+            "name": "Golfer 056"
+          }
+        },
+        {
+          "id": "golfer_057",
+          "attributes": {
+            "name": "Golfer 057"
+          }
+        },
+        {
+          "id": "golfer_058",
+          "attributes": {
+            "name": "Golfer 058"
+          }
+        },
+        {
+          "id": "golfer_059",
+          "attributes": {
+            "name": "Golfer 059"
+          }
+        },
+        {
+          "id": "golfer_060",
+          "attributes": {
+            "name": "Golfer 060"
+          }
+        },
+        {
+          "id": "golfer_061",
+          "attributes": {
+            "name": "Golfer 061"
+          }
+        },
+        {
+          "id": "golfer_062",
+          "attributes": {
+            "name": "Golfer 062"
+          }
+        },
+        {
+          "id": "golfer_063",
+          "attributes": {
+            "name": "Golfer 063"
+          }
+        },
+        {
+          "id": "golfer_064",
+          "attributes": {
+            "name": "Golfer 064"
+          }
+        },
+        {
+          "id": "golfer_065",
+          "attributes": {
+            "name": "Golfer 065"
+          }
+        },
+        {
+          "id": "golfer_066",
+          "attributes": {
+            "name": "Golfer 066"
+          }
+        },
+        {
+          "id": "golfer_067",
+          "attributes": {
+            "name": "Golfer 067"
+          }
+        },
+        {
+          "id": "golfer_068",
+          "attributes": {
+            "name": "Golfer 068"
+          }
+        },
+        {
+          "id": "golfer_069",
+          "attributes": {
+            "name": "Golfer 069"
+          }
+        },
+        {
+          "id": "golfer_070",
+          "attributes": {
+            "name": "Golfer 070"
+          }
+        },
+        {
+          "id": "golfer_071",
+          "attributes": {
+            "name": "Golfer 071"
+          }
+        },
+        {
+          "id": "golfer_072",
+          "attributes": {
+            "name": "Golfer 072"
+          }
+        },
+        {
+          "id": "golfer_073",
+          "attributes": {
+            "name": "Golfer 073"
+          }
+        },
+        {
+          "id": "golfer_074",
+          "attributes": {
+            "name": "Golfer 074"
+          }
+        },
+        {
+          "id": "golfer_075",
+          "attributes": {
+            "name": "Golfer 075"
+          }
+        },
+        {
+          "id": "golfer_076",
+          "attributes": {
+            "name": "Golfer 076"
+          }
+        },
+        {
+          "id": "golfer_077",
+          "attributes": {
+            "name": "Golfer 077"
+          }
+        },
+        {
+          "id": "golfer_078",
+          "attributes": {
+            "name": "Golfer 078"
+          }
+        },
+        {
+          "id": "golfer_079",
+          "attributes": {
+            "name": "Golfer 079"
+          }
+        },
+        {
+          "id": "golfer_080",
+          "attributes": {
+            "name": "Golfer 080"
+          }
+        },
+        {
+          "id": "golfer_081",
+          "attributes": {
+            "name": "Golfer 081"
+          }
+        },
+        {
+          "id": "golfer_082",
+          "attributes": {
+            "name": "Golfer 082"
+          }
+        },
+        {
+          "id": "golfer_083",
+          "attributes": {
+            "name": "Golfer 083"
+          }
+        },
+        {
+          "id": "golfer_084",
+          "attributes": {
+            "name": "Golfer 084"
+          }
+        },
+        {
+          "id": "golfer_085",
+          "attributes": {
+            "name": "Golfer 085"
+          }
+        },
+        {
+          "id": "golfer_086",
+          "attributes": {
+            "name": "Golfer 086"
+          }
+        },
+        {
+          "id": "golfer_087",
+          "attributes": {
+            "name": "Golfer 087"
+          }
+        },
+        {
+          "id": "golfer_088",
+          "attributes": {
+            "name": "Golfer 088"
+          }
+        },
+        {
+          "id": "golfer_089",
+          "attributes": {
+            "name": "Golfer 089"
+          }
+        },
+        {
+          "id": "golfer_090",
+          "attributes": {
+            "name": "Golfer 090"
+          }
+        },
+        {
+          "id": "golfer_091",
+          "attributes": {
+            "name": "Golfer 091"
+          }
+        },
+        {
+          "id": "golfer_092",
+          "attributes": {
+            "name": "Golfer 092"
+          }
+        },
+        {
+          "id": "golfer_093",
+          "attributes": {
+            "name": "Golfer 093"
+          }
+        },
+        {
+          "id": "golfer_094",
+          "attributes": {
+            "name": "Golfer 094"
+          }
+        },
+        {
+          "id": "golfer_095",
+          "attributes": {
+            "name": "Golfer 095"
+          }
+        },
+        {
+          "id": "golfer_096",
+          "attributes": {
+            "name": "Golfer 096"
+          }
+        },
+        {
+          "id": "golfer_097",
+          "attributes": {
+            "name": "Golfer 097"
+          }
+        },
+        {
+          "id": "golfer_098",
+          "attributes": {
+            "name": "Golfer 098"
+          }
+        },
+        {
+          "id": "golfer_099",
+          "attributes": {
+            "name": "Golfer 099"
+          }
+        },
+        {
+          "id": "golfer_100",
+          "attributes": {
+            "name": "Golfer 100"
+          }
+        },
+        {
+          "id": "golfer_101",
+          "attributes": {
+            "name": "Golfer 101"
+          }
+        },
+        {
+          "id": "golfer_102",
+          "attributes": {
+            "name": "Golfer 102"
+          }
+        },
+        {
+          "id": "golfer_103",
+          "attributes": {
+            "name": "Golfer 103"
+          }
+        },
+        {
+          "id": "golfer_104",
+          "attributes": {
+            "name": "Golfer 104"
+          }
+        },
+        {
+          "id": "golfer_105",
+          "attributes": {
+            "name": "Golfer 105"
+          }
+        },
+        {
+          "id": "golfer_106",
+          "attributes": {
+            "name": "Golfer 106"
+          }
+        },
+        {
+          "id": "golfer_107",
+          "attributes": {
+            "name": "Golfer 107"
+          }
+        },
+        {
+          "id": "golfer_108",
+          "attributes": {
+            "name": "Golfer 108"
+          }
+        },
+        {
+          "id": "golfer_109",
+          "attributes": {
+            "name": "Golfer 109"
+          }
+        },
+        {
+          "id": "golfer_110",
+          "attributes": {
+            "name": "Golfer 110"
+          }
+        },
+        {
+          "id": "golfer_111",
+          "attributes": {
+            "name": "Golfer 111"
+          }
+        },
+        {
+          "id": "golfer_112",
+          "attributes": {
+            "name": "Golfer 112"
+          }
+        },
+        {
+          "id": "golfer_113",
+          "attributes": {
+            "name": "Golfer 113"
+          }
+        },
+        {
+          "id": "golfer_114",
+          "attributes": {
+            "name": "Golfer 114"
+          }
+        },
+        {
+          "id": "golfer_115",
+          "attributes": {
+            "name": "Golfer 115"
+          }
+        },
+        {
+          "id": "golfer_116",
+          "attributes": {
+            "name": "Golfer 116"
+          }
+        },
+        {
+          "id": "golfer_117",
+          "attributes": {
+            "name": "Golfer 117"
+          }
+        },
+        {
+          "id": "golfer_118",
+          "attributes": {
+            "name": "Golfer 118"
+          }
+        },
+        {
+          "id": "golfer_119",
+          "attributes": {
+            "name": "Golfer 119"
+          }
+        },
+        {
+          "id": "golfer_120",
+          "attributes": {
+            "name": "Golfer 120"
+          }
+        },
+        {
+          "id": "golfer_121",
+          "attributes": {
+            "name": "Golfer 121"
+          }
+        },
+        {
+          "id": "golfer_122",
+          "attributes": {
+            "name": "Golfer 122"
+          }
+        },
+        {
+          "id": "golfer_123",
+          "attributes": {
+            "name": "Golfer 123"
+          }
+        },
+        {
+          "id": "golfer_124",
+          "attributes": {
+            "name": "Golfer 124"
+          }
+        },
+        {
+          "id": "golfer_125",
+          "attributes": {
+            "name": "Golfer 125"
+          }
+        },
+        {
+          "id": "golfer_126",
+          "attributes": {
+            "name": "Golfer 126"
+          }
+        },
+        {
+          "id": "golfer_127",
+          "attributes": {
+            "name": "Golfer 127"
+          }
+        },
+        {
+          "id": "golfer_128",
+          "attributes": {
+            "name": "Golfer 128"
+          }
+        },
+        {
+          "id": "golfer_129",
+          "attributes": {
+            "name": "Golfer 129"
+          }
+        },
+        {
+          "id": "golfer_130",
+          "attributes": {
+            "name": "Golfer 130"
+          }
+        },
+        {
+          "id": "golfer_131",
+          "attributes": {
+            "name": "Golfer 131"
+          }
+        },
+        {
+          "id": "golfer_132",
+          "attributes": {
+            "name": "Golfer 132"
+          }
+        },
+        {
+          "id": "golfer_133",
+          "attributes": {
+            "name": "Golfer 133"
+          }
+        },
+        {
+          "id": "golfer_134",
+          "attributes": {
+            "name": "Golfer 134"
+          }
+        },
+        {
+          "id": "golfer_135",
+          "attributes": {
+            "name": "Golfer 135"
+          }
+        },
+        {
+          "id": "golfer_136",
+          "attributes": {
+            "name": "Golfer 136"
+          }
+        },
+        {
+          "id": "golfer_137",
+          "attributes": {
+            "name": "Golfer 137"
+          }
+        },
+        {
+          "id": "golfer_138",
+          "attributes": {
+            "name": "Golfer 138"
+          }
+        },
+        {
+          "id": "golfer_139",
+          "attributes": {
+            "name": "Golfer 139"
+          }
+        },
+        {
+          "id": "golfer_140",
+          "attributes": {
+            "name": "Golfer 140"
+          }
+        },
+        {
+          "id": "golfer_141",
+          "attributes": {
+            "name": "Golfer 141"
+          }
+        },
+        {
+          "id": "golfer_142",
+          "attributes": {
+            "name": "Golfer 142"
+          }
+        },
+        {
+          "id": "golfer_143",
+          "attributes": {
+            "name": "Golfer 143"
+          }
+        },
+        {
+          "id": "golfer_144",
+          "attributes": {
+            "name": "Golfer 144"
+          }
+        },
+        {
+          "id": "golfer_145",
+          "attributes": {
+            "name": "Golfer 145"
+          }
+        },
+        {
+          "id": "golfer_146",
+          "attributes": {
+            "name": "Golfer 146"
+          }
+        },
+        {
+          "id": "golfer_147",
+          "attributes": {
+            "name": "Golfer 147"
+          }
+        },
+        {
+          "id": "golfer_148",
+          "attributes": {
+            "name": "Golfer 148"
+          }
+        },
+        {
+          "id": "golfer_149",
+          "attributes": {
+            "name": "Golfer 149"
+          }
+        },
+        {
+          "id": "golfer_150",
+          "attributes": {
+            "name": "Golfer 150"
+          }
+        },
+        {
+          "id": "golfer_151",
+          "attributes": {
+            "name": "Golfer 151"
+          }
+        },
+        {
+          "id": "golfer_152",
+          "attributes": {
+            "name": "Golfer 152"
+          }
+        },
+        {
+          "id": "golfer_153",
+          "attributes": {
+            "name": "Golfer 153"
+          }
+        },
+        {
+          "id": "golfer_154",
+          "attributes": {
+            "name": "Golfer 154"
+          }
+        },
+        {
+          "id": "golfer_155",
+          "attributes": {
+            "name": "Golfer 155"
+          }
+        },
+        {
+          "id": "golfer_156",
+          "attributes": {
+            "name": "Golfer 156"
+          }
+        },
+        {
+          "id": "golfer_157",
+          "attributes": {
+            "name": "Golfer 157"
+          }
+        },
+        {
+          "id": "golfer_158",
+          "attributes": {
+            "name": "Golfer 158"
+          }
+        },
+        {
+          "id": "golfer_159",
+          "attributes": {
+            "name": "Golfer 159"
+          }
+        },
+        {
+          "id": "golfer_160",
+          "attributes": {
+            "name": "Golfer 160"
+          }
+        },
+        {
+          "id": "golfer_161",
+          "attributes": {
+            "name": "Golfer 161"
+          }
+        },
+        {
+          "id": "golfer_162",
+          "attributes": {
+            "name": "Golfer 162"
+          }
+        },
+        {
+          "id": "golfer_163",
+          "attributes": {
+            "name": "Golfer 163"
+          }
+        },
+        {
+          "id": "golfer_164",
+          "attributes": {
+            "name": "Golfer 164"
+          }
+        },
+        {
+          "id": "golfer_165",
+          "attributes": {
+            "name": "Golfer 165"
+          }
+        },
+        {
+          "id": "golfer_166",
+          "attributes": {
+            "name": "Golfer 166"
+          }
+        },
+        {
+          "id": "golfer_167",
+          "attributes": {
+            "name": "Golfer 167"
+          }
+        },
+        {
+          "id": "golfer_168",
+          "attributes": {
+            "name": "Golfer 168"
+          }
+        },
+        {
+          "id": "golfer_169",
+          "attributes": {
+            "name": "Golfer 169"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "group_01",
+          "size": 13
+        },
+        {
+          "id": "group_02",
+          "size": 13
+        },
+        {
+          "id": "group_03",
+          "size": 13
+        },
+        {
+          "id": "group_04",
+          "size": 13
+        },
+        {
+          "id": "group_05",
+          "size": 13
+        },
+        {
+          "id": "group_06",
+          "size": 13
+        },
+        {
+          "id": "group_07",
+          "size": 13
+        },
+        {
+          "id": "group_08",
+          "size": 13
+        },
+        {
+          "id": "group_09",
+          "size": 13
+        },
+        {
+          "id": "group_10",
+          "size": 13
+        },
+        {
+          "id": "group_11",
+          "size": 13
+        },
+        {
+          "id": "group_12",
+          "size": 13
+        },
+        {
+          "id": "group_13",
+          "size": 13
+        }
+      ],
+      "num_sessions": 14
+    },
+    "constraints": [],
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 2000000,
+        "time_limit_seconds": 300,
+        "no_improvement_iterations": 1000000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 50.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 10000,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      },
+      "seed": 1691314
+    },
+    "initial_schedule": null
+  }
+}

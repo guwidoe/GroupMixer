@@ -632,6 +632,8 @@ pub(crate) fn run(
                         .time_limit_seconds
                         .map(|limit| (limit as f64 - elapsed_before_chunk).max(0.0)),
                     stop_on_optimal_score: run_context.stop_on_optimal_score,
+                    runtime_scaled_no_improvement_stop: run_context
+                        .runtime_scaled_no_improvement_stop,
                 },
             )?;
 
@@ -876,6 +878,8 @@ pub(crate) fn run(
                         .time_limit_seconds
                         .map(|limit| (limit as f64 - elapsed_before_polish).max(0.0)),
                     stop_on_optimal_score: run_context.stop_on_optimal_score,
+                    runtime_scaled_no_improvement_stop: run_context
+                        .runtime_scaled_no_improvement_stop,
                 },
             )?;
             record_child_polish(

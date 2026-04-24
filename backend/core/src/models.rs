@@ -1359,6 +1359,10 @@ pub struct Solver3SearchDriverParams {
     /// Which outer search driver to run.
     #[serde(default)]
     pub mode: Solver3SearchDriverMode,
+    /// Optional solver3 wall-clock stagnation stop: after a best score is found at search time T,
+    /// stop when no further improvement appears within `(T * runtime_scale_factor) + grace_seconds`.
+    #[serde(default)]
+    pub runtime_scaled_no_improvement_stop: Solver3RuntimeScaledNoImprovementStopParams,
     /// Config for the steady-state memetic outer driver.
     #[serde(default)]
     pub steady_state_memetic: Solver3SteadyStateMemeticParams,
@@ -1371,6 +1375,39 @@ pub struct Solver3SearchDriverParams {
     /// Config for the rare multi-root balanced session inheritance outer driver.
     #[serde(default)]
     pub multi_root_balanced_session_inheritance: Solver3MultiRootBalancedSessionInheritanceParams,
+}
+
+/// Solver3 wall-clock stagnation stop that scales with the time of the current incumbent.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver3RuntimeScaledNoImprovementStopParams {
+    /// Enables the stop rule.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Multiplier applied to the current incumbent runtime before adding grace seconds.
+    #[serde(default = "default_solver3_runtime_scaled_no_improvement_runtime_scale_factor")]
+    pub runtime_scale_factor: f64,
+    /// Additive grace seconds after the scaled current incumbent runtime.
+    #[serde(default = "default_solver3_runtime_scaled_no_improvement_grace_seconds")]
+    pub grace_seconds: f64,
+}
+
+impl Default for Solver3RuntimeScaledNoImprovementStopParams {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            runtime_scale_factor:
+                default_solver3_runtime_scaled_no_improvement_runtime_scale_factor(),
+            grace_seconds: default_solver3_runtime_scaled_no_improvement_grace_seconds(),
+        }
+    }
+}
+
+fn default_solver3_runtime_scaled_no_improvement_runtime_scale_factor() -> f64 {
+    1.0
+}
+
+fn default_solver3_runtime_scaled_no_improvement_grace_seconds() -> f64 {
+    0.1
 }
 
 /// Config for the rare multi-root balanced session inheritance outer driver.
@@ -2201,6 +2238,7 @@ pub enum StopReason {
     MaxIterationsReached,
     TimeLimitReached,
     NoImprovementLimitReached,
+    NoImprovementTimeLimitReached,
     ProgressCallbackRequestedStop,
     OptimalScoreReached,
 }

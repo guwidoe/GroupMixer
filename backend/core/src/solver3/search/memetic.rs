@@ -201,6 +201,8 @@ pub(crate) fn run(
                     ),
                     time_limit_seconds: remaining_time_seconds,
                     stop_on_optimal_score: run_context.stop_on_optimal_score,
+                    runtime_scaled_no_improvement_stop: run_context
+                        .runtime_scaled_no_improvement_stop,
                 },
             )?;
             let polished_child = polish_outcome.search.best_state.clone();
