@@ -368,8 +368,44 @@ def render_layer(artifact, layer_key):
     return "".join(parts)
 
 
+def render_legends(quadratic_delta_max):
+    return f"""
+    <div class='legend-panel is-active' data-legend='overview'>
+      <span class='legend-chip'><span class='legend-swatch dual-legend-swatch' style='--linear-color:var(--tight);--squared-color:var(--tight)'></span>split square: upper-left linear, lower-right selected squared</span>
+      <span class='legend-chip'><span class='legend-swatch dual-legend-swatch' style='--linear-color:var(--tight);--squared-color:var(--miss)'></span>objectives differ on that week</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>unsupported / timeout / error / not-run</span>
+    </div>
+    <div class='legend-panel' data-legend='linear'>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--exact)'></span>exact zero-repeat linear result</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--tight)'></span>linear lower-bound tight</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--miss)'></span>linear miss</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>unsupported / timeout / error / not-run</span>
+    </div>
+    <div class='legend-panel' data-legend='squared'>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--exact)'></span>selected squared result has zero squared repeats</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--tight)'></span>selected squared result is instance-bound tight</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--miss)'></span>selected squared result misses instance bound</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>unsupported / timeout / error / not-run</span>
+    </div>
+    <div class='legend-panel' data-legend='agreement'>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--tight)'></span>same canonical schedule and both objectives tight</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--same)'></span>same/equivalent schedule but not both tight</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--improve)'></span>squared run improves without linear loss</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--tradeoff)'></span>squared run improves with linear tradeoff</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--miss)'></span>different / no useful squared improvement</span>
+    </div>
+    <div class='legend-panel' data-legend='quadratic_delta'>
+      <span class='legend-chip'><span class='legend-swatch' style='background:#008a22'></span>perfect quadratic-score agreement (|ΔQ| = 0)</span>
+      <span class='legend-chip'><span class='legend-swatch gradient-swatch'></span>nonzero |ΔQ|, pale green → yellow → red as difference grows</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>no comparison available</span>
+      <span class='legend-note'>Current max |ΔQ| scale: {format_delta(quadratic_delta_max)}</span>
+    </div>
+    """
+
+
 def render_html(artifact):
     config = artifact["config"]
+    quadratic_delta_max = max_quadratic_delta(artifact)
     embedded_json = json.dumps(artifact)
     return f"""<!DOCTYPE html>
 <html lang='en'>
@@ -440,8 +476,13 @@ def render_html(artifact):
     .tab-button.is-active {{ border-color: #22c55e; box-shadow: 0 0 0 1px rgba(34,197,94,0.35) inset; }}
     .layer-panel {{ display:none; }}
     .layer-panel.is-active {{ display:block; }}
+    .legend-panel {{ display: none; }}
+    .legend-panel.is-active {{ display: block; }}
     .legend-chip {{ display:inline-flex; align-items:center; gap:8px; margin-right:16px; margin-bottom:8px; }}
-    .legend-swatch {{ width:16px; height:16px; border-radius:4px; display:inline-block; border:1px solid rgba(255,255,255,0.15); }}
+    .legend-swatch {{ width:16px; height:16px; border-radius:4px; display:inline-block; border:1px solid rgba(255,255,255,0.15); flex: 0 0 auto; }}
+    .dual-legend-swatch {{ background: linear-gradient(135deg, var(--linear-color) 0 48%, rgba(15,23,42,0.9) 48% 52%, var(--squared-color) 52% 100%); }}
+    .gradient-swatch {{ width: 72px; background: linear-gradient(90deg, #d9f99d, #facc15, #ef4444); }}
+    .legend-note {{ color: var(--muted); font-size: 12px; }}
     .matrix-scroll {{ width: 100%; overflow-x: auto; overflow-y: visible; contain: layout paint; }}
     table.outer-matrix {{ border-collapse: collapse; width: max-content; min-width: 100%; table-layout: fixed; margin-bottom: 28px; }}
     table.outer-matrix th, table.outer-matrix td {{ border: 1px solid var(--line); padding: 6px; text-align: center; vertical-align: top; width: 86px; min-width: 86px; max-width: 86px; }}
@@ -584,12 +625,7 @@ def render_html(artifact):
   </section>
   <section class='legend-card'>
     <h2>Legend</h2>
-    <div>
-      <span class='legend-chip'><span class='legend-swatch' style='background:var(--exact)'></span>exact zero-repeat week</span>
-      <span class='legend-chip'><span class='legend-swatch' style='background:var(--tight)'></span>lower-bound-tight week</span>
-      <span class='legend-chip'><span class='legend-swatch' style='background:var(--miss)'></span>miss</span>
-      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>unsupported / timeout / error / not-run</span>
-    </div>
+    {render_legends(quadratic_delta_max)}
   </section>
   <div class='tab-row'>
     <button class='tab-button is-active' data-layer-target='overview'>{html.escape(LAYER_CONFIG['overview']['label'])}</button>
@@ -623,6 +659,7 @@ def render_html(artifact):
     const QUADRATIC_DELTA_MAX = {max_quadratic_delta(artifact)};
     const tabs = document.querySelectorAll('.tab-button');
     const panels = document.querySelectorAll('.layer-panel');
+    const legendPanels = document.querySelectorAll('.legend-panel');
     const backdrop = document.getElementById('detail-backdrop');
     const detailTitle = document.getElementById('detail-title');
     const detailSubtitle = document.getElementById('detail-subtitle');
@@ -633,6 +670,7 @@ def render_html(artifact):
       currentLayer = layer;
       tabs.forEach(btn => btn.classList.toggle('is-active', btn.dataset.layerTarget === layer));
       panels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.layer === layer));
+      legendPanels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.legend === layer));
     }}
 
     function statusClass(status) {{
@@ -934,7 +972,8 @@ def main():
     args = parser.parse_args()
 
     artifact = json.loads(args.artifact_json.read_text())
-    args.output_html.write_text(render_html(artifact))
+    html_text = render_html(artifact)
+    args.output_html.write_text("\n".join(line.rstrip() for line in html_text.splitlines()) + "\n")
 
 
 if __name__ == "__main__":
