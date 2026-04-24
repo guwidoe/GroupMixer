@@ -24,9 +24,11 @@ Latest pre-autoresearch broad run after the scaffold fallback and 30% constructi
 - Result: `35 cases: 35 ok / 0 failed`
 
 ## Metrics
-- **Primary**: `broad_log_score` (unitless, lower is better) — sum over all benchmark cases of `ln(1 + final_score)` after construction+search, plus `1000` per failed case. This balances very small and very large cases without letting one giant raw score dominate the whole objective. Failures are catastrophic.
-- **Secondary safety/operability monitors**:
+- **Primary**: `broad_relative_score` (unitless, lower is better) — weighted mean of each nonzero-baseline case's `final_score / baseline_final_score`, plus fixed penalties for zero-baseline regressions and failures. This makes a large case improvement such as Sailing `4000 -> 2000` count as a real 50% improvement instead of being mostly hidden by logarithms. Fixed per-case baselines are baked into `autoresearch.sh` from the current best constructor line (`b5fa1752`, run `solver3-constructor-broad-20260424T211040Z-6000a6ee`).
+- **Secondary normalized/safety/operability monitors**:
+  - `relative_score_mean` — weighted relative mean before penalties.
   - `failure_count`
+  - `zero_regression_count` — cases whose fixed baseline is zero but current final score is nonzero.
   - `runtime_seconds`
   - `construction_seconds_total`
 - **Key final-score sentinels** tracked every run:
@@ -42,6 +44,12 @@ Latest pre-autoresearch broad run after the scaffold fallback and 30% constructi
   - `score_no_template_clique_immovable`, `score_no_template_constraint_heavy_partial`, `score_no_template_late_arrivals` — oracle-inapplicable feasible-case sentinels.
 
 Raw aggregate/mean/max final score is intentionally not tracked because raw score scales are not comparable between benchmark cases. The full run report still contains every per-case score for deeper analysis.
+
+Primary-metric details:
+- Cases with nonzero fixed baselines contribute `score / baseline_score`.
+- Key sentinel cases have weight `2`; other nonzero-baseline cases have weight `1`.
+- Cases with zero fixed baseline are guards: staying at zero contributes nothing, but any nonzero score adds a fixed penalty.
+- Failed cases add a catastrophic fixed penalty.
 
 ## How to Run
 `./autoresearch.sh`
@@ -95,9 +103,12 @@ Benchmark/autoresearch support:
 - Fixed hard constraint semantics after construction.
 - Made no-template cases feasible: when repeat pressure exists but no meaningful pure-contact template can be generated, the constructor returns the scaffold with outcome `ConstraintScenarioOnly` instead of erroring.
 - Increased broad-suite construction budget fraction to 30%; this made the broad suite pass `35/35` after earlier 20% runs still had SGP construction-budget failures.
-- Kept a 3x penalty on oracle template scaffold disruption: broad log score improved from `103.92` to `101.93`, likely by preserving more search-friendly basins.
+- Kept a 3x penalty on oracle template scaffold disruption: under the old log metric, broad log score improved from `103.92` to `101.93`, likely by preserving more search-friendly basins.
+- Counted frozen placements as scaffold disruption when ranking oracle templates: old log metric improved further to `101.57`; this is the current fixed-baseline reference line for the new relative metric.
 - Tried 5x scaffold-disruption penalty: discarded; too conservative and worse than 3x.
-- Tried 2x scaffold-disruption penalty: discarded; improved Sailing/raw total but worsened broad log aggregate through small/constrained-case regressions.
+- Tried 2x and 2.5x scaffold-disruption penalties: discarded; sometimes improved Sailing/raw total but worsened old broad log aggregate through small/constrained-case regressions.
+- Tried merge-side outside-region and keep-bonus tweaks: improved some large raw scores but failed the old log aggregate.
+- Switched primary metric from `broad_log_score` to `broad_relative_score` because log scaling made large real-world improvements on nonzero-optimum cases too small.
 
 Current suspected improvement direction:
 
