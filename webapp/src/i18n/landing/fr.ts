@@ -10,9 +10,8 @@ const OPTIMIZER_FEATURES = [
   'Participation partielle',
   'Groupes par session',
   'Règles par session',
-  'Préférences souples ensemble/séparés',
+  'Contraintes souples à poids configurables',
   'Objectifs de rencontres par paire',
-  'Priorités des contraintes souples',
   'Réglages du solveur',
   'Analyse détaillée',
 ];
@@ -82,7 +81,7 @@ const FAQS = {
   workspace: {
     question: 'Qu’est-ce que l’éditeur de scénarios ?',
     answer:
-      'L’éditeur de scénarios sert aux contrôles que cette page n’expose pas : présence partielle, groupes propres à chaque session, contraintes propres à chaque session, préférences souples ensemble/séparés, objectifs de rencontres par paire, priorités des contraintes souples, réglages du solveur, résultats précédents et analyse détaillée.',
+      'L’éditeur de scénarios sert aux contrôles que cette page n’expose pas : présence partielle, groupes propres à chaque session, contraintes propres à chaque session, contraintes souples à poids configurables, objectifs de rencontres par paire, réglages du solveur, résultats précédents et analyse détaillée.',
   },
 };
 
