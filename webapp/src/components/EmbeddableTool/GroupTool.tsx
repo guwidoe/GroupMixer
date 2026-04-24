@@ -20,6 +20,8 @@ import type { ToolController } from './useToolSetup';
 
 export type ToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
+const STICKY_GENERATE_MOBILE_QUERY = '(max-width: 767px)';
+
 interface ToolDisplaySession {
   sessionNumber: number;
   groups: Array<{
@@ -159,7 +161,7 @@ export function GroupTool({
       return;
     }
 
-    const narrowViewportQuery = window.matchMedia('(max-width: 1023px)');
+    const mobileViewportQuery = window.matchMedia(STICKY_GENERATE_MOBILE_QUERY);
     let frameId: number | null = null;
 
     const updateVisibility = () => {
@@ -172,7 +174,7 @@ export function GroupTool({
         const rect = button.getBoundingClientRect();
         const advancedOptionsBottom = advancedOptionsPaneRef.current?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY;
         setShowStickyGenerateButton(
-          narrowViewportQuery.matches
+          mobileViewportQuery.matches
           && rect.bottom < 0
           && advancedOptionsBottom > 0,
         );
@@ -182,7 +184,7 @@ export function GroupTool({
     updateVisibility();
     window.addEventListener('scroll', updateVisibility, { passive: true });
     window.addEventListener('resize', updateVisibility);
-    narrowViewportQuery.addEventListener?.('change', updateVisibility);
+    mobileViewportQuery.addEventListener?.('change', updateVisibility);
 
     return () => {
       if (frameId !== null) {
@@ -191,7 +193,7 @@ export function GroupTool({
 
       window.removeEventListener('scroll', updateVisibility);
       window.removeEventListener('resize', updateVisibility);
-      narrowViewportQuery.removeEventListener?.('change', updateVisibility);
+      mobileViewportQuery.removeEventListener?.('change', updateVisibility);
     };
   }, [advancedOptionsPaneRef]);
 
@@ -792,7 +794,7 @@ export function GroupTool({
       </div>
 
       {renderStickyGenerateButton ? (
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t px-4 py-3 shadow-lg lg:hidden" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t px-4 py-3 shadow-lg md:hidden" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
           <div className="mx-auto flex max-w-xl items-center gap-3">
             <div
               className="min-w-0 flex-1 text-xs leading-tight transition-opacity duration-300"
