@@ -14,3 +14,5 @@
 {"run":96,"commit":"b5fa175","metric":103.097434518,"metrics":{},"status":"discard","description":"Tried lower disruption weight for clique-frozen anchors than immovables; regressed broad log","timestamp":1777065425933,"segment":6,"confidence":6.937277315472196,"iterationTokens":2369}
 {"run":97,"commit":"b5fa175","metric":0,"metrics":{},"status":"crash","description":"Aborted available-capacity-first template slot ordering experiment before result; discard unmeasured change","timestamp":1777065601330,"segment":6,"confidence":6.937277315472196,"iterationTokens":2208}
 {"type":"config","name":"Improve solver3 construction relative broad-suite score","metricName":"broad_relative_score","metricUnit":"","bestDirection":"lower"}
+{"run":98,"commit":"8971df0","metric":10.977119082,"metrics":{},"status":"keep","description":"Baseline for first relative metric formula with fixed zero-regression penalty","timestamp":1777066390065,"segment":7,"confidence":null,"iterationTokens":116}
+{"type":"config","name":"Improve solver3 construction relative broad-suite score","metricName":"broad_relative_score","metricUnit":"","bestDirection":"lower"}
