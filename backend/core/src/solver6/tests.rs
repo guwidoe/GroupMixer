@@ -83,6 +83,13 @@ fn exact_block_params(cache: Option<Solver6CacheParams>) -> Solver6Params {
     }
 }
 
+fn exact_block_params_with_local_timeout(local_search_time_limit_seconds: Option<u64>) -> Solver6Params {
+    Solver6Params {
+        local_search_time_limit_seconds,
+        ..exact_block_params(None)
+    }
+}
+
 #[test]
 fn solver6_hands_exact_cells_through_solver5_scaffold() {
     let input = pure_input(2, 2, 3);
@@ -133,6 +140,22 @@ fn solver6_exact_block_search_supports_non_linear_objective_modes() {
         .expect("solver6 should solve through the triangular deterministic hill-climb path");
     assert_eq!(result.schedule.len(), 20);
     assert!(result.repetition_penalty > 0);
+}
+
+#[test]
+fn solver6_local_search_uses_solver6_timeout_not_stop_condition_time_limit() {
+    let mut input = pure_input(8, 4, 20);
+    input.solver.stop_conditions.time_limit_seconds = Some(0);
+    input.solver.stop_conditions.max_iterations = Some(2);
+    input.solver.solver_params = SolverParams::Solver6(exact_block_params_with_local_timeout(None));
+
+    let result = SearchEngine::new(&input.solver)
+        .solve(&input)
+        .expect("solver6 should ignore generic stop-condition time limit for local search");
+    assert_ne!(
+        result.stop_reason.map(|reason| format!("{reason:?}")),
+        Some("TimeLimitReached".into())
+    );
 }
 
 #[test]

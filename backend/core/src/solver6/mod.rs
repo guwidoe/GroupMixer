@@ -115,6 +115,7 @@ fn execute_solver6_run(
     }
 
     let mut cache_hit = None;
+    let mut seed_runtime_micros = None;
     let (selection, seed_schedule) = if let Some(cache) = params.cache.as_ref() {
         match lookup_cache_incumbent(cache, &problem)? {
             Solver6CacheLookup::Hit(hit) if hit.entry.status.is_complete() => {
@@ -147,14 +148,16 @@ fn execute_solver6_run(
                 Solver6CacheMissPolicy::BuildFresh => {
                     let seed_started = Instant::now();
                     let selection = build_preferred_mixed_seed(input)?;
-                    let _seed_runtime_micros = seed_started.elapsed().as_micros() as u64;
+                    seed_runtime_micros = Some(seed_started.elapsed().as_micros() as u64);
                     let schedule = selection.seed.schedule.clone();
                     (Some(selection), schedule)
                 }
             },
         }
     } else {
+        let seed_started = Instant::now();
         let selection = build_preferred_mixed_seed(input)?;
+        seed_runtime_micros = Some(seed_started.elapsed().as_micros() as u64);
         let schedule = selection.seed.schedule.clone();
         (Some(selection), schedule)
     };
@@ -164,10 +167,12 @@ fn execute_solver6_run(
         params.pair_repeat_penalty_model,
     )?;
     let local_search_started = Instant::now();
+    let mut local_search_stop_conditions = configuration.stop_conditions.clone();
+    local_search_stop_conditions.time_limit_seconds = params.local_search_time_limit_seconds;
     let outcome = run_configured_local_search(
         &mut state,
         params.search_strategy,
-        &configuration.stop_conditions,
+        &local_search_stop_conditions,
         &problem,
         effective_seed,
     )?;
@@ -179,7 +184,7 @@ fn execute_solver6_run(
             outcome.best_schedule.clone(),
             cache_status_for_stop_reason(outcome.stop_reason),
             None,
-            None,
+            seed_runtime_micros,
             Some(local_search_runtime_micros),
         )?)
     } else {
