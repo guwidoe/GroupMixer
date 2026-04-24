@@ -43,7 +43,7 @@ export function ScenarioEditorCta({ content, onOpen }: ScenarioEditorCtaProps) {
           ))}
         </ul>
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2" data-scenario-editor-cta-action="true">
           <button
             type="button"
             onClick={onOpen}

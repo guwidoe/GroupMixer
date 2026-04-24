@@ -1,5 +1,6 @@
 import { ArrowRight, CircleHelp, Copy, Download, RotateCcw, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { DemoDataDropdown } from '../ScenarioEditor/DemoDataDropdown';
 import { Tooltip } from '../Tooltip';
@@ -20,7 +21,8 @@ import type { ToolController } from './useToolSetup';
 
 export type ToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
-const STICKY_GENERATE_MOBILE_QUERY = '(max-width: 767px)';
+const STICKY_GENERATE_NARROW_QUERY = '(max-width: 1023px)';
+const STICKY_GENERATE_CTA_SAFE_ZONE_PX = 96;
 
 interface ToolDisplaySession {
   sessionNumber: number;
@@ -153,6 +155,11 @@ export function GroupTool({
   const [renderStickyGenerateButton, setRenderStickyGenerateButton] = useState(false);
   const [stickyGenerateButtonStyle, setStickyGenerateButtonStyle] = useState<CSSProperties>({});
   const [showStickyGenerateMeta, setShowStickyGenerateMeta] = useState(false);
+  const [stickyPortalTarget, setStickyPortalTarget] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    setStickyPortalTarget(document.body);
+  }, []);
 
   useEffect(() => {
     const button = generateButtonRef.current;
@@ -161,7 +168,7 @@ export function GroupTool({
       return;
     }
 
-    const mobileViewportQuery = window.matchMedia(STICKY_GENERATE_MOBILE_QUERY);
+    const narrowViewportQuery = window.matchMedia(STICKY_GENERATE_NARROW_QUERY);
     let frameId: number | null = null;
 
     const updateVisibility = () => {
@@ -173,10 +180,19 @@ export function GroupTool({
         frameId = null;
         const rect = button.getBoundingClientRect();
         const advancedOptionsBottom = advancedOptionsPaneRef.current?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY;
+        const scenarioEditorCtaAction = advancedOptionsPaneRef.current?.querySelector<HTMLElement>('[data-scenario-editor-cta-action="true"]') ?? null;
+        const scenarioEditorCtaActionRect = scenarioEditorCtaAction?.getBoundingClientRect() ?? null;
+        const stickySafeZoneTop = window.innerHeight - STICKY_GENERATE_CTA_SAFE_ZONE_PX;
+        const scenarioEditorCtaActionWouldBeCovered = Boolean(
+          scenarioEditorCtaActionRect
+          && scenarioEditorCtaActionRect.top < window.innerHeight
+          && scenarioEditorCtaActionRect.bottom > stickySafeZoneTop,
+        );
         setShowStickyGenerateButton(
-          mobileViewportQuery.matches
+          narrowViewportQuery.matches
           && rect.bottom < 0
-          && advancedOptionsBottom > 0,
+          && advancedOptionsBottom > 0
+          && !scenarioEditorCtaActionWouldBeCovered,
         );
       });
     };
@@ -184,7 +200,7 @@ export function GroupTool({
     updateVisibility();
     window.addEventListener('scroll', updateVisibility, { passive: true });
     window.addEventListener('resize', updateVisibility);
-    mobileViewportQuery.addEventListener?.('change', updateVisibility);
+    narrowViewportQuery.addEventListener?.('change', updateVisibility);
 
     return () => {
       if (frameId !== null) {
@@ -193,7 +209,7 @@ export function GroupTool({
 
       window.removeEventListener('scroll', updateVisibility);
       window.removeEventListener('resize', updateVisibility);
-      mobileViewportQuery.removeEventListener?.('change', updateVisibility);
+      narrowViewportQuery.removeEventListener?.('change', updateVisibility);
     };
   }, [advancedOptionsPaneRef]);
 
@@ -499,6 +515,42 @@ export function GroupTool({
     </div>
   ) : null;
 
+  const stickyGenerateBar = renderStickyGenerateButton ? (
+    <div
+      data-sticky-generate-bar="true"
+      className="fixed inset-x-0 bottom-0 z-50 border-t px-4 py-3 shadow-lg"
+      style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+    >
+      <div className="mx-auto flex max-w-xl items-center gap-3">
+        <div
+          className="min-w-0 flex-1 text-xs leading-tight transition-opacity duration-300"
+          style={{
+            color: 'var(--text-secondary)',
+            opacity: showStickyGenerateMeta ? 1 : 0,
+          }}
+        >
+          <div className="truncate">
+            {participantCount} {ui.quickSetup.peopleStatLabel.toLowerCase()} · {estimatedGroupCount} {ui.quickSetup.groupsStatLabel.toLowerCase()}
+          </div>
+          <div className="truncate">
+            {ui.quickSetup.approxSizeStatLabel} {estimatedGroupSize}
+          </div>
+        </div>
+        <button
+          ref={stickyGenerateButtonRef}
+          type="button"
+          onClick={onGenerateGroups}
+          disabled={!controller.canGenerate || controller.isSolving}
+          className="btn-primary inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+          style={stickyGenerateButtonStyle}
+        >
+          <Sparkles className="h-4 w-4" />
+          {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   return (
     <>
       <div
@@ -793,37 +845,7 @@ export function GroupTool({
         </div>
       </div>
 
-      {renderStickyGenerateButton ? (
-        <div className="fixed inset-x-0 bottom-0 z-50 border-t px-4 py-3 shadow-lg md:hidden" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
-          <div className="mx-auto flex max-w-xl items-center gap-3">
-            <div
-              className="min-w-0 flex-1 text-xs leading-tight transition-opacity duration-300"
-              style={{
-                color: 'var(--text-secondary)',
-                opacity: showStickyGenerateMeta ? 1 : 0,
-              }}
-            >
-              <div className="truncate">
-                {participantCount} {ui.quickSetup.peopleStatLabel.toLowerCase()} · {estimatedGroupCount} {ui.quickSetup.groupsStatLabel.toLowerCase()}
-              </div>
-              <div className="truncate">
-                {ui.quickSetup.approxSizeStatLabel} {estimatedGroupSize}
-              </div>
-            </div>
-            <button
-              ref={stickyGenerateButtonRef}
-              type="button"
-              onClick={onGenerateGroups}
-              disabled={!controller.canGenerate || controller.isSolving}
-              className="btn-primary inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-              style={stickyGenerateButtonStyle}
-            >
-              <Sparkles className="h-4 w-4" />
-              {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
-            </button>
-          </div>
-        </div>
-      ) : null}
+      {stickyGenerateBar && stickyPortalTarget ? createPortal(stickyGenerateBar, stickyPortalTarget) : stickyGenerateBar}
 
       {resultsSection}
     </>
