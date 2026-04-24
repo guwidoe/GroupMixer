@@ -37,6 +37,18 @@ LAYER_CONFIG = {
         "status_key": "linear_status",
         "description": "Per-week absolute squared-score difference between the linear run and the squared run/selected squared result. Perfect agreement is saturated green; nonzero differences fade from pale green through yellow to red.",
     },
+    "linear_runtime": {
+        "label": "Linear runtime",
+        "summary_key": "linear_summary",
+        "status_key": "linear_status",
+        "description": "Per-week runtime of the linear-objective solver6 run. Fast runs are green; slower runs fade through yellow to red.",
+    },
+    "quadratic_runtime": {
+        "label": "Quadratic runtime",
+        "summary_key": "squared_summary",
+        "status_key": "squared_status",
+        "description": "Per-week runtime of the separate squared-objective solver6 run. Reused linear schedules are shown as zero-cost dark green; executed slower squared runs fade through yellow to red.",
+    },
 }
 
 
@@ -124,18 +136,60 @@ def max_quadratic_delta(artifact) -> int:
     return max_delta
 
 
-def delta_color(delta: int, max_delta: int) -> str:
-    if delta == 0:
+def gradient_color(value: float, max_value: float, *, exact_zero_distinct: bool = False) -> str:
+    if value == 0 and exact_zero_distinct:
         return "#008a22"
-    if max_delta <= 1:
-        t = 1.0
+    if max_value <= 0:
+        t = 0.0
     else:
-        t = math.log1p(delta) / math.log1p(max_delta)
-    # Nonzero deltas start at a pale yellow-green so exact agreement is visually distinct.
+        t = math.log1p(value) / math.log1p(max_value)
+    # Nonzero values start at a pale yellow-green so exact zero/agreement can stand out.
     start = (217, 249, 157)
     end = (239, 68, 68)
     channel = lambda idx: round(start[idx] + (end[idx] - start[idx]) * t)
     return f"rgb({channel(0)}, {channel(1)}, {channel(2)})"
+
+
+def delta_color(delta: int, max_delta: int) -> str:
+    return gradient_color(delta, max_delta, exact_zero_distinct=True)
+
+
+def runtime_seconds_for_week(week, runtime_layer):
+    if runtime_layer == "linear_runtime":
+        linear_run = week.get("linear_run") or {}
+        value = linear_run.get("runtime_seconds")
+        if value is None:
+            value = week.get("runtime_seconds")
+        return None if value is None else float(value)
+    if runtime_layer == "quadratic_runtime":
+        squared_run = week.get("squared_run")
+        if squared_run and squared_run.get("runtime_seconds") is not None:
+            return float(squared_run["runtime_seconds"])
+        if (week.get("selected_squared_result") or {}).get("source") == "linear_reused":
+            return 0.0
+        return None
+    raise ValueError(f"unknown runtime layer: {runtime_layer}")
+
+
+def max_runtime_seconds(artifact, runtime_layer):
+    max_runtime = 0.0
+    for matrix in artifact.get("matrices", []):
+        for cell in matrix.get("cells", []):
+            for week in cell.get("week_results", []):
+                runtime = runtime_seconds_for_week(week, runtime_layer)
+                if runtime is not None:
+                    max_runtime = max(max_runtime, runtime)
+    return max_runtime
+
+
+def format_runtime(seconds: float) -> str:
+    if seconds is None:
+        return "—"
+    if seconds >= 10:
+        return f"{seconds:.0f}s"
+    if seconds >= 1:
+        return f"{seconds:.1f}s"
+    return f"{seconds * 1000:.0f}ms"
 
 
 def build_cell_map(cells):
@@ -158,6 +212,8 @@ def render_week_grid(cell, layer_key, week_cap, quadratic_delta_max=0):
         return render_dual_objective_week_grid(cell, week_cap)
     if layer_key == "quadratic_delta":
         return render_quadratic_delta_week_grid(cell, week_cap, quadratic_delta_max)
+    if layer_key in {"linear_runtime", "quadratic_runtime"}:
+        return render_runtime_week_grid(cell, week_cap, layer_key, quadratic_delta_max)
     status_key = LAYER_CONFIG[layer_key]["status_key"]
     rows = max(1, math.ceil(week_cap / 10))
     total_slots = rows * 10
@@ -217,6 +273,34 @@ def render_quadratic_delta_week_grid(cell, week_cap, quadratic_delta_max):
             )
             parts.append(
                 "<span class='mini-week quadratic-delta-week' "
+                f"style='background:{color}' title='{html.escape(tooltip)}'></span>"
+            )
+        else:
+            parts.append("<span class='mini-week mini-week-empty'></span>")
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def render_runtime_week_grid(cell, week_cap, runtime_layer, max_runtime):
+    rows = max(1, math.ceil(week_cap / 10))
+    total_slots = rows * 10
+    parts = [f"<div class='mini-grid mini-grid-rows-{rows} runtime-grid'>"]
+    for index in range(total_slots):
+        if index < len(cell["week_results"]):
+            week = cell["week_results"][index]
+            runtime = runtime_seconds_for_week(week, runtime_layer)
+            if runtime is None:
+                tooltip = f"week {week['week']}: no runtime for {LAYER_CONFIG[runtime_layer]['label']}"
+                parts.append(
+                    f"<span class='mini-week week-unavailable' title='{html.escape(tooltip)}'></span>"
+                )
+                continue
+            color = gradient_color(runtime, max_runtime, exact_zero_distinct=True)
+            tooltip = f"week {week['week']}: runtime={format_runtime(runtime)} ({runtime:.6f}s)"
+            if runtime_layer == "quadratic_runtime" and runtime == 0:
+                tooltip += " | linear schedule reused; no separate squared run"
+            parts.append(
+                "<span class='mini-week runtime-week' "
                 f"style='background:{color}' title='{html.escape(tooltip)}'></span>"
             )
         else:
@@ -286,6 +370,25 @@ def render_outer_cell(cell, layer_key, week_cap, matrix_index, dense=False, quad
             "</span>"
         )
         title = f"{cell['g']}-{cell['p']} | max |ΔQ|={max_delta} | nonzero weeks={nonzero}"
+    elif layer_key in {"linear_runtime", "quadratic_runtime"}:
+        runtimes = [
+            runtime
+            for week in cell.get("week_results", [])
+            if (runtime := runtime_seconds_for_week(week, layer_key)) is not None
+        ]
+        max_runtime = max(runtimes) if runtimes else None
+        total_runtime = sum(runtimes)
+        headline = (
+            "<span class='headline-metric'>"
+            "<span class='headline-label'>max</span>"
+            f"<span>{html.escape(format_runtime(max_runtime))}</span>"
+            "</span>"
+            "<span class='headline-metric'>"
+            "<span class='headline-label'>Σ</span>"
+            f"<span>{html.escape(format_runtime(total_runtime))}</span>"
+            "</span>"
+        )
+        title = f"{cell['g']}-{cell['p']} | max runtime={format_runtime(max_runtime)} | total runtime={format_runtime(total_runtime)}"
     elif layer_key == "overview":
         linear_summary = cell.get("linear_summary", empty_summary())
         squared_summary = cell.get("squared_summary", empty_summary())
@@ -320,14 +423,14 @@ def render_outer_cell(cell, layer_key, week_cap, matrix_index, dense=False, quad
         f"<button class='outer-cell{' outer-cell-dense' if dense else ''}{' benchmark-skipped' if not cell['benchmark_eligible'] else ''}'"
         f" title='{html.escape(title)}'"
         f" data-matrix-index='{matrix_index}' data-g='{cell['g']}' data-p='{cell['p']}'>"
-        f"<div class='outer-cell-headline{' outer-cell-headline-overview' if layer_key in {'overview', 'quadratic_delta'} else ''}'>{headline if layer_key in {'overview', 'quadratic_delta'} else html.escape(headline)}</div>"
+        f"<div class='outer-cell-headline{' outer-cell-headline-overview' if layer_key in {'overview', 'quadratic_delta', 'linear_runtime', 'quadratic_runtime'} else ''}'>{headline if layer_key in {'overview', 'quadratic_delta', 'linear_runtime', 'quadratic_runtime'} else html.escape(headline)}</div>"
         f"<div class='outer-cell-subtitle'>{cell['g']}-{cell['p']}</div>"
         f"{render_week_grid(cell, layer_key, week_cap, quadratic_delta_max)}"
         "</button>"
     )
 
 
-def render_matrix_view(matrix, layer_key, week_cap, matrix_index, quadratic_delta_max=0):
+def render_matrix_view(matrix, layer_key, week_cap, matrix_index, layer_scale_max=0):
     bounds = matrix["bounds"]
     width = bounds["p_max"] - bounds["p_min"] + 1
     dense = width > 14
@@ -347,7 +450,7 @@ def render_matrix_view(matrix, layer_key, week_cap, matrix_index, quadratic_delt
         for p in range(bounds["p_min"], bounds["p_max"] + 1):
             cell = cell_map[(g, p)]
             parts.append(
-                f"<td>{render_outer_cell(cell, layer_key, week_cap, matrix_index, dense, quadratic_delta_max)}</td>"
+                f"<td>{render_outer_cell(cell, layer_key, week_cap, matrix_index, dense, layer_scale_max)}</td>"
             )
         parts.append("</tr>")
     parts.append("</tbody></table></div></section>")
@@ -357,18 +460,23 @@ def render_matrix_view(matrix, layer_key, week_cap, matrix_index, quadratic_delt
 def render_layer(artifact, layer_key):
     week_cap = artifact["config"]["week_cap"]
     config = LAYER_CONFIG[layer_key]
-    quadratic_delta_max = max_quadratic_delta(artifact) if layer_key == "quadratic_delta" else 0
+    if layer_key == "quadratic_delta":
+        layer_scale_max = max_quadratic_delta(artifact)
+    elif layer_key in {"linear_runtime", "quadratic_runtime"}:
+        layer_scale_max = max_runtime_seconds(artifact, layer_key)
+    else:
+        layer_scale_max = 0
     parts = [
         f"<section class='layer-panel' data-layer='{layer_key}'>",
         f"<p class='meta'>{html.escape(config['description'])}</p>",
     ]
     for idx, matrix in enumerate(artifact["matrices"]):
-        parts.append(render_matrix_view(matrix, layer_key, week_cap, idx, quadratic_delta_max))
+        parts.append(render_matrix_view(matrix, layer_key, week_cap, idx, layer_scale_max))
     parts.append("</section>")
     return "".join(parts)
 
 
-def render_legends(quadratic_delta_max):
+def render_legends(quadratic_delta_max, linear_runtime_max, quadratic_runtime_max):
     return f"""
     <div class='legend-panel is-active' data-legend='overview'>
       <span class='legend-chip'><span class='legend-swatch dual-legend-swatch' style='--linear-color:var(--tight);--squared-color:var(--tight)'></span>split square: upper-left linear, lower-right selected squared</span>
@@ -400,12 +508,26 @@ def render_legends(quadratic_delta_max):
       <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>no comparison available</span>
       <span class='legend-note'>Current max |ΔQ| scale: {format_delta(quadratic_delta_max)}</span>
     </div>
+    <div class='legend-panel' data-legend='linear_runtime'>
+      <span class='legend-chip'><span class='legend-swatch gradient-swatch'></span>linear-run runtime, green → yellow → red as runtime grows</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:#008a22'></span>near-zero runtime</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>no runtime available</span>
+      <span class='legend-note'>Current max linear runtime scale: {format_runtime(linear_runtime_max)}</span>
+    </div>
+    <div class='legend-panel' data-legend='quadratic_runtime'>
+      <span class='legend-chip'><span class='legend-swatch gradient-swatch'></span>separate squared-run runtime, green → yellow → red as runtime grows</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:#008a22'></span>linear schedule reused; no separate squared run</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>no squared runtime available</span>
+      <span class='legend-note'>Current max squared runtime scale: {format_runtime(quadratic_runtime_max)}</span>
+    </div>
     """
 
 
 def render_html(artifact):
     config = artifact["config"]
     quadratic_delta_max = max_quadratic_delta(artifact)
+    linear_runtime_max = max_runtime_seconds(artifact, "linear_runtime")
+    quadratic_runtime_max = max_runtime_seconds(artifact, "quadratic_runtime")
     embedded_json = json.dumps(artifact)
     return f"""<!DOCTYPE html>
 <html lang='en'>
@@ -463,7 +585,7 @@ def render_html(artifact):
     }}
     .config-item .label, .summary-card .label {{ display:block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }}
     .config-item .value, .summary-card .value {{ font-weight: 600; }}
-    .tab-row {{ display:flex; gap:10px; margin: 18px 0; }}
+    .tab-row {{ display:flex; flex-wrap: wrap; gap:10px; margin: 18px 0; }}
     .tab-button {{
       background: var(--panel-2);
       color: var(--text);
@@ -529,7 +651,7 @@ def render_html(artifact):
     .week-improve {{ background: var(--improve); }}
     .week-same {{ background: var(--same); }}
     .week-unavailable {{ background: var(--na); }}
-    .quadratic-delta-week {{ box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16); }}
+    .quadratic-delta-week, .runtime-week {{ box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16); }}
     .dual-mini-week, .dual-large-week {{
       aspect-ratio: 1 / 1;
       border-radius: 3px;
@@ -625,7 +747,7 @@ def render_html(artifact):
   </section>
   <section class='legend-card'>
     <h2>Legend</h2>
-    {render_legends(quadratic_delta_max)}
+    {render_legends(quadratic_delta_max, linear_runtime_max, quadratic_runtime_max)}
   </section>
   <div class='tab-row'>
     <button class='tab-button is-active' data-layer-target='overview'>{html.escape(LAYER_CONFIG['overview']['label'])}</button>
@@ -633,6 +755,8 @@ def render_html(artifact):
     <button class='tab-button' data-layer-target='squared'>{html.escape(LAYER_CONFIG['squared']['label'])}</button>
     <button class='tab-button' data-layer-target='agreement'>{html.escape(LAYER_CONFIG['agreement']['label'])}</button>
     <button class='tab-button' data-layer-target='quadratic_delta'>{html.escape(LAYER_CONFIG['quadratic_delta']['label'])}</button>
+    <button class='tab-button' data-layer-target='linear_runtime'>{html.escape(LAYER_CONFIG['linear_runtime']['label'])}</button>
+    <button class='tab-button' data-layer-target='quadratic_runtime'>{html.escape(LAYER_CONFIG['quadratic_runtime']['label'])}</button>
   </div>
   <div id='report-root'>
     {render_layer(artifact, 'overview')}
@@ -640,6 +764,8 @@ def render_html(artifact):
     {render_layer(artifact, 'squared')}
     {render_layer(artifact, 'agreement')}
     {render_layer(artifact, 'quadratic_delta')}
+    {render_layer(artifact, 'linear_runtime')}
+    {render_layer(artifact, 'quadratic_runtime')}
   </div>
   <div class='modal-backdrop' id='detail-backdrop'>
     <div class='detail-modal'>
@@ -656,7 +782,9 @@ def render_html(artifact):
   <script>
     const ARTIFACT = {embedded_json};
     const LAYER_CONFIG = {json.dumps(LAYER_CONFIG)};
-    const QUADRATIC_DELTA_MAX = {max_quadratic_delta(artifact)};
+    const QUADRATIC_DELTA_MAX = {quadratic_delta_max};
+    const LINEAR_RUNTIME_MAX = {linear_runtime_max};
+    const QUADRATIC_RUNTIME_MAX = {quadratic_runtime_max};
     const tabs = document.querySelectorAll('.tab-button');
     const panels = document.querySelectorAll('.layer-panel');
     const legendPanels = document.querySelectorAll('.legend-panel');
@@ -710,13 +838,39 @@ def render_html(artifact):
       return String(value);
     }}
 
-    function deltaColor(delta, maxDelta) {{
-      if (delta === 0) return '#008a22';
-      const t = maxDelta <= 1 ? 1 : Math.log1p(delta) / Math.log1p(maxDelta);
+    function formatRuntime(seconds) {{
+      if (seconds === null || seconds === undefined) return '—';
+      if (seconds >= 10) return `${{seconds.toFixed(0)}}s`;
+      if (seconds >= 1) return `${{seconds.toFixed(1)}}s`;
+      return `${{(seconds * 1000).toFixed(0)}}ms`;
+    }}
+
+    function gradientColor(value, maxValue, exactZeroDistinct = false) {{
+      if (value === 0 && exactZeroDistinct) return '#008a22';
+      const t = maxValue <= 0 ? 0 : Math.log1p(value) / Math.log1p(maxValue);
       const start = [217, 249, 157];
       const end = [239, 68, 68];
       const channel = idx => Math.round(start[idx] + (end[idx] - start[idx]) * t);
       return `rgb(${{channel(0)}}, ${{channel(1)}}, ${{channel(2)}})`;
+    }}
+
+    function deltaColor(delta, maxDelta) {{
+      return gradientColor(delta, maxDelta, true);
+    }}
+
+    function runtimeSecondsForWeek(week, layer) {{
+      if (layer === 'linear_runtime') {{
+        const value = (week.linear_run && week.linear_run.runtime_seconds) ?? week.runtime_seconds;
+        return value === null || value === undefined ? null : Number(value);
+      }}
+      if (layer === 'quadratic_runtime') {{
+        if (week.squared_run && week.squared_run.runtime_seconds !== null && week.squared_run.runtime_seconds !== undefined) {{
+          return Number(week.squared_run.runtime_seconds);
+        }}
+        if (week.selected_squared_result && week.selected_squared_result.source === 'linear_reused') return 0;
+        return null;
+      }}
+      return null;
     }}
 
     function quadraticDeltaInfo(week) {{
@@ -812,6 +966,16 @@ def render_html(artifact):
               html += `<div class="large-week quadratic-delta-week" style="background:${'{'}deltaColor(info.absDelta, QUADRATIC_DELTA_MAX){'}'}" title="${'{'}title{'}'}"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
             }} else {{
               html += `<div class="large-week week-unavailable" title="week ${'{'}week.week{'}'}: no quadratic comparison"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+            }}
+          }} else if (layer === 'linear_runtime' || layer === 'quadratic_runtime') {{
+            const runtime = runtimeSecondsForWeek(week, layer);
+            const maxRuntime = layer === 'linear_runtime' ? LINEAR_RUNTIME_MAX : QUADRATIC_RUNTIME_MAX;
+            if (runtime !== null) {{
+              const reused = layer === 'quadratic_runtime' && runtime === 0 ? ' | linear schedule reused; no separate squared run' : '';
+              const title = `week ${'{'}week.week{'}'}: runtime=${'{'}formatRuntime(runtime){'}'} (${'{'}runtime.toFixed(6){'}'}s)${'{'}reused{'}'}`;
+              html += `<div class="large-week runtime-week" style="background:${'{'}gradientColor(runtime, maxRuntime, true){'}'}" title="${'{'}title{'}'}"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+            }} else {{
+              html += `<div class="large-week week-unavailable" title="week ${'{'}week.week{'}'}: no runtime available"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
             }}
           }} else {{
             const status = week[statusKey] || 'not_run';
