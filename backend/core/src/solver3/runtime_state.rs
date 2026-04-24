@@ -393,7 +393,19 @@ impl RuntimeState {
             &signals,
             &scaffold_mask,
         );
-        let mut selected_schedule = best.schedule.clone();
+        let baseline_schedule = self.build_constructed_schedule(
+            effective_seed,
+            ConstructionHeuristicSelection::BaselineLegacy,
+        )?;
+        let baseline_score = self
+            .score_constructed_schedule(&baseline_schedule)?
+            .total_score;
+        let mut selected_schedule = baseline_schedule;
+        let mut selected_score = baseline_score;
+        if best.real_score < selected_score - 1e-9 {
+            selected_schedule = best.schedule.clone();
+            selected_score = best.real_score;
+        }
         let mut outcome = ConstraintScenarioOracleOutcomeKind::ConstraintScenarioOnly;
         let mut oracle_relabel_score = None;
         let mut merge_improvement_over_cs = None;
@@ -437,7 +449,7 @@ impl RuntimeState {
                 Ok((merged_schedule, merged_score)) => {
                     let improvement = best.real_score - merged_score;
                     merge_improvement_over_cs = Some(improvement);
-                    if improvement > 1e-9 {
+                    if merged_score < selected_score - 1e-9 {
                         selected_schedule = merged_schedule;
                         outcome = ConstraintScenarioOracleOutcomeKind::OracleMerged;
                         oracle_merge_accepted = true;
