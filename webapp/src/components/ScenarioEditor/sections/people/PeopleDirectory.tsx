@@ -67,7 +67,7 @@ export function PeopleDirectory({
   const sortedPeople = useMemo(() => {
     const filteredPeople = viewMode === 'cards' && searchValue
       ? basePeople.filter((person) => {
-          const name = (person.attributes?.name || '').toString().toLowerCase();
+          const name = person.name.toLowerCase();
           const id = person.id.toLowerCase();
           return name.includes(searchValue) || id.includes(searchValue);
         })
@@ -220,7 +220,7 @@ export function PeopleDirectory({
             rowKey={(person) => person.id}
             emptyState={<div className="text-sm" style={{ color: 'var(--text-secondary)' }}>No matching people.</div>}
             onRowOpen={onEditPerson}
-            rowOpenLabel={(person) => `Edit ${person.attributes.name}`}
+            rowOpenLabel={(person) => `Edit ${person.name}`}
             showCsvExport={false}
             searchSummary={({ filteredCount, totalCount }) => (
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -251,13 +251,10 @@ export function PeopleDirectory({
                 id: 'name',
                 header: 'Name',
                 primitive: 'string' as const,
-                getValue: (person: Person) => String(person.attributes?.name ?? ''),
+                getValue: (person: Person) => person.name,
                 setValue: (person: Person, value) => ({
                   ...person,
-                  attributes: {
-                    ...(person.attributes ?? {}),
-                    name: value ?? '',
-                  },
+                  name: value ?? '',
                 }),
                 renderValue: (value) => (
                   <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -320,7 +317,7 @@ export function PeopleDirectory({
                 cell: (person: Person) => (
                   <div className="flex justify-end">
                     <SetupItemActions
-                      deleteLabel={`Delete ${person.attributes.name}`}
+                      deleteLabel={`Delete ${person.name}`}
                       onDelete={() => onDeletePerson(person.id)}
                     />
                   </div>

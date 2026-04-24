@@ -11,10 +11,10 @@ function createScenario(overrides: Partial<Scenario> = {}): Scenario {
       { id: 'g2', size: 2 },
     ],
     people: [
-      { id: 'p1', attributes: { name: 'Alice' } },
-      { id: 'p2', attributes: { name: 'Bob' }, sessions: [1, 2, 3] },
-      { id: 'p3', attributes: { name: 'Cara' }, sessions: [3] },
-      { id: 'p4', attributes: { name: 'Dan' } },
+      { id: 'p1', name: 'Alice' , attributes: {} },
+      { id: 'p2', name: 'Bob' , attributes: {}, sessions: [1, 2, 3] },
+      { id: 'p3', name: 'Cara' , attributes: {}, sessions: [3] },
+      { id: 'p4', name: 'Dan' , attributes: {} },
     ],
     constraints: [],
     settings: {
@@ -33,10 +33,10 @@ describe('planSessionCountReduction', () => {
         { type: 'ShouldStayTogether', people: ['p2', 'p4'], sessions: [0, 2, 3], penalty_weight: 10 },
       ],
       people: [
-        { id: 'p1', attributes: { name: 'Alice' } },
-        { id: 'p2', attributes: { name: 'Bob' }, sessions: [0, 1, 2] },
-        { id: 'p3', attributes: { name: 'Cara' } },
-        { id: 'p4', attributes: { name: 'Dan' } },
+        { id: 'p1', name: 'Alice' , attributes: {} },
+        { id: 'p2', name: 'Bob' , attributes: {}, sessions: [0, 1, 2] },
+        { id: 'p3', name: 'Cara' , attributes: {} },
+        { id: 'p4', name: 'Dan' , attributes: {} },
       ],
     });
 
@@ -65,10 +65,10 @@ describe('planSessionCountReduction', () => {
       ],
       settings: createScenario().settings,
       people: [
-        { id: 'p1', attributes: { name: 'Alice' } },
-        { id: 'p2', attributes: { name: 'Bob' }, sessions: [0, 1, 2] },
-        { id: 'p3', attributes: { name: 'Cara' } },
-        { id: 'p4', attributes: { name: 'Dan' } },
+        { id: 'p1', name: 'Alice' , attributes: {} },
+        { id: 'p2', name: 'Bob' , attributes: {}, sessions: [0, 1, 2] },
+        { id: 'p3', name: 'Cara' , attributes: {} },
+        { id: 'p4', name: 'Dan' , attributes: {} },
       ],
     });
 
@@ -121,10 +121,10 @@ describe('planSessionCountReduction', () => {
       ],
       settings: createSampleScenario().settings,
       people: [
-        { id: 'p1', attributes: { name: 'Alice' } },
-        { id: 'p2', attributes: { name: 'Bob' }, sessions: [0, 1, 2] },
-        { id: 'p3', attributes: { name: 'Cara' } },
-        { id: 'p4', attributes: { name: 'Dan' } },
+        { id: 'p1', name: 'Alice' , attributes: {} },
+        { id: 'p2', name: 'Bob' , attributes: {}, sessions: [0, 1, 2] },
+        { id: 'p3', name: 'Cara' , attributes: {} },
+        { id: 'p4', name: 'Dan' , attributes: {} },
       ],
     });
 
@@ -150,10 +150,10 @@ describe('planSessionCountReduction', () => {
         allowed_sessions: [3],
       },
       people: [
-        { id: 'p1', attributes: { name: 'Alice' } },
-        { id: 'p2', attributes: { name: 'Bob' }, sessions: [0, 1, 2] },
-        { id: 'p3', attributes: { name: 'Cara' } },
-        { id: 'p4', attributes: { name: 'Dan' } },
+        { id: 'p1', name: 'Alice' , attributes: {} },
+        { id: 'p2', name: 'Bob' , attributes: {}, sessions: [0, 1, 2] },
+        { id: 'p3', name: 'Cara' , attributes: {} },
+        { id: 'p4', name: 'Dan' , attributes: {} },
       ],
     });
 

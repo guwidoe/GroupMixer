@@ -5,9 +5,9 @@ import { countManualEditorHardViolations } from './hardViolationSummary';
 
 const scenario: Scenario = {
   people: [
-    { id: 'p1', attributes: { name: 'Alex' } },
-    { id: 'p2', attributes: { name: 'Blair' } },
-    { id: 'p3', attributes: { name: 'Casey' } },
+    { id: 'p1', name: 'Alex' , attributes: {} },
+    { id: 'p2', name: 'Blair' , attributes: {} },
+    { id: 'p3', name: 'Casey' , attributes: {} },
   ],
   groups: [{ id: 'g1', size: 2 }, { id: 'g2', size: 2 }],
   num_sessions: 2,

@@ -14,14 +14,17 @@ import { normalizeSolverFamilyId } from '../solverCatalog';
 
 export type WarmStartSchedule = Record<string, Record<string, string[]>>;
 
+export type WasmPerson = Omit<Person, 'name' | 'attributeValues'>;
+export type WasmScenario = Omit<Scenario, 'people'> & { people: WasmPerson[] };
+
 export interface WasmScenarioContractInput {
-  scenario: Scenario;
+  scenario: WasmScenario;
   initial_schedule?: WarmStartSchedule;
   construction_seed_schedule?: WarmStartSchedule;
 }
 
 export interface WasmScenarioRecommendSettingsRequest {
-  scenario: Scenario;
+  scenario: WasmScenario;
   desired_runtime_seconds: number;
 }
 
@@ -29,9 +32,9 @@ function cloneOptionalNumberArray(values?: number[]): number[] | undefined {
   return Array.isArray(values) ? [...values] : undefined;
 }
 
-function clonePeople(people: Person[]): Person[] {
+function clonePeople(people: Person[]): WasmPerson[] {
   return people.map((person) => {
-    const clonedPerson: Person = {
+    const clonedPerson: WasmPerson = {
       id: person.id,
       attributes: { ...person.attributes },
     };
@@ -236,7 +239,7 @@ function normalizeConstraintForWasm(constraint: Constraint, allSessions: number[
  * and solver-settings sanitization stay consistent across direct WASM calls, worker calls,
  * and browser-agent usage.
  */
-export function normalizeScenarioForWasm(scenario: Scenario): Scenario {
+export function normalizeScenarioForWasm(scenario: Scenario): WasmScenario {
   const allSessions = Array.from({ length: scenario.num_sessions }, (_, i) => i);
   const attributeDefinitions = reconcileScenarioAttributeDefinitions(scenario);
   const relationalScenario = reconcileScenarioAttributeState(scenario, attributeDefinitions);

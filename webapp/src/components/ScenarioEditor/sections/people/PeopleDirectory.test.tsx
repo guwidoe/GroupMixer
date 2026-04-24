@@ -12,7 +12,8 @@ function createLargeScenario(peopleCount: number): Scenario {
   return createSampleScenario({
     people: Array.from({ length: peopleCount }, (_, index) => ({
       id: `person-${index + 1}`,
-      attributes: { name: `Person ${String(index + 1).padStart(4, '0')}` },
+      name: `Person ${String(index + 1).padStart(4, '0')}`,
+      attributes: {},
     })),
     settings: createSampleSolverSettings(),
   });
@@ -27,7 +28,7 @@ function createBaseProps(overrides: Partial<React.ComponentProps<typeof PeopleDi
     onEditPerson: vi.fn(),
     onDeletePerson: vi.fn(),
     onApplyGridPeople: vi.fn(),
-    createGridPersonRow: () => ({ id: 'new-person', attributes: { name: '' }, sessions: undefined } satisfies Person),
+    createGridPersonRow: () => ({ id: 'new-person', name: '', attributes: {}, sessions: undefined } satisfies Person),
     ...overrides,
   };
 }
@@ -76,7 +77,7 @@ describe('PeopleDirectory', () => {
         {...createBaseProps({
           scenario: createSampleScenario({
             people: [
-              { id: 'p1', attributes: { name: 'Alex', role: 'dev' }, sessions: [0, 1] },
+              { id: 'p1', name: 'Alex', attributes: { role: 'dev' }, sessions: [0, 1] },
             ],
             settings: createSampleSolverSettings(),
           }),
@@ -118,7 +119,7 @@ describe('PeopleDirectory', () => {
         {...createBaseProps({
           scenario: createSampleScenario({
             people: [
-              { id: 'p1', attributes: { name: 'Alex', Gender: 'female', Department: 'Engineering' }, sessions: [0, 1] },
+              { id: 'p1', name: 'Alex', attributes: { Gender: 'female', Department: 'Engineering' }, sessions: [0, 1] },
             ],
             settings: createSampleSolverSettings(),
           }),
@@ -146,11 +147,11 @@ describe('PeopleDirectory', () => {
       <PeopleDirectory
         {...createBaseProps({
           scenario: createSampleScenario({
-            people: [{ id: 'p1', attributes: { name: 'Alex', role: 'dev' }, sessions: [0, 1] }],
+            people: [{ id: 'p1', name: 'Alex', attributes: { role: 'dev' }, sessions: [0, 1] }],
             settings: createSampleSolverSettings(),
           }),
           attributeDefinitions: [createAttributeDefinition('role', ['dev', 'design'], 'attr-role')],
-          createGridPersonRow: () => ({ id: 'p2', attributes: { name: '' }, sessions: undefined }),
+          createGridPersonRow: () => ({ id: 'p2', name: '', attributes: {}, sessions: undefined }),
           onApplyGridPeople,
         })}
       />,
@@ -187,7 +188,7 @@ describe('PeopleDirectory', () => {
       <PeopleDirectory
         {...createBaseProps({
           scenario: createSampleScenario({
-            people: [{ id: 'p1', attributes: { name: 'Alex' } }],
+            people: [{ id: 'p1', name: 'Alex', attributes: {} }],
             settings: createSampleSolverSettings(),
           }),
           onApplyGridPeople,

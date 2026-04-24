@@ -30,10 +30,10 @@ export function createSampleSolverSettings(): SolverSettings {
 export function createSampleScenario(overrides: Partial<Scenario> = {}): Scenario {
   return {
     people: [
-      { id: "p1", attributes: { name: "Alice", team: "A" } },
-      { id: "p2", attributes: { name: "Bob", team: "B" } },
-      { id: "p3", attributes: { name: "Cara", team: "A" } },
-      { id: "p4", attributes: { name: "Dan", team: "B" } },
+      { id: "p1", name: "Alice", attributes: { team: "A" } },
+      { id: "p2", name: "Bob", attributes: { team: "B" } },
+      { id: "p3", name: "Cara", attributes: { team: "A" } },
+      { id: "p4", name: "Dan", attributes: { team: "B" } },
     ],
     groups: [
       { id: "g1", size: 2 },

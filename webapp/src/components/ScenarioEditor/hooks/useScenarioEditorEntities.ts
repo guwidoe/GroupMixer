@@ -96,6 +96,7 @@ export function useScenarioEditorEntities({
   const [editingAttribute, setEditingAttribute] = useState<AttributeDefinition | null>(null);
 
   const [personForm, setPersonForm] = useState<PersonFormData>({
+    name: '',
     attributes: {},
     sessions: [],
   });
@@ -107,12 +108,28 @@ export function useScenarioEditorEntities({
 
   const [newAttribute, setNewAttribute] = useState({ key: '', values: [''] });
 
+  const isDuplicatePersonName = (name: string, exceptPersonId?: string) => {
+    const normalized = name.trim().toLowerCase();
+    return Boolean(
+      normalized && scenario?.people.some((person) => person.id !== exceptPersonId && person.name.trim().toLowerCase() === normalized),
+    );
+  };
+
   const handleAddPerson = () => {
-    if (!personForm.attributes.name?.trim()) {
+    const personName = personForm.name.trim();
+    if (!personName) {
       addNotification({
         type: 'error',
         title: 'Invalid Input',
         message: 'Please enter a name for the person',
+      });
+      return;
+    }
+    if (isDuplicatePersonName(personName)) {
+      addNotification({
+        type: 'error',
+        title: 'Duplicate Name',
+        message: `A person named "${personName}" already exists`,
       });
       return;
     }
@@ -121,6 +138,7 @@ export function useScenarioEditorEntities({
       ...applyNamedAttributeValuesToPerson(
         {
           id: generateUniquePersonId(),
+          name: personName,
           attributes: {},
         },
         personForm.attributes,
@@ -138,19 +156,20 @@ export function useScenarioEditorEntities({
     };
 
     setScenario(updatedScenario);
-    setPersonForm({ attributes: {}, sessions: [] });
+    setPersonForm({ name: '', attributes: {}, sessions: [] });
     setShowPersonForm(false);
 
     addNotification({
       type: 'success',
       title: 'Person Added',
-      message: `${newPerson.attributes.name} has been added to the scenario`,
+      message: `${newPerson.name} has been added to the scenario`,
     });
   };
 
   const handleEditPerson = (person: Person) => {
     setEditingPerson(person);
     setPersonForm({
+      name: person.name,
       attributes: buildPersonFormAttributes(person, attributeDefinitions),
       sessions: person.sessions || [],
     });
@@ -158,10 +177,19 @@ export function useScenarioEditorEntities({
   };
 
   const handleUpdatePerson = () => {
-    if (!editingPerson || !personForm.attributes.name?.trim()) return;
+    const personName = personForm.name.trim();
+    if (!editingPerson || !personName) return;
+    if (isDuplicatePersonName(personName, editingPerson.id)) {
+      addNotification({
+        type: 'error',
+        title: 'Duplicate Name',
+        message: `A person named "${personName}" already exists`,
+      });
+      return;
+    }
 
     const updatedPerson: Person = {
-      ...applyNamedAttributeValuesToPerson(editingPerson, personForm.attributes, attributeDefinitions),
+      ...applyNamedAttributeValuesToPerson({ ...editingPerson, name: personName }, personForm.attributes, attributeDefinitions),
       sessions: personForm.sessions.length > 0 ? personForm.sessions : undefined,
     };
 
@@ -175,13 +203,13 @@ export function useScenarioEditorEntities({
 
     setScenario(updatedScenario);
     setEditingPerson(null);
-    setPersonForm({ attributes: {}, sessions: [] });
+    setPersonForm({ name: '', attributes: {}, sessions: [] });
     setShowPersonForm(false);
 
     addNotification({
       type: 'success',
       title: 'Person Updated',
-      message: `${updatedPerson.attributes.name} has been updated`,
+      message: `${updatedPerson.name} has been updated`,
     });
   };
 

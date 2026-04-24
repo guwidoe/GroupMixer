@@ -99,7 +99,7 @@ describe('createScenarioEditorActions', () => {
 
     actions.handleCancelPersonForm();
     expect(entities.setShowPersonForm).toHaveBeenCalledWith(false);
-    expect(entities.setPersonForm).toHaveBeenCalledWith({ attributes: {}, sessions: [] });
+    expect(entities.setPersonForm).toHaveBeenCalledWith({ name: '', attributes: {}, sessions: [] });
 
     actions.handleCloseConstraintForm();
     expect(constraints.setShowConstraintForm).toHaveBeenCalledWith(false);

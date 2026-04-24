@@ -12,17 +12,20 @@ interface UseScenarioEditorBulkUpdatePeopleArgs {
 }
 
 function sanitizeGridPeopleRows(people: Person[]): Person[] {
+  const seenNames = new Map<string, number>();
   return people.map((person) => {
     const cleanedAttributes = Object.fromEntries(
       Object.entries(person.attributes ?? {}).filter(([key, value]) => {
-        if (key === 'name') {
-          return true;
-        }
+        if (key.toLowerCase() === 'name') return false;
         return String(value ?? '').trim().length > 0;
       }),
     );
 
-    cleanedAttributes.name = String(cleanedAttributes.name ?? '').trim() || person.id;
+    const baseName = String(person.name ?? '').trim() || person.id;
+    const normalizedName = baseName.toLowerCase();
+    const seenCount = (seenNames.get(normalizedName) ?? 0) + 1;
+    seenNames.set(normalizedName, seenCount);
+    const name = seenCount === 1 ? baseName : `${baseName} (${seenCount})`;
 
     const normalizedSessions = Array.isArray(person.sessions)
       ? Array.from(new Set(person.sessions.filter((session) => Number.isFinite(session)).sort((left, right) => left - right)))
@@ -30,6 +33,7 @@ function sanitizeGridPeopleRows(people: Person[]): Person[] {
 
     return {
       ...person,
+      name,
       attributes: cleanedAttributes,
       sessions: normalizedSessions && normalizedSessions.length > 0 ? normalizedSessions : undefined,
     } satisfies Person;
@@ -44,7 +48,8 @@ export function useScenarioEditorBulkUpdatePeople({
 }: UseScenarioEditorBulkUpdatePeopleArgs) {
   const createRow = () => ({
     id: generateUniquePersonId(scenario?.people),
-    attributes: { name: '' },
+    name: '',
+    attributes: {},
     sessions: undefined,
   } satisfies Person);
 

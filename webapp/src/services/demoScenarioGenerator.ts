@@ -104,9 +104,8 @@ function createPeople(count: number): Person[] {
 
   return names.map((name, index) => ({
     id: `person-${index + 1}`,
-    attributes: {
-      name,
-    },
+    name,
+    attributes: {},
   }));
 }
 

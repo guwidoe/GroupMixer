@@ -18,8 +18,8 @@ describe('SessionScopeField', () => {
       />,
     );
 
-    expect(screen.queryByText(/automatically includes future sessions/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/freezes the current selection even if more sessions are added later/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/automatically includes future sessions/i)).toHaveClass('sr-only');
+    expect(screen.getByText(/freezes the current selection even if more sessions are added later/i)).toHaveClass('sr-only');
     expect(screen.queryByText(/applies only to the explicitly selected current sessions/i)).not.toBeInTheDocument();
     expect(screen.getByLabelText(/why choose all sessions/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/why choose only selected sessions/i)).toBeInTheDocument();

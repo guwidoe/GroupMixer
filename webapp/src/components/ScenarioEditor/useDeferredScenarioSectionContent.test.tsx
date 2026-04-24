@@ -9,7 +9,8 @@ function createLargeScenario(peopleCount: number): Scenario {
   return createSampleScenario({
     people: Array.from({ length: peopleCount }, (_, index) => ({
       id: `person-${index + 1}`,
-      attributes: { name: `Person ${String(index + 1).padStart(4, '0')}` },
+      name: `Person ${String(index + 1).padStart(4, '0')}`,
+      attributes: {},
     })),
     groups: Array.from({ length: 12 }, (_, index) => ({
       id: `g${index + 1}`,

@@ -36,6 +36,6 @@ describe('ResultsScheduleGrid', () => {
     expect(screen.queryByText('4 assigned')).not.toBeInTheDocument();
     expect(container.querySelector('.h-1\\.5')).not.toBeInTheDocument();
     expect(container.querySelector('.grid-cols-\\[repeat\\(auto-fit\\,minmax\\(min\\(100\\%\\,15rem\\)\\,1fr\\)\\)\\]')).toBeInTheDocument();
-    expect(container.querySelector('.border-t.pt-2')).toBeInTheDocument();
+    expect(container.querySelector('.mt-1.border-t.pt-1')).toBeInTheDocument();
   });
 });

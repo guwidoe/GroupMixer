@@ -27,7 +27,8 @@ const sampleAttributes: AttributeDefinition[] = [
 ];
 
 const emptyFormData: PersonFormData = {
-  attributes: { name: '' },
+  name: '',
+  attributes: {},
   sessions: [],
 };
 
@@ -51,12 +52,14 @@ export const EditExistingPerson: Story = {
     isEditing: true,
     editingPerson: {
       id: 'alice-001',
-      attributes: { name: 'Alice Johnson', gender: 'female', department: 'Engineering' },
+      name: 'Alice Johnson',
+      attributes: { gender: 'female', department: 'Engineering' },
       sessions: [0, 1, 2],
     },
     personForm: {
       id: 'alice-001',
-      attributes: { name: 'Alice Johnson', gender: 'female', department: 'Engineering' },
+      name: 'Alice Johnson',
+      attributes: { gender: 'female', department: 'Engineering' },
       sessions: [0, 1, 2],
     },
     setPersonForm: fn(),
@@ -75,11 +78,11 @@ export const FilledForm: Story = {
     editingPerson: null,
     personForm: {
       attributes: { 
-        name: 'Bob Smith', 
         gender: 'male', 
         department: 'Marketing',
         experience: 'senior'
       },
+      name: 'Bob Smith',
       sessions: [],
     },
     setPersonForm: fn(),
@@ -96,7 +99,7 @@ export const NoAttributesDefined: Story = {
   args: {
     isEditing: false,
     editingPerson: null,
-    personForm: { attributes: { name: '' }, sessions: [] },
+    personForm: { name: '', attributes: {}, sessions: [] },
     setPersonForm: fn(),
     attributeDefinitions: [],
     sessionsCount: 5,
@@ -118,7 +121,7 @@ export const ManyAttributes: Story = {
   args: {
     isEditing: false,
     editingPerson: null,
-    personForm: { attributes: { name: '' }, sessions: [] },
+    personForm: { name: '', attributes: {}, sessions: [] },
     setPersonForm: fn(),
     attributeDefinitions: [
       createAttributeDefinition('gender', ['male', 'female', 'non-binary'], 'attr-gender'),
@@ -140,7 +143,7 @@ export const ManySessions: Story = {
   args: {
     isEditing: false,
     editingPerson: null,
-    personForm: { attributes: { name: '' }, sessions: [0, 3, 5, 7, 9] },
+    personForm: { name: '', attributes: {}, sessions: [0, 3, 5, 7, 9] },
     setPersonForm: fn(),
     attributeDefinitions: sampleAttributes,
     sessionsCount: 12,
@@ -163,12 +166,14 @@ export const LateJoiner: Story = {
     isEditing: true,
     editingPerson: {
       id: 'late-joiner',
-      attributes: { name: 'Late Joiner' },
+      name: 'Late Joiner',
+      attributes: {},
       sessions: [3, 4],
     },
     personForm: {
       id: 'late-joiner',
-      attributes: { name: 'Late Joiner' },
+      name: 'Late Joiner',
+      attributes: {},
       sessions: [3, 4],
     },
     setPersonForm: fn(),

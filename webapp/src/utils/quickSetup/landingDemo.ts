@@ -1,4 +1,5 @@
 import type { Constraint, Scenario } from '../../types';
+import { getPersonDisplayName } from '../../services/scenarioAttributes';
 import type { QuickSetupDraft, QuickSetupFixedAssignment, QuickSetupParticipantColumn } from '../../components/EmbeddableTool/types';
 import { buildGroups } from './buildGroups';
 import { normalizeBalanceTargets, type QuickSetupBalanceTargets } from './attributeBalanceTargets';
@@ -78,14 +79,14 @@ function inferLandingGroupingConfig(scenario: Scenario): LandingGroupingConfig |
 
 function buildParticipantColumns(scenario: Scenario): QuickSetupParticipantColumn[] {
   const attributeKeys = [...new Set(
-    scenario.people.flatMap((person) => Object.keys(person.attributes).filter((key) => key !== 'name')),
+    scenario.people.flatMap((person) => Object.keys(person.attributes)),
   )].sort((left, right) => left.localeCompare(right));
 
   return [
     {
       id: 'name',
       name: 'Name',
-      values: scenario.people.map((person) => person.id).join('\n'),
+      values: scenario.people.map((person) => getPersonDisplayName(person)).join('\n'),
     },
     ...attributeKeys.map((attributeKey, index) => ({
       id: `attribute-${index + 1}`,
@@ -95,17 +96,23 @@ function buildParticipantColumns(scenario: Scenario): QuickSetupParticipantColum
   ];
 }
 
-function buildKeepTogetherInput(constraints: Constraint[]) {
-  return constraints
+function formatPeopleConstraintInput(peopleById: Map<string, string>, personIds: string[], separator: string) {
+  return personIds.map((personId) => peopleById.get(personId) ?? personId).join(separator);
+}
+
+function buildKeepTogetherInput(scenario: Scenario) {
+  const peopleById = new Map(scenario.people.map((person) => [person.id, getPersonDisplayName(person)] as const));
+  return scenario.constraints
     .filter((constraint): constraint is Extract<Constraint, { type: 'MustStayTogether' }> => constraint.type === 'MustStayTogether')
-    .map((constraint) => constraint.people.join(', '))
+    .map((constraint) => formatPeopleConstraintInput(peopleById, constraint.people, ', '))
     .join('\n');
 }
 
-function buildKeepApartInput(constraints: Constraint[]) {
-  return constraints
+function buildKeepApartInput(scenario: Scenario) {
+  const peopleById = new Map(scenario.people.map((person) => [person.id, getPersonDisplayName(person)] as const));
+  return scenario.constraints
     .filter((constraint): constraint is Extract<Constraint, { type: 'MustStayApart' }> => constraint.type === 'MustStayApart')
-    .map((constraint) => constraint.people.join(' - '))
+    .map((constraint) => formatPeopleConstraintInput(peopleById, constraint.people, ' - '))
     .join('\n');
 }
 
@@ -146,6 +153,7 @@ function buildFixedAssignments(
   generatedGroups: Scenario['groups'],
 ): QuickSetupFixedAssignment[] {
   const originalGroupIndexById = new Map(scenario.groups.map((group, index) => [group.id, index] as const));
+  const peopleById = new Map(scenario.people.map((person) => [person.id, getPersonDisplayName(person)] as const));
   const assignments: QuickSetupFixedAssignment[] = [];
 
   for (const constraint of scenario.constraints) {
@@ -165,7 +173,7 @@ function buildFixedAssignments(
 
     const people = constraint.type === 'ImmovablePerson' ? [constraint.person_id] : constraint.people;
     for (const personId of people) {
-      assignments.push({ personId, groupId: nextGroupId });
+      assignments.push({ personId: peopleById.get(personId) ?? personId, groupId: nextGroupId });
     }
   }
 
@@ -265,8 +273,8 @@ export function createQuickSetupDraftFromScenario(
     groupingValue: grouping.groupingValue,
     sessions: Math.max(1, scenario.num_sessions),
     avoidRepeatPairings: repeatEncounterEnabled,
-    keepTogetherInput: buildKeepTogetherInput(scenario.constraints),
-    avoidPairingsInput: buildKeepApartInput(scenario.constraints),
+    keepTogetherInput: buildKeepTogetherInput(scenario),
+    avoidPairingsInput: buildKeepApartInput(scenario),
     fixedAssignments: buildFixedAssignments(scenario, grouping.groups),
     balanceAttributeKey: null,
     balanceTargets: buildBalanceTargets(scenario, grouping.groups),

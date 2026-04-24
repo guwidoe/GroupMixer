@@ -3,7 +3,8 @@ import type { ProgressUpdate } from '../services/wasm/types';
 // Core data structures matching the Rust gm-core backend exactly
 export interface Person {
   id: string;
-  attributes: Record<string, string>; // Key-value attributes (e.g., {"gender": "female", "department": "engineering"})
+  name: string; // Required user-facing label. IDs remain the stable internal identity.
+  attributes: Record<string, string>; // Key-value grouping attributes (e.g., {"gender": "female", "department": "engineering"})
   attributeValues?: Record<string, string>; // Scenario-local relational attribute assignments keyed by AttributeDefinition.id
   sessions?: number[]; // Optional: specific sessions this person participates in (0-based indices)
 }
@@ -417,6 +418,7 @@ export interface Notification {
 // Form types for UI
 export interface PersonFormData {
   id?: string;
+  name: string;
   attributes: Record<string, string>;
   sessions: number[]; // Empty array means all sessions
 }

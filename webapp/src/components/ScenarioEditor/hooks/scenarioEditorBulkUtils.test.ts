@@ -10,7 +10,8 @@ describe('scenarioEditorBulkUtils', () => {
       people: [
         {
           id: 'p1',
-          attributes: { name: 'Ada', team: 'Blue' },
+          name: 'Ada',
+          attributes: { team: 'Blue' },
         },
       ],
     });

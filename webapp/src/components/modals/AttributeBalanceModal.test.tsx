@@ -14,11 +14,11 @@ describe('AttributeBalanceModal', () => {
       ui: { ...originalState.ui, isLoading: false },
       resolveScenario: () => ({
         people: [
-          { id: 'p1', attributes: { name: 'Alex', gender: 'female' }, sessions: [0] },
-          { id: 'p2', attributes: { name: 'Blair', gender: 'female' }, sessions: [0] },
-          { id: 'p3', attributes: { name: 'Casey', gender: 'female' }, sessions: [0] },
-          { id: 'p4', attributes: { name: 'Drew', gender: 'male' }, sessions: [1] },
-          { id: 'p5', attributes: { name: 'Elliot' }, sessions: [1] },
+          { id: 'p1', name: 'Alex', attributes: { gender: 'female' }, sessions: [0] },
+          { id: 'p2', name: 'Blair', attributes: { gender: 'female' }, sessions: [0] },
+          { id: 'p3', name: 'Casey', attributes: { gender: 'female' }, sessions: [0] },
+          { id: 'p4', name: 'Drew', attributes: { gender: 'male' }, sessions: [1] },
+          { id: 'p5', name: 'Elliot' , attributes: {}, sessions: [1] },
         ],
         groups: [{ id: 'g1', size: 4, session_sizes: [4, 2] }],
         num_sessions: 2,

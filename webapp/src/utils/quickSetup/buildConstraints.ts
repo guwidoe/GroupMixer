@@ -7,6 +7,15 @@ function normalize(value: string) {
   return value.trim().toLowerCase();
 }
 
+function buildPersonReferenceMap(people: Person[]) {
+  const references = new Map<string, string>();
+  for (const person of people) {
+    references.set(normalize(person.name), person.id);
+    references.set(normalize(person.id), person.id);
+  }
+  return references;
+}
+
 function parseConstraintGroups(text: string): string[][] {
   return text
     .split(/\r?\n/)
@@ -23,7 +32,7 @@ function parsePairLines(text: string): Array<[string, string]> {
 }
 
 function resolvePeople(names: string[], people: Person[]): string[] {
-  const byName = new Map(people.map((person) => [normalize(person.id), person.id] as const));
+  const byName = buildPersonReferenceMap(people);
   return names
     .map((name) => byName.get(normalize(name)))
     .filter((id): id is string => Boolean(id));
@@ -68,7 +77,7 @@ export function buildConstraints(
     }
   }
 
-  const resolvedPeopleByName = new Map(people.map((person) => [normalize(person.id), person.id] as const));
+  const resolvedPeopleByName = buildPersonReferenceMap(people);
   for (const assignment of normalizeFixedAssignmentRows(draft.fixedAssignments)) {
     if (assignment.personId.length === 0 || assignment.groupId.length === 0) {
       continue;

@@ -23,10 +23,10 @@ function createReviewableScenario() {
   return createSampleScenario({
   num_sessions: 4,
   people: [
-    { id: 'p1', attributes: { name: 'Alice' } },
-    { id: 'p2', attributes: { name: 'Bob' }, sessions: [0, 1, 2] },
-    { id: 'p3', attributes: { name: 'Cara' } },
-    { id: 'p4', attributes: { name: 'Dan' } },
+    { id: 'p1', name: 'Alice', attributes: {} },
+    { id: 'p2', name: 'Bob', attributes: {}, sessions: [0, 1, 2] },
+    { id: 'p3', name: 'Cara', attributes: {} },
+    { id: 'p4', name: 'Dan', attributes: {} },
   ],
   groups: [
     { id: 'g1', size: 2, session_sizes: [2, 2, 2, 2] },
@@ -90,7 +90,7 @@ vi.mock('./hooks/useScenarioEditorEntities', () => ({
   useScenarioEditorEntities: () => ({
     showPersonForm: false,
     editingPerson: null,
-    personForm: { attributes: {}, sessions: [] },
+    personForm: { name: '', attributes: {}, sessions: [] },
     setPersonForm: vi.fn(),
     handleAddPerson: vi.fn(),
     handleUpdatePerson: vi.fn(),
@@ -267,10 +267,10 @@ describe('useScenarioEditorController session reductions', () => {
     mockStore.scenario = createSampleScenario({
       num_sessions: 4,
       people: [
-        { id: 'p1', attributes: { name: 'Alice' } },
-        { id: 'p2', attributes: { name: 'Bob' }, sessions: [0, 1, 2] },
-        { id: 'p3', attributes: { name: 'Cara' }, sessions: [3] },
-        { id: 'p4', attributes: { name: 'Dan' } },
+        { id: 'p1', name: 'Alice', attributes: {} },
+        { id: 'p2', name: 'Bob', attributes: {}, sessions: [0, 1, 2] },
+        { id: 'p3', name: 'Cara', attributes: {}, sessions: [3] },
+        { id: 'p4', name: 'Dan', attributes: {} },
       ],
       constraints: [],
     });

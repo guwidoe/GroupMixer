@@ -10,10 +10,10 @@ describe('ReduceSessionsReviewModal', () => {
       scenario: createSampleScenario({
         num_sessions: 4,
         people: [
-          { id: 'p1', attributes: { name: 'Alice' } },
-          { id: 'p2', attributes: { name: 'Bob' }, sessions: [0, 1, 2] },
-          { id: 'p3', attributes: { name: 'Cara' }, sessions: [3] },
-          { id: 'p4', attributes: { name: 'Dan' } },
+          { id: 'p1', name: 'Alice' , attributes: {} },
+          { id: 'p2', name: 'Bob' , attributes: {}, sessions: [0, 1, 2] },
+          { id: 'p3', name: 'Cara' , attributes: {}, sessions: [3] },
+          { id: 'p4', name: 'Dan' , attributes: {} },
         ],
         constraints: [],
       }),
@@ -46,10 +46,10 @@ describe('ReduceSessionsReviewModal', () => {
           { type: 'MustStayApart', people: ['p1', 'p2'], sessions: [3] },
         ],
         people: [
-          { id: 'p1', attributes: { name: 'Alice' } },
-          { id: 'p2', attributes: { name: 'Bob' }, sessions: [0, 1, 2] },
-          { id: 'p3', attributes: { name: 'Cara' } },
-          { id: 'p4', attributes: { name: 'Dan' } },
+          { id: 'p1', name: 'Alice' , attributes: {} },
+          { id: 'p2', name: 'Bob' , attributes: {}, sessions: [0, 1, 2] },
+          { id: 'p3', name: 'Cara' , attributes: {} },
+          { id: 'p4', name: 'Dan' , attributes: {} },
         ],
       }),
       nextSessionCount: 3,
@@ -80,10 +80,10 @@ describe('ReduceSessionsReviewModal', () => {
     const scenario = createSampleScenario({
       num_sessions: 3,
       people: [
-        { id: 'person_r95i7qcu', attributes: { name: 'Ada' } },
-        { id: 'person_xf66mzvc', attributes: { name: 'Bea' } },
-        { id: 'person_5wqnmjf3', attributes: { name: 'Cleo' } },
-        { id: 'person_k6896t8m', attributes: { name: 'Dina' } },
+        { id: 'person_r95i7qcu', name: 'Ada' , attributes: {} },
+        { id: 'person_xf66mzvc', name: 'Bea' , attributes: {} },
+        { id: 'person_5wqnmjf3', name: 'Cleo' , attributes: {} },
+        { id: 'person_k6896t8m', name: 'Dina' , attributes: {} },
       ],
       constraints: [
         { type: 'MustStayTogether', people: ['person_r95i7qcu', 'person_xf66mzvc'], sessions: [0, 1, 2] },

@@ -116,7 +116,7 @@ export function getPersonAttributeValue(
   return undefined;
 }
 
-function readCanonicalPersonName(person: Person): string {
+function readLegacyPersonNameAttribute(person: Person): string {
   for (const [key, value] of Object.entries(person.attributes ?? {})) {
     if (normalizeAttributeName(key) === ATTRIBUTE_DEFINITION_NAME_KEY) {
       const trimmed = String(value ?? '').trim();
@@ -129,9 +129,29 @@ function readCanonicalPersonName(person: Person): string {
   return String(person.id ?? '').trim();
 }
 
+function readCanonicalPersonName(person: Person): string {
+  const directName = String((person as Person & { name?: unknown }).name ?? '').trim();
+  if (directName) {
+    return directName;
+  }
+
+  return readLegacyPersonNameAttribute(person);
+}
+
+function makeUniquePersonName(baseName: string, seenNames: Map<string, number>): string {
+  const fallback = baseName.trim() || 'Person';
+  const normalized = normalizeAttributeName(fallback);
+  const count = (seenNames.get(normalized) ?? 0) + 1;
+  seenNames.set(normalized, count);
+  return count === 1 ? fallback : `${fallback} (${count})`;
+}
+
+export function normalizePersonName(value: string, fallback = 'Person'): string {
+  return value.trim() || fallback;
+}
+
 function buildPersonProjectedAttributes(person: Person, definitions: AttributeDefinition[]): Record<string, string> {
   const projected: Record<string, string> = {};
-  projected.name = readCanonicalPersonName(person);
 
   for (const definition of definitions) {
     const value = person.attributeValues?.[definition.id];
@@ -156,6 +176,7 @@ function buildPersonProjectedAttributes(person: Person, definitions: AttributeDe
 
 export function reconcilePersonAttributeState(person: Person, definitions: AttributeDefinition[]): Person {
   const attributeValues = { ...(person.attributeValues ?? {}) };
+  const name = readCanonicalPersonName(person);
 
   for (const [key, value] of Object.entries(person.attributes ?? {})) {
     if (normalizeAttributeName(key) === ATTRIBUTE_DEFINITION_NAME_KEY) {
@@ -170,6 +191,7 @@ export function reconcilePersonAttributeState(person: Person, definitions: Attri
 
   const nextPerson: Person = {
     ...person,
+    name,
     attributeValues: Object.keys(attributeValues).length > 0 ? attributeValues : undefined,
   };
 
@@ -204,9 +226,18 @@ function reconcileAttributeBalanceConstraint(
 }
 
 export function reconcileScenarioAttributeState(scenario: Scenario, definitions: AttributeDefinition[]): Scenario {
+  const seenNames = new Map<string, number>();
+  const people = scenario.people.map((person) => {
+    const reconciled = reconcilePersonAttributeState(person, definitions);
+    return {
+      ...reconciled,
+      name: makeUniquePersonName(reconciled.name, seenNames),
+    };
+  });
+
   return {
     ...scenario,
-    people: scenario.people.map((person) => reconcilePersonAttributeState(person, definitions)),
+    people,
     constraints: scenario.constraints.map((constraint) => reconcileAttributeBalanceConstraint(constraint, definitions)),
   };
 }
@@ -279,14 +310,12 @@ export function applyNamedAttributeValuesToPerson(
 ): Person {
   const nextAttributes = { ...(person.attributes ?? {}) };
   const nextAttributeValues = { ...(person.attributeValues ?? {}) };
+  let nextName = readCanonicalPersonName(person);
 
   for (const [key, rawValue] of Object.entries(updates)) {
     if (normalizeAttributeName(key) === ATTRIBUTE_DEFINITION_NAME_KEY) {
-      if (rawValue) {
-        nextAttributes.name = rawValue;
-      } else {
-        delete nextAttributes.name;
-      }
+      nextName = normalizePersonName(rawValue, nextName);
+      delete nextAttributes[key];
       continue;
     }
 
@@ -307,6 +336,7 @@ export function applyNamedAttributeValuesToPerson(
   return reconcilePersonAttributeState(
     {
       ...person,
+      name: nextName,
       attributes: nextAttributes,
       attributeValues: nextAttributeValues,
     },
@@ -370,11 +400,38 @@ export function updateAttributeBalanceConstraintReference(
 
 export function migrateSavedScenario(savedScenario: SavedScenario): SavedScenario {
   const resolvedWorkspace = resolveScenarioWorkspaceState(savedScenario.scenario, savedScenario.attributeDefinitions);
+  const resolvedResults = savedScenario.results.map((result) => {
+    if (!result.scenarioSnapshot) {
+      return result;
+    }
+
+    const snapshotScenario: Scenario = {
+      people: result.scenarioSnapshot.people,
+      groups: result.scenarioSnapshot.groups,
+      num_sessions: result.scenarioSnapshot.num_sessions,
+      objectives: result.scenarioSnapshot.objectives,
+      constraints: result.scenarioSnapshot.constraints,
+      settings: result.solverSettings,
+    };
+    const resolvedSnapshot = resolveScenarioWorkspaceState(snapshotScenario, resolvedWorkspace.attributeDefinitions);
+
+    return {
+      ...result,
+      scenarioSnapshot: {
+        ...result.scenarioSnapshot,
+        people: resolvedSnapshot.scenario.people,
+        groups: resolvedSnapshot.scenario.groups,
+        objectives: resolvedSnapshot.scenario.objectives,
+        constraints: resolvedSnapshot.scenario.constraints,
+      },
+    };
+  });
 
   return {
     ...savedScenario,
     scenario: resolvedWorkspace.scenario,
     attributeDefinitions: resolvedWorkspace.attributeDefinitions,
+    results: resolvedResults,
   };
 }
 

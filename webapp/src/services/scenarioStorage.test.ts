@@ -49,17 +49,17 @@ describe("ScenarioStorageService", () => {
       'Workshop',
       createSampleScenario({
         people: [
-          { id: 'p1', attributes: { team: 'A' } },
-          { id: 'p2', attributes: { name: '', team: 'B' } },
-          { id: 'p3', attributes: { Name: 'Cara', team: 'C' } },
+          { id: 'p1', name: '', attributes: { team: 'A' } },
+          { id: 'p2', name: '', attributes: { team: 'B' } },
+          { id: 'p3', name: '', attributes: { Name: 'Cara', team: 'C' } },
         ],
       }),
     );
 
     expect(created.scenario.people).toEqual([
-      expect.objectContaining({ id: 'p1', attributes: expect.objectContaining({ name: 'p1', team: 'A' }) }),
-      expect.objectContaining({ id: 'p2', attributes: expect.objectContaining({ name: 'p2', team: 'B' }) }),
-      expect.objectContaining({ id: 'p3', attributes: expect.objectContaining({ name: 'Cara', team: 'C' }) }),
+      expect.objectContaining({ id: 'p1', name: 'p1', attributes: expect.objectContaining({ team: 'A' }) }),
+      expect.objectContaining({ id: 'p2', name: 'p2', attributes: expect.objectContaining({ team: 'B' }) }),
+      expect.objectContaining({ id: 'p3', name: 'Cara', attributes: expect.objectContaining({ team: 'C' }) }),
     ]);
   });
 

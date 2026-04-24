@@ -487,7 +487,7 @@ export function SoftConstraintFamilySection({
                           itemType: 'string' as const,
                           options: scenario.people.map((person) => ({
                             value: person.id,
-                            label: person.attributes.name,
+                            label: person.name,
                           })),
                           getValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.people,
                           setValue: (item: IndexedConstraint<PairMeetingCountConstraint>, value) => ({
@@ -550,7 +550,7 @@ export function SoftConstraintFamilySection({
                           itemType: 'string' as const,
                           options: scenario.people.map((person) => ({
                             value: person.id,
-                            label: person.attributes.name,
+                            label: person.name,
                           })),
                           getValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => item.constraint.people,
                           setValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>, value) => ({

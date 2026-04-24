@@ -19,8 +19,8 @@ describe('useScenarioEditorBulkUpdatePeople', () => {
 
     act(() => {
       result.current.applyRows([
-        { id: 'p1', attributes: { name: 'Alice', team: 'A' }, sessions: [1, 0, 1] },
-        { id: 'p2', attributes: { name: 'Bob', team: 'B' } },
+        { id: 'p1', name: 'Alice', attributes: { team: 'A' }, sessions: [1, 0, 1] },
+        { id: 'p2', name: 'Bob', attributes: { team: 'B' } },
       ]);
     });
 

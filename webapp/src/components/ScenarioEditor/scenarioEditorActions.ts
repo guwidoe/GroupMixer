@@ -146,7 +146,7 @@ export function createScenarioEditorActions({ scenario, updateScenario, constrai
     handleCancelPersonForm() {
       entities.setShowPersonForm(false);
       entities.setEditingPerson(null);
-      entities.setPersonForm({ attributes: {}, sessions: [] });
+      entities.setPersonForm({ name: '', attributes: {}, sessions: [] });
     },
 
     handleCancelGroupForm() {

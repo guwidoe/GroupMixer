@@ -283,9 +283,9 @@ describe('demoDataService', () => {
     const attributes = extractAttributesFromScenario(
       createSampleScenario({
         people: [
-          { id: 'p1', attributes: { name: 'Alice', team: 'Blue', level: 'Senior' } },
-          { id: 'p2', attributes: { name: 'Bob', team: 'Red', level: 'Junior' } },
-          { id: 'p3', attributes: { name: 'Cara', team: 'Blue', level: 'Junior' } },
+          { id: 'p1', name: 'Alice', attributes: { team: 'Blue', level: 'Senior' } },
+          { id: 'p2', name: 'Bob', attributes: { team: 'Red', level: 'Junior' } },
+          { id: 'p3', name: 'Cara', attributes: { team: 'Blue', level: 'Junior' } },
         ],
       }),
     );

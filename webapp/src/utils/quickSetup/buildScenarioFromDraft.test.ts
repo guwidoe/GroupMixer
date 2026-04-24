@@ -26,12 +26,17 @@ function makeDraft(overrides: Partial<QuickSetupDraft> = {}): QuickSetupDraft {
 }
 
 describe('quick setup scenario mapping', () => {
-  it('parses duplicate names into deterministic unique person ids', () => {
+  it('parses duplicate names into deterministic ids and unique display names', () => {
     const parsed = parseParticipantInput(
       makeDraft({ participantInput: 'Alice\nAlice\nAlice', inputMode: 'names' }),
     );
 
     expect(parsed.people.map((person) => person.id)).toEqual([
+      'person_1',
+      'person_2',
+      'person_3',
+    ]);
+    expect(parsed.people.map((person) => person.name)).toEqual([
       'Alice',
       'Alice (2)',
       'Alice (3)',
@@ -66,7 +71,8 @@ describe('quick setup scenario mapping', () => {
     );
 
     expect(scenario.people).toHaveLength(4);
-    expect(scenario.people[0].id).toBe('Alice');
+    expect(scenario.people[0].id).toBe('person_1');
+    expect(scenario.people[0].name).toBe('Alice');
     expect(scenario.people[0].attributes).toEqual({
       department: 'Engineering',
       level: 'Senior',
@@ -84,11 +90,11 @@ describe('quick setup scenario mapping', () => {
         }),
         expect.objectContaining({
           type: 'MustStayTogether',
-          people: ['Alice', 'Cara'],
+          people: ['person_1', 'person_3'],
         }),
         expect.objectContaining({
           type: 'MustStayApart',
-          people: ['Bob', 'Dan'],
+          people: ['person_2', 'person_4'],
         }),
         expect.objectContaining({
           type: 'AttributeBalance',
@@ -115,10 +121,10 @@ describe('quick setup scenario mapping', () => {
     );
 
     expect(scenario.people).toEqual([
-      { id: 'Alice', attributes: { gender: 'F' } },
-      { id: 'Bob', attributes: { gender: 'M' } },
-      { id: 'Cara', attributes: { gender: 'F' } },
-      { id: 'Dan', attributes: { gender: 'M' } },
+      { id: 'person_1', name: 'Alice', attributes: { gender: 'F' } },
+      { id: 'person_2', name: 'Bob', attributes: { gender: 'M' } },
+      { id: 'person_3', name: 'Cara', attributes: { gender: 'F' } },
+      { id: 'person_4', name: 'Dan', attributes: { gender: 'M' } },
     ]);
     expect(scenario.constraints).toEqual(
       expect.arrayContaining([
@@ -194,12 +200,12 @@ describe('quick setup scenario mapping', () => {
       expect.arrayContaining([
         expect.objectContaining({
           type: 'ImmovablePeople',
-          people: ['Alice'],
+          people: ['person_1'],
           group_id: 'Group 1',
         }),
         expect.objectContaining({
           type: 'ImmovablePeople',
-          people: ['Dan'],
+          people: ['person_4'],
           group_id: 'Group 2',
         }),
       ]),

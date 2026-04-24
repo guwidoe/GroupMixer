@@ -57,7 +57,7 @@ export function PairMeetingCountModal({ people, totalSessions, initial, onCancel
     if (!q) return people;
     return people.filter((p) => {
       const id = p.id.toLowerCase();
-      const name = (p.attributes?.name || '').toString().toLowerCase();
+      const name = p.name.toLowerCase();
       return id.includes(q) || name.includes(q);
     });
   }, [people, personSearch]);

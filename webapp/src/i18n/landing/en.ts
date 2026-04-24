@@ -170,8 +170,7 @@ function createContent({
       featureBullets: OPTIMIZER_FEATURES,
       featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'Open scenario editor',
-      supportingText:
-        'Use this when you need controls this page does not expose. Your participants, rules, and configuration come with you.',
+      supportingText: 'Your participants, rules, and configuration come with you.',
     },
     faqEntries,
     chrome: CHROME,

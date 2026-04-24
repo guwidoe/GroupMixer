@@ -1,6 +1,6 @@
-import type { Scenario, SolverSettings } from "../../types";
+import type { SolverSettings } from "../../types";
 import type { ProgressUpdate, RustResult, StopReason } from "./types";
-import type { WarmStartSchedule } from "./scenarioContract";
+import type { WarmStartSchedule, WasmScenario } from "./scenarioContract";
 
 export type WasmContractProgressCallback = (progress: ProgressUpdate) => boolean;
 export interface WasmProgressSnapshot {
@@ -51,13 +51,13 @@ export interface WasmProgressSnapshot {
 export type WasmModuleLoader = () => Promise<WasmContractModule>;
 
 export interface WasmContractSolveInput {
-  scenario: Scenario;
+  scenario: WasmScenario;
   initial_schedule?: WarmStartSchedule;
   construction_seed_schedule?: WarmStartSchedule;
 }
 
 export interface WasmRecommendSettingsRequest {
-  scenario: Scenario;
+  scenario: WasmScenario;
   desired_runtime_seconds: number;
 }
 

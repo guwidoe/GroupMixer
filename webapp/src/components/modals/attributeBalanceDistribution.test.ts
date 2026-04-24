@@ -41,12 +41,12 @@ describe('attributeBalanceDistribution helpers', () => {
     expect(
       buildSuggestedAttributeDistribution({
         people: [
-          { id: 'p1', attributes: { name: 'Alex', gender: 'female' }, sessions: [0] },
-          { id: 'p2', attributes: { name: 'Blair', gender: 'female' }, sessions: [0] },
-          { id: 'p3', attributes: { name: 'Casey', gender: 'male' }, sessions: [0] },
-          { id: 'p4', attributes: { name: 'Drew' }, sessions: [0] },
-          { id: 'p5', attributes: { name: 'Elliot' }, sessions: [0] },
-          { id: 'p6', attributes: { name: 'Finley', gender: 'female' }, sessions: [1] },
+          { id: 'p1', name: 'Alex', attributes: { gender: 'female' }, sessions: [0] },
+          { id: 'p2', name: 'Blair', attributes: { gender: 'female' }, sessions: [0] },
+          { id: 'p3', name: 'Casey', attributes: { gender: 'male' }, sessions: [0] },
+          { id: 'p4', name: 'Drew' , attributes: {}, sessions: [0] },
+          { id: 'p5', name: 'Elliot' , attributes: {}, sessions: [0] },
+          { id: 'p6', name: 'Finley', attributes: { gender: 'female' }, sessions: [1] },
         ],
         attributeDefinition,
         attributeDefinitions: [attributeDefinition],

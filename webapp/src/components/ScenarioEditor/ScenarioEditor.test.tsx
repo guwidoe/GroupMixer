@@ -100,7 +100,7 @@ function createController(overrides: Partial<ScenarioEditorController> = {}): Sc
     entities: {
       showPersonForm: false,
       editingPerson: null,
-      personForm: { attributes: {}, sessions: [] },
+      personForm: { name: '', attributes: {}, sessions: [] },
       setPersonForm: vi.fn(),
       handleAddPerson: vi.fn(),
       handleUpdatePerson: vi.fn(),

@@ -84,7 +84,7 @@ const PairMeetingCountBulkConvertModal: React.FC<Props> = ({ selectedCount, tota
                     <div className="flex flex-wrap gap-2">
                       {sc.people.map(pid => {
                         const per = people.find(pp => pp.id === pid);
-                        const label = per && typeof per.attributes?.name === 'string' && per.attributes.name ? per.attributes.name : pid;
+                        const label = per?.name || pid;
                         const isAnchor = anchorsByIndex[sc.index] === pid;
                         return (
                           <button

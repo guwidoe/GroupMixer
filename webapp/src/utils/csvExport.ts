@@ -151,7 +151,7 @@ export function generateAssignmentsCsv(
           participant.personId,
           assignment.groupId ?? "",
           assignment.sessionIndex + 1,
-          participant.person.attributes?.name ?? "",
+          participant.displayName,
           ...attributeValues,
         ];
       })
@@ -200,7 +200,7 @@ export function generateSessionRostersCsv(
         group.assignedCount,
         group.openSeats,
         person.id,
-        person.attributes?.name ?? "",
+        person.name,
         ...attributeKeys.map((key) => person.attributes?.[key] ?? ""),
       ]);
     })
@@ -227,7 +227,7 @@ export function generateParticipantItinerariesCsv(
 
   const rows = resultsModel.participants.map((participant) => [
     participant.personId,
-    participant.person.attributes?.name ?? "",
+    participant.displayName,
     ...attributeKeys.map((key) => participant.person.attributes?.[key] ?? ""),
     `${participant.assignedSessions}/${resultsModel.summary.totalSessions}`,
     ...participant.sessions.map((session) => session.groupId ?? "Not assigned"),
@@ -313,7 +313,7 @@ export function createResultClipboardText(
             participant.personId,
             assignment.groupId ?? "",
             assignment.sessionLabel,
-            participant.person.attributes?.name ?? "",
+            participant.displayName,
             ...attributeKeys.map((key) => participant.person.attributes?.[key] ?? ""),
           ])
       );
@@ -331,7 +331,7 @@ export function createResultClipboardText(
 
       const rows = resultsModel.participants.map((participant) => [
         participant.personId,
-        participant.person.attributes?.name ?? "",
+        participant.displayName,
         ...attributeKeys.map((key) => participant.person.attributes?.[key] ?? ""),
         `${participant.assignedSessions}/${resultsModel.summary.totalSessions}`,
         ...participant.sessions.map((session) => session.groupId ?? "Not assigned"),

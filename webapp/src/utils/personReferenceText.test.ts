@@ -3,9 +3,9 @@ import { namifyPersonIdsInText } from './personReferenceText';
 import type { Person } from '../types';
 
 const people: Person[] = [
-  { id: 'person_000', attributes: { name: 'Alice' } },
-  { id: 'person_134', attributes: { name: 'Bob' } },
-  { id: 'p1', attributes: { name: 'Cara' } },
+  { id: 'person_000', name: 'Alice' , attributes: {} },
+  { id: 'person_134', name: 'Bob' , attributes: {} },
+  { id: 'p1', name: 'Cara' , attributes: {} },
 ];
 
 describe('namifyPersonIdsInText', () => {

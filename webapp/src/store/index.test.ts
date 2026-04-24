@@ -257,7 +257,7 @@ describe('useAppStore initialization', () => {
     useAppStore.getState().replaceWorkspace({
       scenario: {
         people: [
-          { id: 'p1', attributes: { name: 'Alice', Team: 'Blue' } },
+          { id: 'p1', name: 'Alice', attributes: { Team: 'Blue' } },
         ],
         groups: [{ id: 'g1', size: 1 }],
         num_sessions: 1,

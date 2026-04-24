@@ -67,7 +67,7 @@ export function ShouldNotBeTogetherModal({ sessionsCount, initial, onCancel, onS
   const filteredPeople = scenario.people.filter(p => {
     const q = personSearch.toLowerCase();
     const id = p.id.toLowerCase();
-    const name = (p.attributes?.name || '').toString().toLowerCase();
+    const name = p.name.toLowerCase();
     return id.includes(q) || name.includes(q);
   });
 

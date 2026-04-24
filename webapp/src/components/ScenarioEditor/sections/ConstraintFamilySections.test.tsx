@@ -9,9 +9,9 @@ import { HardConstraintFamilySection, SoftConstraintFamilySection } from './Cons
 function createScenario(): Scenario {
   return {
     people: [
-      { id: 'p1', attributes: { name: 'Alex' } },
-      { id: 'p2', attributes: { name: 'Blair' } },
-      { id: 'p3', attributes: { name: 'Casey' } },
+      { id: 'p1', name: 'Alex', attributes: {} },
+      { id: 'p2', name: 'Blair', attributes: {} },
+      { id: 'p3', name: 'Casey', attributes: {} },
     ],
     groups: [{ id: 'g1', size: 4 }],
     num_sessions: 3,

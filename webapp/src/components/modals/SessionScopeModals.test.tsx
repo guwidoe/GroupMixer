@@ -17,8 +17,8 @@ describe('session-scope modals', () => {
       ui: { ...originalState.ui, isLoading: false },
       resolveScenario: () => ({
         people: [
-          { id: 'p1', attributes: { name: 'Alex' } },
-          { id: 'p2', attributes: { name: 'Blair' } },
+          { id: 'p1', name: 'Alex' , attributes: {} },
+          { id: 'p2', name: 'Blair' , attributes: {} },
         ],
         groups: [{ id: 'g1', size: 4 }],
         num_sessions: 3,
@@ -117,7 +117,7 @@ describe('session-scope modals', () => {
       />,
     );
 
-    expect(screen.queryByText(/automatically includes future sessions/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/automatically includes future sessions/i)).toHaveClass('sr-only');
     expect(screen.getByLabelText(/why choose all sessions/i)).toBeInTheDocument();
     expect(screen.getAllByText('1').length).toBeGreaterThan(0);
     expect(screen.queryByText(/session 1/i)).not.toBeInTheDocument();

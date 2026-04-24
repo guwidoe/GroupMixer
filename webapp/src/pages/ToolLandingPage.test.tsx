@@ -106,7 +106,7 @@ describe('ToolLandingPage SEO wiring', () => {
       'href',
       '/app?lp=home&exp=seo-hero-test&var=B',
     );
-  });
+  }, 10000);
 
   it('renders localized Spanish metadata and hreflang wiring on the shared landing engine', async () => {
     const config = getToolPageConfig('home', 'es');
@@ -310,8 +310,9 @@ describe('ToolLandingPage SEO wiring', () => {
 
     const state = useAppStore.getState();
     expect(state.currentScenarioId).toBeTruthy();
-    expect(state.scenario?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
-    expect(state.savedScenarios[state.currentScenarioId!]?.scenario.people.map((person) => person.id)).toEqual([
+    expect(state.scenario?.people.map((person) => person.id)).toEqual(['person_1', 'person_2', 'person_3', 'person_4']);
+    expect(state.scenario?.people.map((person) => person.name)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    expect(state.savedScenarios[state.currentScenarioId!]?.scenario.people.map((person) => person.name)).toEqual([
       'Ada',
       'Grace',
       'Linus',
@@ -324,7 +325,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     const existingScenarioId = useAppStore.getState().syncWorkspaceDraft({
       scenario: createSampleScenario({
-        people: [{ id: 'Existing', attributes: { name: 'Existing' } }],
+        people: [{ id: 'Existing', name: 'Existing' , attributes: {} }],
         settings: createSampleSolverSettings(),
       }),
       scenarioName: 'Existing workspace',
@@ -347,7 +348,8 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByTestId('location-probe')).toHaveTextContent('/app/scenario/people');
     expect(state.currentScenarioId).toBeTruthy();
     expect(state.currentScenarioId).not.toBe(existingScenarioId);
-    expect(state.scenario?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    expect(state.scenario?.people.map((person) => person.id)).toEqual(['person_1', 'person_2', 'person_3', 'person_4']);
+    expect(state.scenario?.people.map((person) => person.name)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
     expect(state.savedScenarios[existingScenarioId]?.scenario.people.map((person) => person.id)).toEqual(['Existing']);
     expect(state.ui.notifications.at(-1)).toEqual(
       expect.objectContaining({
@@ -400,10 +402,10 @@ describe('ToolLandingPage SEO wiring', () => {
     const workspaceScenarioId = useAppStore.getState().syncWorkspaceDraft({
       scenario: createSampleScenario({
         people: [
-          { id: 'Ada', attributes: { name: 'Ada' } },
-          { id: 'Grace', attributes: { name: 'Grace' } },
-          { id: 'Linus', attributes: { name: 'Linus' } },
-          { id: 'Margaret', attributes: { name: 'Margaret' } },
+          { id: 'Ada', name: 'Ada' , attributes: {} },
+          { id: 'Grace', name: 'Grace' , attributes: {} },
+          { id: 'Linus', name: 'Linus' , attributes: {} },
+          { id: 'Margaret', name: 'Margaret' , attributes: {} },
         ],
         settings: createSampleSolverSettings(),
       }),
@@ -426,8 +428,8 @@ describe('ToolLandingPage SEO wiring', () => {
 
     useAppStore.getState().updateScenario({
       people: [
-        { id: 'Edited', attributes: { name: 'Edited' } },
-        { id: 'Scenario', attributes: { name: 'Scenario' } },
+        { id: 'Edited', name: 'Edited' , attributes: {} },
+        { id: 'Scenario', name: 'Scenario' , attributes: {} },
       ],
       groups: [{ id: 'edited-group', size: 2 }],
       constraints: [{ type: 'MustStayApart', people: ['Edited', 'Scenario'] }],
@@ -450,7 +452,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     const existingScenarioId = useAppStore.getState().syncWorkspaceDraft({
       scenario: createSampleScenario({
-        people: [{ id: 'Existing', attributes: { name: 'Existing' } }],
+        people: [{ id: 'Existing', name: 'Existing' , attributes: {} }],
         settings: createSampleSolverSettings(),
       }),
       scenarioName: 'Existing workspace',
@@ -471,7 +473,8 @@ describe('ToolLandingPage SEO wiring', () => {
     const state = useAppStore.getState();
     expect(state.currentScenarioId).toBeTruthy();
     expect(state.currentScenarioId).not.toBe(existingScenarioId);
-    expect(state.scenario?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    expect(state.scenario?.people.map((person) => person.id)).toEqual(['person_1', 'person_2', 'person_3', 'person_4']);
+    expect(state.scenario?.people.map((person) => person.name)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
     expect(state.savedScenarios[existingScenarioId]?.scenario.people.map((person) => person.id)).toEqual(['Existing']);
   }, 10000);
 
@@ -497,13 +500,13 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByLabelText(/keep together/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/keep apart/i)).toBeInTheDocument();
     expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /open the full scenario editor/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /go to scenario editor/i })).toBeInTheDocument();
     expect(screen.queryByText(/use this when you need controls this page does not expose/i)).not.toBeInTheDocument();
     expect(screen.getByText(/your participants, rules, and configuration come with you/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /explain partial attendance/i })).toBeInTheDocument();
     expect(screen.getByText(/set which participants attend which sessions/i)).toHaveClass('sr-only');
     expect(screen.queryByText(/groupmixer is more than a random shuffler/i)).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /open the full scenario editor/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /go to scenario editor/i })).toBeInTheDocument();
   }, 10000);
 
   it('keeps the tool divider aligned with the pointer when dragging starts', async () => {
@@ -851,7 +854,7 @@ describe('ToolLandingPage SEO wiring', () => {
 
     expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-4');
     expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /open the full scenario editor/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /go to scenario editor/i })).toBeInTheDocument();
     expect(screen.getByTestId('landing-hero')).toHaveClass('order-1');
   });
 

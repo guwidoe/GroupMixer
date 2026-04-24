@@ -1,5 +1,5 @@
 import { Scenario, SolverSettings, AttributeDefinition } from '../types';
-import { createAttributeDefinition, getAttributeDefinitionName } from './scenarioAttributes';
+import { createAttributeDefinition, getAttributeDefinitionName, resolveScenarioWorkspaceState } from './scenarioAttributes';
 import { createDefaultSolverSettings, normalizeSolverFamilyId } from './solverUi';
 import { isLandingDemoScenarioCompatible } from '../utils/quickSetup/landingDemo';
 
@@ -53,13 +53,14 @@ function convertTestCaseToScenario(testCase: any): Scenario {
 
   const settings = convertDemoSolverSettings(input.solver);
 
-  return {
+  const scenario: Scenario = {
     people: scenarioInput.people,
     groups: scenarioInput.groups,
     num_sessions: scenarioInput.num_sessions,
     constraints: input.constraints || [],
     settings,
   };
+  return resolveScenarioWorkspaceState(scenario).scenario;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -394,8 +395,8 @@ function createFallbackDemo(): Scenario {
     },
   ];
 
-  return {
-    people: demoPeople,
+  const scenario: Scenario = {
+    people: demoPeople as unknown as Scenario['people'],
     groups: demoGroups,
     num_sessions: 3,
     constraints: [
@@ -437,6 +438,7 @@ function createFallbackDemo(): Scenario {
       },
     },
   };
+  return resolveScenarioWorkspaceState(scenario).scenario;
 }
 
 // Extract all unique attributes and their values from a Scenario
@@ -448,9 +450,6 @@ export function extractAttributesFromScenario(
   // Extract attributes from all people
   scenario.people.forEach((person) => {
     Object.entries(person.attributes).forEach(([key, value]) => {
-      // Skip the 'name' attribute as it's not typically used for grouping/constraints
-      if (key === "name") return;
-
       if (!attributeMap.has(key)) {
         attributeMap.set(key, new Set());
       }

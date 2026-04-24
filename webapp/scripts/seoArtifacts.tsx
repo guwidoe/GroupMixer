@@ -152,8 +152,7 @@ function buildSitemapXml(): string {
     return `  <url>\n    <loc>${CANONICAL_ORIGIN}${suffix}</loc>\n${alternateLinks}\n  </url>`;
   });
 
-  const guideUrls = GUIDE_PAGE_ROUTES.map(({ key, path: routePath }) => {
-    const config = getGuidePageConfig(key);
+  const guideUrls = GUIDE_PAGE_ROUTES.map(({ path: routePath }) => {
     const suffix = routePath === '/' ? '/' : routePath;
 
     return `  <url>\n    <loc>${CANONICAL_ORIGIN}${suffix}</loc>\n  </url>`;

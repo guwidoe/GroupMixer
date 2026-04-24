@@ -5,6 +5,7 @@ import { getLandingUiContent } from '../../i18n/landingUi';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import { solveScenario } from '../../services/solver/solveScenario';
+import { getPersonDisplayName } from '../../services/scenarioAttributes';
 import { namifyPersonIdsInText } from '../../utils/personReferenceText';
 import { buildGroups, buildScenarioFromDraft, parseParticipantInput } from '../../utils/quickSetup';
 import {
@@ -153,7 +154,7 @@ function parseParticipants(draft: QuickSetupDraft): Pick<QuickSetupAnalysis, 'pa
   return {
     participants: parsed.people.map((person) => ({
       id: person.id,
-      name: person.id,
+      name: getPersonDisplayName(person),
       attributes: person.attributes,
     })),
     availableBalanceKeys: balanceAttributes.map((attribute) => attribute.key),
@@ -276,7 +277,7 @@ function quickSetupResultFromSolution(scenario: ReturnType<typeof buildScenarioF
       person.id,
       {
         id: person.id,
-        name: person.id,
+        name: getPersonDisplayName(person),
         attributes: person.attributes,
       } satisfies QuickSetupParticipant,
     ] as const),

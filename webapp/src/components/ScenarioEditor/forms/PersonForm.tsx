@@ -57,10 +57,10 @@ const PersonForm: React.FC<PersonFormProps> = ({
             </label>
             <input
               type="text"
-              value={personForm.attributes.name || ''}
+              value={personForm.name}
               onChange={(e) => setPersonForm(prev => ({
                 ...prev,
-                attributes: { ...prev.attributes, name: e.target.value }
+                name: e.target.value,
               }))}
               className="input"
               placeholder="Enter person's name"
@@ -84,26 +84,29 @@ const PersonForm: React.FC<PersonFormProps> = ({
               </button>
             </div>
             <div className="space-y-2">
-              {attributeDefinitions.map(def => (
-                <div key={def.key}>
-                  <label className="block text-xs mb-1 capitalize" style={{ color: 'var(--text-tertiary)' }}>
-                    {def.key}
-                  </label>
-                  <select
-                    value={personForm.attributes[def.key] || ''}
-                    onChange={(e) => setPersonForm(prev => ({
-                      ...prev,
-                      attributes: { ...prev.attributes, [def.key]: e.target.value }
-                    }))}
-                    className="select text-sm"
-                  >
-                    <option value="">Select {def.key}</option>
-                    {def.values.map(value => (
-                      <option key={value} value={value}>{value}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+              {attributeDefinitions.map(def => {
+                const attributeName = def.name || def.key || '';
+                return (
+                  <div key={def.id}>
+                    <label className="block text-xs mb-1 capitalize" style={{ color: 'var(--text-tertiary)' }}>
+                      {attributeName}
+                    </label>
+                    <select
+                      value={personForm.attributes[attributeName] || ''}
+                      onChange={(e) => setPersonForm(prev => ({
+                        ...prev,
+                        attributes: { ...prev.attributes, [attributeName]: e.target.value }
+                      }))}
+                      className="select text-sm"
+                    >
+                      <option value="">Select {attributeName}</option>
+                      {def.values.map(value => (
+                        <option key={value} value={value}>{value}</option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
             </div>
           </div>
 

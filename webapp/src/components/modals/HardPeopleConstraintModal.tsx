@@ -141,7 +141,7 @@ export function HardPeopleConstraintModal({
                 .filter((person) => {
                   const query = personSearch.trim().toLowerCase();
                   if (!query) return true;
-                  const name = (person.attributes?.name || '').toString().toLowerCase();
+                  const name = person.name.toLowerCase();
                   const id = person.id.toLowerCase();
                   return name.includes(query) || id.includes(query);
                 })
@@ -158,7 +158,7 @@ export function HardPeopleConstraintModal({
                       className="h-4 w-4"
                       style={{ accentColor: 'var(--color-accent)' }}
                     />
-                    <span className="text-sm">{person.attributes.name}</span>
+                    <span className="text-sm">{person.name}</span>
                   </label>
                 ))
             ) : (
