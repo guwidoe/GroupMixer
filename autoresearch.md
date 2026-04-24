@@ -48,9 +48,8 @@ Primary heuristic/code paths:
 - `backend/core/src/solver_support/construction/constraint_scenario_oracle/*.rs` — projection, merge, template generation, oracle backend, signal extraction, shared telemetry/types.
 - `backend/core/src/solver_support/construction/baseline/mod.rs` — baseline constructor behavior and fill order, if needed to implement oracle-guided baseline fill.
 - `backend/core/src/solver_support/construction/freedom_aware/mod.rs` — reference only unless a small reusable idea is clearly beneficial.
-- `backend/core/src/solver3/search/*.rs` — only for changes directly needed to make constructor incumbents search-friendly; do not turn this into general search-driver optimization.
 - `backend/core/src/models.rs` — only for internal telemetry/config structure needed by the constructor; no user-facing knobs without explicit approval.
-- `backend/core/src/solver_support/complexity.rs` — only if a bug in canonical input-only complexity evaluation is discovered; do not tune it to improve this loop.
+
 
 Benchmark/autoresearch support:
 

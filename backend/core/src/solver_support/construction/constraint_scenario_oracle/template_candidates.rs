@@ -254,7 +254,7 @@ fn oracle_template_candidate_score(
         - dummy_oracle_people as f64
         - omitted_high_attendance_people as f64 * 3.0
         - omitted_group_count as f64 * 5.0
-        - scaffold_disruption_risk
+        - scaffold_disruption_risk * 3.0
 }
 
 fn oracle_template_candidate_order(
