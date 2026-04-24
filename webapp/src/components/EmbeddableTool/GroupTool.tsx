@@ -1,4 +1,5 @@
 import { ArrowRight, CircleHelp, Copy, Download, RotateCcw, Sparkles } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { DemoDataDropdown } from '../ScenarioEditor/DemoDataDropdown';
 import { Tooltip } from '../Tooltip';
@@ -139,6 +140,148 @@ export function GroupTool({
 }: GroupToolProps) {
   const { draft } = controller;
   const solvedSolution = controller.workspacePayload.solution ?? null;
+  const generateButtonRef = useRef<HTMLButtonElement | null>(null);
+  const stickyGenerateButtonRef = useRef<HTMLButtonElement | null>(null);
+  const stickyGenerateAnimationTimeoutRef = useRef<number | null>(null);
+  const [showStickyGenerateButton, setShowStickyGenerateButton] = useState(false);
+  const [renderStickyGenerateButton, setRenderStickyGenerateButton] = useState(false);
+  const [stickyGenerateButtonStyle, setStickyGenerateButtonStyle] = useState<CSSProperties>({});
+  const [showStickyGenerateMeta, setShowStickyGenerateMeta] = useState(false);
+
+  useEffect(() => {
+    const button = generateButtonRef.current;
+
+    if (!button || typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+
+    const narrowViewportQuery = window.matchMedia('(max-width: 1023px)');
+    let frameId: number | null = null;
+
+    const updateVisibility = () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+
+      frameId = window.requestAnimationFrame(() => {
+        frameId = null;
+        const rect = button.getBoundingClientRect();
+        const advancedOptionsBottom = advancedOptionsPaneRef.current?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY;
+        setShowStickyGenerateButton(
+          narrowViewportQuery.matches
+          && rect.bottom < 0
+          && advancedOptionsBottom > 0,
+        );
+      });
+    };
+
+    updateVisibility();
+    window.addEventListener('scroll', updateVisibility, { passive: true });
+    window.addEventListener('resize', updateVisibility);
+    narrowViewportQuery.addEventListener?.('change', updateVisibility);
+
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+
+      window.removeEventListener('scroll', updateVisibility);
+      window.removeEventListener('resize', updateVisibility);
+      narrowViewportQuery.removeEventListener?.('change', updateVisibility);
+    };
+  }, [advancedOptionsPaneRef]);
+
+  useEffect(() => {
+    return () => {
+      if (stickyGenerateAnimationTimeoutRef.current !== null) {
+        window.clearTimeout(stickyGenerateAnimationTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    if (stickyGenerateAnimationTimeoutRef.current !== null) {
+      window.clearTimeout(stickyGenerateAnimationTimeoutRef.current);
+      stickyGenerateAnimationTimeoutRef.current = null;
+    }
+
+    const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+    if (showStickyGenerateButton) {
+      const sourceRect = generateButtonRef.current?.getBoundingClientRect() ?? null;
+      setRenderStickyGenerateButton(true);
+      setShowStickyGenerateMeta(false);
+      setStickyGenerateButtonStyle({});
+
+      const firstFrame = window.requestAnimationFrame(() => {
+        const targetRect = stickyGenerateButtonRef.current?.getBoundingClientRect() ?? null;
+
+        if (!sourceRect || !targetRect || prefersReducedMotion) {
+          setShowStickyGenerateMeta(true);
+          return;
+        }
+
+        setStickyGenerateButtonStyle({
+          opacity: 0.92,
+          transform: `translate(${sourceRect.left - targetRect.left}px, ${sourceRect.top - targetRect.top}px) scale(${sourceRect.width / targetRect.width}, ${sourceRect.height / targetRect.height})`,
+          transformOrigin: 'top left',
+        });
+
+        window.requestAnimationFrame(() => {
+          setStickyGenerateButtonStyle({
+            opacity: 1,
+            transform: 'translate(0, 0) scale(1)',
+            transformOrigin: 'top left',
+            transition: 'transform 380ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 240ms ease',
+          });
+          setShowStickyGenerateMeta(true);
+        });
+      });
+
+      return () => window.cancelAnimationFrame(firstFrame);
+    }
+
+    if (!renderStickyGenerateButton) {
+      return;
+    }
+
+    setShowStickyGenerateMeta(false);
+
+    const stickyRect = stickyGenerateButtonRef.current?.getBoundingClientRect() ?? null;
+    const targetRect = generateButtonRef.current?.getBoundingClientRect() ?? null;
+    const canMorphBack = Boolean(
+      stickyRect
+      && targetRect
+      && targetRect.bottom > -80
+      && targetRect.top < window.innerHeight + 80,
+    );
+
+    if (stickyRect && targetRect && canMorphBack && !prefersReducedMotion) {
+      setStickyGenerateButtonStyle({
+        opacity: 0.92,
+        transform: `translate(${targetRect.left - stickyRect.left}px, ${targetRect.top - stickyRect.top}px) scale(${targetRect.width / stickyRect.width}, ${targetRect.height / stickyRect.height})`,
+        transformOrigin: 'top left',
+        transition: 'transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 240ms ease',
+      });
+    } else {
+      setStickyGenerateButtonStyle({
+        opacity: 0,
+        transform: 'translate(0, 14px) scale(0.98)',
+        transformOrigin: 'bottom right',
+        transition: 'transform 280ms ease, opacity 220ms ease',
+      });
+    }
+
+    stickyGenerateAnimationTimeoutRef.current = window.setTimeout(() => {
+      stickyGenerateAnimationTimeoutRef.current = null;
+      setRenderStickyGenerateButton(false);
+      setStickyGenerateButtonStyle({});
+    }, 400);
+  }, [renderStickyGenerateButton, showStickyGenerateButton]);
 
   const resultsSection = controller.result ? (
     <div
@@ -583,10 +726,12 @@ export function GroupTool({
 
             <div className="mt-3 flex gap-2">
               <button
+                ref={generateButtonRef}
                 type="button"
                 onClick={onGenerateGroups}
                 disabled={!controller.canGenerate || controller.isSolving}
                 className="btn-primary inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ opacity: renderStickyGenerateButton && !showStickyGenerateButton ? 0 : undefined }}
               >
                 <Sparkles className="h-4 w-4" />
                 {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
@@ -639,6 +784,38 @@ export function GroupTool({
           </div>
         </div>
       </div>
+
+      {renderStickyGenerateButton ? (
+        <div className="fixed inset-x-0 bottom-0 z-50 border-t px-4 py-3 shadow-lg lg:hidden" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
+          <div className="mx-auto flex max-w-xl items-center gap-3">
+            <div
+              className="min-w-0 flex-1 text-xs leading-tight transition-opacity duration-300"
+              style={{
+                color: 'var(--text-secondary)',
+                opacity: showStickyGenerateMeta ? 1 : 0,
+              }}
+            >
+              <div className="truncate">
+                {participantCount} {ui.quickSetup.peopleStatLabel.toLowerCase()} · {estimatedGroupCount} {ui.quickSetup.groupsStatLabel.toLowerCase()}
+              </div>
+              <div className="truncate">
+                {ui.quickSetup.approxSizeStatLabel} {estimatedGroupSize}
+              </div>
+            </div>
+            <button
+              ref={stickyGenerateButtonRef}
+              type="button"
+              onClick={onGenerateGroups}
+              disabled={!controller.canGenerate || controller.isSolving}
+              className="btn-primary inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+              style={stickyGenerateButtonStyle}
+            >
+              <Sparkles className="h-4 w-4" />
+              {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {resultsSection}
     </>
