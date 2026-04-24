@@ -1,195 +1,132 @@
-# Solver6 Seed Catalog
+# Solver6 Progressive Incumbent Cache
 
-This document defines the **explicit offline seed catalog** for `solver6`.
+This document defines the explicit on-disk cache for `solver6`.
 
-It exists to make `solver6` usable as a stronger universal seeder without adding hidden runtime cheats or silent fallback behavior.
+Despite the historical filename, this is no longer a seed catalog. The cache stores
+**solver6 incumbents**: schedules after seed construction and any completed portion of
+local search.
 
 ## Purpose
 
-`solver6` often spends most of its runtime in **seed synthesis**, not local search.
+Solver6 is a pure-SGP engine. For a fixed pure-SGP shape, repeated runs should be able
+to reuse the best schedule already found and spend new work improving it instead of
+rebuilding the same seed every time.
 
-The seed catalog addresses that by allowing expensive seed builds to be:
+The cache exists to make that behavior explicit, inspectable, and low-dimensional.
+It is not a webapp/API feature and it is not a second result database alongside a seed
+cache. There is one solver6 cache.
 
-- generated offline,
-- versioned explicitly,
-- validated on load,
-- and reused only through an explicit configuration surface.
+## Cache identity
 
-It is **not**:
+A cache entry is keyed only by:
 
-- a hidden benchmark-specific shortcut,
-- an opaque final-answer database,
-- or a silent fallback path.
-
-## What is stored
-
-The catalog stores **seed artifacts**, not final solved schedules after local search.
-
-Current storage choice:
-
-- store the **full seed schedule**,
-- store seed diagnostics and pair telemetry,
-- store provenance and compatibility metadata,
-- store mixed-seed candidate summaries,
-- and record estimated recipe-size data for divisible exact-block cases.
-
-Why full schedules first:
-
-- they cover both divisible exact-block cases and non-divisible mixed-tail cases,
-- they are simple to validate honestly,
-- and they avoid pretending every stored seed can be reconstructed from a smaller recipe today.
-
-For exact-block-only cases, the generator also records an **estimated exact-block recipe JSON size** so we can compare storage tradeoffs over time.
-
-## Compatibility contract
-
-A catalog entry is keyed by:
-
+- `cache_policy_version`
 - `num_groups`
 - `group_size`
 - `num_weeks`
-- `seed_strategy`
-- `pair_repeat_penalty_model`
 
-Compatibility is strict.
+Do **not** include these in the key:
 
-A runtime lookup must also match:
+- effective seed
+- seed strategy
+- search strategy
+- pair-repeat penalty model
+- objective/constraint spelling
+- per-call seed timeout
+- per-call local-search timeout
 
-- `schema_version`
-- `seed_policy_version`
+Those values may be useful provenance or execution parameters, but they are not the
+identity of a pure-SGP solver6 incumbent. For solver6, one `(groups, group_size,
+weeks)` shape maps to one progressively improving incumbent under a cache policy
+version.
 
-If any of those differ, the entry is rejected explicitly.
+## What is stored
+
+The cache stores:
+
+- schema and policy version metadata
+- the pure-SGP shape key
+- the internal schedule as `Vec<Vec<Vec<usize>>>`
+- pair-frequency metrics recomputed from the schedule
+- an incumbent status
+- provenance/debug metadata such as generator version, optional git commit, update
+  counts, and runtime observations
+
+The cache stores schedules, not full public `SolverResult` values. Public scoring or
+contract projection, where needed, belongs at the boundary that consumes the native
+solver6 schedule.
+
+## Incumbent status
+
+A cached incumbent has one of these statuses:
+
+- `search_timed_out` — local search stopped because the per-call local-search budget
+  expired. The schedule is valid and should be resumed on a later call.
+- `locally_optimal` — the configured deterministic local search found no improving
+  move from this incumbent.
+- `known_optimal` — solver6 reached a proven/known optimum, such as exact solver5
+  handoff or a lower-bound-tight repeat objective.
+
+Completeness ordering is:
+
+```text
+search_timed_out < locally_optimal < known_optimal
+```
+
+For equal quality, a more complete status may replace a less complete status. A worse
+incumbent must not replace a better cached incumbent.
 
 ## Runtime semantics
 
-Catalog use is configured via `Solver6Params.seed_catalog`.
+When solver6 runs with the cache enabled:
 
-That config includes:
+1. Validate and normalize the pure-SGP shape.
+2. Build the cache key from `policy/g/p/w`.
+3. If a cache entry with `locally_optimal` or `known_optimal` exists, return it
+   immediately.
+4. If a cache entry with `search_timed_out` exists, resume local search from the
+   cached schedule.
+5. If there is no entry, build a fresh seed.
+6. If seed construction exceeds `seed_time_limit_seconds`, fail explicitly and do not
+   write a cache entry.
+7. Run local search under `local_search_time_limit_seconds`.
+8. Save the best incumbent:
+   - timeout => `search_timed_out`
+   - local optimum => `locally_optimal`
+   - proven optimum => `known_optimal`
+9. Return the same incumbent that was saved or accepted from cache.
 
-- `manifest_path`
-- `miss_policy`
+A local-search timeout is therefore a successful incumbent-producing result. A seed
+timeout is not: without a seed or cached incumbent, there is no honest schedule to
+return.
 
-Supported miss policies:
+## Validation and invalidation
 
-- `error` — fail explicitly if no compatible catalog entry exists
-- `fall_back_to_live_seed` — fall back explicitly to live `solver6` seed synthesis
+Cache loading must be explicit and defensive:
 
-This preserves the repo doctrine:
+- `schema_version` must match `SOLVER6_CACHE_SCHEMA_VERSION`
+- `cache_policy_version` must match `SOLVER6_CACHE_POLICY_VERSION`
+- schedule shape must match `(g,p,w)` exactly
+- participants must form full weekly partitions
+- stored metrics must match metrics recomputed from the stored schedule
 
-- no hidden fallbacks
-- explicit configuration or explicit failure
-- honest unsupported behavior
+Stale or corrupt entries are rejected explicitly. They are not silently repaired or
+used as seeds.
 
-## Execution order
-
-When `solver6` runs:
-
-1. pure-SGP validation still happens first
-2. exact solver5 handoff still happens first for exact cells
-3. if configured, the seed catalog is consulted for the hybrid seed path
-4. on a hit, the catalog seed is used and surfaced in reporting as `catalog:<family>`
-5. on a miss:
-   - `error` => fail explicitly
-   - `fall_back_to_live_seed` => continue with live seed synthesis explicitly
-6. local search proceeds from the chosen seed as usual
-
-## Generator workflow
-
-Use the example generator:
-
-```bash
-cargo run -q -p gm-core --example solver6_seed_catalog -- \
-  --output-dir /tmp/solver6-seed-catalog \
-  --max-groups 20 \
-  --max-group-size 20 \
-  --max-weeks 20 \
-  --threshold-seconds 0.1 \
-  --seed 42 \
-  --pair-repeat-penalty-model linear_repeat_excess \
-  --git-commit $(git rev-parse --short HEAD)
-```
-
-Outputs:
-
-- `manifest.json`
-- `entries/*.json`
-- `threshold-report.json`
-
-The generator:
-
-- skips cases already handled by exact solver5 handoff,
-- skips shapes where solver6 still has no supported seed-construction route,
-- and only catalogs the hybrid seed-construction lane that actually synthesizes a solver6 seed.
-
-## Threshold policy
-
-The initial policy is now explicitly **0.1 seconds**.
-
-Rationale:
-
-- the user explicitly chose `0.1s` as the first operating point,
-- seed latency is the main bottleneck for universal seeding,
-- and the generator now writes a threshold report for `0.1s`, `0.5s`, and `1.0s` so this choice can be revisited with real data.
-
-`threshold-report.json` records:
-
-- how many seeded cases exceed each threshold,
-- total artifact bytes for those cases,
-- and estimated exact-block recipe bytes where that estimate is available.
-
-## Invalidation policy
-
-Two layers matter:
-
-### 1. Schema version
-
-Bump `SOLVER6_SEED_CATALOG_SCHEMA_VERSION` when the on-disk JSON shape changes.
-
-### 2. Seed policy version
-
-Bump `SOLVER6_SEED_POLICY_VERSION` when the meaning of the generated seed changes materially, for example:
-
-- different mixed-seed selection semantics
-- different relabeling semantics
-- different seed telemetry semantics
-- or a new compatibility contract
-
-When `seed_policy_version` changes, old catalog artifacts must be treated as stale.
-
-## Sample manifest snippet
-
-```json
-{
-  "schema_version": 1,
-  "generated_by": "0.1.0",
-  "seed_policy_version": "solver6_seed_policy_v1",
-  "configured_threshold_micros": 100000,
-  "entries": [
-    {
-      "key": {
-        "num_groups": 15,
-        "group_size": 15,
-        "num_weeks": 20,
-        "seed_strategy": "solver5_exact_block_composition",
-        "pair_repeat_penalty_model": "linear_repeat_excess"
-      },
-      "selected_family": "heuristic_tail",
-      "relative_entry_path": "entries/g15_p15_w20_linear_repeat_excess_heuristic_tail.json",
-      "measured_seed_runtime_micros": 512341,
-      "artifact_bytes": 84219,
-      "estimated_exact_block_recipe_json_bytes": null
-    }
-  ]
-}
-```
+Bump `SOLVER6_CACHE_SCHEMA_VERSION` when the JSON shape changes. Bump
+`SOLVER6_CACHE_POLICY_VERSION` when the semantics of the incumbent, objective,
+validation, local-search neighborhood, or status interpretation changes enough that
+old incumbents should no longer be trusted as the canonical cache line for a shape.
 
 ## Reporting expectations
 
-When a catalog entry is used, solver6 reporting should make that clear.
+Solver6 reporting should make cache behavior visible. Useful statuses include:
 
-Current benchmark inspection surface exposes:
+- cache disabled
+- cache miss
+- complete cache hit
+- incomplete cache hit resumed
+- cache updated
+- cache update skipped because the existing incumbent was better
 
-- `seed_family = "catalog:<family>"`
-- `seed_source_detail = "manifest=..., entry=..."`
-
-That keeps catalog usage inspectable instead of silent.
+This keeps cache effects inspectable and prevents hidden benchmark shortcuts.

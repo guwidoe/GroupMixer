@@ -62,11 +62,15 @@ Future seed families may include:
 - mixed block-size portfolios
 - multi-seed constructor portfolios
 
-Solver6 may also use an explicit offline **seed catalog** for expensive seed builds.
+Solver6 may also use an explicit on-disk **progressive incumbent cache** for expensive pure-SGP shapes.
 
 - This is documented in `backend/core/src/solver6/SEED_CATALOG.md`.
-- Catalog use must remain explicit, versioned, and inspectable.
-- A missing catalog entry must never silently downgrade behavior.
+- Despite the historical filename, that document now defines the solver6 incumbent cache, not a seed-only catalog.
+- Cache use must remain explicit, versioned, and inspectable.
+- Cache identity is only `cache_policy_version + num_groups + group_size + num_weeks`.
+- Cached final/incumbent schedules are reused directly; incomplete incumbents resume local search on later calls.
+- A seed timeout on a cache miss fails explicitly; a local-search timeout returns and saves the incumbent.
+- Solver6 cache behavior is native solver6 infrastructure and is not a webapp-direct integration path.
 
 ### 4. Repeat-minimizing local search
 
