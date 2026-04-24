@@ -16,6 +16,7 @@ import {
   resolveFixedAssignmentGroupId,
 } from '../../utils/quickSetup/fixedAssignments';
 import { LandingResizableTextarea } from './LandingResizableTextarea';
+import { useLandingLayoutAutoResizeSuppression } from './landingLayoutAutoResizeSuppression';
 import type { QuickSetupController } from './useQuickSetup';
 
 interface QuickSetupAdvancedOptionsProps {
@@ -68,6 +69,9 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
   const fixedPeopleGroupPlaceholder = balanceGroups.length > 0
     ? balanceGroups.slice(0, 2).map((_group, index) => String(index + 1)).join('\n')
     : '1\n2';
+  const keepTogetherLayout = useLandingLayoutAutoResizeSuppression('keep-together');
+  const keepApartLayout = useLandingLayoutAutoResizeSuppression('keep-apart');
+  const pinnedPeopleLayout = useLandingLayoutAutoResizeSuppression('pinned-people');
 
   return (
     <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
@@ -88,6 +92,7 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             className="rounded-2xl"
             textareaClassName="px-4 py-3 text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
+            onManualLayoutAdjustment={keepTogetherLayout.recordManualLayoutAdjustment}
           />
         </div>
 
@@ -108,6 +113,7 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             className="rounded-2xl"
             textareaClassName="px-4 py-3 text-sm outline-none"
             style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}
+            onManualLayoutAdjustment={keepApartLayout.recordManualLayoutAdjustment}
           />
         </div>
 
@@ -131,6 +137,8 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
               })),
             }))}
             minHeight={112}
+            autoResizeSuppressed={pinnedPeopleLayout.autoResizeSuppressed}
+            onManualLayoutAdjustment={pinnedPeopleLayout.recordManualLayoutAdjustment}
           />
         </div>
 

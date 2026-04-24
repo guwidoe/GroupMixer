@@ -13,6 +13,7 @@ interface LandingResizableTextareaProps {
   textareaClassName?: string;
   clipFieldBorder?: boolean;
   interactiveSurface?: boolean;
+  onManualLayoutAdjustment?: () => void;
 }
 
 export function LandingResizableTextarea({
@@ -28,6 +29,7 @@ export function LandingResizableTextarea({
   textareaClassName,
   clipFieldBorder = false,
   interactiveSurface = false,
+  onManualLayoutAdjustment,
 }: LandingResizableTextareaProps) {
   const [height, setHeight] = useState(minHeight);
   const dragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
@@ -58,6 +60,7 @@ export function LandingResizableTextarea({
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
+    onManualLayoutAdjustment?.();
     dragStateRef.current = {
       startY: event.clientY,
       startHeight: height,
@@ -66,7 +69,7 @@ export function LandingResizableTextarea({
     window.addEventListener('pointermove', handlePointerMove);
     window.addEventListener('pointerup', stopResize);
     window.addEventListener('pointercancel', stopResize);
-  }, [handlePointerMove, height, stopResize]);
+  }, [handlePointerMove, height, onManualLayoutAdjustment, stopResize]);
 
   return (
     <div

@@ -20,7 +20,9 @@ interface LandingParticipantColumnsInputProps {
   onRemoveAttribute: (index: number) => void;
   minHeight: number;
   autoOuterHeight?: number | null;
+  autoResizeSuppressed?: boolean;
   outerRef?: (node: HTMLDivElement | null) => void;
+  onManualLayoutAdjustment?: () => void;
 }
 
 interface EditableTextBlockProps {
@@ -183,7 +185,9 @@ export function LandingParticipantColumnsInput({
   onRemoveAttribute,
   minHeight,
   autoOuterHeight = null,
+  autoResizeSuppressed = false,
   outerRef,
+  onManualLayoutAdjustment,
 }: LandingParticipantColumnsInputProps) {
   const [height, setHeight] = useState(minHeight);
   const [columnWidths, setColumnWidths] = useState<number[]>(() => columns.map((_, index) => (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH)));
@@ -281,7 +285,11 @@ export function LandingParticipantColumnsInput({
   const contentHeight = Math.max(height - HEADER_HEIGHT - 18, maxLineCount * LINE_HEIGHT + BODY_PADDING);
 
   useLayoutEffect(() => {
-    if (hasCustomColumnWidthsRef.current) {
+    if (!autoResizeSuppressed) {
+      hasCustomColumnWidthsRef.current = false;
+    }
+
+    if (autoResizeSuppressed || hasCustomColumnWidthsRef.current) {
       return undefined;
     }
 
@@ -291,7 +299,7 @@ export function LandingParticipantColumnsInput({
     }
 
     const measure = () => {
-      if (hasCustomColumnWidthsRef.current) {
+      if (autoResizeSuppressed || hasCustomColumnWidthsRef.current) {
         return;
       }
 
@@ -328,7 +336,7 @@ export function LandingParticipantColumnsInput({
       window.removeEventListener('resize', measure);
       observer?.disconnect();
     };
-  }, [columns.length]);
+  }, [autoResizeSuppressed, columns.length]);
 
   const getColumnWidth = useCallback(
     (index: number) => columnWidths[index] ?? (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH),
@@ -372,6 +380,7 @@ export function LandingParticipantColumnsInput({
   const startColumnResize = useCallback((index: number, event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     hasCustomColumnWidthsRef.current = true;
+    onManualLayoutAdjustment?.();
     const rightIsGhost = index === columns.length - 1;
     const leftElement = event.currentTarget.previousElementSibling as HTMLDivElement | null;
     const rightElement = event.currentTarget.nextElementSibling as HTMLDivElement | null;
@@ -389,7 +398,7 @@ export function LandingParticipantColumnsInput({
     window.addEventListener('pointermove', handleColumnPointerMove);
     window.addEventListener('pointerup', stopColumnResize);
     window.addEventListener('pointercancel', stopColumnResize);
-  }, [columns.length, getColumnWidth, ghostColumnWidth, handleColumnPointerMove, stopColumnResize]);
+  }, [columns.length, getColumnWidth, ghostColumnWidth, handleColumnPointerMove, onManualLayoutAdjustment, stopColumnResize]);
 
   const handleResizePointerMove = useCallback((event: PointerEvent) => {
     const dragState = resizeDragStateRef.current;
@@ -418,7 +427,11 @@ export function LandingParticipantColumnsInput({
   }, [stopResize]);
 
   useLayoutEffect(() => {
-    if (autoOuterHeight == null || hasManualHeightRef.current) {
+    if (!autoResizeSuppressed) {
+      hasManualHeightRef.current = false;
+    }
+
+    if (autoOuterHeight == null || autoResizeSuppressed || hasManualHeightRef.current) {
       return;
     }
 
@@ -436,7 +449,7 @@ export function LandingParticipantColumnsInput({
     if (Math.abs(nextHeight - height) >= 0.5) {
       setHeight(nextHeight);
     }
-  }, [autoOuterHeight, height, minHeight]);
+  }, [autoOuterHeight, autoResizeSuppressed, height, minHeight]);
 
   useLayoutEffect(() => {
     if (!pendingFocusRequest) {
@@ -497,6 +510,7 @@ export function LandingParticipantColumnsInput({
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
     hasManualHeightRef.current = true;
+    onManualLayoutAdjustment?.();
     resizeDragStateRef.current = {
       startY: event.clientY,
       startHeight: height,
@@ -505,7 +519,7 @@ export function LandingParticipantColumnsInput({
     window.addEventListener('pointermove', handleResizePointerMove);
     window.addEventListener('pointerup', stopResize);
     window.addEventListener('pointercancel', stopResize);
-  }, [handleResizePointerMove, height, stopResize]);
+  }, [handleResizePointerMove, height, onManualLayoutAdjustment, stopResize]);
 
   const handleActivateGhostColumn = useCallback(() => {
     let newColumnId: string | null = null;

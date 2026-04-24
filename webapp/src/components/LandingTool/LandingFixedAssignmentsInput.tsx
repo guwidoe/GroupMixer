@@ -15,6 +15,8 @@ interface LandingFixedAssignmentsInputProps {
   assignments: QuickSetupFixedAssignment[];
   onChange: (assignments: QuickSetupFixedAssignment[]) => void;
   minHeight: number;
+  autoResizeSuppressed?: boolean;
+  onManualLayoutAdjustment?: () => void;
 }
 
 interface EditableTextBlockProps {
@@ -123,6 +125,8 @@ export function LandingFixedAssignmentsInput({
   assignments,
   onChange,
   minHeight,
+  autoResizeSuppressed = false,
+  onManualLayoutAdjustment,
 }: LandingFixedAssignmentsInputProps) {
   const [height, setHeight] = useState(minHeight);
   const [columnWidths, setColumnWidths] = useState<[number, number]>([PARTICIPANT_COLUMN_WIDTH, GROUP_COLUMN_WIDTH]);
@@ -149,7 +153,11 @@ export function LandingFixedAssignmentsInput({
   const contentHeight = Math.max(height - HEADER_HEIGHT - 18, maxLineCount * LINE_HEIGHT + BODY_PADDING);
 
   useLayoutEffect(() => {
-    if (hasCustomColumnWidthsRef.current) {
+    if (!autoResizeSuppressed) {
+      hasCustomColumnWidthsRef.current = false;
+    }
+
+    if (autoResizeSuppressed || hasCustomColumnWidthsRef.current) {
       return undefined;
     }
 
@@ -159,7 +167,7 @@ export function LandingFixedAssignmentsInput({
     }
 
     const measure = () => {
-      if (hasCustomColumnWidthsRef.current) {
+      if (autoResizeSuppressed || hasCustomColumnWidthsRef.current) {
         return;
       }
 
@@ -186,7 +194,7 @@ export function LandingFixedAssignmentsInput({
       window.removeEventListener('resize', measure);
       observer?.disconnect();
     };
-  }, []);
+  }, [autoResizeSuppressed]);
 
   const handleColumnPointerMove = useCallback((event: PointerEvent) => {
     const dragState = dragStateRef.current;
@@ -238,6 +246,7 @@ export function LandingFixedAssignmentsInput({
   const startColumnResize = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     hasCustomColumnWidthsRef.current = true;
+    onManualLayoutAdjustment?.();
     const leftElement = event.currentTarget.previousElementSibling as HTMLDivElement | null;
     const rightElement = event.currentTarget.nextElementSibling as HTMLDivElement | null;
 
@@ -250,11 +259,12 @@ export function LandingFixedAssignmentsInput({
     window.addEventListener('pointermove', handleColumnPointerMove);
     window.addEventListener('pointerup', stopColumnResize);
     window.addEventListener('pointercancel', stopColumnResize);
-  }, [columnWidths, handleColumnPointerMove, stopColumnResize]);
+  }, [columnWidths, handleColumnPointerMove, onManualLayoutAdjustment, stopColumnResize]);
 
   const handleResizePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.currentTarget.setPointerCapture?.(event.pointerId);
+    onManualLayoutAdjustment?.();
     resizeDragStateRef.current = {
       startY: event.clientY,
       startHeight: height,
@@ -263,7 +273,7 @@ export function LandingFixedAssignmentsInput({
     window.addEventListener('pointermove', handleResizePointerMove);
     window.addEventListener('pointerup', stopResize);
     window.addEventListener('pointercancel', stopResize);
-  }, [handleResizePointerMove, height, stopResize]);
+  }, [handleResizePointerMove, height, onManualLayoutAdjustment, stopResize]);
 
   return (
     <div className="landing-resizable-textarea landing-resizable-textarea--structured rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>

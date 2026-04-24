@@ -36,6 +36,7 @@ interface EmbeddableGroupToolProps {
   displayedGroupCount: number;
   displayedPeoplePerGroup: number;
   participantInputAutoOuterHeight: number | null;
+  participantInputAutoResizeSuppressed: boolean;
   canResizeToolColumns: boolean;
   toolColumnsStyle?: CSSProperties;
   isDraggingToolDivider: boolean;
@@ -52,6 +53,7 @@ interface EmbeddableGroupToolProps {
   advancedOptionsPaneRef: RefObject<HTMLDivElement | null>;
   participantInputSlotRef: (node: HTMLDivElement | null) => void;
   onClearAllInputs: () => void;
+  onParticipantInputManualLayoutAdjustment: () => void;
   onLandingDemoCaseClick: (demoCaseId: string) => void;
   onOpenAdvancedWorkspace: (target: 'results' | 'people') => void;
   onStartToolDividerDrag: (event: ReactPointerEvent<HTMLButtonElement>) => void;
@@ -110,6 +112,7 @@ export function EmbeddableGroupTool({
   displayedGroupCount,
   displayedPeoplePerGroup,
   participantInputAutoOuterHeight,
+  participantInputAutoResizeSuppressed,
   canResizeToolColumns,
   toolColumnsStyle,
   isDraggingToolDivider,
@@ -126,6 +129,7 @@ export function EmbeddableGroupTool({
   advancedOptionsPaneRef,
   participantInputSlotRef,
   onClearAllInputs,
+  onParticipantInputManualLayoutAdjustment,
   onLandingDemoCaseClick,
   onOpenAdvancedWorkspace,
   onStartToolDividerDrag,
@@ -439,7 +443,9 @@ export function EmbeddableGroupTool({
               columns={participantColumns}
               minHeight={130}
               autoOuterHeight={participantInputAutoOuterHeight}
+              autoResizeSuppressed={participantInputAutoResizeSuppressed}
               outerRef={participantInputSlotRef}
+              onManualLayoutAdjustment={onParticipantInputManualLayoutAdjustment}
               onAddAttribute={() => {
                 let newColumnId: string | null = null;
 

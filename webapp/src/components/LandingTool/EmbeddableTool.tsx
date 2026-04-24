@@ -14,6 +14,7 @@ import { useAppStore } from '../../store';
 import { normalizeParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import { buildResultsSessionData } from '../results/buildResultsViewModel';
 import { EmbeddableGroupTool, type LandingToolResultFormat } from './EmbeddableGroupTool';
+import { useLandingLayoutAutoResizeSuppression } from './landingLayoutAutoResizeSuppression';
 import { useQuickSetup } from './useQuickSetup';
 import { getToolPageConfig, type SupportedLocale, type ToolPageKey } from '../../pages/toolPageConfigs';
 
@@ -134,6 +135,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   const participantInputSlotRef = useRef<HTMLDivElement>(null);
   const advancedOptionsPaneRef = useRef<HTMLDivElement>(null);
   const hasBalancedInitialToolColumnsRef = useRef(false);
+  const previousParticipantAutoResizeSuppressedRef = useRef(false);
   const lastNotifiedSolverErrorRef = useRef<string | null>(null);
   const toolDividerDragStateRef = useRef<ToolDividerDragState | null>(null);
   const [resultFormat, setResultFormat] = useState<LandingToolResultFormat>('cards');
@@ -142,6 +144,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   const [toolColumnsWidth, setToolColumnsWidth] = useState(0);
   const [isDraggingToolDivider, setIsDraggingToolDivider] = useState(false);
   const [participantInputAutoOuterHeight, setParticipantInputAutoOuterHeight] = useState<number | null>(null);
+  const participantInputLayout = useLandingLayoutAutoResizeSuppression('participants');
   const telemetryAttribution = useMemo(
     () =>
       readTelemetryAttributionFromSearch({
@@ -280,6 +283,16 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   }, []);
 
   useLayoutEffect(() => {
+    if (!participantInputLayout.autoResizeSuppressed && previousParticipantAutoResizeSuppressedRef.current) {
+      hasBalancedInitialToolColumnsRef.current = false;
+    }
+    previousParticipantAutoResizeSuppressedRef.current = participantInputLayout.autoResizeSuppressed;
+
+    if (participantInputLayout.autoResizeSuppressed) {
+      setParticipantInputAutoOuterHeight((previous) => (previous == null ? previous : null));
+      return undefined;
+    }
+
     if (hasBalancedInitialToolColumnsRef.current) {
       return undefined;
     }
@@ -360,7 +373,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
       observer?.disconnect();
       window.removeEventListener('resize', scheduleMeasure);
     };
-  }, [canResizeToolColumns, config.locale, pageKey]);
+  }, [canResizeToolColumns, config.locale, pageKey, participantInputLayout.autoResizeSuppressed]);
 
   useEffect(() => {
     if (!isDraggingToolDivider || !canResizeToolColumns) {
@@ -481,6 +494,8 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
       displayedGroupCount={displayedGroupCount}
       displayedPeoplePerGroup={displayedPeoplePerGroup}
       participantInputAutoOuterHeight={participantInputAutoOuterHeight}
+      participantInputAutoResizeSuppressed={participantInputLayout.autoResizeSuppressed}
+      onParticipantInputManualLayoutAdjustment={participantInputLayout.recordManualLayoutAdjustment}
       canResizeToolColumns={canResizeToolColumns}
       toolColumnsStyle={toolColumnsStyle}
       isDraggingToolDivider={isDraggingToolDivider}
