@@ -37,17 +37,6 @@ export interface GuidePageExampleSection {
   details: string[];
 }
 
-export interface GuidePageSetupSection {
-  title: string;
-  intro: string;
-  steps: string[];
-}
-
-export interface GuidePageAdvancedSection {
-  title: string;
-  body: string;
-}
-
 export interface GuidePageCtaSection {
   title: string;
   body: string;
@@ -70,8 +59,6 @@ export interface GuidePageConfig {
     cards: GuidePageCard[];
   };
   example: GuidePageExampleSection;
-  setup: GuidePageSetupSection;
-  advanced: GuidePageAdvancedSection;
   cta?: GuidePageCtaSection;
   relatedTools?: {
     title: string;

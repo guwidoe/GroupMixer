@@ -65,6 +65,11 @@ export interface ToolController {
   exportProjectDraft: () => void;
 }
 
+export interface ToolSetupOptions {
+  initialGuideExampleKey?: GuidePageKey;
+  storageScope?: string;
+}
+
 function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
   const defaults = pageConfig.quickSetupDefaults;
   const draft: QuickSetupDraft = {
@@ -90,6 +95,14 @@ function defaultDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
     ...draft,
     participantColumns: normalizeParticipantColumns(draft),
   };
+}
+
+function initialDraft(pageConfig: ToolPageConfig, guideExampleKey?: GuidePageKey): QuickSetupDraft {
+  const draft = defaultDraft(pageConfig);
+
+  return guideExampleKey
+    ? normalizeQuickSetupDraft(createLandingGuideExampleDraft(guideExampleKey, draft))
+    : draft;
 }
 
 function emptyDraft(pageConfig: ToolPageConfig): QuickSetupDraft {
@@ -321,10 +334,16 @@ function downloadBlob(filename: string, content: string, mimeType: string) {
   URL.revokeObjectURL(url);
 }
 
-export function useToolSetup(pageConfig: ToolPageConfig): ToolController {
+export function useToolSetup(pageConfig: ToolPageConfig, options: ToolSetupOptions = {}): ToolController {
   const ui = getLandingUiContent(pageConfig.locale);
-  const storageKey = `groupmixer.quick-setup.${pageConfig.key}.v1`;
-  const [storedDraft, setDraft] = useLocalStorageState<QuickSetupDraft>(storageKey, defaultDraft(pageConfig));
+  const storageKey = options.storageScope
+    ? `groupmixer.quick-setup.${pageConfig.key}.${options.storageScope}.v1`
+    : `groupmixer.quick-setup.${pageConfig.key}.v1`;
+  const initialStoredDraft = useMemo(
+    () => initialDraft(pageConfig, options.initialGuideExampleKey),
+    [options.initialGuideExampleKey, pageConfig],
+  );
+  const [storedDraft, setDraft] = useLocalStorageState<QuickSetupDraft>(storageKey, initialStoredDraft);
   const draft = useMemo(() => normalizeQuickSetupDraft(storedDraft), [storedDraft]);
   const [result, setResult] = useState<QuickSetupResult | null>(null);
   const [isSolving, setIsSolving] = useState(false);
@@ -437,13 +456,13 @@ export function useToolSetup(pageConfig: ToolPageConfig): ToolController {
   }, [pageConfig, setDraft]);
 
   const resetDraft = useCallback(() => {
-    setDraft(defaultDraft(pageConfig));
+    setDraft(initialDraft(pageConfig, options.initialGuideExampleKey));
     setResult(null);
     setLastSolvedScenario(null);
     setLastSolvedSolution(null);
     setLastSolvedAttributeDefinitions([]);
     setErrorMessage(null);
-  }, [pageConfig, setDraft]);
+  }, [options.initialGuideExampleKey, pageConfig, setDraft]);
 
   const hasAnyInputData = useMemo(
     () => !draftsMatch(draft, emptyDraft(pageConfig)) || result !== null || errorMessage !== null,

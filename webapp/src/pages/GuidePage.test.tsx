@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import GuidePage from './GuidePage';
@@ -43,5 +43,27 @@ describe('GuidePage', () => {
 
       expect(links.every((href) => href.startsWith('/guides/'))).toBe(true);
     }
+  });
+
+  it('embeds the shared tool with the current guide example and isolated storage', async () => {
+    const config = getGuidePageConfig('run-speed-networking-rounds');
+
+    render(
+      <MemoryRouter initialEntries={[config.canonicalPath]}>
+        <GuidePage pageKey={config.key} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Try this setup in GroupMixer' })).toBeInTheDocument();
+
+    await waitFor(() => {
+      const storedDraft = JSON.parse(
+        window.localStorage.getItem('groupmixer.quick-setup.home.guide.run-speed-networking-rounds.v1') ?? '{}',
+      ) as { sessions?: number; participantColumns?: Array<{ values?: string }> };
+      expect(storedDraft.sessions).toBe(5);
+      expect(storedDraft.participantColumns?.[0]?.values).toContain('Amelia Grant');
+      expect(storedDraft.participantColumns?.[0]?.values).toContain('Mateo Silva');
+    });
+    expect(window.localStorage.getItem('groupmixer.quick-setup.home.v1')).toBeNull();
   });
 });

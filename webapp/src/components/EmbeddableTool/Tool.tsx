@@ -15,6 +15,7 @@ import { buildResultsSessionData } from '../results/buildResultsViewModel';
 import { GroupTool, type ToolResultFormat } from './GroupTool';
 import { useLayoutAutoResizeSuppression } from './layoutAutoResizeSuppression';
 import { useToolSetup } from './useToolSetup';
+import type { GuidePageKey } from '../../pages/guidePageTypes';
 import { getToolPageConfig, type SupportedLocale, type ToolPageKey } from '../../pages/toolPageConfigs';
 
 interface DisplaySession {
@@ -33,6 +34,8 @@ export interface EmbeddableToolHandle {
 interface EmbeddableToolProps {
   pageKey: ToolPageKey;
   locale: SupportedLocale;
+  initialGuideExampleKey?: GuidePageKey;
+  storageScope?: string;
 }
 
 interface ToolDividerDragState {
@@ -118,12 +121,12 @@ async function copyText(value: string) {
 }
 
 export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolProps>(function EmbeddableTool(
-  { pageKey, locale },
+  { pageKey, locale, initialGuideExampleKey, storageScope },
   ref,
 ) {
   const config = getToolPageConfig(pageKey, locale);
   const ui = getLandingUiContent(locale);
-  const controller = useToolSetup(config);
+  const controller = useToolSetup(config, { initialGuideExampleKey, storageScope });
   const loadWorkspaceAsNewScenario = useAppStore((state) => state.loadWorkspaceAsNewScenario);
   const addNotification = useAppStore((state) => state.addNotification);
   const navigate = useNavigate();

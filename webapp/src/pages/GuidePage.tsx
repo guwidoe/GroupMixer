@@ -6,10 +6,10 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
-  ListChecks,
   Sparkles,
 } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
+import { EmbeddableTool } from '../components/EmbeddableTool/Tool';
 import {
   HEADER_ACTION_BUTTON_CLASS,
   HEADER_ACTION_DIVIDER_CLASS,
@@ -194,7 +194,7 @@ export default function GuidePage({ pageKey }: GuidePageProps) {
               </span>
               <span className="inline-flex items-center gap-1.5">
                 <Clock3 className="h-4 w-4" aria-hidden="true" />
-                {Math.max(4, config.setup.steps.length + config.failureModes.cards.length)} min read
+                {Math.max(4, config.example.details.length + config.failureModes.cards.length)} min read
               </span>
             </div>
 
@@ -265,64 +265,24 @@ export default function GuidePage({ pageKey }: GuidePageProps) {
               </ul>
             </section>
 
-            <section id="setup" className="scroll-mt-24">
+            <section id="try-groupmixer" className="scroll-mt-24 border-t pt-10" style={{ borderColor: 'var(--border-primary)' }}>
               <div className="flex items-center gap-3">
-                <ListChecks className="h-6 w-6 shrink-0" style={{ color: 'var(--color-accent)' }} aria-hidden="true" />
-                <h2 className="text-2xl font-semibold leading-tight tracking-normal sm:text-3xl">{config.setup.title}</h2>
+                <Sparkles className="h-6 w-6 shrink-0" style={{ color: 'var(--color-accent)' }} aria-hidden="true" />
+                <h2 className="text-2xl font-semibold leading-tight tracking-normal sm:text-3xl">Try this setup in GroupMixer</h2>
               </div>
               <p className="mt-4 text-base leading-8" style={{ color: 'var(--text-secondary)' }}>
-                {config.setup.intro}
+                This tool is preloaded with the example from this guide. You can edit the participants, constraints, sessions, and balance settings before generating groups.
               </p>
-              <ol className="mt-6 space-y-5">
-                {config.setup.steps.map((step, index) => (
-                  <li key={step} className="grid grid-cols-[2.25rem_minmax(0,1fr)] gap-4">
-                    <span
-                      className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold"
-                      style={{
-                        backgroundColor: 'color-mix(in srgb, var(--color-accent) 12%, var(--bg-primary) 88%)',
-                        color: 'var(--color-accent)',
-                      }}
-                    >
-                      {index + 1}
-                    </span>
-                    <p className="pt-0.5 text-base leading-8" style={{ color: 'var(--text-secondary)' }}>
-                      {step}
-                    </p>
-                  </li>
-                ))}
-              </ol>
+              <div className="relative left-1/2 mt-8 w-screen max-w-6xl -translate-x-1/2 px-4 sm:px-6 lg:px-8">
+                <EmbeddableTool
+                  key={`guide-tool:${config.key}`}
+                  pageKey="home"
+                  locale="en"
+                  initialGuideExampleKey={config.key}
+                  storageScope={`guide.${config.key}`}
+                />
+              </div>
             </section>
-
-            <section id="advanced" className="scroll-mt-24">
-              <h2 className="text-2xl font-semibold leading-tight tracking-normal sm:text-3xl">{config.advanced.title}</h2>
-              <p className="mt-4 text-base leading-8" style={{ color: 'var(--text-secondary)' }}>
-                {config.advanced.body}
-              </p>
-            </section>
-
-            {config.cta ? (
-              <section id="next" className="scroll-mt-24">
-                <div
-                  className="rounded-lg p-6 text-center sm:p-8"
-                  style={{
-                    backgroundColor: 'var(--color-accent)',
-                    color: 'white',
-                  }}
-                >
-                  <h2 className="text-2xl font-semibold tracking-normal">{config.cta.title}</h2>
-                  <p className="mx-auto mt-4 max-w-2xl text-base leading-8 text-white/90">
-                    {config.cta.body}
-                  </p>
-                  <Link
-                    to={config.cta.href}
-                    className="mt-6 inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-semibold text-[var(--color-accent)] transition hover:bg-white/90"
-                  >
-                    {config.cta.buttonLabel}
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
-                </div>
-              </section>
-            ) : null}
 
             {relatedToolLinks.length > 0 ? (
               <section id="tools" className="scroll-mt-24">

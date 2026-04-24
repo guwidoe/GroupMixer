@@ -60,23 +60,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         'optional attribute balancing by role, department, or experience',
       ],
     },
-    setup: {
-      title: 'Recommended GroupMixer setup',
-      intro:
-        'For this kind of workshop, start with the quick setup and use the advanced options only where they add real value.',
-      steps: [
-        'Paste the participant list and add attributes if you need balancing fields.',
-        'Set the group size or number of groups for a single round.',
-        'Increase the number of sessions to the number of workshop rounds you plan to run.',
-        'Enable “Avoid repeat pairings” so the tool tries to keep participants meeting new people.',
-        'If needed, add keep-together, keep-apart, or fixed-people rules before generating the result.',
-      ],
-    },
-    advanced: {
-      title: 'When to use advanced options or the scenario editor',
-      body:
-        'Use the advanced options when you need a few practical rules, such as fixed facilitators or people who should stay apart. Move into the scenario editor when the workshop has competing constraints, session-specific requirements, or you need deeper review of the generated schedule.',
-    },
     relatedGuides: {
       title: 'Related guides',
       links: [
@@ -159,23 +142,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         'avoid repeat pairings enabled',
         'optional fixed hosts or facilitators pinned to specific groups',
       ],
-    },
-    setup: {
-      title: 'Recommended GroupMixer setup',
-      intro:
-        'For a speed networking session, keep the setup simple and use only the controls that improve the live flow.',
-      steps: [
-        'Paste the participant list into the quick setup.',
-        'Set the group size or number of groups for each round.',
-        'Set the number of sessions to the number of networking rounds you plan to run.',
-        'Enable “Avoid repeat pairings” so the schedule favors fresh conversations in later rounds.',
-        'If needed, add pinned people or simple together/apart rules before generating the rounds.',
-      ],
-    },
-    advanced: {
-      title: 'When to use advanced options or the scenario editor',
-      body:
-        'Use the advanced options when you need practical controls such as fixed hosts, repeated rounds, or simple relationship rules. Move into the scenario editor when the event has stronger constraints, such as session-specific requirements, facilitator assignments, or multiple competing objectives.',
     },
     relatedGuides: {
       title: 'Related guides',
@@ -260,23 +226,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         'optional fixed students for group leaders or anchor roles',
       ],
     },
-    setup: {
-      title: 'Recommended GroupMixer setup',
-      intro:
-        'For balanced classroom groups, start simple and only add the inputs that actually improve the outcome for the activity you are running.',
-      steps: [
-        'Paste the class roster and add classroom attributes if you want to balance group composition.',
-        'Choose the number of groups or group size for the activity.',
-        'If you have balancing data, select the attribute you want to spread more evenly across the groups.',
-        'Add together/apart rules if there are classroom dynamics you already know you need to manage.',
-        'Generate the groups, then move into the scenario editor only if the classroom setup has deeper constraints.',
-      ],
-    },
-    advanced: {
-      title: 'When to use together/apart rules, pinned people, or the scenario editor',
-      body:
-        'Use together/apart rules when you already know some student combinations help or hurt the activity. Use pinned people when a leader, helper, or anchor student should stay in a known group. Move into the scenario editor when the class grouping problem becomes more complex than a single quick setup pass.',
-    },
     relatedGuides: {
       title: 'Related guides',
       links: [
@@ -358,23 +307,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         'Constrained: a workshop where facilitators are fixed and some people must stay together or apart',
         'Use multiple sessions and avoid-repeat settings when the challenge includes repeated rounds',
       ],
-    },
-    setup: {
-      title: 'How to choose the right GroupMixer setup',
-      intro:
-        'Start with the simplest setup that actually matches your real objective. If the goal changes, move up from random to balanced or constrained grouping only when that extra control solves a real problem.',
-      steps: [
-        'Choose simple random grouping when any valid split is acceptable and speed matters most.',
-        'Choose balanced grouping when you want a stronger mix across groups based on skills, roles, or other attributes.',
-        'Choose constrained grouping when there are rules such as keep-together, keep-apart, pinned people, or facilitator assignments.',
-        'Add multiple sessions and avoid-repeat pairings when the challenge spans several rounds instead of one grouping pass.',
-        'Use the scenario editor only when the quick setup no longer captures the real constraints of the event or class.',
-      ],
-    },
-    advanced: {
-      title: 'When advanced setup is worth it',
-      body:
-        'Advanced setup is worth using when the cost of a bad grouping is high enough that manual fixes become annoying, unfair, or operationally risky. If the only goal is a quick split, stay simple. If fairness, repeated rounds, or non-negotiable rules matter, the extra setup usually pays for itself.',
     },
     relatedGuides: {
       title: 'Related guides',
@@ -459,23 +391,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         'optional pinned people for helpers, leaders, or anchor students',
       ],
     },
-    setup: {
-      title: 'Recommended GroupMixer setup',
-      intro:
-        'Start with the student-group flow, then add only the structure that helps this specific class activity feel fairer and easier to run.',
-      steps: [
-        'Paste the class list and add classroom attributes when you want to balance group composition.',
-        'Choose the number of groups or group size that fits the task.',
-        'Use balancing when fairness depends on spreading skill, confidence, or another known attribute across groups.',
-        'Use together/apart rules only for classroom dynamics you already know matter.',
-        'Generate the groups, then review whether the result is fair enough before moving into a more advanced scenario.',
-      ],
-    },
-    advanced: {
-      title: 'When to balance, when to stay random, and when to add rules',
-      body:
-        'Stay with simple random grouping when any reasonable split is fine. Use balancing when you want a more even spread of student strengths or needs. Add together/apart rules or pinned people when you already know certain combinations help or hurt the activity. Move into the scenario editor only when the classroom problem has more constraints than a quick setup can handle cleanly.',
-    },
     relatedGuides: {
       title: 'Related guides',
       links: [
@@ -553,23 +468,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         'avoid repeat pairings enabled for later rounds',
         'optional apart rules for pairings that should not happen',
       ],
-    },
-    setup: {
-      title: 'Recommended GroupMixer setup',
-      intro:
-        'For random pairs, use group size as the main control and add repeat-avoidance only when the activity has multiple rounds.',
-      steps: [
-        'Paste the list of names into the participant input.',
-        'Set the group size to 2 people per group.',
-        'Use one session for a single pair split, or multiple sessions for pair rotations.',
-        'Enable avoid-repeat pairings when participants should meet a different partner in each round.',
-        'Add avoid-pairing rules only for combinations that genuinely should not be paired.',
-      ],
-    },
-    advanced: {
-      title: 'When pair rotations need more control',
-      body:
-        'Use advanced controls when pair assignments need to respect real constraints, such as avoiding specific pairings, keeping helpers with specific participants, or spreading repeated encounters over several sessions. Keep the setup simple when you only need one quick random pairing pass.',
     },
     relatedGuides: {
       title: 'Related guides',
@@ -649,23 +547,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         'optional fixed hosts or facilitators assigned to rooms',
       ],
     },
-    setup: {
-      title: 'Recommended GroupMixer setup',
-      intro:
-        'For breakout rooms, start with the room count or room size that matches the live facilitation plan.',
-      steps: [
-        'Paste the participant list before the session or after attendance is known.',
-        'Set the number of groups to the number of breakout rooms, or set the people per room.',
-        'Use multiple sessions for repeated breakout rounds.',
-        'Enable avoid-repeat pairings when repeated rooms should introduce new conversations.',
-        'Use participant attributes or pinned people only when facilitators, roles, or experience levels matter.',
-      ],
-    },
-    advanced: {
-      title: 'When breakout rooms need constraints',
-      body:
-        'Use constraints when the room assignment has real facilitation requirements, such as fixed room hosts, people who should not be placed together, or roles that should be spread across rooms. For a simple one-round discussion, a quick random split is usually enough.',
-    },
     relatedGuides: {
       title: 'Related guides',
       links: [
@@ -743,23 +624,6 @@ const GUIDE_PAGE_CONFIGS: Record<GuidePageKey, GuidePageConfig> = {
         'balance by one useful attribute at a time',
         'optional together/apart rules for known team dynamics',
       ],
-    },
-    setup: {
-      title: 'Recommended GroupMixer setup',
-      intro:
-        'For balanced teams, start with the target team count, then add attributes only when they improve the split.',
-      steps: [
-        'Paste names for a quick team split, or add attributes when you need skills or roles.',
-        'Set the number of teams or the desired people per team.',
-        'Choose an attribute to balance when composition matters.',
-        'Add keep-together or keep-apart rules only for known team requirements.',
-        'Review the result and simplify the setup if the extra rules are not improving the teams.',
-      ],
-    },
-    advanced: {
-      title: 'When team generation becomes a constraints problem',
-      body:
-        'Use balancing when the team mix matters but the rules are soft. Use constraints when certain assignments are non-negotiable, such as people who must stay apart, fixed leaders, or repeated sessions where the same people should not keep meeting.',
     },
     relatedGuides: {
       title: 'Related guides',
