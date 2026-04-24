@@ -35,6 +35,7 @@ function areDistributionValuesEqual(left: AttributeDistributionValue, right: Att
 interface ActiveDistributionDrag {
   source: 'line' | 'dot';
   dividerIndex: number;
+  clusterDividerIndexes?: number[];
   buckets: DistributionBucket[];
   startClientX: number;
   toggleBucketKey?: string;
@@ -115,6 +116,33 @@ function buildCenteredClusterOffsets(positions: number[]) {
   });
 
   return offsets;
+}
+
+function getDividerClusterIndexes(positions: number[], index: number) {
+  const position = positions[index];
+  return positions.reduce<number[]>((indexes, candidatePosition, candidateIndex) => {
+    if (candidatePosition === position) {
+      indexes.push(candidateIndex);
+    }
+    return indexes;
+  }, []);
+}
+
+function resolveDragDividerIndex(drag: ActiveDistributionDrag, clientX: number) {
+  const clusterDividerIndexes = drag.clusterDividerIndexes ?? [drag.dividerIndex];
+  if (clusterDividerIndexes.length <= 1) {
+    return drag.dividerIndex;
+  }
+
+  const delta = clientX - drag.startClientX;
+  if (delta > 0) {
+    return clusterDividerIndexes[clusterDividerIndexes.length - 1] ?? drag.dividerIndex;
+  }
+  if (delta < 0) {
+    return clusterDividerIndexes[0] ?? drag.dividerIndex;
+  }
+
+  return drag.dividerIndex;
 }
 
 function clampMarkerPosition(position: number, capacity: number) {
@@ -377,7 +405,7 @@ export function AttributeDistributionField({
         moveDistributionDivider(
           localValueRef.current,
           activeDrag.buckets,
-          activeDrag.dividerIndex,
+          resolveDragDividerIndex(activeDrag, event.clientX),
           resolvePosition(event.clientX),
           summary.capacity,
         ),
@@ -573,6 +601,10 @@ export function AttributeDistributionField({
                 const leftPercent = summary.capacity > 0 ? (position / summary.capacity) * 100 : 0;
                 const leftBucket = activeBarBuckets[index];
                 const rightBucket = activeBarBuckets[index + 1];
+                const handleBucket = leftBucket ?? rightBucket;
+                const handleColorIndex = handleBucket
+                  ? buckets.findIndex((candidate) => candidate.key === handleBucket.key)
+                  : -1;
                 return (
                   <button
                     key={`${leftBucket?.key ?? index}-${rightBucket?.key ?? index}`}
@@ -581,6 +613,7 @@ export function AttributeDistributionField({
                     style={{
                       left: `${leftPercent}%`,
                       '--attribute-distribution-handle-offset': `${handleClusterOffsets[index] * 0.7}rem`,
+                      '--attribute-distribution-handle-color': getSegmentColor(handleColorIndex >= 0 ? handleColorIndex : 0, handleBucket?.kind ?? 'attribute'),
                     } as React.CSSProperties}
                     aria-label={`Adjust boundary between ${leftBucket?.label ?? 'left'} and ${rightBucket?.label ?? 'right'}`}
                     onPointerDown={(event) => {
@@ -591,6 +624,7 @@ export function AttributeDistributionField({
                       setActiveDrag({
                         source: 'line',
                         dividerIndex: index,
+                        clusterDividerIndexes: getDividerClusterIndexes(clampedDividerPositions, index),
                         buckets: activeBarBuckets,
                         startClientX: event.clientX,
                       });

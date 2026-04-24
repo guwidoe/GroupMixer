@@ -153,6 +153,42 @@ describe('AttributeDistributionField', () => {
     expect(screen.getByRole('button', { name: /adjust boundary between a and b/i }).style.left).toBe('20%');
   });
 
+  it('moves the rightmost stacked divider when a collapsed stack is dragged right', () => {
+    const onChangeSpy = vi.fn();
+
+    render(<ControlledFieldWithSpy initialValue={{ A: 1, B: 0, C: 1 }} capacity={2} onChangeSpy={onChangeSpy} />);
+
+    const bar = screen.getByRole('group', { name: 'Desired Distribution' });
+    Object.defineProperty(bar, 'getBoundingClientRect', {
+      value: () => ({ left: 0, width: 100, top: 0, right: 100, bottom: 40, height: 40, x: 0, y: 0, toJSON: () => ({}) }),
+    });
+
+    const handle = screen.getByRole('button', { name: /adjust boundary between a and b/i });
+    fireEvent.pointerDown(handle, { clientX: 50, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 100 });
+    fireEvent.pointerUp(window, { clientX: 100 });
+
+    expect(onChangeSpy).toHaveBeenLastCalledWith({ A: 1, B: 1, C: 0 });
+  });
+
+  it('moves the leftmost stacked divider when a collapsed stack is dragged left', () => {
+    const onChangeSpy = vi.fn();
+
+    render(<ControlledFieldWithSpy initialValue={{ A: 1, B: 0, C: 1 }} capacity={2} onChangeSpy={onChangeSpy} />);
+
+    const bar = screen.getByRole('group', { name: 'Desired Distribution' });
+    Object.defineProperty(bar, 'getBoundingClientRect', {
+      value: () => ({ left: 0, width: 100, top: 0, right: 100, bottom: 40, height: 40, x: 0, y: 0, toJSON: () => ({}) }),
+    });
+
+    const handle = screen.getByRole('button', { name: /adjust boundary between b and c/i });
+    fireEvent.pointerDown(handle, { clientX: 50, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 0 });
+    fireEvent.pointerUp(window, { clientX: 0 });
+
+    expect(onChangeSpy).toHaveBeenLastCalledWith({ A: 0, B: 1, C: 1 });
+  });
+
   it('keeps legend layout stable until drag ends', () => {
     const { container } = render(<ControlledField initialValue={{ A: 2, B: 2 }} capacity={8} />);
 

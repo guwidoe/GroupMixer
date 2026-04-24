@@ -1445,6 +1445,7 @@
 
   .attribute-distribution__handle {
     --attribute-distribution-handle-offset: 0rem;
+    --attribute-distribution-handle-color: var(--color-accent);
     position: absolute;
     top: calc(var(--attribute-distribution-track-top) + (var(--attribute-distribution-track-height) / 2));
     transform: translate(-50%, calc(-50% + var(--attribute-distribution-handle-offset)));
@@ -1487,11 +1488,12 @@
     top: 0.55rem;
     bottom: 0.55rem;
     left: 50%;
-    width: 2px;
+    width: 4px;
     transform: translateX(-50%);
     border-radius: 999px;
-    background: color-mix(in srgb, var(--bg-primary) 30%, white 70%);
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.14);
+    border: 1px solid color-mix(in srgb, var(--attribute-distribution-handle-color) 48%, var(--text-primary) 52%);
+    background: var(--attribute-distribution-handle-color);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--bg-primary) 72%, transparent);
   }
 
   .attribute-distribution__toggle-dot {
