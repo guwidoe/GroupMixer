@@ -71,7 +71,7 @@ The heuristic must not say:
 - "if should-stay-together, do Y"
 - "if partial attendance, do Z"
 
-Instead, it should infer structure from a repeat-blind `CS` ensemble.
+Instead, it should infer structure from the full-objective warmup scaffold and derived signals.
 
 ### 2. Automatic internal behavior
 The user should not choose:
@@ -100,20 +100,17 @@ The oracle only influences construction bias.
 
 ## 1. Constraint Scenario (`CS`)
 
-Define a repeat-blind construction scenario over the **real problem structure**.
+`CS` now denotes the constructor scaffold structure learned from a short full-objective solver3 warmup over the **real problem structure**.
 
-`CS` keeps:
+`CS` keeps the complete real problem:
 
 - all real hard constraints
 - all real participation/capacity structure
-- all real non-repeat soft constraints/objectives
+- all real soft constraints/objectives
+- repeat/contact pressure
 
-`CS` removes or neutralizes:
-
-- the repeat-encounter objective/penalty terms
-
-The purpose of `CS` is not to find the final schedule.
-Its purpose is to reveal what the non-repeat part of the problem wants.
+The purpose of `CS` is not to be the final schedule. Its purpose is to provide a strong real
+solver3 incumbent whose structure can be selectively rewritten by the oracle path.
 
 ### Strong vs weak non-repeat structure
 
@@ -122,78 +119,74 @@ Instead, it should infer structural strength empirically.
 
 A pattern counts as **strong structure** when it is both:
 
-- repeatedly recovered across the `CS` ensemble, or
-- expensive to disrupt under `CS`
+- present in the full-objective warmup scaffold, and/or
+- backed by explicit hard structure such as immovable placements or active must-stay cliques
 
-This naturally captures the user's intuition that some soft terms are stronger than repeat pressure, without adding per-constraint settings.
-
----
-
-## 2. `CS` ensemble rather than one `CS` solution
-
-A single repeat-blind incumbent is too noisy.
-The constructor should run several short diversified `CS` runs and learn from the ensemble.
-
-Let:
-
-- `S_1..S_K` be feasible `CS` schedules
-- `S_cs_best` be the best `CS` schedule under the repeat-blind score
-- `E` be a curated subset used for statistics
-
-The ensemble is the main generalization trick.
-It lets the constructor infer the structural basin of the real constraints without understanding them individually.
+This keeps the heuristic constraint-agnostic without inventing per-constraint bridge logic.
 
 ---
 
-## 3. Signals learned from the `CS` ensemble
+## 2. Full-objective warmup scaffold
 
-The constructor should learn a small set of structural signals.
+The constructor should first obtain a real solver3 structure, not a fake repeat-blind basin.
+It does this by:
+
+1. building the baseline schedule,
+2. running normal solver3 full-objective search on the full problem for a short warmup budget,
+3. using the resulting solver3 schedule as `S_cs`.
+
+Warmup budget policy:
+
+`warmup_budget = min(total_constructor_budget / 2, 1 second)`
+
+The current implementation uses one warmup run and the resulting schedule directly. Solver3's
+search engine already returns/loads its best state, so the oracle constructor does not maintain a
+separate best-schedule tracker.
+
+---
+
+## 3. Signals learned from the warmup scaffold
+
+The constructor should learn a small set of structural signals from `S_cs`.
 These are the heart of the design.
 
 ### 3.1 Session pair pressure
 For each session `s` and pair `(i, j)`:
 
-`C^s_ij = weighted_frequency(i and j are grouped together in session s across E)`
+`C^s_ij = 1.0 if i and j are grouped together in session s in S_cs, else 0.0`
 
 Interpretation:
 
-- high `C^s_ij` => `CS` likes or tolerates the pair in session `s`
-- low `C^s_ij` => `CS` tends to separate them in session `s`
-- mid `C^s_ij` => pairing is flexible / weakly determined
+- high `C^s_ij` => the warmup scaffold currently uses the pair in session `s`
+- low `C^s_ij` => the warmup scaffold currently separates them in session `s`
+- with one scaffold this is a contact prior, not a consensus estimate
 
 This is more useful than one global `P_ij` because many constraints are session-local.
 
 ### 3.2 Placement histogram
 For each person `i`, session `s`, group `g`:
 
-`H^s_i,g = weighted_frequency(i is assigned to g in session s across E)`
+`H^s_i,g = 1.0 if i is assigned to g in session s in S_cs, else 0.0`
 
 Interpretation:
 
-- concentrated histogram => placement is structurally anchored
-- diffuse histogram => placement is flexible
+- one-hot placement => scaffold placement prior
+- this is not by itself a hard structural anchor
 
 ### 3.3 Person/session rigidity
-For each `(i, s)`, derive rigidity from the entropy of `H^s_i,*` plus a local disruption test against `CS`.
-
-High rigidity means:
-
-- `CS` consistently wants `i` in a narrow placement pattern in session `s`
-- moving `i` is likely to damage strong non-repeat structure
-
-Low rigidity means:
-
-- `i` can absorb oracle structure cheaply in session `s`
+For the single-scaffold implementation, rigidity stays neutral/flexible unless backed by real
+structural constraints such as immovable placements or active must-stay cliques. A one-hot warmup
+placement does **not** make a person/session rigid by itself.
 
 ### 3.4 Optional pair impossibility / hostility score
 If useful, derive an auxiliary score capturing how often `(i, j)` is impossible or very costly under `CS`-guided repair.
-This can help the oracle relabeler avoid spending important oracle edges on structurally bad pairs.
+This can help the oracle projector avoid spending important oracle edges on structurally bad pairs.
 
 ---
 
-## 4. Base scaffold from the best `CS` solution
+## 4. Base scaffold from warmup
 
-Take `S_cs_best` as the initial scaffold.
+Take `S_cs` from the full-objective warmup as the initial scaffold.
 
 Do **not** freeze it wholesale.
 Instead, classify its placements into:
@@ -212,7 +205,7 @@ This is how the heuristic stays general:
 
 ---
 
-## 5. Oracleizable flexible core
+## 5. Capacity-template candidate
 
 The constructor must find a pure-SGP-shaped subproblem inside the flexible region.
 
@@ -242,13 +235,13 @@ Interpretation:
 
 This is the place where the constructor decides whether oracle injection is worth doing.
 
-If no worthwhile oracleizable block exists, return the scaffold as the incumbent.
+If no worthwhile oracle template exists, fail explicitly in the strict development path.
 
 ---
 
 ## 6. Pure oracle solve
 
-Solve the selected pure block `(U, T)` using a `PureStructureOracle`.
+Solve the selected pure template `(sessions, groups, group_size)` using a `PureStructureOracle`.
 
 Conceptually, the oracle returns a high-quality pure schedule for that `g-q-w` block.
 In implementation, the first backend should be `solver6`, but the constructor logic should treat the oracle as an abstract provider.
@@ -263,12 +256,12 @@ It is **not** copied directly into the real schedule.
 
 ---
 
-## 7. Relabeling the oracle against the `CS` signals
+## 7. Projecting the oracle against the `CS` signals
 
 The oracle schedule exists over abstract roles.
 We need to map real people in `U` onto those roles.
 
-### 7.1 Person-to-role relabeling
+### 7.1 Oracle-role to optional real-person projection
 Find a permutation `π` that maximizes alignment between oracle edges and `CS` pair pressure:
 
 `sum over sessions s in T of sum over oracle pair edges (u, v) in session s of C^s_{π(u), π(v)}`
@@ -289,7 +282,7 @@ This means:
 - keep oracle cohorts aligned with the real scaffold geometry where possible
 
 ### 7.3 Rigidity-aware penalty
-Relabeling should pay an explicit penalty when a very rigid `(i, s)` would have to move far from its scaffold role.
+Projection should pay an explicit penalty when a very rigid `(i, s)` would have to move far from its scaffold role.
 Rigid people should absorb less of the oracle structure than flexible people.
 
 ---
@@ -298,7 +291,7 @@ Rigid people should absorb less of the oracle structure than flexible people.
 
 This is the most important implementation choice.
 
-The merge phase should **not** simply overwrite the scaffold with the relabeled oracle and then repair the damage.
+The merge phase should **not** simply overwrite the scaffold with the projected oracle and then repair the damage.
 Instead, it should run a guided reconstruction or restricted local search whose objective combines:
 
 - the real full problem score
@@ -312,14 +305,14 @@ Conceptually:
 Where:
 
 - `F_full` is the real solver3 objective
-- `oracle_agreement` rewards realizing oracle edges/cohorts in the flexible core
+- `oracle_agreement` rewards realizing oracle edges/cohorts in the projected template region
 - `scaffold_agreement` discourages needless destruction of good `CS` structure
 
 ### Merge mechanics
 A practical v1 should:
 
-1. start from `S_cs_best`
-2. unfreeze the oracleizable flexible region
+1. start from `S_cs`
+2. unfreeze the projected template region
 3. run a short restricted reconstruction / repair loop on that region only
 4. decay `μ_oracle` and `μ_scaffold` over time
 5. stop when the real full objective no longer improves materially
@@ -346,12 +339,12 @@ The new heuristic is only about producing a much stronger starting point.
 
 Because it reduces the whole construction problem to a small set of reusable abstractions:
 
-- `CS` ensemble => what the non-repeat part of the problem wants
-- rigidity => what is expensive to rewrite
-- session pair pressure => which pairings are structurally cheap or natural
+- full-objective warmup scaffold => what solver3 can already make work on the real problem
+- structural freeze mask => what is actually unsafe to rewrite
+- session pair pressure => which pairings the scaffold currently uses
 - oracle schedule => how to spend contact opportunities well
 
-That means new constraint types affect the constructor automatically by changing the `CS` ensemble and the derived statistics.
+That means new constraint types affect the constructor automatically by changing the warmup scaffold and derived statistics.
 The heuristic does not need bespoke bridge logic for each new constraint type.
 
 ---
@@ -402,10 +395,10 @@ Create the scaffolding needed to implement and evaluate the heuristic honestly.
 - `cs_diversity`
 - `rigid_placement_count`
 - `flexible_placement_count`
-- `oracle_block_people`
-- `oracle_block_sessions`
-- `oracle_block_groups`
-- `oracle_relabel_score`
+- `oracle_template_mapped_people`
+- `oracle_template_sessions`
+- `oracle_template_groups`
+- `oracle_projection_score`
 - `merge_improvement_over_cs`
 - `constructor_wall_ms`
 
@@ -415,32 +408,33 @@ Create the scaffolding needed to implement and evaluate the heuristic honestly.
 
 ---
 
-## Phase 1 — repeat-blind `CS` runner
+## Phase 1 — full-objective warmup scaffold
 
 ### Goal
-Build the repeat-blind scenario and generate a short diversified ensemble.
+Build a strong real solver3 scaffold before oracle injection.
 
 ### Tasks
-- add a way to compile or score the same input with repeat terms removed/neutralized
-- run several short solver3 construction/search passes under `CS`
-- retain best + diverse incumbents
+- build the baseline schedule
+- run normal solver3 search on the full problem/objective
+- budget the warmup as `min(total_constructor_budget / 2, 1s)`
+- use the returned solver3 schedule directly as `S_cs`
 - keep this implementation entirely inside solver3; no user projection knobs
 
 ### Implementation notes
-- start with small `K` and short budgets
-- the goal is structure extraction, not perfect `CS` optimization
-- diversification can come from seed variation and small constructor/search perturbations
+- current implementation performs one warmup run
+- no separate best-state tracking is needed; solver3 search returns/loads the best state
+- if the configured total budget is zero, use the baseline scaffold without warmup
 
 ### Acceptance criteria
-- `CS` produces several feasible schedules on representative mixed workloads
-- those schedules are stable enough to expose useful structural patterns
+- `S_cs` is a feasible full-objective solver3 schedule
+- warmup cost is bounded and predictable
 
 ---
 
 ## Phase 2 — structural signal extraction
 
 ### Goal
-Turn the `CS` ensemble into reusable construction statistics.
+Turn the warmup scaffold into reusable construction statistics.
 
 ### Tasks
 - compute session pair pressure `C^s_ij`
@@ -450,7 +444,8 @@ Turn the `CS` ensemble into reusable construction statistics.
 
 ### Implementation notes
 - store signals in dense indexed arrays where possible
-- use weighted ensemble aggregation, not a plain unweighted average if score gaps are large
+- single-scaffold pair pressure and placement histograms are one-hot priors
+- rigidity stays neutral/flexible unless backed by real structural constraints
 - prefer session-local signals over only global summaries
 
 ### Acceptance criteria
@@ -465,13 +460,13 @@ Turn the `CS` ensemble into reusable construction statistics.
 Produce the first real incumbent and determine which parts are safe to rewrite.
 
 ### Tasks
-- take `S_cs_best` as the scaffold
+- take `S_cs` as the scaffold
 - classify placements into rigid and flexible regions
-- add a disruption estimator to avoid freezing structure that is merely accidental
+- avoid freezing structure that is merely a one-run scaffold placement
 
 ### Implementation notes
-- combine ensemble consistency with local `CS` score-drop probes
-- v1 can use a simple threshold on a combined rigidity score
+- current hard-freeze sources are structural only: immovable placements and active must-stay cliques
+- scaffold placement remains a soft prior for projection/merge
 
 ### Acceptance criteria
 - scaffold remains feasible
@@ -480,23 +475,23 @@ Produce the first real incumbent and determine which parts are safe to rewrite.
 
 ---
 
-## Phase 4 — oracleizable block selection
+## Phase 4 — capacity-template generation
 
 ### Goal
-Find one good pure-SGP-shaped flexible core.
+Find one good pure-SGP-shaped capacity template.
 
 ### Tasks
-- search the flexible region for a high-value pure block `(U, T)`
-- verify the residual capacity and attendance conditions needed for a pure `g-q-w` call
-- score candidate blocks by contact opportunity, flexibility, and disruption risk
+- generate high-value pure templates `(sessions, groups, group_size)`
+- verify the capacity and attendance signals needed for a pure `g-q-w` call
+- score candidate templates by contact opportunity, attendance coverage, dummy burden, group pruning, and disruption risk
 
 ### Implementation notes
-- v1 should support only one rectangular block
-- later work can extend this to multiple blocks or iterative peeling
+- v1 evaluates the top generated template only
+- later work can extend this to top-K template evaluation or iterative peeling
 
 ### Acceptance criteria
-- the selector finds useful blocks on representative pure and mixed repeat-sensitive cases
-- the selector declines gracefully when no good block exists
+- the generator finds useful templates on representative pure and mixed repeat-sensitive cases
+- strict mode errors explicitly when no good template exists
 
 ---
 
@@ -521,22 +516,22 @@ Define a clean pure-structure oracle seam and use solver6 as the first backend.
 
 ---
 
-## Phase 6 — relabeling and alignment
+## Phase 6 — projection and alignment
 
 ### Goal
 Map real people and real groups onto oracle roles.
 
 ### Tasks
-- implement person-to-role relabeling against `C^s_ij`
+- implement oracle-role to optional-real-person projection against `C^s_ij`
 - implement session-local group alignment against `H^s_i,g`
 - add rigidity-aware mismatch penalties
 
 ### Implementation notes
-- start with deterministic greedy or local-search relabeling
+- start with deterministic greedy or local-search projection
 - only move to more elaborate assignment logic if benchmark evidence demands it
 
 ### Acceptance criteria
-- relabeler improves alignment score over naive identity mapping on representative cases
+- projector improves alignment score over naive identity mapping on representative cases
 - highly rigid placements are preserved more often than flexible ones
 
 ---
@@ -547,7 +542,7 @@ Map real people and real groups onto oracle roles.
 Construct the real incumbent from scaffold + oracle prior.
 
 ### Tasks
-- start from `S_cs_best`
+- start from `S_cs`
 - unfreeze the selected flexible region
 - run restricted reconstruction / move-based repair under `F_merge`
 - decay prior weights toward the real objective
@@ -600,14 +595,15 @@ Construction heuristics now live under `solver_support/construction/`, with one 
 - `backend/core/src/solver_support/construction/freedom_aware/`
 - `backend/core/src/solver_support/construction/constraint_scenario_oracle/`
 
-The constraint-scenario oracle module may later split internally into focused files:
+The constraint-scenario oracle module should split internally into focused phase files:
 
-- `cs_ensemble.rs`
+- `scaffold_warmup.rs`
 - `cs_signals.rs`
-- `oracle_block.rs`
-- `oracle_relabel.rs`
-- `oracle_merge.rs`
-- `punctured_template.rs`
+- `template_candidates.rs`
+- `oracle_backend.rs`
+- `projection.rs`
+- `merge.rs`
+- `diagnostics.rs`
 
 Wiring remains primarily in:
 
@@ -623,13 +619,13 @@ The heuristic is still solver3-oriented, but it lives next to the other construc
 
 If this work is pursued, the most sensible milestone order is:
 
-1. `CS` ensemble runner
-2. signal extraction
+1. full-objective warmup scaffold
+2. single-scaffold signal extraction
 3. scaffold mask
-4. single-block selector
+4. template candidate portfolio
 5. oracle seam + solver6 backend
-6. relabeling
-7. one bounded merge phase
+6. projection
+7. bounded merge/repair phase
 8. benchmark review
 
 This order keeps the work inspectable and allows early stopping if the learned `CS` structure is not informative enough.
@@ -640,11 +636,11 @@ This order keeps the work inspectable and allows early stopping if the learned `
 
 These are the main unresolved design points.
 
-### 1. How many `CS` runs are enough?
-Tradeoff between signal quality and constructor cost.
+### 1. Is one warmup scaffold enough?
+Current policy is one full-objective warmup. If this is too noisy later, add more warmup seeds only with evidence.
 
-### 2. How should rigidity combine consistency and disruption cost?
-A pure entropy score is probably too weak by itself.
+### 2. How should rigidity combine scaffold priors and disruption cost?
+A one-hot scaffold placement is not rigidity by itself.
 
 ### 3. How should candidate pure blocks be enumerated efficiently?
 The naive search space may be large.
@@ -661,6 +657,6 @@ A bounded restricted local search is the most plausible first implementation.
 
 The heuristic should be described internally as:
 
-> a repeat-aware universal constructor for solver3 that first learns the constraint-induced basin from repeat-blind runs, then injects oracle-quality pure-SGP contact structure into the flexible part of that basin before normal search begins.
+> a repeat-aware universal constructor for solver3 that first gets a short full-objective solver3 warmup scaffold, then injects oracle-quality pure-SGP contact structure into the flexible part of that real basin before normal search begins.
 
 That is the intended design target.

@@ -20,8 +20,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use crate::models::ApiInput;
-use crate::models::Solver3ConstructionMode;
+use crate::models::{
+    ApiInput, Solver3ConstructionMode, Solver3Params, SolverConfiguration, SolverKind,
+    SolverParams, StopConditions,
+};
 use crate::solver_support::construction::{
     apply_baseline_construction_heuristic, apply_freedom_aware_construction_heuristic,
     BaselineConstructionContext, FreedomAwareConstructionParams,
@@ -37,16 +39,15 @@ use rand_chacha::ChaCha12Rng;
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::oracle::maybe_cross_check_runtime_state;
 use super::scoring::recompute::recompute_oracle_score;
+use super::search::SearchEngine as Solver3SearchEngine;
 use super::validation::validate_invariants;
 use crate::solver_support::construction::constraint_scenario_oracle::{
-    build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
-    constraint_scenario_score, extract_constraint_scenario_signals,
-    merge_relabelled_oracle_into_scaffold, relabel_oracle_schedule_to_block,
-    repeat_pressure_is_relevant, select_oracleizable_flexible_block, ConstraintScenarioCandidate,
-    ConstraintScenarioCandidateSource, ConstraintScenarioEnsemble,
+    build_constraint_scenario_scaffold_mask, extract_constraint_scenario_signals_from_scaffold,
+    generate_oracle_template_candidates, merge_projected_oracle_template_into_scaffold,
+    project_oracle_schedule_to_template, repeat_pressure_is_relevant,
     ConstraintScenarioOracleConstructionResult, ConstraintScenarioOracleOutcomeKind,
     ConstraintScenarioOracleTelemetry, PureStructureOracle, PureStructureOracleRequest,
-    Solver6PureStructureOracle, DEFAULT_CONSTRAINT_SCENARIO_RUNS,
+    Solver6PureStructureOracle,
 };
 
 const DEFAULT_BASELINE_CONSTRUCTION_SEED: u64 = 42;
@@ -122,7 +123,12 @@ impl RuntimeState {
             return Self::from_compiled_schedule(compiled, validated.schedule);
         }
         let construction = resolve_construction_selection(input)?;
-        Self::from_compiled_with_seed_and_construction(compiled, effective_seed, construction)
+        Self::from_compiled_with_seed_and_construction(
+            compiled,
+            effective_seed,
+            construction,
+            input.solver.stop_conditions.time_limit_seconds,
+        )
     }
 
     /// Builds a `RuntimeState` from a pre-compiled problem.
@@ -131,6 +137,7 @@ impl RuntimeState {
             compiled,
             DEFAULT_BASELINE_CONSTRUCTION_SEED,
             ConstructionHeuristicSelection::BaselineLegacy,
+            None,
         )
     }
 
@@ -142,6 +149,7 @@ impl RuntimeState {
             compiled,
             effective_seed,
             ConstructionHeuristicSelection::BaselineLegacy,
+            None,
         )
     }
 
@@ -149,6 +157,7 @@ impl RuntimeState {
         compiled: Arc<CompiledProblem>,
         effective_seed: u64,
         construction: ConstructionHeuristicSelection,
+        construction_total_time_limit_seconds: Option<u64>,
     ) -> Result<Self, SolverError> {
         let np = compiled.num_people;
         let ng = compiled.num_groups;
@@ -174,7 +183,11 @@ impl RuntimeState {
             total_score: 0.0,
         };
 
-        state.initialize_from_schedule(effective_seed, construction)?;
+        state.initialize_from_schedule(
+            effective_seed,
+            construction,
+            construction_total_time_limit_seconds,
+        )?;
         validate_invariants(&state)?;
         state.rebuild_pair_contacts();
         state.sync_score_from_oracle()?;
@@ -279,8 +292,13 @@ impl RuntimeState {
         &mut self,
         effective_seed: u64,
         construction: ConstructionHeuristicSelection,
+        construction_total_time_limit_seconds: Option<u64>,
     ) -> Result<(), SolverError> {
-        let schedule = self.build_constructed_schedule(effective_seed, construction)?;
+        let schedule = self.build_constructed_schedule(
+            effective_seed,
+            construction,
+            construction_total_time_limit_seconds,
+        )?;
 
         self.load_exact_schedule(&schedule)?;
 
@@ -303,13 +321,17 @@ impl RuntimeState {
         &self,
         effective_seed: u64,
         construction: ConstructionHeuristicSelection,
+        construction_total_time_limit_seconds: Option<u64>,
     ) -> Result<PackedSchedule, SolverError> {
         if matches!(
             construction,
             ConstructionHeuristicSelection::ConstraintScenarioOracleGuided
         ) {
             let mut schedule = self
-                .build_constraint_scenario_oracle_guided_schedule(effective_seed)?
+                .build_constraint_scenario_oracle_guided_schedule(
+                    effective_seed,
+                    construction_total_time_limit_seconds,
+                )?
                 .schedule;
             self.repair_hard_constraints_in_schedule(&mut schedule, effective_seed)?;
             return Ok(schedule);
@@ -365,12 +387,14 @@ impl RuntimeState {
     fn build_constraint_scenario_oracle_guided_schedule(
         &self,
         effective_seed: u64,
+        construction_total_time_limit_seconds: Option<u64>,
     ) -> Result<ConstraintScenarioOracleConstructionResult, SolverError> {
         let started_at = Instant::now();
         if !repeat_pressure_is_relevant(&self.compiled) {
             let schedule = self.build_constructed_schedule(
                 effective_seed,
                 ConstructionHeuristicSelection::BaselineLegacy,
+                None,
             )?;
             return Ok(ConstraintScenarioOracleConstructionResult {
                 schedule,
@@ -383,39 +407,49 @@ impl RuntimeState {
             });
         }
 
-        let ensemble = self.build_constraint_scenario_ensemble(effective_seed)?;
-        let signals = extract_constraint_scenario_signals(&self.compiled, &ensemble);
-        let best = ensemble.best();
+        let scaffold = self.build_constraint_scenario_warmup_scaffold(
+            effective_seed,
+            construction_total_time_limit_seconds,
+        )?;
+        let signals =
+            extract_constraint_scenario_signals_from_scaffold(&self.compiled, &scaffold.schedule);
         let scaffold_mask =
-            build_constraint_scenario_scaffold_mask(&self.compiled, &best.schedule, &signals);
-        let oracle_block = select_oracleizable_flexible_block(
+            build_constraint_scenario_scaffold_mask(&self.compiled, &scaffold.schedule, &signals);
+        let candidate = generate_oracle_template_candidates(
             &self.compiled,
-            &best.schedule,
+            &scaffold.schedule,
             &signals,
             &scaffold_mask,
-        );
-        let block = oracle_block.as_ref().ok_or_else(|| {
+        )
+        .into_iter()
+        .next()
+        .ok_or_else(|| {
             SolverError::ValidationError(
-                "solver3 constraint-scenario oracle-guided construction could not select an oracleizable block".into(),
+                "solver3 constraint-scenario oracle-guided construction could not generate an oracle template".into(),
             )
         })?;
         let oracle_schedule = Solver6PureStructureOracle.solve(&PureStructureOracleRequest {
-            num_groups: block.num_groups,
-            group_size: block.group_size,
-            num_sessions: block.num_sessions(),
+            num_groups: candidate.num_groups,
+            group_size: candidate.group_size,
+            num_sessions: candidate.num_sessions(),
             seed: effective_seed ^ 0x5eed_600d_u64,
         })?;
-        let relabeling =
-            relabel_oracle_schedule_to_block(&self.compiled, &signals, block, &oracle_schedule)?;
-        let oracle_relabel_score = Some(relabeling.score);
-        let (selected_schedule, merged_score) = merge_relabelled_oracle_into_scaffold(
+        let projection = project_oracle_schedule_to_template(
             &self.compiled,
-            &best.schedule,
             &signals,
             &scaffold_mask,
-            block,
+            &candidate,
             &oracle_schedule,
-            &relabeling,
+        )?;
+        let oracle_projection_score = Some(projection.score);
+        let (selected_schedule, merged_score) = merge_projected_oracle_template_into_scaffold(
+            &self.compiled,
+            &scaffold.schedule,
+            &signals,
+            &scaffold_mask,
+            &candidate,
+            &oracle_schedule,
+            &projection,
         )
         .and_then(|merge| {
             let mut repaired_schedule = merge.schedule;
@@ -426,7 +460,7 @@ impl RuntimeState {
             let snapshot = self.score_constructed_schedule(&repaired_schedule)?;
             Ok((repaired_schedule, snapshot.total_score))
         })?;
-        let merge_improvement_over_cs = Some(best.real_score - merged_score);
+        let merge_improvement_over_cs = Some(scaffold.score - merged_score);
         let outcome = ConstraintScenarioOracleOutcomeKind::OracleMerged;
         let oracle_merge_attempted = true;
         let oracle_merge_accepted = true;
@@ -436,24 +470,15 @@ impl RuntimeState {
             telemetry: ConstraintScenarioOracleTelemetry {
                 outcome,
                 repeat_relevant: true,
-                cs_run_count: ensemble.candidates.len(),
-                cs_best_score: Some(best.cs_score),
-                cs_diversity: Some(ensemble.diversity),
+                cs_run_count: 1,
+                cs_best_score: Some(scaffold.score),
+                cs_diversity: Some(0.0),
                 rigid_placement_count: scaffold_mask.rigid_placement_count,
                 flexible_placement_count: scaffold_mask.flexible_placement_count,
-                oracle_block_people: oracle_block
-                    .as_ref()
-                    .map(|block| block.num_people())
-                    .unwrap_or(0),
-                oracle_block_sessions: oracle_block
-                    .as_ref()
-                    .map(|block| block.num_sessions())
-                    .unwrap_or(0),
-                oracle_block_groups: oracle_block
-                    .as_ref()
-                    .map(|block| block.num_groups)
-                    .unwrap_or(0),
-                oracle_relabel_score,
+                oracle_template_mapped_people: projection.mapped_real_people,
+                oracle_template_sessions: candidate.num_sessions(),
+                oracle_template_groups: candidate.num_groups,
+                oracle_projection_score,
                 merge_improvement_over_cs,
                 oracle_merge_attempted,
                 oracle_merge_accepted,
@@ -464,29 +489,39 @@ impl RuntimeState {
         })
     }
 
-    fn build_constraint_scenario_ensemble(
+    fn build_constraint_scenario_warmup_scaffold(
         &self,
         effective_seed: u64,
-    ) -> Result<ConstraintScenarioEnsemble, SolverError> {
-        let mut candidates = Vec::with_capacity(DEFAULT_CONSTRAINT_SCENARIO_RUNS);
-        for run_idx in 0..DEFAULT_CONSTRAINT_SCENARIO_RUNS {
-            let (source, construction) = constraint_scenario_run_strategy(run_idx);
-            let seed = derive_constraint_scenario_seed(effective_seed, run_idx, source);
-            let schedule = match self.build_constructed_schedule(seed, construction) {
-                Ok(schedule) => schedule,
-                Err(_) => continue,
-            };
-            let snapshot = self.score_constructed_schedule(&schedule)?;
-            candidates.push(ConstraintScenarioCandidate {
-                schedule,
-                source,
-                seed,
-                cs_score: constraint_scenario_score(&self.compiled, &snapshot),
-                real_score: snapshot.total_score,
+        construction_total_time_limit_seconds: Option<u64>,
+    ) -> Result<ConstraintScenarioWarmupScaffold, SolverError> {
+        let budget_seconds =
+            constraint_scenario_warmup_budget_seconds(construction_total_time_limit_seconds);
+        let baseline_schedule = self.build_constructed_schedule(
+            effective_seed ^ 0x0c5c_aff0_1d5c_aff0_u64,
+            ConstructionHeuristicSelection::BaselineLegacy,
+            None,
+        )?;
+        if budget_seconds == 0 {
+            let snapshot = self.score_constructed_schedule(&baseline_schedule)?;
+            return Ok(ConstraintScenarioWarmupScaffold {
+                schedule: baseline_schedule,
+                score: snapshot.total_score,
             });
         }
 
-        build_constraint_scenario_ensemble(candidates)
+        let mut warmup_state =
+            Self::from_compiled_schedule(Arc::clone(&self.compiled), baseline_schedule)?;
+        let warmup_config = constraint_scenario_warmup_solver_configuration(
+            effective_seed ^ 0x57a9_1e5c_affe_f00d_u64,
+            budget_seconds,
+        );
+        Solver3SearchEngine::new(&warmup_config).solve(&mut warmup_state, None, None)?;
+        let schedule = warmup_state.to_packed_schedule();
+        let snapshot = self.score_constructed_schedule(&schedule)?;
+        Ok(ConstraintScenarioWarmupScaffold {
+            schedule,
+            score: snapshot.total_score,
+        })
     }
 
     fn score_constructed_schedule(
@@ -852,6 +887,19 @@ impl RuntimeState {
         Ok(())
     }
 
+    /// Converts the flat runtime state back into the internal packed schedule shape.
+    fn to_packed_schedule(&self) -> PackedSchedule {
+        let mut schedule =
+            vec![vec![Vec::new(); self.compiled.num_groups]; self.compiled.num_sessions];
+        for (session_idx, session_groups) in schedule.iter_mut().enumerate() {
+            for (group_idx, members) in session_groups.iter_mut().enumerate() {
+                let slot = self.group_slot(session_idx, group_idx);
+                *members = self.group_members[slot].clone();
+            }
+        }
+        schedule
+    }
+
     /// Converts the flat runtime state back into the API schedule shape.
     pub fn to_api_schedule(&self) -> HashMap<String, HashMap<String, Vec<String>>> {
         let mut schedule = HashMap::new();
@@ -876,46 +924,38 @@ impl RuntimeState {
     }
 }
 
-fn constraint_scenario_run_strategy(
-    run_idx: usize,
-) -> (
-    ConstraintScenarioCandidateSource,
-    ConstructionHeuristicSelection,
-) {
-    match run_idx % 3 {
-        0 => (
-            ConstraintScenarioCandidateSource::BaselineLegacy,
-            ConstructionHeuristicSelection::BaselineLegacy,
-        ),
-        1 => (
-            ConstraintScenarioCandidateSource::FreedomAwareDeterministic,
-            ConstructionHeuristicSelection::FreedomAwareRandomized(
-                FreedomAwareConstructionParams { gamma: 0.0 },
-            ),
-        ),
-        _ => (
-            ConstraintScenarioCandidateSource::FreedomAwareRandomized,
-            ConstructionHeuristicSelection::FreedomAwareRandomized(
-                FreedomAwareConstructionParams { gamma: 1.0 },
-            ),
-        ),
+#[derive(Debug, Clone, PartialEq)]
+struct ConstraintScenarioWarmupScaffold {
+    schedule: PackedSchedule,
+    score: f64,
+}
+
+fn constraint_scenario_warmup_budget_seconds(total_time_limit_seconds: Option<u64>) -> u64 {
+    match total_time_limit_seconds {
+        Some(0) => 0,
+        Some(_) | None => 1,
     }
 }
 
-fn derive_constraint_scenario_seed(
-    base_seed: u64,
-    run_idx: usize,
-    source: ConstraintScenarioCandidateSource,
-) -> u64 {
-    let source_salt = match source {
-        ConstraintScenarioCandidateSource::BaselineLegacy => 0x243f_6a88_85a3_08d3,
-        ConstraintScenarioCandidateSource::FreedomAwareDeterministic => 0x1319_8a2e_0370_7344,
-        ConstraintScenarioCandidateSource::FreedomAwareRandomized => 0xa409_3822_299f_31d0,
-    };
-    let mut z = base_seed ^ source_salt ^ ((run_idx as u64).wrapping_mul(0x9e37_79b9_7f4a_7c15));
-    z = (z ^ (z >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
-    z ^ (z >> 31)
+fn constraint_scenario_warmup_solver_configuration(
+    effective_seed: u64,
+    budget_seconds: u64,
+) -> SolverConfiguration {
+    SolverConfiguration {
+        solver_type: SolverKind::Solver3.canonical_id().into(),
+        stop_conditions: StopConditions {
+            max_iterations: Some(1_000_000),
+            time_limit_seconds: Some(budget_seconds),
+            no_improvement_iterations: None,
+            stop_on_optimal_score: true,
+        },
+        solver_params: SolverParams::Solver3(Solver3Params::default()),
+        logging: Default::default(),
+        telemetry: Default::default(),
+        seed: Some(effective_seed),
+        move_policy: None,
+        allowed_sessions: None,
+    }
 }
 
 fn resolve_construction_selection(

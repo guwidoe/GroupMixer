@@ -44,10 +44,10 @@ use super::scoring::recompute::recompute_oracle_score;
 use super::validation::invariants::validate_invariants;
 use crate::solver_support::construction::constraint_scenario_oracle::{
     build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
-    extract_constraint_scenario_signals, merge_relabelled_oracle_into_scaffold,
-    relabel_oracle_schedule_to_block, select_oracleizable_flexible_block,
+    extract_constraint_scenario_signals, generate_oracle_template_candidates,
+    merge_projected_oracle_template_into_scaffold, project_oracle_schedule_to_template,
     validate_pure_oracle_schedule, ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
-    OracleRelabelingResult, OracleizableFlexibleBlock, PureStructureOracle,
+    OracleTemplateCandidate, OracleTemplateProjectionResult, PureStructureOracle,
     PureStructureOracleRequest, PureStructureOracleSchedule, Solver6PureStructureOracle,
 };
 
@@ -528,7 +528,7 @@ fn constraint_scenario_oracle_constructor_returns_cs_scaffold() {
 }
 
 #[test]
-fn constraint_scenario_oracle_constructor_errors_when_no_oracle_block_exists() {
+fn constraint_scenario_oracle_constructor_errors_when_no_oracle_template_exists() {
     let mut input = representative_input();
     input.initial_schedule = None;
     if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
@@ -539,7 +539,7 @@ fn constraint_scenario_oracle_constructor_errors_when_no_oracle_block_exists() {
     assert!(
         error
             .to_string()
-            .contains("could not select an oracleizable block"),
+            .contains("could not generate an oracle template"),
         "unexpected error: {error}"
     );
 }
@@ -638,7 +638,7 @@ fn constraint_scenario_scaffold_mask_protects_rigid_and_immovable_placements() {
 }
 
 #[test]
-fn oracle_block_selector_finds_flexible_pure_sgp_block() {
+fn oracle_template_generator_finds_flexible_pure_sgp_template() {
     let input = minimal_input();
     let compiled = CompiledProblem::compile(&input).unwrap();
     let schedule_a: PackedSchedule =
@@ -665,12 +665,14 @@ fn oracle_block_selector_finds_flexible_pure_sgp_block() {
     let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
     let mask = build_constraint_scenario_scaffold_mask(&compiled, &schedule_a, &signals);
 
-    let block = select_oracleizable_flexible_block(&compiled, &schedule_a, &signals, &mask)
-        .expect("expected flexible oracle block");
-    assert_eq!(block.num_people(), 4);
-    assert_eq!(block.num_sessions(), 2);
-    assert_eq!(block.num_groups, 2);
-    assert_eq!(block.group_size, 2);
+    let template = generate_oracle_template_candidates(&compiled, &schedule_a, &signals, &mask)
+        .into_iter()
+        .next()
+        .expect("expected flexible oracle template");
+    assert_eq!(template.oracle_capacity, 4);
+    assert_eq!(template.num_sessions(), 2);
+    assert_eq!(template.num_groups, 2);
+    assert_eq!(template.group_size, 2);
 }
 
 #[derive(Debug, Clone)]
@@ -721,9 +723,10 @@ fn solver6_pure_structure_oracle_services_exact_small_block() {
 }
 
 #[test]
-fn oracle_relabeling_improves_pair_alignment_and_aligns_groups() {
+fn oracle_template_projection_improves_pair_alignment_and_aligns_groups() {
     let input = minimal_input();
     let compiled = CompiledProblem::compile(&input).unwrap();
+    let scaffold: PackedSchedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
     let mut signals = crate::solver_support::construction::constraint_scenario_oracle::ConstraintScenarioSignals {
         pair_pressure_by_session_pair: vec![0.0; compiled.num_sessions * compiled.num_pairs],
         placement_histogram_by_person_session_group: vec![
@@ -750,31 +753,43 @@ fn oracle_relabeling_improves_pair_alignment_and_aligns_groups() {
                 [(session_idx * compiled.num_people + person_idx) * compiled.num_groups + 1] = 1.0;
         }
     }
-    let block = OracleizableFlexibleBlock {
-        people: vec![0, 1, 2, 3],
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &scaffold, &signals);
+    let candidate = OracleTemplateCandidate {
         sessions: vec![0, 1],
         groups_by_session: vec![vec![0, 1], vec![0, 1]],
         num_groups: 2,
         group_size: 2,
-        score: 1.0,
-        flexible_placement_count: 8,
+        oracle_capacity: 4,
+        stable_people_count: 4,
+        high_attendance_people_count: 4,
+        dummy_oracle_people: 0,
+        omitted_high_attendance_people: 0,
+        omitted_group_count: 0,
         scaffold_disruption_risk: 0.0,
+        estimated_score: 1.0,
     };
     let oracle_schedule = PureStructureOracleSchedule {
         schedule: vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]],
     };
 
-    let relabeling =
-        relabel_oracle_schedule_to_block(&compiled, &signals, &block, &oracle_schedule).unwrap();
-    assert!(relabeling.pair_alignment_score >= 4.0);
-    assert!(relabeling.group_alignment_score > 0.0);
-    let mut assigned_groups = relabeling.real_group_by_session_oracle_group[0].clone();
+    let projection = project_oracle_schedule_to_template(
+        &compiled,
+        &signals,
+        &mask,
+        &candidate,
+        &oracle_schedule,
+    )
+    .unwrap();
+    assert!(projection.pair_alignment_score >= 4.0);
+    assert!(projection.group_alignment_score > 0.0);
+    assert_eq!(projection.mapped_real_people, 4);
+    let mut assigned_groups = projection.real_group_by_session_oracle_group[0].clone();
     assigned_groups.sort_unstable();
     assert_eq!(assigned_groups, vec![0, 1]);
 }
 
 #[test]
-fn oracle_merge_injects_relabelled_contacts_into_flexible_scaffold() {
+fn oracle_template_merge_injects_projected_contacts_into_flexible_scaffold() {
     let input = minimal_input();
     let compiled = CompiledProblem::compile(&input).unwrap();
     let scaffold: PackedSchedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
@@ -799,36 +814,42 @@ fn oracle_merge_injects_relabelled_contacts_into_flexible_scaffold() {
     .unwrap();
     let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
     let mask = build_constraint_scenario_scaffold_mask(&compiled, &scaffold, &signals);
-    let block = OracleizableFlexibleBlock {
-        people: vec![0, 1, 2, 3],
+    let candidate = OracleTemplateCandidate {
         sessions: vec![0, 1],
         groups_by_session: vec![vec![0, 1], vec![0, 1]],
         num_groups: 2,
         group_size: 2,
-        score: 1.0,
-        flexible_placement_count: 8,
+        oracle_capacity: 4,
+        stable_people_count: 4,
+        high_attendance_people_count: 4,
+        dummy_oracle_people: 0,
+        omitted_high_attendance_people: 0,
+        omitted_group_count: 0,
         scaffold_disruption_risk: 0.0,
+        estimated_score: 1.0,
     };
     let oracle_schedule = PureStructureOracleSchedule {
         schedule: vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]],
     };
-    let relabeling = OracleRelabelingResult {
-        real_person_by_oracle_person: vec![0, 2, 1, 3],
+    let projection = OracleTemplateProjectionResult {
+        real_person_by_oracle_person: vec![Some(0), Some(2), Some(1), Some(3)],
         real_group_by_session_oracle_group: vec![vec![0, 1], vec![0, 1]],
         score: 0.0,
         pair_alignment_score: 0.0,
         group_alignment_score: 0.0,
         rigidity_mismatch: 0.0,
+        mapped_real_people: 4,
+        dummy_oracle_people: 0,
     };
 
-    let merged = merge_relabelled_oracle_into_scaffold(
+    let merged = merge_projected_oracle_template_into_scaffold(
         &compiled,
         &scaffold,
         &signals,
         &mask,
-        &block,
+        &candidate,
         &oracle_schedule,
-        &relabeling,
+        &projection,
     )
     .unwrap();
 
@@ -838,7 +859,7 @@ fn oracle_merge_injects_relabelled_contacts_into_flexible_scaffold() {
 }
 
 #[test]
-fn oracle_block_selector_declines_structurally_frozen_scaffold() {
+fn oracle_template_projection_leaves_structurally_frozen_people_as_dummies() {
     let mut input = minimal_input();
     input.constraints.extend([
         Constraint::ImmovablePerson(ImmovablePersonParams {
@@ -875,12 +896,38 @@ fn oracle_block_selector_declines_structurally_frozen_scaffold() {
     .unwrap();
     let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
     let mask = build_constraint_scenario_scaffold_mask(&compiled, &schedule_a, &signals);
+    let candidate = OracleTemplateCandidate {
+        sessions: vec![0, 1],
+        groups_by_session: vec![vec![0, 1], vec![0, 1]],
+        num_groups: 2,
+        group_size: 2,
+        oracle_capacity: 4,
+        stable_people_count: 0,
+        high_attendance_people_count: 0,
+        dummy_oracle_people: 4,
+        omitted_high_attendance_people: 0,
+        omitted_group_count: 0,
+        scaffold_disruption_risk: 0.0,
+        estimated_score: 0.0,
+    };
+    let oracle_schedule = PureStructureOracleSchedule {
+        schedule: vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]],
+    };
 
-    assert!(select_oracleizable_flexible_block(&compiled, &schedule_a, &signals, &mask).is_none());
+    let projection = project_oracle_schedule_to_template(
+        &compiled,
+        &signals,
+        &mask,
+        &candidate,
+        &oracle_schedule,
+    )
+    .unwrap();
+    assert_eq!(projection.mapped_real_people, 0);
+    assert_eq!(projection.dummy_oracle_people, candidate.oracle_capacity);
 }
 
 #[test]
-fn pure_repeat_only_sgp_selects_the_whole_problem_as_oracle_block() {
+fn pure_repeat_only_sgp_selects_the_whole_problem_as_oracle_template() {
     let input = pure_sgp_solver3_input(8, 4, 10);
     let compiled = CompiledProblem::compile(&input).unwrap();
     let scaffold = repeated_partition_schedule(8, 4, 10);
@@ -895,12 +942,14 @@ fn pure_repeat_only_sgp_selects_the_whole_problem_as_oracle_block() {
     let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
     let mask = build_constraint_scenario_scaffold_mask(&compiled, &scaffold, &signals);
 
-    let block = select_oracleizable_flexible_block(&compiled, &scaffold, &signals, &mask)
+    let template = generate_oracle_template_candidates(&compiled, &scaffold, &signals, &mask)
+        .into_iter()
+        .next()
         .expect("pure SGP should expose the full instance as flexible");
-    assert_eq!(block.num_people(), 32);
-    assert_eq!(block.num_sessions(), 10);
-    assert_eq!(block.num_groups, 8);
-    assert_eq!(block.group_size, 4);
+    assert_eq!(template.oracle_capacity, 32);
+    assert_eq!(template.num_sessions(), 10);
+    assert_eq!(template.num_groups, 8);
+    assert_eq!(template.group_size, 4);
 }
 
 #[test]

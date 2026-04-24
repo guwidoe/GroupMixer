@@ -15,14 +15,8 @@ use crate::models::{
     SolverConfiguration, SolverKind, SolverParams, StopConditions,
 };
 use crate::solver3::compiled_problem::{CompiledProblem, PackedSchedule};
-use crate::solver3::scoring::OracleSnapshot;
 use crate::solver6::SearchEngine as Solver6SearchEngine;
 use crate::solver_support::SolverError;
-
-/// Initial number of diversified repeat-blind construction attempts.
-///
-/// This is intentionally internal heuristic policy, not a user-facing projection knob.
-pub(crate) const DEFAULT_CONSTRAINT_SCENARIO_RUNS: usize = 4;
 
 /// Current high-level outcome of the constructor pipeline.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,10 +52,10 @@ pub(crate) struct ConstraintScenarioOracleTelemetry {
     pub(crate) cs_diversity: Option<f64>,
     pub(crate) rigid_placement_count: usize,
     pub(crate) flexible_placement_count: usize,
-    pub(crate) oracle_block_people: usize,
-    pub(crate) oracle_block_sessions: usize,
-    pub(crate) oracle_block_groups: usize,
-    pub(crate) oracle_relabel_score: Option<f64>,
+    pub(crate) oracle_template_mapped_people: usize,
+    pub(crate) oracle_template_sessions: usize,
+    pub(crate) oracle_template_groups: usize,
+    pub(crate) oracle_projection_score: Option<f64>,
     pub(crate) merge_improvement_over_cs: Option<f64>,
     pub(crate) oracle_merge_attempted: bool,
     pub(crate) oracle_merge_accepted: bool,
@@ -79,10 +73,10 @@ impl Default for ConstraintScenarioOracleTelemetry {
             cs_diversity: None,
             rigid_placement_count: 0,
             flexible_placement_count: 0,
-            oracle_block_people: 0,
-            oracle_block_sessions: 0,
-            oracle_block_groups: 0,
-            oracle_relabel_score: None,
+            oracle_template_mapped_people: 0,
+            oracle_template_sessions: 0,
+            oracle_template_groups: 0,
+            oracle_projection_score: None,
             merge_improvement_over_cs: None,
             oracle_merge_attempted: false,
             oracle_merge_accepted: false,
@@ -100,6 +94,7 @@ pub(crate) struct ConstraintScenarioOracleConstructionResult {
 }
 
 /// Internal source label for a repeat-blind CS candidate.
+#[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ConstraintScenarioCandidateSource {
     BaselineLegacy,
@@ -107,6 +102,7 @@ pub(crate) enum ConstraintScenarioCandidateSource {
     FreedomAwareRandomized,
 }
 
+#[cfg(test)]
 impl ConstraintScenarioCandidateSource {
     pub(crate) fn label(self) -> &'static str {
         match self {
@@ -118,6 +114,7 @@ impl ConstraintScenarioCandidateSource {
 }
 
 /// One feasible schedule produced for the repeat-blind constraint scenario.
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ConstraintScenarioCandidate {
     pub(crate) schedule: PackedSchedule,
@@ -130,6 +127,7 @@ pub(crate) struct ConstraintScenarioCandidate {
 }
 
 /// Repeat-blind ensemble plus selected scaffold candidate.
+#[cfg(test)]
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct ConstraintScenarioEnsemble {
     pub(crate) candidates: Vec<ConstraintScenarioCandidate>,
@@ -137,6 +135,7 @@ pub(crate) struct ConstraintScenarioEnsemble {
     pub(crate) diversity: f64,
 }
 
+#[cfg(test)]
 impl ConstraintScenarioEnsemble {
     pub(crate) fn best(&self) -> &ConstraintScenarioCandidate {
         &self.candidates[self.best_index]
@@ -215,23 +214,21 @@ impl ConstraintScenarioScaffoldMask {
     }
 }
 
-/// A flexible subproblem that can be handed to a pure SGP/contact-structure oracle.
+/// Capacity-first pure-template candidate before projection and merge.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct OracleizableFlexibleBlock {
-    /// Real solver3 people included in the oracle block.
-    pub(crate) people: Vec<usize>,
-    /// Real solver3 sessions included in the oracle block.
+pub(crate) struct OracleTemplateCandidate {
     pub(crate) sessions: Vec<usize>,
-    /// For each selected real session, the real groups that provide the pure block capacity.
     pub(crate) groups_by_session: Vec<Vec<usize>>,
-    /// Pure oracle group count.
     pub(crate) num_groups: usize,
-    /// Pure oracle group size.
     pub(crate) group_size: usize,
-    /// Heuristic selector score; larger is better.
-    pub(crate) score: f64,
-    pub(crate) flexible_placement_count: usize,
+    pub(crate) oracle_capacity: usize,
+    pub(crate) stable_people_count: usize,
+    pub(crate) high_attendance_people_count: usize,
+    pub(crate) dummy_oracle_people: usize,
+    pub(crate) omitted_high_attendance_people: usize,
+    pub(crate) omitted_group_count: usize,
     pub(crate) scaffold_disruption_risk: f64,
+    pub(crate) estimated_score: f64,
 }
 
 /// Pure contact-structure oracle request, expressed in oracle-local indices.
@@ -255,20 +252,22 @@ pub(crate) struct PureStructureOracleSchedule {
     pub(crate) schedule: PackedSchedule,
 }
 
-/// Oracle schedule relabeled onto real solver3 people and groups.
+/// Oracle schedule projected onto real solver3 people and groups.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct OracleRelabelingResult {
-    /// `oracle_person_idx -> real solver3 person_idx`.
-    pub(crate) real_person_by_oracle_person: Vec<usize>,
+pub(crate) struct OracleTemplateProjectionResult {
+    /// `oracle_person_idx -> Some(real solver3 person_idx)`; `None` is a dummy/deleted vertex.
+    pub(crate) real_person_by_oracle_person: Vec<Option<usize>>,
     /// `[block_session_pos][oracle_group_idx] -> real solver3 group_idx`.
     pub(crate) real_group_by_session_oracle_group: Vec<Vec<usize>>,
     pub(crate) score: f64,
     pub(crate) pair_alignment_score: f64,
     pub(crate) group_alignment_score: f64,
     pub(crate) rigidity_mismatch: f64,
+    pub(crate) mapped_real_people: usize,
+    pub(crate) dummy_oracle_people: usize,
 }
 
-/// Result of injecting relabeled oracle structure into the CS scaffold.
+/// Result of injecting projected oracle structure into the CS scaffold.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct OracleMergeResult {
     pub(crate) schedule: PackedSchedule,
@@ -308,11 +307,7 @@ impl PureStructureOracle for Solver6PureStructureOracle {
     }
 }
 
-impl OracleizableFlexibleBlock {
-    pub(crate) fn num_people(&self) -> usize {
-        self.people.len()
-    }
-
+impl OracleTemplateCandidate {
     pub(crate) fn num_sessions(&self) -> usize {
         self.sessions.len()
     }
@@ -328,23 +323,8 @@ pub(crate) fn repeat_pressure_is_relevant(compiled: &CompiledProblem) -> bool {
     repeat_penalty_relevant || compiled.maximize_unique_contacts_weight > 0.0
 }
 
-/// Scores a full solver3 oracle snapshot as the repeat-blind Constraint Scenario.
-///
-/// Solver3's real score is:
-///
-/// `repeat_penalty + non_repeat_penalties - unique_contacts * contact_weight + baseline`
-///
-/// The CS score removes both repeat penalty and the unique-contact reward, leaving the
-/// constraint/non-repeat basin the heuristic wants to learn.
-pub(crate) fn constraint_scenario_score(
-    compiled: &CompiledProblem,
-    snapshot: &OracleSnapshot,
-) -> f64 {
-    snapshot.total_score - snapshot.weighted_repetition_penalty
-        + (snapshot.unique_contacts as f64 * compiled.maximize_unique_contacts_weight)
-}
-
 /// Builds the selected repeat-blind ensemble from already-feasible candidates.
+#[cfg(test)]
 pub(crate) fn build_constraint_scenario_ensemble(
     candidates: Vec<ConstraintScenarioCandidate>,
 ) -> Result<ConstraintScenarioEnsemble, SolverError> {
@@ -375,6 +355,7 @@ pub(crate) fn build_constraint_scenario_ensemble(
 }
 
 /// Extracts session-local pair pressure, placement histograms, and rigidity from the CS ensemble.
+#[cfg(test)]
 pub(crate) fn extract_constraint_scenario_signals(
     compiled: &CompiledProblem,
     ensemble: &ConstraintScenarioEnsemble,
@@ -394,6 +375,56 @@ pub(crate) fn extract_constraint_scenario_signals(
         );
     }
 
+    build_signals_from_accumulated_histograms(
+        compiled,
+        pair_pressure_by_session_pair,
+        placement_histogram_by_person_session_group,
+        SignalRigidityMode::EnsembleEntropy,
+    )
+}
+
+/// Extracts CS structure from the single full-objective warmup scaffold.
+///
+/// With only one scaffold there is no ensemble consensus, so rigidity must stay neutral/flexible:
+/// the placement histogram is still a useful soft prior, but it must not make every placement look
+/// structurally frozen.
+pub(crate) fn extract_constraint_scenario_signals_from_scaffold(
+    compiled: &CompiledProblem,
+    scaffold: &PackedSchedule,
+) -> ConstraintScenarioSignals {
+    let mut pair_pressure_by_session_pair = vec![0.0; compiled.num_sessions * compiled.num_pairs];
+    let mut placement_histogram_by_person_session_group =
+        vec![0.0; compiled.num_sessions * compiled.num_people * compiled.num_groups];
+
+    accumulate_schedule_signals(
+        compiled,
+        scaffold,
+        1.0,
+        &mut pair_pressure_by_session_pair,
+        &mut placement_histogram_by_person_session_group,
+    );
+
+    build_signals_from_accumulated_histograms(
+        compiled,
+        pair_pressure_by_session_pair,
+        placement_histogram_by_person_session_group,
+        SignalRigidityMode::SingleScaffoldFlexible,
+    )
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SignalRigidityMode {
+    #[cfg(test)]
+    EnsembleEntropy,
+    SingleScaffoldFlexible,
+}
+
+fn build_signals_from_accumulated_histograms(
+    compiled: &CompiledProblem,
+    pair_pressure_by_session_pair: Vec<f64>,
+    placement_histogram_by_person_session_group: Vec<f64>,
+    rigidity_mode: SignalRigidityMode,
+) -> ConstraintScenarioSignals {
     let mut rigidity_by_person_session = vec![0.0; compiled.num_sessions * compiled.num_people];
     let mut rigid_placement_count = 0usize;
     let mut flexible_placement_count = 0usize;
@@ -404,12 +435,16 @@ pub(crate) fn extract_constraint_scenario_signals(
                 rigidity_by_person_session[slot] = 1.0;
                 continue;
             }
-            let rigidity = placement_rigidity(
-                compiled,
-                &placement_histogram_by_person_session_group,
-                session_idx,
-                person_idx,
-            );
+            let rigidity = match rigidity_mode {
+                #[cfg(test)]
+                SignalRigidityMode::EnsembleEntropy => placement_rigidity(
+                    compiled,
+                    &placement_histogram_by_person_session_group,
+                    session_idx,
+                    person_idx,
+                ),
+                SignalRigidityMode::SingleScaffoldFlexible => 0.0,
+            };
             rigidity_by_person_session[slot] = rigidity;
             if rigidity >= 0.75 {
                 rigid_placement_count += 1;
@@ -462,190 +497,275 @@ pub(crate) fn build_constraint_scenario_scaffold_mask(
     }
 }
 
-/// Selects the most useful flexible pure-SGP block from the CS scaffold.
-///
-/// This selector is intentionally automatic. It looks for a common flexible participant set over
-/// a window of real sessions, verifies that each selected session has enough flexible group slots
-/// to host the same pure `g-q` shape, and scores candidates by contact opportunity, CS pair
-/// pressure, flexibility, and scaffold-disruption risk. Returning `None` is an explicit heuristic
-/// decline: the caller should keep the CS scaffold rather than force oracle injection.
-pub(crate) fn select_oracleizable_flexible_block(
+/// Generates simple capacity-ladder pure-template candidates.
+pub(crate) fn generate_oracle_template_candidates(
     compiled: &CompiledProblem,
     scaffold: &PackedSchedule,
     signals: &ConstraintScenarioSignals,
     mask: &ConstraintScenarioScaffoldMask,
-) -> Option<OracleizableFlexibleBlock> {
-    let mut best: Option<OracleizableFlexibleBlock> = None;
+) -> Vec<OracleTemplateCandidate> {
+    let mut candidates = Vec::new();
 
     for start_session in 0..compiled.num_sessions {
         for end_session in (start_session + 2)..=compiled.num_sessions {
             let sessions = (start_session..end_session).collect::<Vec<_>>();
-            if let Some(candidate) =
-                build_oracle_block_for_sessions(compiled, scaffold, signals, mask, &sessions)
-            {
-                let replace = best
-                    .as_ref()
-                    .map(|incumbent| oracle_block_better(&candidate, incumbent))
-                    .unwrap_or(true);
-                if replace {
-                    best = Some(candidate);
+            let group_slots_by_session = sessions
+                .iter()
+                .map(|&session_idx| {
+                    oracle_group_template_slots(compiled, scaffold, mask, session_idx)
+                })
+                .collect::<Vec<_>>();
+            let max_groups = group_slots_by_session
+                .iter()
+                .map(|slots| {
+                    slots
+                        .iter()
+                        .filter(|slot| slot.template_capacity >= 2)
+                        .count()
+                })
+                .min()
+                .unwrap_or(0)
+                .min(compiled.num_groups);
+            if max_groups < 2 {
+                continue;
+            }
+
+            let attendance = template_attendance_summary(compiled, mask, &sessions);
+            if attendance.high_attendance_people_count < 4 {
+                continue;
+            }
+
+            for num_groups in (2..=max_groups).rev() {
+                let selected_slots_by_session = group_slots_by_session
+                    .iter()
+                    .map(|slots| select_template_group_slots(slots, num_groups))
+                    .collect::<Option<Vec<_>>>();
+                let Some(selected_slots_by_session) = selected_slots_by_session else {
+                    continue;
+                };
+                let max_group_size = selected_slots_by_session
+                    .iter()
+                    .flat_map(|groups| groups.iter().map(|slot| slot.template_capacity))
+                    .min()
+                    .unwrap_or(0);
+                for group_size in template_group_size_ladder(max_group_size) {
+                    let oracle_capacity = num_groups * group_size;
+                    if oracle_capacity < 4 {
+                        continue;
+                    }
+                    let groups_by_session = selected_slots_by_session
+                        .iter()
+                        .map(|slots| slots.iter().map(|slot| slot.group_idx).collect::<Vec<_>>())
+                        .collect::<Vec<_>>();
+                    let scaffold_disruption_risk = selected_slots_by_session
+                        .iter()
+                        .enumerate()
+                        .map(|(session_pos, slots)| {
+                            template_scaffold_disruption_risk(
+                                compiled,
+                                scaffold,
+                                signals,
+                                sessions[session_pos],
+                                slots,
+                            )
+                        })
+                        .sum::<f64>();
+                    let dummy_oracle_people =
+                        oracle_capacity.saturating_sub(attendance.high_attendance_people_count);
+                    let omitted_high_attendance_people = attendance
+                        .high_attendance_people_count
+                        .saturating_sub(oracle_capacity);
+                    let omitted_group_count = compiled.num_groups.saturating_sub(num_groups);
+                    let estimated_score = oracle_template_candidate_score(
+                        sessions.len(),
+                        num_groups,
+                        group_size,
+                        oracle_capacity,
+                        attendance.stable_people_count,
+                        attendance.high_attendance_people_count,
+                        dummy_oracle_people,
+                        omitted_high_attendance_people,
+                        omitted_group_count,
+                        scaffold_disruption_risk,
+                    );
+                    candidates.push(OracleTemplateCandidate {
+                        sessions: sessions.clone(),
+                        groups_by_session,
+                        num_groups,
+                        group_size,
+                        oracle_capacity,
+                        stable_people_count: attendance.stable_people_count,
+                        high_attendance_people_count: attendance.high_attendance_people_count,
+                        dummy_oracle_people,
+                        omitted_high_attendance_people,
+                        omitted_group_count,
+                        scaffold_disruption_risk,
+                        estimated_score,
+                    });
                 }
             }
         }
     }
 
-    best
+    candidates.sort_by(|left, right| oracle_template_candidate_order(left, right));
+    candidates
 }
 
-fn build_oracle_block_for_sessions(
-    compiled: &CompiledProblem,
-    scaffold: &PackedSchedule,
-    signals: &ConstraintScenarioSignals,
-    mask: &ConstraintScenarioScaffoldMask,
-    sessions: &[usize],
-) -> Option<OracleizableFlexibleBlock> {
-    let mut common_flexible_people = (0..compiled.num_people)
-        .filter(|&person_idx| {
-            sessions.iter().all(|&session_idx| {
-                compiled.person_participation[person_idx][session_idx]
-                    && !mask.is_frozen(compiled, session_idx, person_idx)
-            })
-        })
-        .collect::<Vec<_>>();
-    if common_flexible_people.len() < 4 {
-        return None;
-    }
-
-    common_flexible_people.sort_by(|&left, &right| {
-        let left_score = person_oracle_block_priority(compiled, signals, sessions, left);
-        let right_score = person_oracle_block_priority(compiled, signals, sessions, right);
-        right_score
-            .partial_cmp(&left_score)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| left.cmp(&right))
-    });
-
-    let flexible_slots_by_session = sessions
-        .iter()
-        .map(|&session_idx| flexible_group_slots(compiled, scaffold, mask, session_idx))
-        .collect::<Vec<_>>();
-    if flexible_slots_by_session
-        .iter()
-        .any(|slots| slots.iter().filter(|(_, capacity)| *capacity >= 2).count() < 2)
-    {
-        return None;
-    }
-
-    let max_groups = flexible_slots_by_session
-        .iter()
-        .map(|slots| slots.iter().filter(|(_, capacity)| *capacity >= 2).count())
-        .min()
-        .unwrap_or(0)
-        .min(compiled.num_groups);
-    let mut best: Option<OracleizableFlexibleBlock> = None;
-
-    for num_groups in 2..=max_groups {
-        let selected_groups_by_session = flexible_slots_by_session
-            .iter()
-            .map(|slots| {
-                let mut slots = slots.clone();
-                slots
-                    .sort_by_key(|&(group_idx, capacity)| (std::cmp::Reverse(capacity), group_idx));
-                slots
-                    .into_iter()
-                    .filter(|(_, capacity)| *capacity >= 2)
-                    .take(num_groups)
-                    .collect::<Vec<_>>()
-            })
-            .collect::<Vec<_>>();
-        if selected_groups_by_session
-            .iter()
-            .any(|groups| groups.len() < num_groups)
-        {
-            continue;
-        }
-        let max_group_size = selected_groups_by_session
-            .iter()
-            .flat_map(|groups| groups.iter().map(|(_, capacity)| *capacity))
-            .min()
-            .unwrap_or(0)
-            .min(common_flexible_people.len() / num_groups);
-        for group_size in 2..=max_group_size {
-            let num_people = num_groups * group_size;
-            if num_people > common_flexible_people.len() {
-                continue;
-            }
-            let people = common_flexible_people[..num_people].to_vec();
-            let groups_by_session = selected_groups_by_session
-                .iter()
-                .map(|groups| {
-                    groups
-                        .iter()
-                        .take(num_groups)
-                        .map(|(group_idx, _)| *group_idx)
-                        .collect::<Vec<_>>()
-                })
-                .collect::<Vec<_>>();
-            let flexible_placement_count = sessions.len() * num_people;
-            let scaffold_disruption_risk = people
-                .iter()
-                .flat_map(|&person_idx| {
-                    sessions.iter().map(move |&session_idx| {
-                        signals.rigidity(compiled, session_idx, person_idx)
-                    })
-                })
-                .sum::<f64>();
-            let score = oracle_block_score(
-                compiled,
-                signals,
-                sessions,
-                &people,
-                num_groups,
-                group_size,
-                scaffold_disruption_risk,
-            );
-            let candidate = OracleizableFlexibleBlock {
-                people,
-                sessions: sessions.to_vec(),
-                groups_by_session,
-                num_groups,
-                group_size,
-                score,
-                flexible_placement_count,
-                scaffold_disruption_risk,
-            };
-            let replace = best
-                .as_ref()
-                .map(|incumbent| oracle_block_better(&candidate, incumbent))
-                .unwrap_or(true);
-            if replace {
-                best = Some(candidate);
-            }
-        }
-    }
-
-    best
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct OracleGroupTemplateSlot {
+    group_idx: usize,
+    template_capacity: usize,
+    available_capacity: usize,
+    flexible_occupancy: usize,
 }
 
-fn flexible_group_slots(
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct TemplateAttendanceSummary {
+    stable_people_count: usize,
+    high_attendance_people_count: usize,
+}
+
+fn oracle_group_template_slots(
     compiled: &CompiledProblem,
     scaffold: &PackedSchedule,
     mask: &ConstraintScenarioScaffoldMask,
     session_idx: usize,
-) -> Vec<(usize, usize)> {
-    (0..compiled.num_groups)
+) -> Vec<OracleGroupTemplateSlot> {
+    let mut slots = (0..compiled.num_groups)
         .map(|group_idx| {
-            let flexible_count = scaffold[session_idx][group_idx]
+            let frozen_occupancy = scaffold[session_idx][group_idx]
+                .iter()
+                .filter(|&&person_idx| mask.is_frozen(compiled, session_idx, person_idx))
+                .count();
+            let flexible_occupancy = scaffold[session_idx][group_idx]
                 .iter()
                 .filter(|&&person_idx| !mask.is_frozen(compiled, session_idx, person_idx))
-                .count()
-                .min(compiled.group_capacity(session_idx, group_idx));
-            (group_idx, flexible_count)
+                .count();
+            let template_capacity = compiled.group_capacity(session_idx, group_idx);
+            let available_capacity = template_capacity.saturating_sub(frozen_occupancy);
+            OracleGroupTemplateSlot {
+                group_idx,
+                template_capacity,
+                available_capacity,
+                flexible_occupancy,
+            }
         })
-        .collect()
+        .collect::<Vec<_>>();
+    slots.sort_by_key(|slot| {
+        (
+            std::cmp::Reverse(slot.template_capacity),
+            std::cmp::Reverse(slot.available_capacity),
+            std::cmp::Reverse(slot.flexible_occupancy),
+            slot.group_idx,
+        )
+    });
+    slots
 }
 
-fn person_oracle_block_priority(
+fn select_template_group_slots(
+    slots: &[OracleGroupTemplateSlot],
+    num_groups: usize,
+) -> Option<Vec<OracleGroupTemplateSlot>> {
+    let selected = slots
+        .iter()
+        .copied()
+        .filter(|slot| slot.template_capacity >= 2)
+        .take(num_groups)
+        .collect::<Vec<_>>();
+    (selected.len() == num_groups).then_some(selected)
+}
+
+fn template_group_size_ladder(max_group_size: usize) -> Vec<usize> {
+    let mut sizes = Vec::new();
+    for delta in 0..=2 {
+        if max_group_size > delta && max_group_size - delta >= 2 {
+            sizes.push(max_group_size - delta);
+        }
+    }
+    sizes
+}
+
+fn template_attendance_summary(
+    compiled: &CompiledProblem,
+    mask: &ConstraintScenarioScaffoldMask,
+    sessions: &[usize],
+) -> TemplateAttendanceSummary {
+    let mut stable_people_count = 0usize;
+    let mut high_attendance_people_count = 0usize;
+    let high_attendance_threshold = (sessions.len() * 3).div_ceil(4).max(1);
+    for person_idx in 0..compiled.num_people {
+        let available_sessions = sessions
+            .iter()
+            .filter(|&&session_idx| {
+                compiled.person_participation[person_idx][session_idx]
+                    && !mask.is_frozen(compiled, session_idx, person_idx)
+            })
+            .count();
+        if available_sessions == sessions.len() {
+            stable_people_count += 1;
+        }
+        if available_sessions >= high_attendance_threshold {
+            high_attendance_people_count += 1;
+        }
+    }
+    TemplateAttendanceSummary {
+        stable_people_count,
+        high_attendance_people_count,
+    }
+}
+
+fn template_scaffold_disruption_risk(
+    compiled: &CompiledProblem,
+    scaffold: &PackedSchedule,
+    signals: &ConstraintScenarioSignals,
+    session_idx: usize,
+    slots: &[OracleGroupTemplateSlot],
+) -> f64 {
+    slots
+        .iter()
+        .flat_map(|slot| scaffold[session_idx][slot.group_idx].iter().copied())
+        .map(|person_idx| signals.rigidity(compiled, session_idx, person_idx))
+        .sum()
+}
+
+fn oracle_template_candidate_score(
+    num_sessions: usize,
+    num_groups: usize,
+    group_size: usize,
+    oracle_capacity: usize,
+    stable_people_count: usize,
+    high_attendance_people_count: usize,
+    dummy_oracle_people: usize,
+    omitted_high_attendance_people: usize,
+    omitted_group_count: usize,
+    scaffold_disruption_risk: f64,
+) -> f64 {
+    let contact_opportunity = num_sessions as f64 * num_groups as f64 * binomial2(group_size);
+    let coverage = oracle_capacity.min(high_attendance_people_count) as f64;
+    let stable_coverage = oracle_capacity.min(stable_people_count) as f64 * 0.25;
+    contact_opportunity + coverage + stable_coverage
+        - dummy_oracle_people as f64
+        - omitted_high_attendance_people as f64 * 3.0
+        - omitted_group_count as f64 * 5.0
+        - scaffold_disruption_risk
+}
+
+fn oracle_template_candidate_order(
+    left: &OracleTemplateCandidate,
+    right: &OracleTemplateCandidate,
+) -> std::cmp::Ordering {
+    right
+        .estimated_score
+        .partial_cmp(&left.estimated_score)
+        .unwrap_or(std::cmp::Ordering::Equal)
+        .then_with(|| right.sessions.len().cmp(&left.sessions.len()))
+        .then_with(|| right.oracle_capacity.cmp(&left.oracle_capacity))
+        .then_with(|| right.num_groups.cmp(&left.num_groups))
+        .then_with(|| right.group_size.cmp(&left.group_size))
+        .then_with(|| left.sessions.cmp(&right.sessions))
+}
+
+fn person_oracle_template_priority(
     compiled: &CompiledProblem,
     signals: &ConstraintScenarioSignals,
     sessions: &[usize],
@@ -668,135 +788,160 @@ fn person_oracle_block_priority(
     flexibility + pair_pressure / compiled.num_people.max(1) as f64
 }
 
-fn oracle_block_score(
-    compiled: &CompiledProblem,
-    signals: &ConstraintScenarioSignals,
-    sessions: &[usize],
-    people: &[usize],
-    num_groups: usize,
-    group_size: usize,
-    scaffold_disruption_risk: f64,
-) -> f64 {
-    let contact_opportunity = sessions.len() as f64 * num_groups as f64 * binomial2(group_size);
-    let pair_pressure = people
-        .iter()
-        .enumerate()
-        .flat_map(|(idx, &left)| people.iter().skip(idx + 1).map(move |&right| (left, right)))
-        .map(|(left, right)| {
-            let pair_idx = compiled.pair_idx(left, right);
-            sessions
-                .iter()
-                .map(|&session_idx| signals.pair_pressure(compiled, session_idx, pair_idx))
-                .sum::<f64>()
-        })
-        .sum::<f64>();
-    let shape_bonus = (people.len() as f64).sqrt() + sessions.len() as f64;
-    contact_opportunity + pair_pressure + shape_bonus - scaffold_disruption_risk
-}
-
 fn binomial2(value: usize) -> f64 {
     (value.saturating_sub(1) * value / 2) as f64
 }
 
-fn oracle_block_better(
-    candidate: &OracleizableFlexibleBlock,
-    incumbent: &OracleizableFlexibleBlock,
-) -> bool {
-    candidate.score > incumbent.score
-        || (candidate.score == incumbent.score
-            && (
-                candidate.num_sessions(),
-                candidate.num_people(),
-                candidate.num_groups,
-            ) > (
-                incumbent.num_sessions(),
-                incumbent.num_people(),
-                incumbent.num_groups,
-            ))
-        || (candidate.score == incumbent.score
-            && candidate.num_sessions() == incumbent.num_sessions()
-            && candidate.num_people() == incumbent.num_people()
-            && candidate.num_groups == incumbent.num_groups
-            && candidate.sessions < incumbent.sessions)
-}
-
-/// Relabels oracle-local people and groups into the selected real solver3 block.
-pub(crate) fn relabel_oracle_schedule_to_block(
+/// Projects oracle-local people and groups into one capacity-template candidate.
+pub(crate) fn project_oracle_schedule_to_template(
     compiled: &CompiledProblem,
     signals: &ConstraintScenarioSignals,
-    block: &OracleizableFlexibleBlock,
+    mask: &ConstraintScenarioScaffoldMask,
+    candidate: &OracleTemplateCandidate,
     oracle_schedule: &PureStructureOracleSchedule,
-) -> Result<OracleRelabelingResult, SolverError> {
+) -> Result<OracleTemplateProjectionResult, SolverError> {
     let request = PureStructureOracleRequest {
-        num_groups: block.num_groups,
-        group_size: block.group_size,
-        num_sessions: block.num_sessions(),
+        num_groups: candidate.num_groups,
+        group_size: candidate.group_size,
+        num_sessions: candidate.num_sessions(),
         seed: 0,
     };
     validate_pure_oracle_schedule(&request, &oracle_schedule.schedule)?;
-    if block.people.len() != request.num_people() {
-        return Err(SolverError::ValidationError(format!(
-            "oracle relabeling expected {} block people, got {}",
-            request.num_people(),
-            block.people.len()
-        )));
-    }
 
-    let mut real_person_by_oracle_person = block.people.clone();
-    let mut pair_alignment_score = oracle_pair_alignment_score(
+    let mut real_person_by_oracle_person =
+        initial_template_person_projection(compiled, signals, mask, candidate);
+    let mut pair_alignment_score = oracle_template_pair_alignment_score(
         compiled,
         signals,
-        block,
+        mask,
+        candidate,
         &oracle_schedule.schedule,
         &real_person_by_oracle_person,
     );
-    improve_person_relabeling_by_swaps(
+    improve_template_person_projection_by_swaps(
         compiled,
         signals,
-        block,
+        mask,
+        candidate,
         &oracle_schedule.schedule,
         &mut real_person_by_oracle_person,
         &mut pair_alignment_score,
     );
 
     let (real_group_by_session_oracle_group, group_alignment_score, rigidity_mismatch) =
-        align_oracle_groups_to_real_groups(
+        align_oracle_template_groups_to_real_groups(
             compiled,
             signals,
-            block,
+            mask,
+            candidate,
             &oracle_schedule.schedule,
             &real_person_by_oracle_person,
         );
+    let mapped_real_people = real_person_by_oracle_person
+        .iter()
+        .filter(|person| person.is_some())
+        .count();
+    let dummy_oracle_people = real_person_by_oracle_person.len() - mapped_real_people;
 
-    Ok(OracleRelabelingResult {
+    Ok(OracleTemplateProjectionResult {
         real_person_by_oracle_person,
         real_group_by_session_oracle_group,
         score: pair_alignment_score + group_alignment_score - rigidity_mismatch,
         pair_alignment_score,
         group_alignment_score,
         rigidity_mismatch,
+        mapped_real_people,
+        dummy_oracle_people,
     })
 }
 
-fn improve_person_relabeling_by_swaps(
+fn initial_template_person_projection(
     compiled: &CompiledProblem,
     signals: &ConstraintScenarioSignals,
-    block: &OracleizableFlexibleBlock,
+    mask: &ConstraintScenarioScaffoldMask,
+    candidate: &OracleTemplateCandidate,
+) -> Vec<Option<usize>> {
+    let mut people = template_candidate_projectable_people(compiled, signals, mask, candidate);
+    people.truncate(candidate.oracle_capacity);
+
+    let mut real_person_by_oracle_person = vec![None; candidate.oracle_capacity];
+    for (oracle_person_idx, real_person_idx) in people.into_iter().enumerate() {
+        real_person_by_oracle_person[oracle_person_idx] = Some(real_person_idx);
+    }
+    real_person_by_oracle_person
+}
+
+fn template_candidate_projectable_people(
+    compiled: &CompiledProblem,
+    signals: &ConstraintScenarioSignals,
+    mask: &ConstraintScenarioScaffoldMask,
+    candidate: &OracleTemplateCandidate,
+) -> Vec<usize> {
+    let mut people = (0..compiled.num_people)
+        .filter(|&person_idx| {
+            candidate.sessions.iter().any(|&session_idx| {
+                compiled.person_participation[person_idx][session_idx]
+                    && !mask.is_frozen(compiled, session_idx, person_idx)
+            })
+        })
+        .collect::<Vec<_>>();
+    people.sort_by(|&left, &right| {
+        let left_sessions = movable_template_session_count(compiled, mask, candidate, left);
+        let right_sessions = movable_template_session_count(compiled, mask, candidate, right);
+        right_sessions
+            .cmp(&left_sessions)
+            .then_with(|| {
+                person_oracle_template_priority(compiled, signals, &candidate.sessions, right)
+                    .partial_cmp(&person_oracle_template_priority(
+                        compiled,
+                        signals,
+                        &candidate.sessions,
+                        left,
+                    ))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
+            .then_with(|| left.cmp(&right))
+    });
+    people
+}
+
+fn movable_template_session_count(
+    compiled: &CompiledProblem,
+    mask: &ConstraintScenarioScaffoldMask,
+    candidate: &OracleTemplateCandidate,
+    person_idx: usize,
+) -> usize {
+    candidate
+        .sessions
+        .iter()
+        .filter(|&&session_idx| {
+            compiled.person_participation[person_idx][session_idx]
+                && !mask.is_frozen(compiled, session_idx, person_idx)
+        })
+        .count()
+}
+
+fn improve_template_person_projection_by_swaps(
+    compiled: &CompiledProblem,
+    signals: &ConstraintScenarioSignals,
+    mask: &ConstraintScenarioScaffoldMask,
+    candidate: &OracleTemplateCandidate,
     oracle_schedule: &PackedSchedule,
-    real_person_by_oracle_person: &mut [usize],
+    real_person_by_oracle_person: &mut [Option<usize>],
     pair_alignment_score: &mut f64,
 ) {
-    const MAX_RELABEL_SWEEPS: usize = 4;
+    const MAX_RELABEL_SWEEPS: usize = 2;
     for _ in 0..MAX_RELABEL_SWEEPS {
         let mut best_swap = None;
         let mut best_score = *pair_alignment_score;
         for left in 0..real_person_by_oracle_person.len() {
             for right in (left + 1)..real_person_by_oracle_person.len() {
                 real_person_by_oracle_person.swap(left, right);
-                let candidate_score = oracle_pair_alignment_score(
+                let candidate_score = oracle_template_pair_alignment_score(
                     compiled,
                     signals,
-                    block,
+                    mask,
+                    candidate,
                     oracle_schedule,
                     real_person_by_oracle_person,
                 );
@@ -815,14 +960,15 @@ fn improve_person_relabeling_by_swaps(
     }
 }
 
-fn oracle_pair_alignment_score(
+fn oracle_template_pair_alignment_score(
     compiled: &CompiledProblem,
     signals: &ConstraintScenarioSignals,
-    block: &OracleizableFlexibleBlock,
+    mask: &ConstraintScenarioScaffoldMask,
+    candidate: &OracleTemplateCandidate,
     oracle_schedule: &PackedSchedule,
-    real_person_by_oracle_person: &[usize],
+    real_person_by_oracle_person: &[Option<usize>],
 ) -> f64 {
-    block
+    candidate
         .sessions
         .iter()
         .enumerate()
@@ -840,38 +986,68 @@ fn oracle_pair_alignment_score(
                                 .map(move |&right| (left, right))
                         })
                 })
-                .map(|(left, right)| {
-                    let real_left = real_person_by_oracle_person[left];
-                    let real_right = real_person_by_oracle_person[right];
-                    let pair_idx = compiled.pair_idx(real_left, real_right);
-                    signals.pair_pressure(compiled, real_session_idx, pair_idx)
+                .filter_map(|(left, right)| {
+                    let real_left = projected_oracle_person_for_session(
+                        compiled,
+                        mask,
+                        real_person_by_oracle_person,
+                        real_session_idx,
+                        left,
+                    )?;
+                    let real_right = projected_oracle_person_for_session(
+                        compiled,
+                        mask,
+                        real_person_by_oracle_person,
+                        real_session_idx,
+                        right,
+                    )?;
+                    Some(signals.pair_pressure(
+                        compiled,
+                        real_session_idx,
+                        compiled.pair_idx(real_left, real_right),
+                    ))
                 })
                 .sum::<f64>()
         })
         .sum()
 }
 
-fn align_oracle_groups_to_real_groups(
+fn projected_oracle_person_for_session(
+    compiled: &CompiledProblem,
+    mask: &ConstraintScenarioScaffoldMask,
+    real_person_by_oracle_person: &[Option<usize>],
+    real_session_idx: usize,
+    oracle_person_idx: usize,
+) -> Option<usize> {
+    let real_person_idx = real_person_by_oracle_person[oracle_person_idx]?;
+    (compiled.person_participation[real_person_idx][real_session_idx]
+        && !mask.is_frozen(compiled, real_session_idx, real_person_idx))
+    .then_some(real_person_idx)
+}
+
+fn align_oracle_template_groups_to_real_groups(
     compiled: &CompiledProblem,
     signals: &ConstraintScenarioSignals,
-    block: &OracleizableFlexibleBlock,
+    mask: &ConstraintScenarioScaffoldMask,
+    candidate: &OracleTemplateCandidate,
     oracle_schedule: &PackedSchedule,
-    real_person_by_oracle_person: &[usize],
+    real_person_by_oracle_person: &[Option<usize>],
 ) -> (Vec<Vec<usize>>, f64, f64) {
-    let mut aligned_groups = Vec::with_capacity(block.num_sessions());
+    let mut aligned_groups = Vec::with_capacity(candidate.num_sessions());
     let mut total_group_score = 0.0;
     let mut total_rigidity_mismatch = 0.0;
 
-    for (session_pos, &real_session_idx) in block.sessions.iter().enumerate() {
-        let candidate_real_groups = &block.groups_by_session[session_pos];
-        let score_matrix = (0..block.num_groups)
+    for (session_pos, &real_session_idx) in candidate.sessions.iter().enumerate() {
+        let candidate_real_groups = &candidate.groups_by_session[session_pos];
+        let score_matrix = (0..candidate.num_groups)
             .map(|oracle_group_idx| {
                 candidate_real_groups
                     .iter()
                     .map(|&real_group_idx| {
-                        oracle_group_alignment_score(
+                        oracle_template_group_alignment_score(
                             compiled,
                             signals,
+                            mask,
                             real_session_idx,
                             real_group_idx,
                             &oracle_schedule[session_pos][oracle_group_idx],
@@ -882,14 +1058,15 @@ fn align_oracle_groups_to_real_groups(
             })
             .collect::<Vec<_>>();
         let group_assignment = choose_group_assignment(&score_matrix);
-        let mut session_groups = vec![0usize; block.num_groups];
+        let mut session_groups = vec![0usize; candidate.num_groups];
         for (oracle_group_idx, candidate_idx) in group_assignment.into_iter().enumerate() {
             let real_group_idx = candidate_real_groups[candidate_idx];
             session_groups[oracle_group_idx] = real_group_idx;
             total_group_score += score_matrix[oracle_group_idx][candidate_idx];
-            total_rigidity_mismatch += oracle_group_rigidity_mismatch(
+            total_rigidity_mismatch += oracle_template_group_rigidity_mismatch(
                 compiled,
                 signals,
+                mask,
                 real_session_idx,
                 real_group_idx,
                 &oracle_schedule[session_pos][oracle_group_idx],
@@ -902,18 +1079,27 @@ fn align_oracle_groups_to_real_groups(
     (aligned_groups, total_group_score, total_rigidity_mismatch)
 }
 
-fn oracle_group_alignment_score(
+fn oracle_template_group_alignment_score(
     compiled: &CompiledProblem,
     signals: &ConstraintScenarioSignals,
+    mask: &ConstraintScenarioScaffoldMask,
     real_session_idx: usize,
     real_group_idx: usize,
     oracle_group: &[usize],
-    real_person_by_oracle_person: &[usize],
+    real_person_by_oracle_person: &[Option<usize>],
 ) -> f64 {
     oracle_group
         .iter()
-        .map(|&oracle_person_idx| {
-            let real_person_idx = real_person_by_oracle_person[oracle_person_idx];
+        .filter_map(|&oracle_person_idx| {
+            projected_oracle_person_for_session(
+                compiled,
+                mask,
+                real_person_by_oracle_person,
+                real_session_idx,
+                oracle_person_idx,
+            )
+        })
+        .map(|real_person_idx| {
             let placement = signals.placement_frequency(
                 compiled,
                 real_session_idx,
@@ -926,18 +1112,27 @@ fn oracle_group_alignment_score(
         .sum()
 }
 
-fn oracle_group_rigidity_mismatch(
+fn oracle_template_group_rigidity_mismatch(
     compiled: &CompiledProblem,
     signals: &ConstraintScenarioSignals,
+    mask: &ConstraintScenarioScaffoldMask,
     real_session_idx: usize,
     real_group_idx: usize,
     oracle_group: &[usize],
-    real_person_by_oracle_person: &[usize],
+    real_person_by_oracle_person: &[Option<usize>],
 ) -> f64 {
     oracle_group
         .iter()
-        .map(|&oracle_person_idx| {
-            let real_person_idx = real_person_by_oracle_person[oracle_person_idx];
+        .filter_map(|&oracle_person_idx| {
+            projected_oracle_person_for_session(
+                compiled,
+                mask,
+                real_person_by_oracle_person,
+                real_session_idx,
+                oracle_person_idx,
+            )
+        })
+        .map(|real_person_idx| {
             let placement = signals.placement_frequency(
                 compiled,
                 real_session_idx,
@@ -1044,44 +1239,49 @@ fn assignment_margin(scores: &[f64]) -> f64 {
     top - second
 }
 
-/// Merges relabeled oracle placements into a copy of the CS scaffold and repairs the freed slots.
-pub(crate) fn merge_relabelled_oracle_into_scaffold(
+/// Merges projected oracle placements into a copy of the CS scaffold and repairs freed slots.
+pub(crate) fn merge_projected_oracle_template_into_scaffold(
     compiled: &CompiledProblem,
     scaffold: &PackedSchedule,
     signals: &ConstraintScenarioSignals,
     mask: &ConstraintScenarioScaffoldMask,
-    block: &OracleizableFlexibleBlock,
+    candidate: &OracleTemplateCandidate,
     oracle_schedule: &PureStructureOracleSchedule,
-    relabeling: &OracleRelabelingResult,
+    projection: &OracleTemplateProjectionResult,
 ) -> Result<OracleMergeResult, SolverError> {
     let request = PureStructureOracleRequest {
-        num_groups: block.num_groups,
-        group_size: block.group_size,
-        num_sessions: block.num_sessions(),
+        num_groups: candidate.num_groups,
+        group_size: candidate.group_size,
+        num_sessions: candidate.num_sessions(),
         seed: 0,
     };
     validate_pure_oracle_schedule(&request, &oracle_schedule.schedule)?;
-    validate_relabeling_for_merge(block, relabeling)?;
+    validate_template_projection_for_merge(candidate, projection)?;
 
     let mut schedule = scaffold.clone();
     let mut changed_placement_count = 0usize;
     let mut displaced_repair_count = 0usize;
-    let mut block_person = vec![false; compiled.num_people];
-    for &person_idx in &block.people {
-        block_person[person_idx] = true;
-    }
-
-    for (session_pos, &real_session_idx) in block.sessions.iter().enumerate() {
+    for (session_pos, &real_session_idx) in candidate.sessions.iter().enumerate() {
         let mut displaced = Vec::<(usize, usize)>::new();
         let mut removed = vec![false; compiled.num_people];
-        let selected_real_groups = &relabeling.real_group_by_session_oracle_group[session_pos];
+        let selected_real_groups = &projection.real_group_by_session_oracle_group[session_pos];
+        let accepted_target_by_person = accepted_template_targets_for_session(
+            compiled,
+            scaffold,
+            mask,
+            candidate,
+            oracle_schedule,
+            projection,
+            session_pos,
+            real_session_idx,
+        );
 
         for &group_idx in selected_real_groups {
             let original_members = std::mem::take(&mut schedule[real_session_idx][group_idx]);
             for person_idx in original_members {
                 if !mask.is_frozen(compiled, real_session_idx, person_idx) {
                     removed[person_idx] = true;
-                    if !block_person[person_idx] {
+                    if accepted_target_by_person[person_idx].is_none() {
                         displaced.push((person_idx, group_idx));
                     }
                 } else {
@@ -1090,34 +1290,33 @@ pub(crate) fn merge_relabelled_oracle_into_scaffold(
             }
         }
 
-        for &person_idx in &block.people {
-            if !removed[person_idx] {
-                remove_person_from_session(&mut schedule, real_session_idx, person_idx)
-                    .ok_or_else(|| {
-                        SolverError::ValidationError(format!(
-                            "oracle merge could not remove block person {} from session {}",
-                            compiled.display_person(person_idx),
-                            real_session_idx
-                        ))
-                    })?;
-                removed[person_idx] = true;
+        for (real_person_idx, target_group) in accepted_target_by_person.iter().enumerate() {
+            if target_group.is_none() || removed[real_person_idx] {
+                continue;
             }
+            remove_person_from_session(&mut schedule, real_session_idx, real_person_idx)
+                .ok_or_else(|| {
+                    SolverError::ValidationError(format!(
+                        "oracle template merge could not remove projected person {} from session {}",
+                        compiled.display_person(real_person_idx),
+                        real_session_idx
+                    ))
+                })?;
+            removed[real_person_idx] = true;
         }
 
-        for oracle_group_idx in 0..block.num_groups {
-            let real_group_idx =
-                relabeling.real_group_by_session_oracle_group[session_pos][oracle_group_idx];
-            for &oracle_person_idx in &oracle_schedule.schedule[session_pos][oracle_group_idx] {
-                let real_person_idx = relabeling.real_person_by_oracle_person[oracle_person_idx];
-                push_person_if_capacity(
-                    compiled,
-                    &mut schedule,
-                    real_session_idx,
-                    real_group_idx,
-                    real_person_idx,
-                )?;
-                changed_placement_count += 1;
-            }
+        for (real_person_idx, target_group) in accepted_target_by_person.into_iter().enumerate() {
+            let Some(real_group_idx) = target_group else {
+                continue;
+            };
+            push_person_if_capacity(
+                compiled,
+                &mut schedule,
+                real_session_idx,
+                real_group_idx,
+                real_person_idx,
+            )?;
+            changed_placement_count += 1;
         }
 
         displaced.sort_unstable_by_key(|&(person_idx, preferred_group_idx)| {
@@ -1133,7 +1332,7 @@ pub(crate) fn merge_relabelled_oracle_into_scaffold(
                 preferred_group_idx,
             ) else {
                 return Err(SolverError::ValidationError(format!(
-                    "oracle merge could not repair displaced person {} in session {}",
+                    "oracle template merge could not repair displaced person {} in session {}",
                     compiled.display_person(person_idx),
                     real_session_idx
                 )));
@@ -1157,25 +1356,93 @@ pub(crate) fn merge_relabelled_oracle_into_scaffold(
     })
 }
 
-fn validate_relabeling_for_merge(
-    block: &OracleizableFlexibleBlock,
-    relabeling: &OracleRelabelingResult,
+fn accepted_template_targets_for_session(
+    compiled: &CompiledProblem,
+    scaffold: &PackedSchedule,
+    mask: &ConstraintScenarioScaffoldMask,
+    candidate: &OracleTemplateCandidate,
+    oracle_schedule: &PureStructureOracleSchedule,
+    projection: &OracleTemplateProjectionResult,
+    session_pos: usize,
+    real_session_idx: usize,
+) -> Vec<Option<usize>> {
+    let mut remaining_capacity_by_group = vec![0usize; compiled.num_groups];
+    for &group_idx in &projection.real_group_by_session_oracle_group[session_pos] {
+        let frozen_occupancy = scaffold[real_session_idx][group_idx]
+            .iter()
+            .filter(|&&person_idx| mask.is_frozen(compiled, real_session_idx, person_idx))
+            .count();
+        remaining_capacity_by_group[group_idx] = compiled
+            .group_capacity(real_session_idx, group_idx)
+            .saturating_sub(frozen_occupancy);
+    }
+
+    let mut accepted_target_by_person = vec![None; compiled.num_people];
+    for oracle_group_idx in 0..candidate.num_groups {
+        let real_group_idx =
+            projection.real_group_by_session_oracle_group[session_pos][oracle_group_idx];
+        for &oracle_person_idx in &oracle_schedule.schedule[session_pos][oracle_group_idx] {
+            let Some(real_person_idx) = projected_oracle_person_for_session(
+                compiled,
+                mask,
+                &projection.real_person_by_oracle_person,
+                real_session_idx,
+                oracle_person_idx,
+            ) else {
+                continue;
+            };
+            if remaining_capacity_by_group[real_group_idx] == 0
+                || accepted_target_by_person[real_person_idx].is_some()
+            {
+                continue;
+            }
+            remaining_capacity_by_group[real_group_idx] -= 1;
+            accepted_target_by_person[real_person_idx] = Some(real_group_idx);
+        }
+    }
+    accepted_target_by_person
+}
+
+fn validate_template_projection_for_merge(
+    candidate: &OracleTemplateCandidate,
+    projection: &OracleTemplateProjectionResult,
 ) -> Result<(), SolverError> {
-    if relabeling.real_person_by_oracle_person.len() != block.num_people() {
+    if projection.real_person_by_oracle_person.len() != candidate.oracle_capacity {
         return Err(SolverError::ValidationError(
-            "oracle merge received person relabeling with wrong shape".into(),
+            "oracle template merge received person projection with wrong shape".into(),
         ));
     }
-    if relabeling.real_group_by_session_oracle_group.len() != block.num_sessions() {
+    if projection.real_group_by_session_oracle_group.len() != candidate.num_sessions() {
         return Err(SolverError::ValidationError(
-            "oracle merge received group relabeling with wrong session count".into(),
+            "oracle template merge received group projection with wrong session count".into(),
         ));
     }
-    for groups in &relabeling.real_group_by_session_oracle_group {
-        if groups.len() != block.num_groups {
+    for (session_pos, groups) in projection
+        .real_group_by_session_oracle_group
+        .iter()
+        .enumerate()
+    {
+        if groups.len() != candidate.num_groups {
             return Err(SolverError::ValidationError(
-                "oracle merge received group relabeling with wrong group count".into(),
+                "oracle template merge received group projection with wrong group count".into(),
             ));
+        }
+        for &group_idx in groups {
+            if !candidate.groups_by_session[session_pos].contains(&group_idx) {
+                return Err(SolverError::ValidationError(
+                    "oracle template merge received group outside candidate template".into(),
+                ));
+            }
+        }
+    }
+    let mut seen = std::collections::HashSet::new();
+    for &maybe_person in &projection.real_person_by_oracle_person {
+        if let Some(person_idx) = maybe_person {
+            if !seen.insert(person_idx) {
+                return Err(SolverError::ValidationError(
+                    "oracle template merge received duplicate real-person projection".into(),
+                ));
+            }
         }
     }
     Ok(())
@@ -1552,6 +1819,7 @@ fn placement_exists(scaffold: &PackedSchedule, session_idx: usize, person_idx: u
         .any(|members| members.contains(&person_idx))
 }
 
+#[cfg(test)]
 fn normalized_candidate_weights(ensemble: &ConstraintScenarioEnsemble) -> Vec<f64> {
     let best_score = ensemble.best().cs_score;
     let mut weights = ensemble
@@ -1607,6 +1875,7 @@ fn accumulate_schedule_signals(
     }
 }
 
+#[cfg(test)]
 fn placement_rigidity(
     compiled: &CompiledProblem,
     placement_histogram_by_person_session_group: &[f64],
@@ -1634,6 +1903,7 @@ fn placement_rigidity(
     }
 }
 
+#[cfg(test)]
 fn average_pair_contact_l1_distance(candidates: &[ConstraintScenarioCandidate]) -> f64 {
     if candidates.len() < 2 {
         return 0.0;
@@ -1651,6 +1921,7 @@ fn average_pair_contact_l1_distance(candidates: &[ConstraintScenarioCandidate]) 
     total as f64 / pairs as f64
 }
 
+#[cfg(test)]
 fn pair_contact_l1_distance(left: &PackedSchedule, right: &PackedSchedule) -> usize {
     let mut distance = 0usize;
     let sessions = left.len().min(right.len());
