@@ -109,6 +109,7 @@ function GenerateGroupsWorkflowAction({
   const blockedByManualDraft = manualEditorUnsaved && location.pathname.startsWith('/app/editor');
   const disabled = generating || !controller.scenario || blockedByManualDraft;
   const label = generating ? 'Generating…' : 'Generate Groups';
+  const compactWorkflow = variant === 'embedded' || variant === 'mobile-bar';
   const title = blockedByManualDraft
     ? 'Save or discard manual editor changes before generating a new result.'
     : controller.scenario
@@ -210,15 +211,20 @@ function GenerateGroupsWorkflowAction({
       onMouseLeave={() => setHovered(false)}
       disabled={disabled}
       title={title}
-      className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-[0.9rem] px-3 text-sm font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-60 md:px-3.5"
+      className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-[0.9rem] border px-3 text-sm font-semibold transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-60 md:px-3.5"
       style={{
         color: 'var(--text-primary)',
         backgroundColor: hovered && !disabled
-          ? 'color-mix(in srgb, var(--color-accent) 22%, var(--bg-primary))'
+          ? compactWorkflow
+            ? 'color-mix(in srgb, var(--color-accent) 28%, var(--bg-primary))'
+            : 'color-mix(in srgb, var(--color-accent) 22%, var(--bg-primary))'
           : 'color-mix(in srgb, var(--color-accent) 14%, var(--bg-primary))',
-        boxShadow: hovered && !disabled
+        borderColor: hovered && !disabled
+          ? 'color-mix(in srgb, var(--color-accent) 40%, var(--border-primary))'
+          : 'color-mix(in srgb, var(--color-accent) 28%, var(--border-primary))',
+        boxShadow: variant !== 'embedded' && hovered && !disabled
           ? '0 10px 24px color-mix(in srgb, var(--color-accent) 14%, transparent), 0 0 0 1px color-mix(in srgb, var(--color-accent) 30%, var(--border-primary))'
-          : '0 0 0 1px color-mix(in srgb, var(--color-accent) 22%, var(--border-primary))',
+          : 'none',
         transform: hovered && !disabled ? 'translateY(-1px)' : 'translateY(0)',
       }}
     >
@@ -379,15 +385,24 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
           : ''}
     >
       {variant === 'embedded' ? <div className={EMBEDDED_SCENARIO_HISTORY_SLOT_CLASS} aria-hidden="true" /> : null}
-      <ScrollArea orientation="horizontal" className={variant === 'embedded' || variant === 'mobile-bar' ? 'min-w-0' : 'px-4 py-2'}>
+      <ScrollArea
+        orientation="horizontal"
+        className={variant === 'embedded'
+          ? '-mx-3 -my-2 min-w-0 px-3 py-2'
+          : variant === 'mobile-bar'
+            ? 'min-w-0'
+            : 'px-4 py-2'}
+      >
         <div className={variant === 'embedded' || variant === 'mobile-bar' ? 'flex min-w-max items-center justify-center' : 'mx-auto flex min-w-max items-center justify-center'}>
           <div
             className={variant === 'mobile-bar'
               ? 'inline-flex items-center rounded-[1.05rem] border px-1 py-1'
-              : 'inline-flex items-center rounded-[1.1rem] border px-1.5 py-1'}
+              : variant === 'embedded'
+                ? 'inline-flex items-center'
+                : 'inline-flex items-center rounded-[1.1rem] border px-1.5 py-1'}
             style={{
-              backgroundColor: 'var(--header-rail-surface)',
-              borderColor: 'var(--border-primary)',
+              backgroundColor: variant === 'embedded' ? 'transparent' : 'var(--header-rail-surface)',
+              borderColor: variant === 'embedded' ? 'transparent' : 'var(--border-primary)',
               boxShadow: variant === 'embedded' || variant === 'mobile-bar' ? 'none' : 'var(--shadow)',
             }}
           >
@@ -415,6 +430,18 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
             const isPast = activeTabOrder > tabOrder;
             const isFuture = !isActive && !isPast;
             const isHovered = hoveredTabId === item.id;
+            const tabBackgroundColor = isActive
+              ? 'color-mix(in srgb, var(--color-accent) 13%, var(--bg-primary))'
+              : isHovered
+                ? variant === 'embedded'
+                  ? 'color-mix(in srgb, var(--color-accent) 10%, var(--bg-primary))'
+                  : 'color-mix(in srgb, var(--bg-primary) 72%, transparent)'
+                : 'transparent';
+            const tabBorderColor = isActive
+              ? 'color-mix(in srgb, var(--color-accent) 42%, var(--border-primary))'
+              : isHovered
+                ? 'color-mix(in srgb, var(--color-accent) 30%, var(--border-primary))'
+                : 'transparent';
 
             return (
               <div key={item.id} className="flex items-center">
@@ -424,17 +451,14 @@ export function Navigation({ variant = 'standalone', closeMobileMenu }: Navigati
                   onMouseEnter={() => setHoveredTabId(item.id)}
                   onMouseLeave={() => setHoveredTabId((current) => (current === item.id ? null : current))}
                   className={variant === 'mobile-bar'
-                    ? 'group inline-flex h-9 shrink-0 items-center gap-2 rounded-[0.9rem] px-2.5 text-sm font-medium transition-colors duration-150'
-                    : 'group inline-flex h-9 shrink-0 items-center gap-2 rounded-[0.9rem] px-3 text-sm font-medium transition-colors duration-150 md:px-3.5'}
+                    ? 'group inline-flex h-9 shrink-0 items-center gap-2 rounded-[0.9rem] border px-2.5 text-sm font-medium transition-colors duration-150'
+                    : 'group inline-flex h-9 shrink-0 items-center gap-2 rounded-[0.9rem] border px-3 text-sm font-medium transition-colors duration-150 md:px-3.5'}
                   style={{
                     color: isActive || isPast || isHovered ? 'var(--text-primary)' : 'var(--text-secondary)',
-                    backgroundColor: isActive
-                      ? 'var(--bg-primary)'
-                      : isHovered
-                        ? 'color-mix(in srgb, var(--bg-primary) 72%, transparent)'
-                        : 'transparent',
-                    boxShadow: isActive
-                      ? '0 0 0 1px color-mix(in srgb, var(--color-accent) 18%, var(--border-primary))'
+                    backgroundColor: tabBackgroundColor,
+                    borderColor: tabBorderColor,
+                    boxShadow: variant !== 'embedded' && (isActive || isHovered)
+                      ? '0 8px 18px color-mix(in srgb, var(--color-accent) 10%, transparent)'
                       : 'none',
                     opacity: isFuture && !isHovered ? 0.9 : 1,
                   }}

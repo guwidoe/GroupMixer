@@ -1,4 +1,12 @@
-import { ArrowRight } from 'lucide-react';
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  CalendarDays,
+  GraduationCap,
+  Handshake,
+  Presentation,
+  UsersRound,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AppHeader } from '../components/AppHeader';
@@ -36,6 +44,14 @@ interface ToolLandingPageProps {
 }
 
 const HOME_ANIMATED_HERO_STATIC_TITLE = 'Group Generator - Random, Balanced & Multi-Round';
+const USE_CASE_CARD_ICONS = [
+  GraduationCap,
+  Presentation,
+  UsersRound,
+  BriefcaseBusiness,
+  CalendarDays,
+  Handshake,
+];
 
 export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProps) {
   const config = getToolPageConfig(pageKey, locale);
@@ -183,22 +199,58 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
           </div>
         </section>
 
-        <section className="border-t px-4 pb-12 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
+        <section
+          className="border-t px-4 pb-12 pt-10 sm:px-6"
+          style={{
+            borderColor: 'var(--border-primary)',
+            backgroundColor: 'color-mix(in srgb, var(--bg-primary) 72%, var(--bg-secondary) 28%)',
+          }}
+        >
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-2xl font-semibold tracking-tight">{config.useCasesSection.title}</h2>
-            <p className="mt-3 max-w-2xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
-              {config.useCasesSection.description}
-            </p>
+            <div className="flex max-w-3xl items-start gap-4">
+              <div
+                className="mt-1 h-12 w-1 shrink-0 rounded-full"
+                style={{ backgroundColor: 'var(--color-accent)' }}
+                aria-hidden="true"
+              />
+              <div className="min-w-0">
+                <h2 className="text-2xl font-semibold tracking-tight">{config.useCasesSection.title}</h2>
+                <p className="mt-3 text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
+                  {config.useCasesSection.description}
+                </p>
+              </div>
+            </div>
 
             <div className={useCasesGridClassName}>
-              {config.useCasesSection.cards.map((item) => (
-                <div key={item.title} className="rounded-xl border p-5" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
-                  <h3 className="text-base font-semibold">{item.title}</h3>
-                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
-                    {item.body}
-                  </p>
-                </div>
-              ))}
+              {config.useCasesSection.cards.map((item, index) => {
+                const Icon = USE_CASE_CARD_ICONS[index % USE_CASE_CARD_ICONS.length];
+
+                return (
+                  <div
+                    key={item.title}
+                    className="landing-use-case-card rounded-xl border p-5"
+                    style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="landing-use-case-card__icon flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border"
+                        style={{
+                          borderColor: 'color-mix(in srgb, var(--color-accent) 30%, var(--border-primary) 70%)',
+                          backgroundColor: 'color-mix(in srgb, var(--color-accent) 10%, var(--bg-primary) 90%)',
+                          color: 'var(--color-accent)',
+                        }}
+                        aria-hidden="true"
+                      >
+                        <Icon className="h-[1.125rem] w-[1.125rem]" />
+                      </div>
+                      <h3 className="min-w-0 text-base font-semibold">{item.title}</h3>
+                    </div>
+                    <p className="mt-2 text-sm leading-6" style={{ color: 'var(--text-secondary)' }}>
+                      {item.body}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>

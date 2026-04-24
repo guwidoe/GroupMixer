@@ -38,18 +38,20 @@ export function LandingGuidesSection({ locale }: LandingGuidesSectionProps) {
     >
       <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[minmax(0,0.86fr)_minmax(0,1.5fr)] lg:items-start">
         <div className="min-w-0">
-          <div
-            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border"
-            style={{
-              borderColor: 'color-mix(in srgb, var(--color-accent) 35%, var(--border-primary) 65%)',
-              backgroundColor: 'color-mix(in srgb, var(--color-accent) 10%, var(--bg-primary) 90%)',
-              color: 'var(--color-accent)',
-            }}
-            aria-hidden="true"
-          >
-            <BookOpenText className="h-5 w-5" />
+          <div className="flex items-center gap-3">
+            <div
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border"
+              style={{
+                borderColor: 'color-mix(in srgb, var(--color-accent) 35%, var(--border-primary) 65%)',
+                backgroundColor: 'color-mix(in srgb, var(--color-accent) 10%, var(--bg-primary) 90%)',
+                color: 'var(--color-accent)',
+              }}
+              aria-hidden="true"
+            >
+              <BookOpenText className="h-5 w-5" />
+            </div>
+            <h2 className="text-2xl font-semibold tracking-tight">Guides</h2>
           </div>
-          <h2 className="mt-4 text-2xl font-semibold tracking-tight">Guides</h2>
           <p className="mt-3 max-w-xl text-base leading-7" style={{ color: 'var(--text-secondary)' }}>
             Practical playbooks for workshops, classrooms, and repeated group assignments.
           </p>

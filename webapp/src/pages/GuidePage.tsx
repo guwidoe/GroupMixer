@@ -13,6 +13,10 @@ import {
   Wrench,
 } from 'lucide-react';
 import { AppHeader } from '../components/AppHeader';
+import {
+  HEADER_ACTION_BUTTON_CLASS,
+  HEADER_ACTION_DIVIDER_CLASS,
+} from '../components/headerActionStyles';
 import { GuideRelatedLinkGrid } from '../components/GuidePage/GuideRelatedLinkGrid';
 import { GuideSectionIcon } from '../components/GuidePage/GuideSectionIcon';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
@@ -37,7 +41,39 @@ export default function GuidePage({ pageKey }: GuidePageProps) {
         includeStructuredData={false}
       />
 
-      <AppHeader homeTo="/" titleAs="div" hideDesktopUtilityRail title="GroupMixer" />
+      <AppHeader
+        homeTo="/"
+        logoAlt="GroupMixer logo"
+        titleAs="div"
+        desktopBreakpoint="landing"
+        utilityRailFramed={false}
+        title="GroupMixer"
+        renderDesktopActions={() => (
+          <>
+            <Link
+              to="/app"
+              className={[HEADER_ACTION_BUTTON_CLASS, 'hidden min-[700px]:inline-flex items-center gap-1.5 whitespace-nowrap'].join(' ')}
+            >
+              Scenario editor
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+            <div
+              className={HEADER_ACTION_DIVIDER_CLASS}
+              style={{ backgroundColor: 'var(--border-primary)' }}
+              aria-hidden="true"
+            />
+          </>
+        )}
+        renderMobileActions={() => (
+          <Link
+            to="/app"
+            className="btn-secondary flex w-full items-center justify-center gap-1.5"
+          >
+            Scenario editor
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        )}
+      />
 
       <main>
         <section className="border-b px-4 py-10 sm:px-6 lg:px-8 lg:py-14" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>

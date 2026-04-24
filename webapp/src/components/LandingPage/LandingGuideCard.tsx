@@ -50,16 +50,21 @@ export function LandingGuideCard({ guide, featured = false }: LandingGuideCardPr
       />
       <div className={featured ? 'flex h-full flex-col' : ''}>
         <div className="flex items-start justify-between gap-4">
-          <div
-            className="landing-guide-card__icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors"
-            style={{
-              borderColor: 'color-mix(in srgb, var(--color-accent) 28%, var(--border-primary) 72%)',
-              backgroundColor: 'color-mix(in srgb, var(--color-accent) 8%, var(--bg-primary) 92%)',
-              color: 'var(--color-accent)',
-            }}
-            aria-hidden="true"
-          >
-            <Icon className="h-5 w-5" />
+          <div className="flex min-w-0 items-start gap-3">
+            <div
+              className="landing-guide-card__icon flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border transition-colors"
+              style={{
+                borderColor: 'color-mix(in srgb, var(--color-accent) 28%, var(--border-primary) 72%)',
+                backgroundColor: 'color-mix(in srgb, var(--color-accent) 8%, var(--bg-primary) 92%)',
+                color: 'var(--color-accent)',
+              }}
+              aria-hidden="true"
+            >
+              <Icon className="h-5 w-5" />
+            </div>
+            <h3 className={featured ? 'min-w-0 pt-1 text-xl font-semibold leading-tight' : 'min-w-0 pt-1 text-base font-semibold leading-tight'}>
+              {guide.title}
+            </h3>
           </div>
           <ArrowRight
             className="landing-guide-card__arrow mt-1 h-4 w-4 shrink-0 transition"
@@ -67,10 +72,7 @@ export function LandingGuideCard({ guide, featured = false }: LandingGuideCardPr
             aria-hidden="true"
           />
         </div>
-        <h3 className={featured ? 'mt-5 text-xl font-semibold leading-tight' : 'mt-4 text-base font-semibold leading-tight'}>
-          {guide.title}
-        </h3>
-        <p className={featured ? 'mt-3 text-sm leading-7' : 'mt-2 text-sm leading-6'} style={{ color: 'var(--text-secondary)' }}>
+        <p className={featured ? 'mt-3 text-sm leading-7' : 'mt-3 text-sm leading-6'} style={{ color: 'var(--text-secondary)' }}>
           {guide.description}
         </p>
         <span

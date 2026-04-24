@@ -618,6 +618,27 @@
     color: var(--color-accent-hover) !important;
   }
 
+  .landing-use-case-card {
+    box-shadow: var(--shadow);
+    transition:
+      background-color 0.18s ease,
+      border-color 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.18s ease;
+  }
+
+  .landing-use-case-card:hover {
+    background-color: color-mix(in srgb, var(--color-accent) 4%, var(--bg-primary) 96%) !important;
+    border-color: color-mix(in srgb, var(--color-accent) 42%, var(--border-primary) 58%) !important;
+    box-shadow: 0 14px 30px -22px color-mix(in srgb, var(--color-accent) 40%, transparent), var(--shadow-lg);
+    transform: translateY(-2px);
+  }
+
+  .landing-use-case-card:hover .landing-use-case-card__icon {
+    border-color: color-mix(in srgb, var(--color-accent) 55%, var(--border-primary) 45%) !important;
+    background-color: color-mix(in srgb, var(--color-accent) 16%, var(--bg-primary) 84%) !important;
+  }
+
   .landing-chip-button {
     cursor: pointer;
     transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
