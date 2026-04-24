@@ -23,7 +23,7 @@ export type ToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
 const STICKY_GENERATE_CTA_SAFE_ZONE_PX = 96;
 const STICKY_GENERATE_SCROLL_SETTLED_AGE_MS = 180;
-const STICKY_GENERATE_RETURN_TARGET_MARGIN_PX = 16;
+const STICKY_GENERATE_RETURN_TARGET_MARGIN_PX = 0;
 
 interface ToolDisplaySession {
   sessionNumber: number;
@@ -841,7 +841,7 @@ export function GroupTool({
                 onClick={onGenerateGroups}
                 disabled={!controller.canGenerate || controller.isSolving}
                 className="btn-primary inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
-                style={{ opacity: renderStickyGenerateButton && !showStickyGenerateButton ? 0 : undefined }}
+                style={{ opacity: renderStickyGenerateButton ? 0 : undefined }}
               >
                 <Sparkles className="h-4 w-4" />
                 {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
