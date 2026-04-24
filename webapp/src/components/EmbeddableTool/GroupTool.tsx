@@ -21,7 +21,6 @@ import type { ToolController } from './useToolSetup';
 
 export type ToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
-const STICKY_GENERATE_NARROW_QUERY = '(max-width: 1023px)';
 const STICKY_GENERATE_CTA_SAFE_ZONE_PX = 96;
 
 interface ToolDisplaySession {
@@ -164,11 +163,10 @@ export function GroupTool({
   useEffect(() => {
     const button = generateButtonRef.current;
 
-    if (!button || typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+    if (!button || typeof window === 'undefined') {
       return;
     }
 
-    const narrowViewportQuery = window.matchMedia(STICKY_GENERATE_NARROW_QUERY);
     let frameId: number | null = null;
 
     const updateVisibility = () => {
@@ -189,8 +187,7 @@ export function GroupTool({
           && scenarioEditorCtaActionRect.bottom > stickySafeZoneTop,
         );
         setShowStickyGenerateButton(
-          narrowViewportQuery.matches
-          && rect.bottom < 0
+          rect.bottom < 0
           && advancedOptionsBottom > 0
           && !scenarioEditorCtaActionWouldBeCovered,
         );
@@ -200,7 +197,6 @@ export function GroupTool({
     updateVisibility();
     window.addEventListener('scroll', updateVisibility, { passive: true });
     window.addEventListener('resize', updateVisibility);
-    narrowViewportQuery.addEventListener?.('change', updateVisibility);
 
     return () => {
       if (frameId !== null) {
@@ -209,7 +205,6 @@ export function GroupTool({
 
       window.removeEventListener('scroll', updateVisibility);
       window.removeEventListener('resize', updateVisibility);
-      narrowViewportQuery.removeEventListener?.('change', updateVisibility);
     };
   }, [advancedOptionsPaneRef]);
 
