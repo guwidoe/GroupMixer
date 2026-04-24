@@ -131,9 +131,9 @@ export const LANDING_GUIDE_EXAMPLES: LandingGuideExample[] = [
     preset: 'networking',
     avoidRepeatPairings: true,
     participantColumns: columnsFromRows(rows(workshopNames, workshopNames.map((_, index) => ({
-      role: ['Facilitator', 'Product', 'Design', 'Engineering'][index % 4],
+      Role: ['Facilitator', 'Product', 'Design', 'Engineering'][index % 4],
     })))),
-    balanceAttributeKeys: ['role'],
+    balanceAttributeKeys: ['Role'],
     keepTogetherInput: 'Maya Chen, Owen Brooks',
     avoidPairingsInput: 'Priya Shah, Noah Patel\nEmma Wilson, Leo Martin',
     fixedAssignments: [],
@@ -163,9 +163,9 @@ export const LANDING_GUIDE_EXAMPLES: LandingGuideExample[] = [
     preset: 'balanced',
     avoidRepeatPairings: false,
     participantColumns: columnsFromRows(rows(classroomNames, classroomNames.map((_, index) => ({
-      skill: ['Strong', 'Developing', 'Steady', 'Developing'][index % 4],
+      Skill: ['Strong', 'Developing', 'Steady', 'Developing'][index % 4],
     })))),
-    balanceAttributeKeys: ['skill'],
+    balanceAttributeKeys: ['Skill'],
     keepTogetherInput: 'Aiden Miller, Bella Davis',
     avoidPairingsInput: 'Carlos Nguyen, Dina Ahmed\nJamal Carter, Kira Lopez',
     fixedAssignments: [
@@ -183,9 +183,9 @@ export const LANDING_GUIDE_EXAMPLES: LandingGuideExample[] = [
     preset: 'balanced',
     avoidRepeatPairings: false,
     participantColumns: columnsFromRows(rows(compareNames, compareNames.map((_, index) => ({
-      track: ['Strategy', 'Design', 'Technical'][index % 3],
+      Track: ['Strategy', 'Design', 'Technical'][index % 3],
     })))),
-    balanceAttributeKeys: ['track'],
+    balanceAttributeKeys: ['Track'],
     keepTogetherInput: 'Ana Torres, Ben Wallace',
     avoidPairingsInput: 'Cara Mills, Diego Ramos\nJade Bennett, Kenji Sato',
     fixedAssignments: [
@@ -204,9 +204,9 @@ export const LANDING_GUIDE_EXAMPLES: LandingGuideExample[] = [
     preset: 'balanced',
     avoidRepeatPairings: false,
     participantColumns: columnsFromRows(rows(fairClassNames, fairClassNames.map((_, index) => ({
-      gender: ['Girl', 'Boy'][index % 2],
+      Gender: ['Girl', 'Boy'][index % 2],
     })))),
-    balanceAttributeKeys: ['gender'],
+    balanceAttributeKeys: ['Gender'],
     keepTogetherInput: '',
     avoidPairingsInput: 'Alice Morgan, Bruno Keller\nIsaac Ford, Julia Wolf\nYusuf Khan, Zoe Miller',
     fixedAssignments: [
@@ -239,9 +239,9 @@ export const LANDING_GUIDE_EXAMPLES: LandingGuideExample[] = [
     preset: 'networking',
     avoidRepeatPairings: true,
     participantColumns: columnsFromRows(rows(breakoutNames, breakoutNames.map((_, index) => ({
-      experience: ['New', 'Practiced', 'Advanced'][index % 3],
+      Experience: ['New', 'Practiced', 'Advanced'][index % 3],
     })))),
-    balanceAttributeKeys: ['experience'],
+    balanceAttributeKeys: ['Experience'],
     keepTogetherInput: '',
     avoidPairingsInput: 'Alicia Romero, Bryce Allen',
     fixedAssignments: [
@@ -263,9 +263,9 @@ export const LANDING_GUIDE_EXAMPLES: LandingGuideExample[] = [
     preset: 'balanced',
     avoidRepeatPairings: false,
     participantColumns: columnsFromRows(rows(teamNames, teamNames.map((_, index) => ({
-      discipline: ['Engineering', 'Design', 'Product', 'Data'][index % 4],
+      Discipline: ['Engineering', 'Design', 'Product', 'Data'][index % 4],
     })))),
-    balanceAttributeKeys: ['discipline'],
+    balanceAttributeKeys: ['Discipline'],
     keepTogetherInput: '',
     avoidPairingsInput: 'Mia Anderson, Jon Bell\nSofia Rossi, Owen Clark',
     fixedAssignments: [

@@ -628,7 +628,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(/participants/i)).toHaveTextContent('Alice Morgan');
     });
-    expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('gender');
+    expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('Gender');
     expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Alice Morgan, Bruno Keller\nIsaac Ford, Julia Wolf\nYusuf Khan, Zoe Miller');
     expect(screen.getByRole('textbox', { name: /pinned people: name/i })).toHaveTextContent('Celia Park');
     expect(screen.getByRole('textbox', { name: /pinned people: group/i })).toHaveTextContent('1');
