@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-interface EmbeddableResizableTextareaProps {
+interface ResizableTextareaProps {
   id?: string;
   ariaLabel?: string;
   value: string;
@@ -16,7 +16,7 @@ interface EmbeddableResizableTextareaProps {
   onManualLayoutAdjustment?: () => void;
 }
 
-export function EmbeddableResizableTextarea({
+export function ResizableTextarea({
   id,
   ariaLabel,
   value,
@@ -30,7 +30,7 @@ export function EmbeddableResizableTextarea({
   clipFieldBorder = false,
   interactiveSurface = false,
   onManualLayoutAdjustment,
-}: EmbeddableResizableTextareaProps) {
+}: ResizableTextareaProps) {
   const [height, setHeight] = useState(minHeight);
   const dragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const stopResizeRef = useRef<() => void>(() => {});

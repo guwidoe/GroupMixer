@@ -9,15 +9,15 @@ import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import type { ResultsSessionData } from '../../services/results/buildResultsModel';
 import { nextAttributeColumnId, normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
-import { EmbeddableParticipantColumnsInput } from './EmbeddableParticipantColumnsInput';
-import { EmbeddableResizableTextarea } from './EmbeddableResizableTextarea';
-import { EmbeddableAdvancedOptions } from './EmbeddableAdvancedOptions';
+import { ParticipantColumnsInput } from './ParticipantColumnsInput';
+import { ResizableTextarea } from './ResizableTextarea';
+import { AdvancedOptions } from './AdvancedOptions';
 import type { QuickSetupParticipantColumn } from './types';
-import type { EmbeddableToolController } from './useEmbeddableToolSetup';
+import type { ToolController } from './useToolSetup';
 
-export type EmbeddableToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
+export type ToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
-interface EmbeddableToolDisplaySession {
+interface ToolDisplaySession {
   sessionNumber: number;
   groups: Array<{
     id: string;
@@ -25,10 +25,10 @@ interface EmbeddableToolDisplaySession {
   }>;
 }
 
-interface EmbeddableGroupToolProps {
+interface GroupToolProps {
   config: ToolPageConfig;
   ui: ToolPageSharedUiContent;
-  controller: EmbeddableToolController;
+  controller: ToolController;
   participantColumns: QuickSetupParticipantColumn[];
   participantCount: number;
   estimatedGroupCount: number;
@@ -40,10 +40,10 @@ interface EmbeddableGroupToolProps {
   canResizeToolColumns: boolean;
   toolColumnsStyle?: CSSProperties;
   isDraggingToolDivider: boolean;
-  activeResultFormat: EmbeddableToolResultFormat;
-  activeCopiedFormat: EmbeddableToolResultFormat | null;
+  activeResultFormat: ToolResultFormat;
+  activeCopiedFormat: ToolResultFormat | null;
   sharedSessionData: ResultsSessionData[];
-  displaySessions: EmbeddableToolDisplaySession[];
+  displaySessions: ToolDisplaySession[];
   resultText: string;
   resultLineText: string;
   resultCsv: string;
@@ -58,7 +58,7 @@ interface EmbeddableGroupToolProps {
   onOpenAdvancedWorkspace: (target: 'results' | 'people') => void;
   onStartToolDividerDrag: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onGenerateGroups: () => void;
-  onChangeResultFormat: (format: EmbeddableToolResultFormat) => void;
+  onChangeResultFormat: (format: ToolResultFormat) => void;
   onCopyActiveResult: () => void | Promise<void>;
 }
 
@@ -101,7 +101,7 @@ function SectionLabelWithTooltip({
   );
 }
 
-export function EmbeddableGroupTool({
+export function GroupTool({
   config,
   ui,
   controller,
@@ -136,7 +136,7 @@ export function EmbeddableGroupTool({
   onGenerateGroups,
   onChangeResultFormat,
   onCopyActiveResult,
-}: EmbeddableGroupToolProps) {
+}: GroupToolProps) {
   const { draft } = controller;
   const solvedSolution = controller.workspacePayload.solution ?? null;
 
@@ -220,7 +220,7 @@ export function EmbeddableGroupTool({
 
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-primary)' }}>
         <div className="flex flex-wrap gap-2" role="tablist" aria-label={ui.results.resultFormatsAriaLabel}>
-          {(['cards', 'list', 'text', 'lines', 'csv'] as EmbeddableToolResultFormat[]).map((format) => (
+          {(['cards', 'list', 'text', 'lines', 'csv'] as ToolResultFormat[]).map((format) => (
             <button
               key={format}
               type="button"
@@ -344,7 +344,7 @@ export function EmbeddableGroupTool({
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {ui.results.plainTextDescription}
           </p>
-          <EmbeddableResizableTextarea
+          <ResizableTextarea
             ariaLabel={ui.results.textResultsAriaLabel}
             readOnly
             value={resultText}
@@ -361,7 +361,7 @@ export function EmbeddableGroupTool({
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {ui.results.lineTextDescription}
           </p>
-          <EmbeddableResizableTextarea
+          <ResizableTextarea
             ariaLabel={ui.results.lineTextResultsAriaLabel}
             readOnly
             value={resultLineText}
@@ -378,7 +378,7 @@ export function EmbeddableGroupTool({
           <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
             {ui.results.csvDescription}
           </p>
-          <EmbeddableResizableTextarea
+          <ResizableTextarea
             ariaLabel={ui.results.csvResultsAriaLabel}
             readOnly
             value={resultCsv}
@@ -431,7 +431,7 @@ export function EmbeddableGroupTool({
                 </div>
               )}
             />
-            <EmbeddableParticipantColumnsInput
+            <ParticipantColumnsInput
               label={ui.quickSetup.participantsLabel}
               nameColumnLabel={ui.quickSetup.nameColumnLabel}
               nameColumnPlaceholder={ui.quickSetup.namesPlaceholder}
@@ -670,7 +670,7 @@ export function EmbeddableGroupTool({
           ) : null}
 
           <div ref={advancedOptionsPaneRef} className={canResizeToolColumns ? 'pl-2' : undefined}>
-            <EmbeddableAdvancedOptions controller={controller} onOpenFullEditor={() => onOpenAdvancedWorkspace('people')} />
+            <AdvancedOptions controller={controller} onOpenFullEditor={() => onOpenAdvancedWorkspace('people')} />
           </div>
         </div>
       </div>

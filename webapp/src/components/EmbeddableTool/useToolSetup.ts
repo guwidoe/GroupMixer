@@ -26,7 +26,7 @@ import type {
   QuickSetupSessionResult,
 } from './types';
 
-export interface EmbeddableToolController {
+export interface ToolController {
   ui: ToolPageSharedUiContent;
   draft: QuickSetupDraft;
   analysis: QuickSetupAnalysis;
@@ -320,7 +320,7 @@ function downloadBlob(filename: string, content: string, mimeType: string) {
   URL.revokeObjectURL(url);
 }
 
-export function useEmbeddableToolSetup(pageConfig: ToolPageConfig): EmbeddableToolController {
+export function useToolSetup(pageConfig: ToolPageConfig): ToolController {
   const ui = getLandingUiContent(pageConfig.locale);
   const storageKey = `groupmixer.quick-setup.${pageConfig.key}.v1`;
   const [storedDraft, setDraft] = useLocalStorageState<QuickSetupDraft>(storageKey, defaultDraft(pageConfig));

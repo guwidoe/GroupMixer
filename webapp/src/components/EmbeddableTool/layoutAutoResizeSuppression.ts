@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type EmbeddableLayoutElementKey =
+export type LayoutElementKey =
   | 'participants'
   | 'keep-together'
   | 'keep-apart'
@@ -9,11 +9,11 @@ export type EmbeddableLayoutElementKey =
 const MANUAL_LAYOUT_STORAGE_PREFIX = 'groupmixer.landing-layout.manual-adjusted-at.v1';
 const MANUAL_LAYOUT_SUPPRESSION_MS = 24 * 60 * 60 * 1000;
 
-function getStorageKey(elementKey: EmbeddableLayoutElementKey) {
+function getStorageKey(elementKey: LayoutElementKey) {
   return `${MANUAL_LAYOUT_STORAGE_PREFIX}:${elementKey}`;
 }
 
-function readManualAdjustmentAt(elementKey: EmbeddableLayoutElementKey) {
+function readManualAdjustmentAt(elementKey: LayoutElementKey) {
   if (typeof window === 'undefined') {
     return null;
   }
@@ -32,7 +32,7 @@ function readManualAdjustmentAt(elementKey: EmbeddableLayoutElementKey) {
   return Number.isFinite(parsedValue) ? parsedValue : null;
 }
 
-function getSuppressionExpiresAt(elementKey: EmbeddableLayoutElementKey, now = Date.now()) {
+function getSuppressionExpiresAt(elementKey: LayoutElementKey, now = Date.now()) {
   const adjustedAt = readManualAdjustmentAt(elementKey);
   if (adjustedAt == null) {
     return null;
@@ -42,7 +42,7 @@ function getSuppressionExpiresAt(elementKey: EmbeddableLayoutElementKey, now = D
   return expiresAt > now ? expiresAt : null;
 }
 
-export function recordEmbeddableLayoutManualAdjustment(elementKey: EmbeddableLayoutElementKey) {
+export function recordLayoutManualAdjustment(elementKey: LayoutElementKey) {
   if (typeof window === 'undefined') {
     return;
   }
@@ -54,7 +54,7 @@ export function recordEmbeddableLayoutManualAdjustment(elementKey: EmbeddableLay
   }
 }
 
-export function useEmbeddableLayoutAutoResizeSuppression(elementKey: EmbeddableLayoutElementKey) {
+export function useLayoutAutoResizeSuppression(elementKey: LayoutElementKey) {
   const [version, setVersion] = useState(0);
   const expiresAt = getSuppressionExpiresAt(elementKey);
   const autoResizeSuppressed = expiresAt != null;
@@ -72,7 +72,7 @@ export function useEmbeddableLayoutAutoResizeSuppression(elementKey: EmbeddableL
   }, [elementKey, expiresAt, version]);
 
   const recordManualLayoutAdjustment = useCallback(() => {
-    recordEmbeddableLayoutManualAdjustment(elementKey);
+    recordLayoutManualAdjustment(elementKey);
     setVersion((current) => current + 1);
   }, [elementKey]);
 

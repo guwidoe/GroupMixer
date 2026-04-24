@@ -13,9 +13,9 @@ import { loadDemoCase } from '../../services/demoDataService';
 import { useAppStore } from '../../store';
 import { normalizeParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import { buildResultsSessionData } from '../results/buildResultsViewModel';
-import { EmbeddableGroupTool, type EmbeddableToolResultFormat } from './EmbeddableGroupTool';
-import { useEmbeddableLayoutAutoResizeSuppression } from './embeddableLayoutAutoResizeSuppression';
-import { useEmbeddableToolSetup } from './useEmbeddableToolSetup';
+import { GroupTool, type ToolResultFormat } from './GroupTool';
+import { useLayoutAutoResizeSuppression } from './layoutAutoResizeSuppression';
+import { useToolSetup } from './useToolSetup';
 import { getToolPageConfig, type SupportedLocale, type ToolPageKey } from '../../pages/toolPageConfigs';
 
 interface DisplaySession {
@@ -124,7 +124,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
 ) {
   const config = getToolPageConfig(pageKey, locale);
   const ui = getLandingUiContent(locale);
-  const controller = useEmbeddableToolSetup(config);
+  const controller = useToolSetup(config);
   const loadWorkspaceAsNewScenario = useAppStore((state) => state.loadWorkspaceAsNewScenario);
   const addNotification = useAppStore((state) => state.addNotification);
   const navigate = useNavigate();
@@ -138,13 +138,13 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   const previousParticipantAutoResizeSuppressedRef = useRef(false);
   const lastNotifiedSolverErrorRef = useRef<string | null>(null);
   const toolDividerDragStateRef = useRef<ToolDividerDragState | null>(null);
-  const [resultFormat, setResultFormat] = useState<EmbeddableToolResultFormat>('cards');
-  const [copiedFormat, setCopiedFormat] = useState<EmbeddableToolResultFormat | null>(null);
+  const [resultFormat, setResultFormat] = useState<ToolResultFormat>('cards');
+  const [copiedFormat, setCopiedFormat] = useState<ToolResultFormat | null>(null);
   const [toolSplitRatio, setToolSplitRatio] = useLocalStorageState<number>(`${EMBEDDABLE_TOOL_RESIZE_STORAGE_KEY}:${pageKey}`, 0.5);
   const [toolColumnsWidth, setToolColumnsWidth] = useState(0);
   const [isDraggingToolDivider, setIsDraggingToolDivider] = useState(false);
   const [participantInputAutoOuterHeight, setParticipantInputAutoOuterHeight] = useState<number | null>(null);
-  const participantInputLayout = useEmbeddableLayoutAutoResizeSuppression('participants');
+  const participantInputLayout = useLayoutAutoResizeSuppression('participants');
   const telemetryAttribution = useMemo(
     () =>
       readTelemetryAttributionFromSearch({
@@ -483,7 +483,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   }, [controller, ui.quickSetup.clearAllConfirmMessage]);
 
   return (
-    <EmbeddableGroupTool
+    <GroupTool
       config={config}
       ui={ui}
       controller={controller}
