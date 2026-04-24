@@ -239,11 +239,6 @@ export function PeopleDirectory({
                 csv: {
                   ariaLabel: 'People grid CSV',
                   placeholder: 'Name,Weight,Sessions,...',
-                  helperText: (
-                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      <strong>Sessions</strong> use JSON session-scope objects such as <code>{'{"mode":"all"}'}</code> or <code>{'{"mode":"selected","sessions":[0,1]}'}</code>. Blank attribute cells clear that value; blank names normalize to the person ID on apply.
-                    </div>
-                  ),
                 },
               },
             }}

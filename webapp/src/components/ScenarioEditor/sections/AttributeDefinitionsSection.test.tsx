@@ -10,6 +10,7 @@ describe('AttributeDefinitionsSection', () => {
     const onAddAttribute = vi.fn();
     const onEditAttribute = vi.fn();
     const onRemoveAttribute = vi.fn();
+    const onApplyGridAttributes = vi.fn();
 
     render(
       <AttributeDefinitionsSection
@@ -17,7 +18,7 @@ describe('AttributeDefinitionsSection', () => {
         onAddAttribute={onAddAttribute}
         onEditAttribute={onEditAttribute}
         onRemoveAttribute={onRemoveAttribute}
-        onApplyGridAttributes={vi.fn()}
+        onApplyGridAttributes={onApplyGridAttributes}
         createGridAttributeRow={() => createAttributeDefinition('track', ['design'], 'attr-track')}
       />,
     );
@@ -43,12 +44,17 @@ describe('AttributeDefinitionsSection', () => {
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
 
-    await user.click(screen.getAllByRole('button', { name: /delete role/i })[0]!);
-    expect(onRemoveAttribute).toHaveBeenCalledWith('role');
-
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     expect(screen.getByRole('textbox', { name: /attribute definitions csv/i })).toHaveValue(
       'Attribute,Values\nrole,"[""dev"",""pm""]"',
     );
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+    await user.click(screen.getAllByRole('button', { name: /delete role/i })[0]!);
+    expect(onRemoveAttribute).not.toHaveBeenCalled();
+    expect(screen.queryByRole('textbox', { name: /edit attribute for row attr-role/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+    expect(onApplyGridAttributes).toHaveBeenCalledWith([]);
   }, 10000);
 });

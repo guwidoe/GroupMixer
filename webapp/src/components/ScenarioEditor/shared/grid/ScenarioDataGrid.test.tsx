@@ -1304,12 +1304,12 @@ describe('ScenarioDataGrid', () => {
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /session scope csv editor/i });
     expect(csvInput).toHaveValue(
-      'Name,Sessions\nAlpha,"{""mode"":""all""}"\nBeta,"{""mode"":""selected"",""sessions"":[0,1,2]}"',
+      'Name,Sessions\nAlpha,all\nBeta,"[0,1,2]"',
     );
 
     fireEvent.change(csvInput, {
       target: {
-        value: 'Name,Sessions\nAlpha,"{""mode"":""selected"",""sessions"":[0,1,2]}"\nBeta,"{""mode"":""all""}"',
+        value: 'Name,Sessions\nAlpha,"[0,1,2]"\nBeta,all',
       },
     });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));

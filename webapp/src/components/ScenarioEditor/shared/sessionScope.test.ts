@@ -3,9 +3,11 @@ import {
   createAllSessionScopeDraft,
   describeSessionScopeDraft,
   formatSessionScopeDraftCompact,
+  formatSessionScopeDraftRaw,
   formatSessionScopeDraft,
   normalizeSessionSelection,
   optionalSessionsToDraft,
+  parseSessionScopeDraftRaw,
   sessionScopeDraftToOptionalSessions,
   validateSessionScopeDraft,
 } from './sessionScope';
@@ -49,6 +51,24 @@ describe('sessionScope', () => {
     expect(validateSessionScopeDraft({ mode: 'selected', sessions: [0, 3] }, 3)).toEqual({
       ok: false,
       error: 'Expected Sessions.sessions to contain unique integers between 0 and 2.',
+    });
+  });
+
+  it('formats and parses compact raw CSV session scopes', () => {
+    expect(formatSessionScopeDraftRaw({ mode: 'all' }, 3)).toBe('all');
+    expect(formatSessionScopeDraftRaw({ mode: 'selected', sessions: [0, 3, 4] }, 5)).toBe('[0,3,4]');
+
+    expect(parseSessionScopeDraftRaw('all', 5)).toEqual({
+      ok: true,
+      value: { mode: 'all' },
+    });
+    expect(parseSessionScopeDraftRaw('[0,3,4]', 5)).toEqual({
+      ok: true,
+      value: { mode: 'selected', sessions: [0, 3, 4] },
+    });
+    expect(parseSessionScopeDraftRaw('{"mode":"selected","sessions":[0,3,4]}', 5)).toEqual({
+      ok: true,
+      value: { mode: 'selected', sessions: [0, 3, 4] },
     });
   });
 

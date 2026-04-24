@@ -168,11 +168,11 @@ describe('PeopleDirectory', () => {
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /people grid csv/i });
     expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/Name,Sessions,role/i);
-    expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/"\{""mode"":""selected"",""sessions"":\[0,1\]\}"/);
+    expect(String((csvInput as HTMLTextAreaElement).value)).toContain('"[0,1]"');
 
     fireEvent.change(csvInput, {
       target: {
-        value: 'Name,Sessions,role\nAlex,"{""mode"":""selected"",""sessions"":[0,1,2]}",dev',
+        value: 'Name,Sessions,role\nAlex,"[0,1,2]",dev',
       },
     });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));

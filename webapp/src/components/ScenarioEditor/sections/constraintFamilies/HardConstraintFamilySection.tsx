@@ -15,7 +15,7 @@ import {
 } from '../../shared/cards';
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
 import { createOptionalSessionScopeColumn } from '../../shared/grid/sessionScopeColumn';
-import { SetupPersonListText, formatPersonSearchList } from '../../shared/personDisplay';
+import { SetupPersonListText, createPersonListRawCodec, formatPersonSearchList } from '../../shared/personDisplay';
 import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
 import { getConstraintDisplayName } from '../../../../utils/constraintDisplay';
 import { HARD_SECTION_COPY } from './copy';
@@ -292,6 +292,8 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                 draft: {
                   onApply: applyGridRows,
                   createRow: createGridRow,
+                  canDeleteRows: true,
+                  deleteRowLabel: () => `Delete ${copy.title.toLowerCase()} row`,
                   csv: {
                     ariaLabel: `${copy.title} CSV`,
                   },
@@ -309,6 +311,10 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                     label: person.name,
                   })),
                   getValue: (item) => item.constraint.people,
+                  rawCodec: createPersonListRawCodec({
+                    people: scenario.people,
+                    header: 'People',
+                  }),
                   setValue: (item, value) => ({
                     ...item,
                     constraint: {
@@ -362,19 +368,6 @@ export function HardConstraintFamilySection({ family, onAdd, onEdit, onDelete }:
                         },
                       }),
                     })]),
-                {
-                  kind: 'display' as const,
-                  id: 'actions',
-                  header: 'Actions',
-                  cell: (item) => (
-                    <div className="flex justify-end">
-                      <SetupItemActions onDelete={() => onDelete(item.index)} />
-                    </div>
-                  ),
-                  align: 'right',
-                  hideable: false,
-                  width: 180,
-                },
               ]}
             />
           )

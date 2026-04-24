@@ -89,6 +89,8 @@ function renderRepeatEncounterContent(
           draft: {
             onApply: onApplyGridRows,
             createRow: createGridRow,
+            canDeleteRows: true,
+            deleteRowLabel: () => 'Delete repeat encounter preference',
             csv: {
               ariaLabel: 'Repeat encounter CSV',
             },
@@ -144,22 +146,6 @@ function renderRepeatEncounterContent(
               },
             }),
             width: 140,
-          },
-          {
-            kind: 'display' as const,
-            id: 'actions',
-            header: 'Actions',
-            cell: (item: RepeatEncounterRow) => (
-              <div className="flex justify-end">
-                <SetupItemActions
-                  onDelete={() => onDelete(item.index)}
-                  deleteLabel="Delete repeat encounter preference"
-                />
-              </div>
-            ),
-            align: 'right',
-            hideable: false,
-            width: 180,
           },
         ]}
       />

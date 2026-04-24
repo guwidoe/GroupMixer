@@ -44,6 +44,8 @@ function renderGroupContent(
           draft: {
             onApply: onApplyGridGroups,
             createRow: createGridGroupRow,
+            canDeleteRows: true,
+            deleteRowLabel: (group) => `Delete ${group.id || 'group'}`,
             csv: {
               ariaLabel: 'Groups grid CSV',
               helperText: (
@@ -104,22 +106,6 @@ function renderGroupContent(
                 : 'Uses default capacity in every session',
             searchText: (value) => Array.isArray(value) ? value.join(' ') : 'default capacity',
             width: 320,
-          },
-          {
-            kind: 'display' as const,
-            id: 'actions',
-            header: 'Actions',
-            cell: (group: Group) => (
-              <div className="flex justify-end">
-                <SetupItemActions
-                  deleteLabel={`Delete ${group.id}`}
-                  onDelete={() => onDeleteGroup(group.id)}
-                />
-              </div>
-            ),
-            align: 'right',
-            hideable: false,
-            width: 180,
           },
         ]}
       />

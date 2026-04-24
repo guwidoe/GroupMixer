@@ -86,6 +86,11 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    const csvInput = screen.getByRole('textbox', { name: /fixed placements csv/i });
+    expect((csvInput as HTMLTextAreaElement).value).toContain('Alex');
+    expect((csvInput as HTMLTextAreaElement).value).not.toContain('p1');
   }, 10000);
 
   it('offers symmetric hard-to-soft conversion for keep-apart constraints', async () => {
@@ -210,6 +215,56 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('checkbox', { name: '3' })).toBeInTheDocument();
   });
 
+  it('round-trips constraint people as names in csv mode', async () => {
+    const user = userEvent.setup();
+    const setScenario = vi.fn();
+
+    useAppStore.setState((state) => ({
+      ...state,
+      setScenario,
+      resolveScenario: () => ({
+        ...createScenario(),
+        constraints: [
+          {
+            type: 'PairMeetingCount',
+            people: ['p1', 'p2'],
+            target_meetings: 1,
+            mode: 'exact',
+            penalty_weight: 10,
+          },
+        ],
+      }),
+    }));
+
+    render(
+      <SoftConstraintFamilySection family="PairMeetingCount" onAdd={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    const csvInput = screen.getByRole('textbox', { name: /pair encounters csv/i });
+
+    expect((csvInput as HTMLTextAreaElement).value).toContain('Alex');
+    expect((csvInput as HTMLTextAreaElement).value).toContain('Blair');
+    expect((csvInput as HTMLTextAreaElement).value).not.toContain('p1');
+    expect((csvInput as HTMLTextAreaElement).value).not.toContain('p2');
+
+    fireEvent.change(csvInput, {
+      target: {
+        value: 'Pair,Target meetings,Mode,Weight,Sessions\n"[""Alex"",""Casey""]",1,exact,10,all',
+      },
+    });
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(setScenario).toHaveBeenCalledWith(expect.objectContaining({
+      constraints: expect.arrayContaining([
+        expect.objectContaining({
+          type: 'PairMeetingCount',
+          people: ['p1', 'p3'],
+        }),
+      ]),
+    }));
+  });
+
   it('uses attribute names plus a single targets column for attribute balance list editing and csv', async () => {
     const user = userEvent.setup();
     const onApplyAttributeBalanceRows = vi.fn();
@@ -250,12 +305,12 @@ describe('ConstraintFamilySections', () => {
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /balance attributes csv/i });
     expect(csvInput).toHaveValue(
-      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"',
+      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"[0,1]"',
     );
 
     fireEvent.change(csvInput, {
       target: {
-        value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1,2]}"',
+        value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"[0,1,2]"',
       },
     });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));
@@ -397,11 +452,11 @@ describe('ConstraintFamilySections', () => {
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /balance attributes csv/i });
     expect(csvInput).toHaveValue(
-      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""asdf | asdf:"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"',
+      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""asdf | asdf:"":1}",exact,30,"[0,1]"',
     );
 
     fireEvent.change(csvInput, {
-      target: { value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":3,""unknown"":2}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"' },
+      target: { value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":3,""unknown"":2}",exact,30,"[0,1]"' },
     });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));
 
