@@ -21,7 +21,6 @@ import type { ToolController } from './useToolSetup';
 
 export type ToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
-const STICKY_GENERATE_CTA_SAFE_ZONE_PX = 96;
 const STICKY_GENERATE_SCROLL_SETTLED_AGE_MS = 180;
 const STICKY_GENERATE_RETURN_TARGET_MARGIN_PX = 0;
 
@@ -186,16 +185,8 @@ export function GroupTool({
         };
         const rect = button.getBoundingClientRect();
         const advancedOptionsBottom = advancedOptionsPaneRef.current?.getBoundingClientRect().bottom ?? Number.POSITIVE_INFINITY;
-        const scenarioEditorCtaAction = advancedOptionsPaneRef.current?.querySelector<HTMLElement>('[data-scenario-editor-cta-action="true"]') ?? null;
-        const scenarioEditorCtaActionRect = scenarioEditorCtaAction?.getBoundingClientRect() ?? null;
-        const stickySafeZoneTop = window.innerHeight - STICKY_GENERATE_CTA_SAFE_ZONE_PX;
-        const scenarioEditorCtaActionWouldBeCovered = Boolean(
-          scenarioEditorCtaActionRect
-          && scenarioEditorCtaActionRect.top < window.innerHeight
-          && scenarioEditorCtaActionRect.bottom > stickySafeZoneTop,
-        );
         setShowStickyGenerateButton((wasShowing) => {
-          if (advancedOptionsBottom <= 0 || scenarioEditorCtaActionWouldBeCovered) {
+          if (advancedOptionsBottom <= 0) {
             return false;
           }
 
