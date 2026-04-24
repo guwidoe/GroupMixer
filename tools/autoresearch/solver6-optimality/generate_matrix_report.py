@@ -171,16 +171,16 @@ def render_dual_objective_week_grid(cell, week_cap):
     return "".join(parts)
 
 
-def render_outer_cell(cell, layer_key, week_cap, matrix_index):
+def render_outer_cell(cell, layer_key, week_cap, matrix_index, dense=False):
     summary = cell.get(LAYER_CONFIG[layer_key]["summary_key"], empty_summary())
     if layer_key == "overview":
         linear_summary = cell.get("linear_summary", empty_summary())
         squared_summary = cell.get("squared_summary", empty_summary())
         agreement_summary = cell.get("objective_agreement_summary", empty_summary())
         headline = (
-            f"L {linear_summary['headline_label']} · "
-            f"S {squared_summary['headline_label']} · "
-            f"≡ {agreement_summary['headline_label']}"
+            f"L{linear_summary['headline_label']} "
+            f"S{squared_summary['headline_label']} "
+            f"≡{agreement_summary['headline_label']}"
         )
         title = (
             f"{cell['g']}-{cell['p']} | linear={linear_summary['headline_label']}"
@@ -198,7 +198,7 @@ def render_outer_cell(cell, layer_key, week_cap, matrix_index):
     if cell.get("skip_reason"):
         title += f" | {cell['skip_reason']}"
     return (
-        f"<button class='outer-cell{' benchmark-skipped' if not cell['benchmark_eligible'] else ''}'"
+        f"<button class='outer-cell{' outer-cell-dense' if dense else ''}{' benchmark-skipped' if not cell['benchmark_eligible'] else ''}'"
         f" title='{html.escape(title)}'"
         f" data-matrix-index='{matrix_index}' data-g='{cell['g']}' data-p='{cell['p']}'>"
         f"<div class='outer-cell-headline{' outer-cell-headline-overview' if layer_key == 'overview' else ''}'>{html.escape(headline)}</div>"
@@ -210,12 +210,15 @@ def render_outer_cell(cell, layer_key, week_cap, matrix_index):
 
 def render_matrix_view(matrix, layer_key, week_cap, matrix_index):
     bounds = matrix["bounds"]
+    width = bounds["p_max"] - bounds["p_min"] + 1
+    dense = width > 14
     cell_map = build_cell_map(matrix["cells"])
     parts = [
-        "<section class='matrix-view'>",
+        f"<section class='matrix-view{' matrix-view-dense' if dense else ''}'>",
         f"<h2>{html.escape(matrix['title'])}</h2>",
         f"<p class='meta'>{html.escape(matrix['subtitle'])}</p>",
-        "<table class='outer-matrix'><thead><tr><th>g\\p</th>",
+        "<div class='matrix-scroll'>",
+        f"<table class='outer-matrix{' outer-matrix-dense' if dense else ''}'><thead><tr><th>g\\p</th>",
     ]
     for p in range(bounds["p_min"], bounds["p_max"] + 1):
         parts.append(f"<th>{p}</th>")
@@ -224,9 +227,9 @@ def render_matrix_view(matrix, layer_key, week_cap, matrix_index):
         parts.append(f"<tr><th>{g}</th>")
         for p in range(bounds["p_min"], bounds["p_max"] + 1):
             cell = cell_map[(g, p)]
-            parts.append(f"<td>{render_outer_cell(cell, layer_key, week_cap, matrix_index)}</td>")
+            parts.append(f"<td>{render_outer_cell(cell, layer_key, week_cap, matrix_index, dense)}</td>")
         parts.append("</tr>")
-    parts.append("</tbody></table></section>")
+    parts.append("</tbody></table></div></section>")
     return "".join(parts)
 
 
@@ -317,8 +320,11 @@ def render_html(artifact):
     .layer-panel.is-active {{ display:block; }}
     .legend-chip {{ display:inline-flex; align-items:center; gap:8px; margin-right:16px; margin-bottom:8px; }}
     .legend-swatch {{ width:16px; height:16px; border-radius:4px; display:inline-block; border:1px solid rgba(255,255,255,0.15); }}
+    .matrix-scroll {{ width: 100%; overflow: auto; overscroll-behavior: contain; contain: layout paint; }}
     table.outer-matrix {{ border-collapse: collapse; width: 100%; table-layout: fixed; margin-bottom: 28px; }}
     table.outer-matrix th, table.outer-matrix td {{ border: 1px solid var(--line); padding: 6px; text-align: center; vertical-align: top; }}
+    table.outer-matrix-dense {{ min-width: 1320px; }}
+    table.outer-matrix-dense th, table.outer-matrix-dense td {{ padding: 3px; }}
     table.outer-matrix th {{ color: var(--muted); background: rgba(255,255,255,0.02); font-weight: 600; }}
     .outer-cell {{
       width: 100%;
@@ -330,11 +336,16 @@ def render_html(artifact):
       padding: 8px;
       cursor: pointer;
       transition: transform .08s ease, border-color .08s ease;
+      overflow: hidden;
     }}
+    .outer-cell-dense {{ min-height: 76px; padding: 4px; border-radius: 9px; }}
     .outer-cell:hover {{ border-color: rgba(56,189,248,0.65); transform: translateY(-1px); }}
     .outer-cell-subtitle {{ color: var(--muted); font-size: 12px; margin-bottom: 6px; }}
-    .outer-cell-headline {{ font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 4px; }}
-    .outer-cell-headline-overview {{ font-size: 14px; line-height: 1.25; white-space: normal; }}
+    .outer-cell-dense .outer-cell-subtitle {{ font-size: 10px; margin-bottom: 3px; }}
+    .outer-cell-headline {{ font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 4px; white-space: nowrap; }}
+    .outer-cell-headline-overview {{ font-size: 12px; line-height: 1.1; white-space: nowrap; letter-spacing: -0.04em; }}
+    .outer-cell-dense .outer-cell-headline {{ font-size: 16px; margin-bottom: 2px; }}
+    .outer-cell-dense .outer-cell-headline-overview {{ font-size: 9px; }}
     .benchmark-skipped .outer-cell-headline {{ color: #cbd5e1; }}
     .mini-grid, .large-grid {{
       display: grid;
@@ -342,6 +353,7 @@ def render_html(artifact):
       gap: 2px;
       margin-top: 6px;
     }}
+    .outer-cell-dense .mini-grid {{ gap: 1px; margin-top: 3px; }}
     .mini-week {{ aspect-ratio: 1 / 1; border-radius: 2px; background: var(--na); }}
     .mini-week-empty {{ background: transparent; }}
     .week-exact {{ background: var(--exact); }}
@@ -365,19 +377,20 @@ def render_html(artifact):
       position: absolute;
       inset: 50% auto auto 50%;
       transform: translate(-50%, -50%);
-      min-width: 12px;
-      height: 12px;
+      min-width: 11px;
+      height: 11px;
       border-radius: 999px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       background: rgba(2,6,23,0.78);
       color: white;
-      font-size: 9px;
+      font-size: 8px;
       font-weight: 900;
       line-height: 1;
       text-shadow: 0 1px 2px rgba(0,0,0,0.6);
     }}
+    .outer-cell-dense .dual-glyph {{ min-width: 9px; height: 9px; font-size: 7px; }}
     .dual-large-week .dual-glyph {{ min-width: 20px; height: 20px; font-size: 13px; }}
     .modal-backdrop {{
       position: fixed;
