@@ -1,4 +1,4 @@
-import type { QuickSetupDraft, QuickSetupParticipantColumn } from '../../components/LandingTool/types';
+import type { QuickSetupDraft, QuickSetupParticipantColumn } from '../../components/EmbeddableTool/types';
 import { normalizeBalanceTargets, normalizeManualBalanceAttributeKeys } from './attributeBalanceTargets';
 
 function splitCsvLine(line: string) {

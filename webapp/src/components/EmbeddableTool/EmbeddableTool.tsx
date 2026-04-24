@@ -13,9 +13,9 @@ import { loadDemoCase } from '../../services/demoDataService';
 import { useAppStore } from '../../store';
 import { normalizeParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import { buildResultsSessionData } from '../results/buildResultsViewModel';
-import { EmbeddableGroupTool, type LandingToolResultFormat } from './EmbeddableGroupTool';
-import { useLandingLayoutAutoResizeSuppression } from './landingLayoutAutoResizeSuppression';
-import { useQuickSetup } from './useQuickSetup';
+import { EmbeddableGroupTool, type EmbeddableToolResultFormat } from './EmbeddableGroupTool';
+import { useEmbeddableLayoutAutoResizeSuppression } from './embeddableLayoutAutoResizeSuppression';
+import { useEmbeddableToolSetup } from './useEmbeddableToolSetup';
 import { getToolPageConfig, type SupportedLocale, type ToolPageKey } from '../../pages/toolPageConfigs';
 
 interface DisplaySession {
@@ -42,13 +42,13 @@ interface ToolDividerDragState {
   trackWidth: number;
 }
 
-const LANDING_TOOL_RESIZE_STORAGE_KEY = 'landing:tool-split';
-const LANDING_TOOL_RESIZE_HANDLE_WIDTH = 22;
-const LANDING_TOOL_COLUMN_GAP = 20;
-const LANDING_TOOL_RESIZE_GAP_COUNT = 2;
-const LANDING_TOOL_LEFT_MIN_WIDTH = 400;
-const LANDING_TOOL_RIGHT_MIN_WIDTH = 340;
-const LANDING_TOOL_RESIZE_MIN_WIDTH = LANDING_TOOL_LEFT_MIN_WIDTH + LANDING_TOOL_RIGHT_MIN_WIDTH + LANDING_TOOL_RESIZE_HANDLE_WIDTH + (LANDING_TOOL_COLUMN_GAP * LANDING_TOOL_RESIZE_GAP_COUNT);
+const EMBEDDABLE_TOOL_RESIZE_STORAGE_KEY = 'landing:tool-split';
+const EMBEDDABLE_TOOL_RESIZE_HANDLE_WIDTH = 22;
+const EMBEDDABLE_TOOL_COLUMN_GAP = 20;
+const EMBEDDABLE_TOOL_RESIZE_GAP_COUNT = 2;
+const EMBEDDABLE_TOOL_LEFT_MIN_WIDTH = 400;
+const EMBEDDABLE_TOOL_RIGHT_MIN_WIDTH = 340;
+const EMBEDDABLE_TOOL_RESIZE_MIN_WIDTH = EMBEDDABLE_TOOL_LEFT_MIN_WIDTH + EMBEDDABLE_TOOL_RIGHT_MIN_WIDTH + EMBEDDABLE_TOOL_RESIZE_HANDLE_WIDTH + (EMBEDDABLE_TOOL_COLUMN_GAP * EMBEDDABLE_TOOL_RESIZE_GAP_COUNT);
 
 function buildDisplaySessions(
   sharedSessionData: Array<{ sessionIndex: number; groups: Array<{ id: string; people: Array<{ id: string }> }> }>,
@@ -124,7 +124,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
 ) {
   const config = getToolPageConfig(pageKey, locale);
   const ui = getLandingUiContent(locale);
-  const controller = useQuickSetup(config);
+  const controller = useEmbeddableToolSetup(config);
   const loadWorkspaceAsNewScenario = useAppStore((state) => state.loadWorkspaceAsNewScenario);
   const addNotification = useAppStore((state) => state.addNotification);
   const navigate = useNavigate();
@@ -138,13 +138,13 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   const previousParticipantAutoResizeSuppressedRef = useRef(false);
   const lastNotifiedSolverErrorRef = useRef<string | null>(null);
   const toolDividerDragStateRef = useRef<ToolDividerDragState | null>(null);
-  const [resultFormat, setResultFormat] = useState<LandingToolResultFormat>('cards');
-  const [copiedFormat, setCopiedFormat] = useState<LandingToolResultFormat | null>(null);
-  const [toolSplitRatio, setToolSplitRatio] = useLocalStorageState<number>(`${LANDING_TOOL_RESIZE_STORAGE_KEY}:${pageKey}`, 0.5);
+  const [resultFormat, setResultFormat] = useState<EmbeddableToolResultFormat>('cards');
+  const [copiedFormat, setCopiedFormat] = useState<EmbeddableToolResultFormat | null>(null);
+  const [toolSplitRatio, setToolSplitRatio] = useLocalStorageState<number>(`${EMBEDDABLE_TOOL_RESIZE_STORAGE_KEY}:${pageKey}`, 0.5);
   const [toolColumnsWidth, setToolColumnsWidth] = useState(0);
   const [isDraggingToolDivider, setIsDraggingToolDivider] = useState(false);
   const [participantInputAutoOuterHeight, setParticipantInputAutoOuterHeight] = useState<number | null>(null);
-  const participantInputLayout = useLandingLayoutAutoResizeSuppression('participants');
+  const participantInputLayout = useEmbeddableLayoutAutoResizeSuppression('participants');
   const telemetryAttribution = useMemo(
     () =>
       readTelemetryAttributionFromSearch({
@@ -178,24 +178,24 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
   const participantColumns = normalizeParticipantColumns(draft);
   const displayedGroupCount = Math.max(1, estimatedGroupCount);
   const displayedPeoplePerGroup = Math.max(1, estimatedGroupSize || 0);
-  const canResizeToolColumns = toolColumnsWidth >= LANDING_TOOL_RESIZE_MIN_WIDTH;
+  const canResizeToolColumns = toolColumnsWidth >= EMBEDDABLE_TOOL_RESIZE_MIN_WIDTH;
   const resolvedToolSplitRatio = Math.min(0.72, Math.max(0.4, toolSplitRatio));
   const resizableTrackWidth = Math.max(
     0,
-    toolColumnsWidth - LANDING_TOOL_RESIZE_HANDLE_WIDTH - (LANDING_TOOL_COLUMN_GAP * LANDING_TOOL_RESIZE_GAP_COUNT),
+    toolColumnsWidth - EMBEDDABLE_TOOL_RESIZE_HANDLE_WIDTH - (EMBEDDABLE_TOOL_COLUMN_GAP * EMBEDDABLE_TOOL_RESIZE_GAP_COUNT),
   );
   const leftColumnWidth = canResizeToolColumns
     ? Math.min(
-        Math.max(resizableTrackWidth * resolvedToolSplitRatio, LANDING_TOOL_LEFT_MIN_WIDTH),
-        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, resizableTrackWidth - LANDING_TOOL_RIGHT_MIN_WIDTH),
+        Math.max(resizableTrackWidth * resolvedToolSplitRatio, EMBEDDABLE_TOOL_LEFT_MIN_WIDTH),
+        Math.max(EMBEDDABLE_TOOL_LEFT_MIN_WIDTH, resizableTrackWidth - EMBEDDABLE_TOOL_RIGHT_MIN_WIDTH),
       )
     : null;
   const rightColumnWidth = canResizeToolColumns && leftColumnWidth != null
-    ? Math.max(LANDING_TOOL_RIGHT_MIN_WIDTH, resizableTrackWidth - leftColumnWidth)
+    ? Math.max(EMBEDDABLE_TOOL_RIGHT_MIN_WIDTH, resizableTrackWidth - leftColumnWidth)
     : null;
   const toolColumnsStyle = canResizeToolColumns && leftColumnWidth != null && rightColumnWidth != null
     ? {
-        gridTemplateColumns: `minmax(0, ${leftColumnWidth}px) ${LANDING_TOOL_RESIZE_HANDLE_WIDTH}px minmax(${LANDING_TOOL_RIGHT_MIN_WIDTH}px, ${rightColumnWidth}px)`,
+        gridTemplateColumns: `minmax(0, ${leftColumnWidth}px) ${EMBEDDABLE_TOOL_RESIZE_HANDLE_WIDTH}px minmax(${EMBEDDABLE_TOOL_RIGHT_MIN_WIDTH}px, ${rightColumnWidth}px)`,
       }
     : undefined;
   const setParticipantInputSlotRef = useCallback((node: HTMLDivElement | null) => {
@@ -387,8 +387,8 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
       }
 
       const nextLeftWidth = Math.min(
-        Math.max(dragState.startLeftWidth + (event.clientX - dragState.startX), LANDING_TOOL_LEFT_MIN_WIDTH),
-        Math.max(LANDING_TOOL_LEFT_MIN_WIDTH, dragState.trackWidth - LANDING_TOOL_RIGHT_MIN_WIDTH),
+        Math.max(dragState.startLeftWidth + (event.clientX - dragState.startX), EMBEDDABLE_TOOL_LEFT_MIN_WIDTH),
+        Math.max(EMBEDDABLE_TOOL_LEFT_MIN_WIDTH, dragState.trackWidth - EMBEDDABLE_TOOL_RIGHT_MIN_WIDTH),
       );
       const nextRatio = nextLeftWidth / Math.max(1, dragState.trackWidth);
       setToolSplitRatio(Math.min(0.72, Math.max(0.4, nextRatio)));
@@ -525,7 +525,7 @@ export const EmbeddableTool = forwardRef<EmbeddableToolHandle, EmbeddableToolPro
         const measuredLeftWidth = leftPane?.getBoundingClientRect().width;
         const trackWidth = Math.max(
           1,
-          (bounds?.width ?? toolColumnsWidth) - LANDING_TOOL_RESIZE_HANDLE_WIDTH - (LANDING_TOOL_COLUMN_GAP * LANDING_TOOL_RESIZE_GAP_COUNT),
+          (bounds?.width ?? toolColumnsWidth) - EMBEDDABLE_TOOL_RESIZE_HANDLE_WIDTH - (EMBEDDABLE_TOOL_COLUMN_GAP * EMBEDDABLE_TOOL_RESIZE_GAP_COUNT),
         );
 
         toolDividerDragStateRef.current = {

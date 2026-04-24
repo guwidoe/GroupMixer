@@ -6,7 +6,7 @@ import {
 } from '../../utils/quickSetup/fixedAssignments';
 import { splitParticipantColumnValues } from '../../utils/quickSetup/participantColumns';
 
-interface LandingFixedAssignmentsInputProps {
+interface EmbeddableFixedAssignmentsInputProps {
   label: string;
   participantColumnLabel: string;
   participantColumnPlaceholder: string;
@@ -116,7 +116,7 @@ function EditableTextBlock({
   );
 }
 
-export function LandingFixedAssignmentsInput({
+export function EmbeddableFixedAssignmentsInput({
   label,
   participantColumnLabel,
   participantColumnPlaceholder,
@@ -127,7 +127,7 @@ export function LandingFixedAssignmentsInput({
   minHeight,
   autoResizeSuppressed = false,
   onManualLayoutAdjustment,
-}: LandingFixedAssignmentsInputProps) {
+}: EmbeddableFixedAssignmentsInputProps) {
   const [height, setHeight] = useState(minHeight);
   const [columnWidths, setColumnWidths] = useState<[number, number]>([PARTICIPANT_COLUMN_WIDTH, GROUP_COLUMN_WIDTH]);
   const dragStateRef = useRef<{

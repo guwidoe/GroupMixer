@@ -1,4 +1,4 @@
-import type { ToolPageConfig, ToolPagePreset } from '../../pages/toolPageConfigs';
+import type { ToolPagePreset } from '../../pages/toolPageConfigs';
 import type { QuickSetupBalanceTargets } from '../../utils/quickSetup/attributeBalanceTargets';
 
 export type QuickSetupGroupingMode = 'groupCount' | 'groupSize';
@@ -76,8 +76,4 @@ export interface QuickSetupAnalysis {
   keepTogetherGroups: QuickSetupConstraintGroup[];
   avoidPairings: QuickSetupPairConstraint[];
   ignoredConstraintNames: string[];
-}
-
-export interface QuickSetupPageContext {
-  pageConfig: ToolPageConfig;
 }

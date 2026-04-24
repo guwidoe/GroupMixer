@@ -23,9 +23,10 @@ import type {
   QuickSetupGroupResult,
   QuickSetupParticipant,
   QuickSetupResult,
+  QuickSetupSessionResult,
 } from './types';
 
-export interface QuickSetupController {
+export interface EmbeddableToolController {
   ui: ToolPageSharedUiContent;
   draft: QuickSetupDraft;
   analysis: QuickSetupAnalysis;
@@ -319,7 +320,7 @@ function downloadBlob(filename: string, content: string, mimeType: string) {
   URL.revokeObjectURL(url);
 }
 
-export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController {
+export function useEmbeddableToolSetup(pageConfig: ToolPageConfig): EmbeddableToolController {
   const ui = getLandingUiContent(pageConfig.locale);
   const storageKey = `groupmixer.quick-setup.${pageConfig.key}.v1`;
   const [storedDraft, setDraft] = useLocalStorageState<QuickSetupDraft>(storageKey, defaultDraft(pageConfig));
@@ -406,7 +407,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
           error instanceof Error ? error.message : 'Unknown error',
           mapped.scenario.people,
         );
-        console.error('[QuickSetup] Solver failed:', error);
+        console.error('[EmbeddableTool] Solver failed:', error);
         setErrorMessage(solverErrorMessage);
         setLastSolvedScenario(null);
         setLastSolvedSolution(null);
@@ -485,7 +486,7 @@ export function useQuickSetup(pageConfig: ToolPageConfig): QuickSetupController 
   const exportProjectDraft = useCallback(() => {
     const mapped = buildScenarioFromDraft(draft);
     downloadBlob(
-      'groupmixer-quick-setup.json',
+      'groupmixer-embeddable-tool-draft.json',
       JSON.stringify({ draft, pageKey: pageConfig.key, ...mapped }, null, 2),
       'application/json',
     );

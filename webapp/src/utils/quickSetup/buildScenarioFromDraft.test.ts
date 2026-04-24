@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { QuickSetupDraft } from '../../components/LandingTool/types';
+import type { QuickSetupDraft } from '../../components/EmbeddableTool/types';
 import { createAttributeDefinition } from '../../services/scenarioAttributes';
 import { buildGroups } from './buildGroups';
 import { buildScenarioFromDraft } from './buildScenarioFromDraft';

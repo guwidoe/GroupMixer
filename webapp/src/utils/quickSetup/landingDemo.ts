@@ -1,5 +1,5 @@
 import type { Constraint, Scenario } from '../../types';
-import type { QuickSetupDraft, QuickSetupFixedAssignment, QuickSetupParticipantColumn } from '../../components/LandingTool/types';
+import type { QuickSetupDraft, QuickSetupFixedAssignment, QuickSetupParticipantColumn } from '../../components/EmbeddableTool/types';
 import { buildGroups } from './buildGroups';
 import { normalizeBalanceTargets, type QuickSetupBalanceTargets } from './attributeBalanceTargets';
 import { serializeParticipantColumns } from './participantColumns';

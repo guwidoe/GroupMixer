@@ -1,5 +1,5 @@
 import type { Person } from '../../types';
-import type { QuickSetupDraft } from '../../components/LandingTool/types';
+import type { QuickSetupDraft } from '../../components/EmbeddableTool/types';
 import { normalizeParticipantColumns, splitParticipantColumnValues } from './participantColumns';
 
 export interface ParsedParticipantInput {

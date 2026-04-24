@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-export type LandingLayoutElementKey =
+export type EmbeddableLayoutElementKey =
   | 'participants'
   | 'keep-together'
   | 'keep-apart'
@@ -9,11 +9,11 @@ export type LandingLayoutElementKey =
 const MANUAL_LAYOUT_STORAGE_PREFIX = 'groupmixer.landing-layout.manual-adjusted-at.v1';
 const MANUAL_LAYOUT_SUPPRESSION_MS = 24 * 60 * 60 * 1000;
 
-function getStorageKey(elementKey: LandingLayoutElementKey) {
+function getStorageKey(elementKey: EmbeddableLayoutElementKey) {
   return `${MANUAL_LAYOUT_STORAGE_PREFIX}:${elementKey}`;
 }
 
-function readManualAdjustmentAt(elementKey: LandingLayoutElementKey) {
+function readManualAdjustmentAt(elementKey: EmbeddableLayoutElementKey) {
   if (typeof window === 'undefined') {
     return null;
   }
@@ -32,7 +32,7 @@ function readManualAdjustmentAt(elementKey: LandingLayoutElementKey) {
   return Number.isFinite(parsedValue) ? parsedValue : null;
 }
 
-function getSuppressionExpiresAt(elementKey: LandingLayoutElementKey, now = Date.now()) {
+function getSuppressionExpiresAt(elementKey: EmbeddableLayoutElementKey, now = Date.now()) {
   const adjustedAt = readManualAdjustmentAt(elementKey);
   if (adjustedAt == null) {
     return null;
@@ -42,7 +42,7 @@ function getSuppressionExpiresAt(elementKey: LandingLayoutElementKey, now = Date
   return expiresAt > now ? expiresAt : null;
 }
 
-export function recordLandingLayoutManualAdjustment(elementKey: LandingLayoutElementKey) {
+export function recordEmbeddableLayoutManualAdjustment(elementKey: EmbeddableLayoutElementKey) {
   if (typeof window === 'undefined') {
     return;
   }
@@ -54,7 +54,7 @@ export function recordLandingLayoutManualAdjustment(elementKey: LandingLayoutEle
   }
 }
 
-export function useLandingLayoutAutoResizeSuppression(elementKey: LandingLayoutElementKey) {
+export function useEmbeddableLayoutAutoResizeSuppression(elementKey: EmbeddableLayoutElementKey) {
   const [version, setVersion] = useState(0);
   const expiresAt = getSuppressionExpiresAt(elementKey);
   const autoResizeSuppressed = expiresAt != null;
@@ -72,7 +72,7 @@ export function useLandingLayoutAutoResizeSuppression(elementKey: LandingLayoutE
   }, [elementKey, expiresAt, version]);
 
   const recordManualLayoutAdjustment = useCallback(() => {
-    recordLandingLayoutManualAdjustment(elementKey);
+    recordEmbeddableLayoutManualAdjustment(elementKey);
     setVersion((current) => current + 1);
   }, [elementKey]);
 

@@ -1,7 +1,7 @@
 import { ArrowRight, CircleHelp } from 'lucide-react';
 import { Tooltip } from '../Tooltip';
 import { AttributeDistributionField, getAttributeDistributionBuckets } from '../ui';
-import { LandingFixedAssignmentsInput } from './LandingFixedAssignmentsInput';
+import { EmbeddableFixedAssignmentsInput } from './EmbeddableFixedAssignmentsInput';
 import { buildGroups } from '../../utils/quickSetup';
 import {
   deriveBalancedTargetValues,
@@ -15,12 +15,12 @@ import {
   normalizeFixedAssignmentRows,
   resolveFixedAssignmentGroupId,
 } from '../../utils/quickSetup/fixedAssignments';
-import { LandingResizableTextarea } from './LandingResizableTextarea';
-import { useLandingLayoutAutoResizeSuppression } from './landingLayoutAutoResizeSuppression';
-import type { QuickSetupController } from './useQuickSetup';
+import { EmbeddableResizableTextarea } from './EmbeddableResizableTextarea';
+import { useEmbeddableLayoutAutoResizeSuppression } from './embeddableLayoutAutoResizeSuppression';
+import type { EmbeddableToolController } from './useEmbeddableToolSetup';
 
-interface QuickSetupAdvancedOptionsProps {
-  controller: QuickSetupController;
+interface EmbeddableAdvancedOptionsProps {
+  controller: EmbeddableToolController;
   onOpenFullEditor?: () => void;
 }
 
@@ -52,7 +52,7 @@ function SectionLabelWithTooltip({
   );
 }
 
-export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: QuickSetupAdvancedOptionsProps) {
+export function EmbeddableAdvancedOptions({ controller, onOpenFullEditor }: EmbeddableAdvancedOptionsProps) {
   const { draft, analysis } = controller;
   const labels = controller.ui.advancedOptions;
   const balanceGroups = buildGroups(analysis.participants.length, draft);
@@ -69,9 +69,9 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
   const fixedPeopleGroupPlaceholder = balanceGroups.length > 0
     ? balanceGroups.slice(0, 2).map((_group, index) => String(index + 1)).join('\n')
     : '1\n2';
-  const keepTogetherLayout = useLandingLayoutAutoResizeSuppression('keep-together');
-  const keepApartLayout = useLandingLayoutAutoResizeSuppression('keep-apart');
-  const pinnedPeopleLayout = useLandingLayoutAutoResizeSuppression('pinned-people');
+  const keepTogetherLayout = useEmbeddableLayoutAutoResizeSuppression('keep-together');
+  const keepApartLayout = useEmbeddableLayoutAutoResizeSuppression('keep-apart');
+  const pinnedPeopleLayout = useEmbeddableLayoutAutoResizeSuppression('pinned-people');
 
   return (
     <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
@@ -81,7 +81,7 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             label={labels.keepTogetherLabel}
             help={labels.keepTogetherHelp}
           />
-          <LandingResizableTextarea
+          <EmbeddableResizableTextarea
             id="keepTogetherInput"
             value={draft.keepTogetherInput}
             onChange={(value) => controller.updateDraft((current) => ({ ...current, keepTogetherInput: value }))}
@@ -102,7 +102,7 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             label={labels.avoidPairingLabel}
             help={labels.avoidPairingHelp}
           />
-          <LandingResizableTextarea
+          <EmbeddableResizableTextarea
             id="avoidPairingsInput"
             value={draft.avoidPairingsInput}
             onChange={(value) => controller.updateDraft((current) => ({ ...current, avoidPairingsInput: value }))}
@@ -122,7 +122,7 @@ export function QuickSetupAdvancedOptions({ controller, onOpenFullEditor }: Quic
             label={labels.fixedPeopleLabel}
             help={labels.fixedPeopleHelp}
           />
-          <LandingFixedAssignmentsInput
+          <EmbeddableFixedAssignmentsInput
             label={labels.fixedPeopleLabel}
             participantColumnLabel={labels.fixedPersonNameLabel}
             participantColumnPlaceholder={fixedPeopleNamePlaceholder}

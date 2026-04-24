@@ -2,11 +2,11 @@ import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import type { ToolPageFaqEntry } from '../../pages/toolPageConfigs';
 
-interface QuickSetupFaqProps {
+interface EmbeddableToolFaqProps {
   entries: ToolPageFaqEntry[];
 }
 
-export function QuickSetupFaq({ entries }: QuickSetupFaqProps) {
+export function EmbeddableToolFaq({ entries }: EmbeddableToolFaqProps) {
   const [openEntryIndexes, setOpenEntryIndexes] = useState<Set<number>>(() => new Set());
 
   const toggleEntry = (index: number) => {

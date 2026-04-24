@@ -1,4 +1,4 @@
-import type { QuickSetupFixedAssignment } from '../../components/LandingTool/types';
+import type { QuickSetupFixedAssignment } from '../../components/EmbeddableTool/types';
 import type { Group } from '../../types';
 import { splitParticipantColumnValues } from './participantColumns';
 

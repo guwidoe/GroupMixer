@@ -6,8 +6,8 @@ import {
   HEADER_ACTION_BUTTON_CLASS,
   HEADER_ACTION_DIVIDER_CLASS,
 } from '../components/headerActionStyles';
-import { EmbeddableTool, type EmbeddableToolHandle } from '../components/LandingTool/EmbeddableTool';
-import { QuickSetupFaq } from '../components/LandingTool/QuickSetupFaq';
+import { EmbeddableTool, type EmbeddableToolHandle } from '../components/EmbeddableTool/EmbeddableTool';
+import { EmbeddableToolFaq } from '../components/EmbeddableTool/EmbeddableToolFaq';
 import { LandingFooter } from '../components/LandingPage/LandingFooter';
 import { LandingGuidesSection } from '../components/LandingPage/LandingGuidesSection';
 import { HomeAnimatedHeroTitle } from '../components/LandingPage/HomeAnimatedHeroTitle';
@@ -247,7 +247,7 @@ export default function ToolLandingPage({ pageKey, locale }: ToolLandingPageProp
         <section className="border-t px-4 pb-14 pt-10 sm:px-6" style={{ borderColor: 'var(--border-primary)' }}>
           <div className="mx-auto max-w-3xl">
             <h2 className="mb-6 text-2xl font-semibold tracking-tight">{config.chrome.faqHeading}</h2>
-            <QuickSetupFaq entries={config.faqEntries} />
+            <EmbeddableToolFaq entries={config.faqEntries} />
           </div>
         </section>
       </main>

@@ -4,7 +4,7 @@ import { flushSync } from 'react-dom';
 import type { QuickSetupParticipantColumn } from './types';
 import { splitParticipantColumnValues } from '../../utils/quickSetup/participantColumns';
 
-interface LandingParticipantColumnsInputProps {
+interface EmbeddableParticipantColumnsInputProps {
   label: string;
   nameColumnLabel: string;
   nameColumnPlaceholder: string;
@@ -169,7 +169,7 @@ function EditableTextBlock({
   );
 }
 
-export function LandingParticipantColumnsInput({
+export function EmbeddableParticipantColumnsInput({
   label,
   nameColumnLabel,
   nameColumnPlaceholder,
@@ -188,7 +188,7 @@ export function LandingParticipantColumnsInput({
   autoResizeSuppressed = false,
   outerRef,
   onManualLayoutAdjustment,
-}: LandingParticipantColumnsInputProps) {
+}: EmbeddableParticipantColumnsInputProps) {
   const [height, setHeight] = useState(minHeight);
   const [columnWidths, setColumnWidths] = useState<number[]>(() => columns.map((_, index) => (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH)));
   const [ghostColumnWidth, setGhostColumnWidth] = useState(ATTRIBUTE_COLUMN_WIDTH);

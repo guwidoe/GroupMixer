@@ -1,5 +1,5 @@
 import type { Constraint, Group, Person } from '../../types';
-import type { QuickSetupDraft } from '../../components/LandingTool/types';
+import type { QuickSetupDraft } from '../../components/EmbeddableTool/types';
 import { deriveBalancedTargetValues, hasAnyBalanceTargets, normalizeBalanceTargets } from './attributeBalanceTargets';
 import { normalizeFixedAssignmentRows, resolveFixedAssignmentGroupId } from './fixedAssignments';
 

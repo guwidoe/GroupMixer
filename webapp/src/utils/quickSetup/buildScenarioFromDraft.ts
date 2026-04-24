@@ -1,5 +1,5 @@
 import { getDefaultSolverSettings } from '../../components/ScenarioEditor/helpers';
-import type { QuickSetupDraft } from '../../components/LandingTool/types';
+import type { QuickSetupDraft } from '../../components/EmbeddableTool/types';
 import type { AttributeDefinition, Person, Scenario } from '../../types';
 import { buildAttributeDefinitions } from './buildAttributeDefinitions';
 import { buildConstraints } from './buildConstraints';
