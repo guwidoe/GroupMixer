@@ -112,12 +112,19 @@ pub(crate) fn merge_projected_oracle_template_into_scaffold(
             changed_placement_count += 1;
         }
 
+        let (restored_count, remaining_displaced) = restore_displaced_to_original_open_slots(
+            compiled,
+            &mut schedule,
+            real_session_idx,
+            &displaced,
+        )?;
+        displaced_repair_count += restored_count;
         displaced_repair_count += repair_displaced_people_by_assignment(
             compiled,
             &mut schedule,
             signals,
             real_session_idx,
-            &displaced,
+            &remaining_displaced,
         )?;
     }
 
@@ -559,6 +566,40 @@ fn repair_displaced_people_by_assignment(
         )?;
     }
     Ok(displaced.len())
+}
+
+fn restore_displaced_to_original_open_slots(
+    compiled: &CompiledProblem,
+    schedule: &mut PackedSchedule,
+    session_idx: usize,
+    displaced: &[(usize, usize)],
+) -> Result<(usize, Vec<(usize, usize)>), SolverError> {
+    let mut restored_count = 0usize;
+    let mut remaining_displaced = Vec::new();
+    for &(person_idx, original_group_idx) in displaced {
+        if schedule[session_idx][original_group_idx].len()
+            < compiled.group_capacity(session_idx, original_group_idx)
+            && !group_has_hard_apart_conflict(
+                compiled,
+                session_idx,
+                &schedule[session_idx][original_group_idx],
+                person_idx,
+            )
+        {
+            push_person_if_feasible(
+                compiled,
+                schedule,
+                session_idx,
+                original_group_idx,
+                person_idx,
+                "oracle template merge original-slot restore",
+            )?;
+            restored_count += 1;
+        } else {
+            remaining_displaced.push((person_idx, original_group_idx));
+        }
+    }
+    Ok((restored_count, remaining_displaced))
 }
 
 fn solve_hard_apart_aware_displaced_assignment(
