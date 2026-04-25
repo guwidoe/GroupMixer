@@ -10,9 +10,10 @@ import type { ToolPagePreset } from '../../pages/toolPageTypes';
 import { serializeParticipantColumns } from './participantColumns';
 
 export interface LandingGuideExample {
-  key: GuidePageKey;
+  key: LandingExampleKey;
   label: string;
   description: string;
+  category?: DemoCaseWithMetrics['category'];
   groupingMode: QuickSetupGroupingMode;
   groupingValue: number;
   sessions: number;
@@ -24,6 +25,8 @@ export interface LandingGuideExample {
   avoidPairingsInput: string;
   fixedAssignments: QuickSetupFixedAssignment[];
 }
+
+export type LandingExampleKey = GuidePageKey | 'sailing-flotilla-stress-test';
 
 type ExampleRow = Record<string, string> & { name: string };
 
@@ -119,6 +122,53 @@ const teamNames = [
   'Clara Jones', 'Theo Fischer', 'Amara Johnson', 'Lucas Brown', 'Eva Zimmer', 'Noah Davis',
   'Iris Wang', 'Ben Miller', 'Maya Singh', 'Oscar Taylor', 'Zoe Martin', 'Ethan Moore',
 ];
+
+const sailingFirstNames = [
+  'Avery', 'Blake', 'Casey', 'Dakota', 'Emery', 'Finley', 'Gray', 'Harper', 'Indigo', 'Jordan', 'Kai', 'Logan',
+  'Morgan', 'Nico', 'Oakley', 'Parker', 'Quinn', 'Reese', 'Rowan', 'Sage', 'Skyler', 'Taylor', 'Vale', 'Winter',
+];
+
+const sailingLastNames = [
+  'Adler', 'Bennett', 'Costa', 'Dawson', 'Ellis', 'Fischer', 'Garcia', 'Hale', 'Ivanov', 'Jensen', 'Keller', 'Lane',
+];
+
+function buildSailingFlotillaRows(): ExampleRow[] {
+  const roles = [
+    ...Array.from({ length: 11 }, () => 'Skipper'),
+    ...Array.from({ length: 11 }, () => 'Co-skipper'),
+    ...Array.from({ length: 11 }, () => 'Navigator'),
+    ...Array.from({ length: 99 }, () => 'Crew'),
+  ];
+
+  return roles.map((role, index) => {
+    const firstName = sailingFirstNames[index % sailingFirstNames.length];
+    const lastName = sailingLastNames[Math.floor(index / sailingFirstNames.length) % sailingLastNames.length];
+    return {
+      name: `${firstName} ${lastName}`,
+      Role: role,
+    };
+  });
+}
+
+const sailingFlotillaRows = buildSailingFlotillaRows();
+const sailingFlotillaNames = sailingFlotillaRows.map((row) => row.name);
+
+function buildSailingFlotillaAvoidPairingsInput(names: string[]): string {
+  const crewStart = 33;
+  const crewCount = names.length - crewStart;
+  return Array.from({ length: 48 }, (_, index) => {
+    const left = names[crewStart + index];
+    const right = names[crewStart + ((index * 7 + 23) % crewCount)];
+    return `${left}, ${right}`;
+  }).join('\n');
+}
+
+function buildSailingFlotillaFixedAssignments(names: string[]): QuickSetupFixedAssignment[] {
+  return Array.from({ length: 11 }, (_, index) => ({
+    personId: names[index],
+    groupId: String(index + 1),
+  }));
+}
 
 export const LANDING_GUIDE_EXAMPLES: LandingGuideExample[] = [
   {
@@ -275,11 +325,27 @@ export const LANDING_GUIDE_EXAMPLES: LandingGuideExample[] = [
       { personId: 'Clara Jones', groupId: '4' },
     ],
   },
+  {
+    key: 'sailing-flotilla-stress-test',
+    label: 'Sailing flotilla stress test',
+    description: '132 sailors, eleven boats, six rotations, skipper anchors, hard apart rules, role balance, and a repeat limit.',
+    category: 'Benchmark',
+    groupingMode: 'groupSize',
+    groupingValue: 12,
+    sessions: 6,
+    preset: 'networking',
+    avoidRepeatPairings: true,
+    participantColumns: columnsFromRows(sailingFlotillaRows),
+    balanceAttributeKeys: ['Role'],
+    keepTogetherInput: '',
+    avoidPairingsInput: buildSailingFlotillaAvoidPairingsInput(sailingFlotillaNames),
+    fixedAssignments: buildSailingFlotillaFixedAssignments(sailingFlotillaNames),
+  },
 ];
 
 const LANDING_GUIDE_EXAMPLE_BY_KEY = new Map(LANDING_GUIDE_EXAMPLES.map((example) => [example.key, example]));
 
-export function getLandingGuideExample(key: GuidePageKey): LandingGuideExample {
+export function getLandingGuideExample(key: LandingExampleKey): LandingGuideExample {
   const example = LANDING_GUIDE_EXAMPLE_BY_KEY.get(key);
   if (!example) {
     throw new Error(`Unknown landing guide example: ${key}`);
@@ -287,7 +353,7 @@ export function getLandingGuideExample(key: GuidePageKey): LandingGuideExample {
   return example;
 }
 
-export function createLandingGuideExampleDraft(key: GuidePageKey, baseDraft: QuickSetupDraft): QuickSetupDraft {
+export function createLandingGuideExampleDraft(key: LandingExampleKey, baseDraft: QuickSetupDraft): QuickSetupDraft {
   const example = getLandingGuideExample(key);
   const attributeKeys = example.participantColumns.slice(1).map((column) => column.name.trim()).filter(Boolean);
   const manualBalanceAttributeKeys = attributeKeys.filter((attributeKey) => !example.balanceAttributeKeys.includes(attributeKey));
@@ -329,7 +395,7 @@ export async function loadLandingGuideExampleCasesWithMetrics(): Promise<DemoCas
     id: example.key,
     name: example.label,
     description: example.description,
-    category: 'Simple',
+    category: example.category ?? 'Simple',
     filename: '',
     peopleCount: getParticipantCount(example),
     groupCount: getGroupCount(example),

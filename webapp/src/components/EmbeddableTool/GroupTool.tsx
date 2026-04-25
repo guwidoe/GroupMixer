@@ -7,11 +7,10 @@ import { Tooltip } from '../Tooltip';
 import { NumberField, NUMBER_FIELD_PRESETS, withContextualMax } from '../ui';
 import { ResultsScheduleGrid } from '../ResultsView/ResultsScheduleGrid';
 import { interpolate } from '../../i18n/interpolate';
-import type { GuidePageKey } from '../../pages/guidePageTypes';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
 import type { ResultsSessionData } from '../../services/results/buildResultsModel';
-import { loadLandingGuideExampleCasesWithMetrics } from '../../utils/quickSetup/landingGuideExamples';
+import { loadLandingGuideExampleCasesWithMetrics, type LandingExampleKey } from '../../utils/quickSetup/landingGuideExamples';
 import { nextAttributeColumnId, normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import { ParticipantColumnsInput } from './ParticipantColumnsInput';
 import { ResizableTextarea } from './ResizableTextarea';
@@ -23,6 +22,56 @@ export type ToolResultFormat = 'cards' | 'list' | 'text' | 'lines' | 'csv';
 
 const STICKY_GENERATE_SCROLL_SETTLED_AGE_MS = 180;
 const STICKY_GENERATE_RETURN_TARGET_MARGIN_PX = 0;
+
+function finiteNumber(value: number | undefined | null): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function formatProgressScore(value: number | undefined): string {
+  if (!finiteNumber(value)) {
+    return '—';
+  }
+
+  return Math.abs(value) >= 100 ? value.toFixed(0) : value.toFixed(1);
+}
+
+function resolveGenerateProgress(controller: ToolController) {
+  const progress = controller.solveProgress;
+  if (!controller.isSolving) {
+    return null;
+  }
+
+  if (!progress) {
+    return {
+      kind: 'indeterminate' as const,
+      percent: null,
+      primaryLabel: controller.ui.quickSetup.generatingLabel,
+      secondaryLabel: 'Preparing schedule…',
+      ariaLabel: controller.ui.quickSetup.generatingLabel,
+    };
+  }
+
+  const coolingProgress = finiteNumber(progress.cooling_progress)
+    ? progress.cooling_progress
+    : null;
+  const iterationProgress = progress.max_iterations > 0
+    ? progress.iteration / progress.max_iterations
+    : null;
+  const fraction = Math.max(0, Math.min(1, coolingProgress ?? iterationProgress ?? 0));
+  const percent = Math.round(fraction * 100);
+  const bestScore = formatProgressScore(progress.best_score);
+  const elapsed = finiteNumber(progress.elapsed_seconds)
+    ? `${progress.elapsed_seconds.toFixed(1)}s`
+    : null;
+
+  return {
+    kind: 'determinate' as const,
+    percent,
+    primaryLabel: `${percent}% · Best ${bestScore}`,
+    secondaryLabel: elapsed ? `${elapsed} · ${progress.iteration.toLocaleString()} it` : `${progress.iteration.toLocaleString()} it`,
+    ariaLabel: `Generating groups: ${percent}% complete. Best score ${bestScore}.`,
+  };
+}
 
 interface ToolDisplaySession {
   sessionNumber: number;
@@ -62,7 +111,7 @@ interface GroupToolProps {
   participantInputSlotRef: (node: HTMLDivElement | null) => void;
   onClearAllInputs: () => void;
   onParticipantInputManualLayoutAdjustment: () => void;
-  onLandingExampleClick: (exampleKey: GuidePageKey) => void;
+  onLandingExampleClick: (exampleKey: LandingExampleKey) => void;
   onOpenAdvancedWorkspace: (target: 'results' | 'people') => void;
   onStartToolDividerDrag: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   onGenerateGroups: () => void;
@@ -158,6 +207,17 @@ export function GroupTool({
   const [stickyGenerateButtonStyle, setStickyGenerateButtonStyle] = useState<CSSProperties>({});
   const [showStickyGenerateMeta, setShowStickyGenerateMeta] = useState(false);
   const [stickyPortalTarget, setStickyPortalTarget] = useState<HTMLElement | null>(null);
+  const generateProgress = resolveGenerateProgress(controller);
+  const generateProgressFillStyle: CSSProperties | undefined = generateProgress
+    ? {
+        width: generateProgress.kind === 'determinate' ? `${generateProgress.percent}%` : '100%',
+        opacity: generateProgress.kind === 'determinate' ? 0.22 : 0.16,
+      }
+    : undefined;
+  const generateButtonClassName = [
+    'btn-primary relative overflow-hidden inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-opacity disabled:cursor-not-allowed',
+    controller.isSolving ? 'disabled:opacity-100' : 'disabled:opacity-60',
+  ].join(' ');
 
   useEffect(() => {
     setStickyPortalTarget(document.body);
@@ -612,11 +672,23 @@ export function GroupTool({
           type="button"
           onClick={onGenerateGroups}
           disabled={!controller.canGenerate || controller.isSolving}
-          className="btn-primary inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+          className={`${generateButtonClassName} shrink-0 px-4 py-3`}
           style={stickyGenerateButtonStyle}
+          aria-label={generateProgress?.ariaLabel}
         >
-          <Sparkles className="h-4 w-4" />
-          {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
+          {generateProgress ? (
+            <span
+              aria-hidden="true"
+              className={`absolute inset-y-0 left-0 rounded-xl bg-white/80 transition-[width] duration-300 ${generateProgress.kind === 'indeterminate' ? 'animate-pulse' : ''}`}
+              style={generateProgressFillStyle}
+            />
+          ) : null}
+          <span className="relative z-10 inline-flex min-w-0 items-center gap-2">
+            <Sparkles className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 truncate tabular-nums">
+              {generateProgress?.primaryLabel ?? ui.quickSetup.generateGroupsLabel}
+            </span>
+          </span>
         </button>
       </div>
     </div>
@@ -650,7 +722,7 @@ export function GroupTool({
                     {ui.quickSetup.clearAllLabel}
                   </button>
                   <DemoDataDropdown
-                    onDemoCaseClick={(exampleKey) => onLandingExampleClick(exampleKey as GuidePageKey)}
+                    onDemoCaseClick={(exampleKey) => onLandingExampleClick(exampleKey as LandingExampleKey)}
                     variant="default"
                     triggerLabel="Example data"
                     triggerButtonSize="sm"
@@ -660,7 +732,7 @@ export function GroupTool({
                     showTriggerIcon={false}
                     loadCases={loadLandingGuideExampleCasesWithMetrics}
                     includeGeneratedDemo={false}
-                    categoryLabels={{ Simple: 'Guide examples' }}
+                    categoryLabels={{ Simple: 'Guide examples', Benchmark: 'Stress test' }}
                   />
                 </div>
               )}
@@ -861,11 +933,30 @@ export function GroupTool({
                 type="button"
                 onClick={onGenerateGroups}
                 disabled={!controller.canGenerate || controller.isSolving}
-                className="btn-primary inline-flex flex-1 items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-60"
+                className={`${generateButtonClassName} flex-1 px-5 py-3`}
                 style={{ opacity: renderStickyGenerateButton ? 0 : undefined }}
+                aria-label={generateProgress?.ariaLabel}
               >
-                <Sparkles className="h-4 w-4" />
-                {controller.isSolving ? ui.quickSetup.generatingLabel : ui.quickSetup.generateGroupsLabel}
+                {generateProgress ? (
+                  <span
+                    aria-hidden="true"
+                    className={`absolute inset-y-0 left-0 rounded-xl bg-white/80 transition-[width] duration-300 ${generateProgress.kind === 'indeterminate' ? 'animate-pulse' : ''}`}
+                    style={generateProgressFillStyle}
+                  />
+                ) : null}
+                <span className="relative z-10 flex min-w-0 flex-col items-center leading-tight">
+                  <span className="inline-flex min-w-0 items-center gap-2">
+                    <Sparkles className="h-4 w-4 shrink-0" />
+                    <span className="min-w-0 truncate tabular-nums">
+                      {generateProgress?.primaryLabel ?? ui.quickSetup.generateGroupsLabel}
+                    </span>
+                  </span>
+                  {generateProgress?.secondaryLabel ? (
+                    <span className="mt-0.5 text-[11px] font-medium opacity-90 tabular-nums">
+                      {generateProgress.secondaryLabel}
+                    </span>
+                  ) : null}
+                </span>
               </button>
               {controller.result && (
                 <button

@@ -4,6 +4,7 @@ import { getLandingSampleCsvText, getLandingSampleNamesText } from '../../i18n/l
 import { getLandingUiContent } from '../../i18n/landingUi';
 import type { ToolPageConfig } from '../../pages/toolPageConfigs';
 import type { ToolPageSharedUiContent } from '../../pages/toolPageTypes';
+import type { RuntimeProgressUpdate } from '../../services/runtime';
 import { solveScenario } from '../../services/solver/solveScenario';
 import { getPersonDisplayName } from '../../services/scenarioAttributes';
 import { namifyPersonIdsInText } from '../../utils/personReferenceText';
@@ -14,7 +15,7 @@ import {
   syncAutoBalanceTargets,
 } from '../../utils/quickSetup/attributeBalanceTargets';
 import { normalizeFixedAssignmentRows, resolveFixedAssignmentGroupId } from '../../utils/quickSetup/fixedAssignments';
-import { createLandingGuideExampleDraft } from '../../utils/quickSetup/landingGuideExamples';
+import { createLandingGuideExampleDraft, type LandingExampleKey } from '../../utils/quickSetup/landingGuideExamples';
 import { normalizeParticipantColumns, withParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import type { GuidePageKey } from '../../pages/guidePageTypes';
 import type { AttributeDefinition, Scenario, Solution } from '../../types';
@@ -37,6 +38,7 @@ export interface ToolController {
   estimatedGroupSize: number;
   result: QuickSetupResult | null;
   isSolving: boolean;
+  solveProgress: RuntimeProgressUpdate | null;
   errorMessage: string | null;
   canGenerate: boolean;
   draftStorageLabel: string;
@@ -60,7 +62,7 @@ export interface ToolController {
   resetDraft: () => void;
   clearDraft: () => void;
   hasAnyInputData: boolean;
-  loadLandingGuideExample: (exampleKey: GuidePageKey) => void;
+  loadLandingGuideExample: (exampleKey: LandingExampleKey) => void;
   exportGroupsCsv: () => void;
   exportProjectDraft: () => void;
 }
@@ -347,6 +349,7 @@ export function useToolSetup(pageConfig: ToolPageConfig, options: ToolSetupOptio
   const draft = useMemo(() => normalizeQuickSetupDraft(storedDraft), [storedDraft]);
   const [result, setResult] = useState<QuickSetupResult | null>(null);
   const [isSolving, setIsSolving] = useState(false);
+  const [solveProgress, setSolveProgress] = useState<RuntimeProgressUpdate | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastSolvedScenario, setLastSolvedScenario] = useState<Scenario | null>(null);
   const [lastSolvedSolution, setLastSolvedSolution] = useState<Solution | null>(null);
@@ -408,6 +411,7 @@ export function useToolSetup(pageConfig: ToolPageConfig, options: ToolSetupOptio
         return;
       }
       setIsSolving(true);
+      setSolveProgress(null);
       setErrorMessage(null);
       const mapped = buildScenarioFromDraft(draft);
       try {
@@ -415,6 +419,9 @@ export function useToolSetup(pageConfig: ToolPageConfig, options: ToolSetupOptio
           scenario: mapped.scenario,
           useRecommendedSettings: true,
           desiredRuntimeSeconds: 1,
+          progressCallback: (progress) => {
+            setSolveProgress(progress);
+          },
         });
         setLastSolvedScenario(mapped.scenario);
         setLastSolvedSolution(solution);
@@ -433,6 +440,7 @@ export function useToolSetup(pageConfig: ToolPageConfig, options: ToolSetupOptio
         setResult(null);
       } finally {
         setIsSolving(false);
+        setSolveProgress(null);
       }
     },
     [canGenerate, draft],
@@ -449,6 +457,7 @@ export function useToolSetup(pageConfig: ToolPageConfig, options: ToolSetupOptio
   const clearDraft = useCallback(() => {
     setDraft(emptyDraft(pageConfig));
     setResult(null);
+    setSolveProgress(null);
     setLastSolvedScenario(null);
     setLastSolvedSolution(null);
     setLastSolvedAttributeDefinitions([]);
@@ -458,6 +467,7 @@ export function useToolSetup(pageConfig: ToolPageConfig, options: ToolSetupOptio
   const resetDraft = useCallback(() => {
     setDraft(initialDraft(pageConfig, options.initialGuideExampleKey));
     setResult(null);
+    setSolveProgress(null);
     setLastSolvedScenario(null);
     setLastSolvedSolution(null);
     setLastSolvedAttributeDefinitions([]);
@@ -469,9 +479,10 @@ export function useToolSetup(pageConfig: ToolPageConfig, options: ToolSetupOptio
     [draft, errorMessage, pageConfig, result],
   );
 
-  const loadLandingGuideExample = useCallback((exampleKey: GuidePageKey) => {
+  const loadLandingGuideExample = useCallback((exampleKey: LandingExampleKey) => {
     setDraft((current) => normalizeQuickSetupDraft(createLandingGuideExampleDraft(exampleKey, current)));
     setResult(null);
+    setSolveProgress(null);
     setLastSolvedScenario(null);
     setLastSolvedSolution(null);
     setLastSolvedAttributeDefinitions([]);
@@ -507,6 +518,7 @@ export function useToolSetup(pageConfig: ToolPageConfig, options: ToolSetupOptio
     estimatedGroupSize,
     result,
     isSolving,
+    solveProgress,
     errorMessage,
     canGenerate,
     draftStorageLabel: 'Saved locally in this browser',
