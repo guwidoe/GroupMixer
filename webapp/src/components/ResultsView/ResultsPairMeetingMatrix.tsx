@@ -1,9 +1,7 @@
 import { useMemo, useState, type CSSProperties } from 'react';
-import { CheckCircle, ChevronDown, ChevronUp, Link2, Split, XCircle } from 'lucide-react';
+import { CheckCircle, ChevronDown, ChevronUp, Link2, XCircle } from 'lucide-react';
 import type {
-  ResultsPairMeetingAnnotation,
   ResultsPairMeetingCell,
-  ResultsPairMeetingCellTone,
   ResultsPairMeetingMatrix as ResultsPairMeetingMatrixData,
   ResultsPairMeetingRow,
 } from '../../services/results/buildResultsModel';
@@ -12,7 +10,16 @@ import {
   getResultsPairMeetingCellTone,
 } from '../../services/results/buildResultsModel';
 import { Tooltip } from '../Tooltip';
-import { ResultsPairMeetingDetailModal } from './ResultsPairMeetingDetailModal';
+import {
+  ResultsPairMeetingDetailContent,
+} from './ResultsPairMeetingDetailContent';
+import {
+  getPairMeetingToneStyles,
+  getPrimaryPairMeetingAnnotationIcon,
+} from './pairMeetingDetailUtils';
+import {
+  ResultsPairMeetingDetailModal,
+} from './ResultsPairMeetingDetailModal';
 
 interface ResultsPairMeetingMatrixProps {
   matrix: ResultsPairMeetingMatrixData;
@@ -21,182 +28,9 @@ interface ResultsPairMeetingMatrixProps {
 
 type PairMeetingMatrixDensity = 'detailed' | 'compact';
 
-function getToneStyles(tone: ResultsPairMeetingCellTone): { backgroundColor: string; color: string; borderColor: string } {
-  switch (tone) {
-    case 'good':
-      return {
-        backgroundColor: 'color-mix(in srgb, var(--color-success-500) 18%, var(--bg-secondary))',
-        color: 'var(--color-success-600)',
-        borderColor: 'color-mix(in srgb, var(--color-success-500) 42%, var(--border-primary))',
-      };
-    case 'warn':
-      return {
-        backgroundColor: 'color-mix(in srgb, var(--color-warning-500) 20%, var(--bg-secondary))',
-        color: 'var(--color-warning-700)',
-        borderColor: 'color-mix(in srgb, var(--color-warning-500) 44%, var(--border-primary))',
-      };
-    case 'bad':
-      return {
-        backgroundColor: 'color-mix(in srgb, var(--color-error-500) 18%, var(--bg-secondary))',
-        color: 'var(--color-error-600)',
-        borderColor: 'color-mix(in srgb, var(--color-error-500) 46%, var(--border-primary))',
-      };
-    case 'neutral':
-      return {
-        backgroundColor: 'var(--bg-secondary)',
-        color: 'var(--text-tertiary)',
-        borderColor: 'var(--border-primary)',
-      };
-  }
-}
-
-function getToneLabel(tone: ResultsPairMeetingCellTone): string {
-  switch (tone) {
-    case 'good':
-      return 'Good';
-    case 'warn':
-      return 'Review';
-    case 'bad':
-      return 'Attention';
-    case 'neutral':
-      return 'No meeting';
-  }
-}
-
-function formatSessions(sessionIndexes: number[]): string {
-  if (sessionIndexes.length === 0) {
-    return 'No shared sessions';
-  }
-
-  return `Shared in ${sessionIndexes.map((sessionIndex) => `Session ${sessionIndex + 1}`).join(', ')}`;
-}
-
-function formatAnnotation(annotation: ResultsPairMeetingAnnotation): string {
-  const sessions = annotation.sessions.length > 0
-    ? annotation.sessions.map((sessionIndex) => sessionIndex + 1).join(', ')
-    : 'all';
-  const weight = annotation.penaltyWeight == null ? '' : `, weight ${annotation.penaltyWeight}`;
-
-  return `${annotation.label} (${annotation.strength}, sessions ${sessions}${weight})`;
-}
-
-function formatObjectiveCost(cost: number): string {
-  return Number.isInteger(cost) ? String(cost) : cost.toFixed(2);
-}
-
-function getAnnotationBadge(annotation: ResultsPairMeetingAnnotation) {
-  const isTogether = annotation.intent === 'together';
-  const isRequired = annotation.strength === 'required';
-  const label = isTogether ? (isRequired ? 'KT' : 'PT') : (isRequired ? 'KA' : 'PA');
-  const title = isTogether ? (isRequired ? 'Keep together' : 'Prefer together') : (isRequired ? 'Keep apart' : 'Prefer apart');
-
-  return { label, title, Icon: isTogether ? Link2 : Split };
-}
-
-function getPrimaryAnnotationIcon(cell: ResultsPairMeetingCell) {
-  const annotation = cell.annotations.find((candidate) => candidate.strength === 'required') ?? cell.annotations[0];
-  if (!annotation) {
-    return null;
-  }
-
-  return annotation.intent === 'together' ? Link2 : Split;
-}
-
-function renderCellTooltipContent(cell: ResultsPairMeetingCell, tone: ResultsPairMeetingCellTone) {
-  const toneStyles = getToneStyles(tone);
-
-  return (
-    <div className="w-72 space-y-3">
-      <div>
-        <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-          Pair
-        </div>
-        <div className="mt-1 text-sm font-semibold" style={{ color: 'var(--tooltip-text)' }}>
-          {cell.rowDisplayName} + {cell.columnDisplayName}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-md border px-2 py-1.5" style={{ borderColor: 'var(--tooltip-border)' }}>
-          <div className="text-[0.65rem] uppercase tracking-[0.08em]" style={{ color: 'var(--text-tertiary)' }}>Meetings</div>
-          <div className="text-base font-semibold">{cell.count}</div>
-        </div>
-        <div className="rounded-md border px-2 py-1.5" style={{ borderColor: toneStyles.borderColor, color: cell.objectiveCost > 0 ? toneStyles.color : 'var(--color-success-600)' }}>
-          <div className="text-[0.65rem] uppercase tracking-[0.08em]">Objective cost</div>
-          <div className="text-base font-semibold">{formatObjectiveCost(cell.objectiveCost)}</div>
-        </div>
-      </div>
-
-      <div className="text-xs leading-5" style={{ color: 'var(--tooltip-text)' }}>
-        {formatSessions(cell.sessionIndexes)}
-      </div>
-
-      {cell.objectiveCostItems.length > 0 ? (
-        <div className="space-y-1.5">
-          <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-            Cost sources
-          </div>
-          {cell.objectiveCostItems.map((item) => (
-            <div key={`${item.label}-${item.detail}`} className="rounded-md border px-2 py-1.5" style={{ borderColor: 'var(--tooltip-border)' }}>
-              <div className="flex items-center justify-between gap-3 text-xs font-semibold">
-                <span>{item.label}</span>
-                <span style={{ color: toneStyles.color }}>{formatObjectiveCost(item.amount)}</span>
-              </div>
-              <div className="mt-0.5 text-[0.68rem] leading-4" style={{ color: 'var(--text-tertiary)' }}>
-                {item.detail}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {cell.annotations.length > 0 ? (
-        <div className="space-y-1.5">
-          <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-            Constraint context
-          </div>
-          {cell.annotations.map((annotation) => {
-            const { label, title: badgeTitle, Icon } = getAnnotationBadge(annotation);
-
-            return (
-              <div key={`${annotation.kind}-${annotation.sessions.join('-')}`} className="flex gap-2 rounded-md border px-2 py-1.5" style={{ borderColor: 'var(--tooltip-border)' }}>
-                <span className="mt-0.5 inline-flex h-5 min-w-7 items-center justify-center gap-0.5 rounded text-[0.62rem] font-bold" style={{ backgroundColor: 'var(--bg-primary)', color: toneStyles.color }}>
-                  <Icon className="h-3 w-3" />
-                  {label}
-                </span>
-                <div className="min-w-0">
-                  <div className="text-xs font-semibold">{badgeTitle}</div>
-                  <div className="text-[0.68rem] leading-4" style={{ color: 'var(--text-tertiary)' }}>
-                    {formatAnnotation(annotation)}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function renderCompactCellTooltip(cell: ResultsPairMeetingCell, tone: ResultsPairMeetingCellTone) {
-  const annotationSummary = cell.annotations.length > 0
-    ? ` · ${cell.annotations.map((annotation) => getAnnotationBadge(annotation).label).join(', ')}`
-    : '';
-
-  return (
-    <div className="max-w-56">
-      <div className="font-semibold">{cell.rowDisplayName} + {cell.columnDisplayName}</div>
-      <div className="mt-1" style={{ color: 'var(--text-tertiary)' }}>
-        {cell.count} meeting{cell.count === 1 ? '' : 's'} · cost {formatObjectiveCost(cell.objectiveCost)} · {getToneLabel(tone)}{annotationSummary}
-      </div>
-    </div>
-  );
-}
-
 export function ResultsPairMeetingMatrix({ matrix, sessionCount }: ResultsPairMeetingMatrixProps) {
   const [collapsed, setCollapsed] = useState(true);
-  const [density, setDensity] = useState<PairMeetingMatrixDensity>('detailed');
+  const [density, setDensity] = useState<PairMeetingMatrixDensity>('compact');
   const [selectedCell, setSelectedCell] = useState<ResultsPairMeetingCell | null>(null);
   const rows = useMemo<ResultsPairMeetingRow[]>(
     () => (collapsed ? [] : buildResultsPairMeetingRows(matrix)),
@@ -330,7 +164,7 @@ export function ResultsPairMeetingMatrix({ matrix, sessionCount }: ResultsPairMe
                   {row.cells.map((cell, columnIndex) => {
                     const participant = matrix.participants[columnIndex];
                     const tone = cell ? getResultsPairMeetingCellTone(cell, matrix.maxCount, sessionCount) : 'neutral';
-                    const toneStyles = getToneStyles(tone);
+                    const toneStyles = getPairMeetingToneStyles(tone);
 
                     return (
                       <td
@@ -339,10 +173,10 @@ export function ResultsPairMeetingMatrix({ matrix, sessionCount }: ResultsPairMe
                       >
                         {cell ? (
                           <Tooltip
-                            content={() => renderCompactCellTooltip(cell, tone)}
+                            content={() => <ResultsPairMeetingDetailContent cell={cell} tone={tone} variant="tooltip" />}
                             placement="top"
                             offset={6}
-                            maxWidth={260}
+                            maxWidth={380}
                             includeScreenReaderContent={false}
                           >
                             <button
@@ -413,7 +247,7 @@ export function ResultsPairMeetingMatrix({ matrix, sessionCount }: ResultsPairMe
                   {row.cells.map((cell, columnIndex) => {
                     const participant = matrix.participants[columnIndex];
                     const tone = cell ? getResultsPairMeetingCellTone(cell, matrix.maxCount, sessionCount) : 'neutral';
-                    const toneStyles = getToneStyles(tone);
+                    const toneStyles = getPairMeetingToneStyles(tone);
 
                     return (
                       <td
@@ -423,25 +257,26 @@ export function ResultsPairMeetingMatrix({ matrix, sessionCount }: ResultsPairMe
                       >
                         {cell ? (
                           <Tooltip
-                            content={() => renderCellTooltipContent(cell, tone)}
+                            content={() => <ResultsPairMeetingDetailContent cell={cell} tone={tone} variant="tooltip" />}
                             placement="top"
                             offset={6}
-                            maxWidth={360}
+                            maxWidth={380}
                             includeScreenReaderContent={false}
                           >
                             <button
                               type="button"
+                              onClick={() => setSelectedCell(cell)}
                               className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-offset-2"
                               style={{
                                 ...toneStyles,
                                 '--tw-ring-color': toneStyles.borderColor,
                                 '--tw-ring-offset-color': 'var(--bg-primary)',
                               } as CSSProperties}
-                              aria-label={`${cell.rowDisplayName} and ${cell.columnDisplayName}: ${cell.count} shared session${cell.count === 1 ? '' : 's'}`}
+                              aria-label={`${cell.rowDisplayName} and ${cell.columnDisplayName}: ${cell.count} shared session${cell.count === 1 ? '' : 's'}. Open pair detail.`}
                             >
                               <span>{cell.count}</span>
                               {(() => {
-                                const Icon = getPrimaryAnnotationIcon(cell);
+                                const Icon = getPrimaryPairMeetingAnnotationIcon(cell);
                                 if (!Icon) {
                                   return null;
                                 }
