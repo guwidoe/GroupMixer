@@ -811,6 +811,26 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.queryByText('More group generator tools')).not.toBeInTheDocument();
   });
 
+  it('filters guide cards by topic', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Pairs' }));
+
+    expect(screen.getByRole('button', { name: 'Pairs' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('link', { name: /how to make random pairs from a list/i })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /how to run speed networking rounds/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'All' }));
+
+    expect(screen.getByRole('link', { name: /how to run speed networking rounds/i })).toBeInTheDocument();
+  });
+
   it('keeps results above the hero content on mobile once groups are generated', async () => {
     const user = userEvent.setup();
 
