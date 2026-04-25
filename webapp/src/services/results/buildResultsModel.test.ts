@@ -49,23 +49,29 @@ describe('buildResultsViewModel', () => {
     expect(model.pairMeetingMatrix.maxCount).toBe(1);
     expect(model.pairMeetingMatrix.totalPairMeetings).toBe(4);
     expect(model.pairMeetingMatrix.cellsByPair.size).toBe(4);
+    expect(model.pairMeetingMatrix.participants.map((participant) => participant.displayName)).toEqual([
+      'Alice',
+      'Bob',
+      'Cara',
+      'Dan',
+    ]);
 
     const rows = buildResultsPairMeetingRows(model.pairMeetingMatrix);
-    expect(rows[1].cells[0]).toMatchObject({
-      rowPersonId: 'p2',
-      columnPersonId: 'p1',
+    expect(rows[0].cells[1]).toMatchObject({
+      rowPersonId: 'p1',
+      columnPersonId: 'p2',
       count: 1,
       sessionIndexes: [0],
     });
-    expect(rows[2].cells[0]).toMatchObject({
-      rowPersonId: 'p3',
-      columnPersonId: 'p1',
+    expect(rows[0].cells[2]).toMatchObject({
+      rowPersonId: 'p1',
+      columnPersonId: 'p3',
       count: 1,
       sessionIndexes: [1],
     });
-    expect(rows[2].cells[1]).toMatchObject({
-      rowPersonId: 'p3',
-      columnPersonId: 'p2',
+    expect(rows[1].cells[2]).toMatchObject({
+      rowPersonId: 'p2',
+      columnPersonId: 'p3',
       count: 0,
       sessionIndexes: [],
     });
@@ -121,7 +127,7 @@ describe('buildResultsViewModel', () => {
     const rows = buildResultsPairMeetingRows(model.pairMeetingMatrix);
 
     expect(model.pairMeetingMatrix.annotatedPairCount).toBe(4);
-    expect(rows[1].cells[0]?.annotations).toEqual([
+    expect(rows[0].cells[1]?.annotations).toEqual([
       {
         kind: 'must-together',
         label: 'Keep together',
@@ -130,18 +136,18 @@ describe('buildResultsViewModel', () => {
         sessions: [0],
       },
     ]);
-    expect(rows[2].cells[1]?.annotations[0]).toMatchObject({
+    expect(rows[1].cells[2]?.annotations[0]).toMatchObject({
       kind: 'must-apart',
       label: 'Keep apart',
       intent: 'apart',
       strength: 'required',
       sessions: [0, 1],
     });
-    expect(rows[2].cells[0]?.annotations[0]).toMatchObject({
+    expect(rows[0].cells[2]?.annotations[0]).toMatchObject({
       kind: 'prefer-together',
       penaltyWeight: 4,
     });
-    expect(rows[3].cells[2]?.annotations[0]).toMatchObject({
+    expect(rows[2].cells[3]?.annotations[0]).toMatchObject({
       kind: 'prefer-apart',
       penaltyWeight: 7,
     });
@@ -172,18 +178,18 @@ describe('buildResultsViewModel', () => {
     const model = buildResultsViewModel(scenario, solution);
     const rows = buildResultsPairMeetingRows(model.pairMeetingMatrix);
 
-    expect(rows[1].cells[0]?.objectiveCost).toBe(18);
-    expect(rows[1].cells[0]?.objectiveCostItems.map((item) => item.label)).toEqual([
+    expect(rows[0].cells[1]?.objectiveCost).toBe(18);
+    expect(rows[0].cells[1]?.objectiveCostItems.map((item) => item.label)).toEqual([
       'Repeat encounter',
       'Prefer apart',
     ]);
-    expect(rows[2].cells[0]?.objectiveCost).toBe(10);
-    expect(rows[2].cells[0]?.objectiveCostItems[0]).toMatchObject({
+    expect(rows[0].cells[2]?.objectiveCost).toBe(10);
+    expect(rows[0].cells[2]?.objectiveCostItems[0]).toMatchObject({
       label: 'Prefer together',
       amount: 10,
     });
-    expect(rows[2].cells[1]?.objectiveCost).toBe(7);
-    expect(rows[2].cells[1]?.objectiveCostItems[0]).toMatchObject({
+    expect(rows[1].cells[2]?.objectiveCost).toBe(7);
+    expect(rows[1].cells[2]?.objectiveCostItems[0]).toMatchObject({
       label: 'Meeting target',
       amount: 7,
     });

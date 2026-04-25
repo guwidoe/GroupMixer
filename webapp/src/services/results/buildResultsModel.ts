@@ -207,7 +207,10 @@ function buildPairMeetingMatrix(scenario: Scenario, sessions: ResultsSessionData
     personId: person.id,
     displayName: getPersonDisplayName(person),
     person,
-  }));
+  })).sort((left, right) => (
+    left.displayName.localeCompare(right.displayName, undefined, { sensitivity: 'base' })
+    || left.personId.localeCompare(right.personId)
+  ));
   const participantsById = new Map(participants.map((participant) => [participant.personId, participant]));
   const pairSessions = new Map<string, number[]>();
   const pairAnnotations = buildPairMeetingAnnotations(scenario);
@@ -352,7 +355,7 @@ export function getResultsPairMeetingCell(
   rowIndex: number,
   columnIndex: number,
 ): ResultsPairMeetingCell | null {
-  if (columnIndex >= rowIndex) {
+  if (columnIndex <= rowIndex) {
     return null;
   }
 

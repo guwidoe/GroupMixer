@@ -26,15 +26,57 @@ interface ResultsPairMeetingMatrixProps {
   sessionCount: number;
 }
 
-type PairMeetingMatrixDensity = 'detailed' | 'compact';
+type PairMeetingMatrixDensity = 'auto' | 'detailed' | 'compact' | 'super';
+
+const MATRIX_DENSITY_OPTIONS: Array<{ value: PairMeetingMatrixDensity; label: string }> = [
+  { value: 'auto', label: 'Auto fit' },
+  { value: 'super', label: 'Super compact' },
+  { value: 'compact', label: 'Compact' },
+  { value: 'detailed', label: 'Detailed' },
+];
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getInitialAutoCellSize(participantCount: number): number {
+  if (typeof window === 'undefined') {
+    return 5;
+  }
+
+  const visibleCellCount = Math.max(1, participantCount - 1);
+  const rowHeaderWidth = 96;
+  const sectionChrome = 160;
+  const availableWidth = Math.max(40, window.innerWidth - rowHeaderWidth - sectionChrome);
+  const cellSize = Math.floor(availableWidth / visibleCellCount) - 1;
+
+  return clamp(cellSize, 3, 18);
+}
 
 export function ResultsPairMeetingMatrix({ matrix, sessionCount }: ResultsPairMeetingMatrixProps) {
   const [collapsed, setCollapsed] = useState(true);
-  const [density, setDensity] = useState<PairMeetingMatrixDensity>('compact');
+  const [density, setDensity] = useState<PairMeetingMatrixDensity>('auto');
+  const [autoCellSize] = useState(() => getInitialAutoCellSize(matrix.participants.length));
   const [selectedCell, setSelectedCell] = useState<ResultsPairMeetingCell | null>(null);
+  const compactCellSize = density === 'auto' ? autoCellSize : density === 'super' ? 5 : 10;
+  const compactCellStyle = {
+    height: compactCellSize,
+    width: compactCellSize,
+    minWidth: compactCellSize,
+    maxWidth: compactCellSize,
+  };
   const rows = useMemo<ResultsPairMeetingRow[]>(
     () => (collapsed ? [] : buildResultsPairMeetingRows(matrix)),
     [collapsed, matrix],
+  );
+  const visibleRows = useMemo(
+    () => rows
+      .map((row) => ({
+        ...row,
+        cells: row.cells.filter((cell): cell is ResultsPairMeetingCell => Boolean(cell)),
+      }))
+      .filter((row) => row.cells.length > 0),
+    [rows],
   );
 
   if (matrix.participants.length < 2) {
@@ -58,22 +100,22 @@ export function ResultsPairMeetingMatrix({ matrix, sessionCount }: ResultsPairMe
         <div className="flex flex-wrap items-center justify-end gap-2">
           {!collapsed ? (
             <div className="inline-flex rounded-full border p-1" style={{ borderColor: 'var(--border-primary)', backgroundColor: 'var(--bg-secondary)' }}>
-              {(['detailed', 'compact'] as const).map((nextDensity) => {
-                const active = density === nextDensity;
+              {MATRIX_DENSITY_OPTIONS.map((option) => {
+                const active = density === option.value;
 
                 return (
                   <button
-                    key={nextDensity}
+                    key={option.value}
                     type="button"
-                    onClick={() => setDensity(nextDensity)}
-                    className="rounded-full px-3 py-1 text-xs font-semibold capitalize transition-colors"
+                    onClick={() => setDensity(option.value)}
+                    className="rounded-full px-3 py-1 text-xs font-semibold transition-colors"
                     style={{
                       backgroundColor: active ? 'var(--bg-tertiary)' : 'transparent',
                       color: active ? 'var(--color-accent)' : 'var(--text-secondary)',
                     }}
                     aria-pressed={active}
                   >
-                    {nextDensity}
+                    {option.label}
                   </button>
                 );
               })}
@@ -122,81 +164,82 @@ export function ResultsPairMeetingMatrix({ matrix, sessionCount }: ResultsPairMe
             </div>
           </div>
         </div>
-      ) : density === 'compact' ? (
+      ) : density !== 'detailed' ? (
         <div className="theme-scrollbar overflow-auto rounded-xl border p-3" style={{ borderColor: 'var(--border-primary)' }}>
-          <table className="w-max border-separate border-spacing-[2px] text-[10px]">
+          <table className={`w-max border-separate ${density === 'compact' ? 'border-spacing-[2px] text-[10px]' : 'border-spacing-[1px] text-[8px]'}`}>
             <caption className="sr-only">
-              Compact pair meeting matrix. The lower triangle contains tiny color-coded cells; activate a cell for pair details.
+              {density === 'auto' ? 'Auto fit' : density === 'super' ? 'Super compact' : 'Compact'} pair meeting matrix. Pair cells are rendered as a left-aligned upper triangle; activate a cell for pair details.
             </caption>
             <thead>
               <tr>
                 <th
                   scope="col"
-                  className="sticky left-0 top-0 z-20 min-w-[8rem] text-left text-[0.65rem] font-semibold uppercase tracking-[0.08em]"
+                  className={`sticky left-0 top-0 z-20 h-24 align-bottom text-left font-semibold uppercase tracking-[0.08em] ${density === 'compact' ? 'min-w-[8rem] text-[0.65rem]' : 'min-w-[6rem] text-[0.55rem]'}`}
                   style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-tertiary)' }}
                 >
                   Person
                 </th>
-                {matrix.participants.map((participant) => (
+                {matrix.participants.slice(1).map((participant) => (
                   <th
                     key={participant.personId}
                     scope="col"
-                    className="h-4 w-3 min-w-3 max-w-3 overflow-hidden p-0 text-center text-[0.5rem] font-semibold"
-                    style={{ color: 'var(--text-tertiary)' }}
+                    className="relative h-24 overflow-visible p-0 align-bottom"
+                    style={{ ...compactCellStyle, color: 'var(--text-tertiary)' }}
                     title={participant.displayName}
                   >
-                    <span className="sr-only">{participant.displayName}</span>
+                    <span className="pointer-events-none absolute inset-x-0 bottom-1 flex justify-center">
+                      <span className="origin-bottom rotate-[-90deg] whitespace-nowrap text-[0.55rem] font-semibold">
+                        {participant.displayName}
+                      </span>
+                    </span>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {visibleRows.map((row) => (
                 <tr key={row.personId}>
                   <th
                     scope="row"
-                    className="sticky left-0 z-10 max-w-[8rem] pr-2 text-left text-[0.68rem] font-medium"
+                    className={`sticky left-0 z-10 pr-2 text-left font-medium ${density === 'compact' ? 'max-w-[8rem] text-[0.68rem]' : 'max-w-[6rem] text-[0.55rem] leading-[7px]'}`}
                     style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-secondary)' }}
                     title={row.displayName}
                   >
                     <span className="block truncate">{row.displayName}</span>
                   </th>
-                  {row.cells.map((cell, columnIndex) => {
-                    const participant = matrix.participants[columnIndex];
-                    const tone = cell ? getResultsPairMeetingCellTone(cell, matrix.maxCount, sessionCount) : 'neutral';
+                  {row.cells.map((cell) => {
+                    const tone = getResultsPairMeetingCellTone(cell, matrix.maxCount, sessionCount);
                     const toneStyles = getPairMeetingToneStyles(tone);
 
                     return (
                       <td
-                        key={`${row.personId}-${participant?.personId ?? columnIndex}`}
-                        className="h-3 w-3 min-w-3 max-w-3 p-0 text-center leading-none"
+                        key={`${row.personId}-${cell.columnPersonId}`}
+                        className="p-0 text-center leading-none"
+                        style={compactCellStyle}
                       >
-                        {cell ? (
-                          <Tooltip
-                            content={() => <ResultsPairMeetingDetailContent cell={cell} tone={tone} variant="tooltip" />}
-                            placement="top"
-                            offset={6}
-                            maxWidth={380}
-                            includeScreenReaderContent={false}
-                          >
+                        <Tooltip
+                          content={() => <ResultsPairMeetingDetailContent cell={cell} tone={tone} variant="tooltip" />}
+                          placement="top"
+                          offset={6}
+                          maxWidth={380}
+                          includeScreenReaderContent={false}
+                        >
                             <button
                               type="button"
                               onClick={() => setSelectedCell(cell)}
-                              className="inline-flex h-2.5 w-2.5 items-center justify-center rounded-[2px] border p-0 text-[0.42rem] font-bold leading-none tabular-nums focus:outline-none focus:ring-2 focus:ring-offset-1"
+                              className={`inline-flex items-center justify-center border p-0 font-bold leading-none tabular-nums focus:outline-none focus:ring-2 focus:ring-offset-1 ${density === 'compact' ? 'rounded-[2px] text-[0.42rem]' : 'rounded-[1px] text-[0]'}`}
                               style={{
+                                ...compactCellStyle,
                                 ...toneStyles,
                                 borderColor: cell.annotations.length > 0 ? toneStyles.color : toneStyles.borderColor,
                                 '--tw-ring-color': toneStyles.borderColor,
-                                '--tw-ring-offset-color': 'var(--bg-primary)',
-                              } as CSSProperties}
+                              '--tw-ring-offset-color': 'var(--bg-primary)',
+                            } as CSSProperties}
                               aria-label={`${cell.rowDisplayName} and ${cell.columnDisplayName}: ${cell.count} shared session${cell.count === 1 ? '' : 's'}. Open pair detail.`}
                             >
-                              {cell.count > 0 && cell.count < 10 ? cell.count : ''}
+                              {density === 'compact' ? cell.count > 0 && cell.count < 10 ? cell.count : '' : ''}
                             </button>
                           </Tooltip>
-                        ) : (
-                          <span className="inline-flex h-2.5 w-2.5" aria-hidden="true" />
-                        )}
                       </td>
                     );
                   })}
@@ -209,7 +252,7 @@ export function ResultsPairMeetingMatrix({ matrix, sessionCount }: ResultsPairMe
         <div className="theme-scrollbar overflow-auto rounded-2xl border" style={{ borderColor: 'var(--border-primary)' }}>
           <table className="w-max border-separate border-spacing-0 text-sm">
             <caption className="sr-only">
-              Pair meeting counts for each participant pair. The lower triangle contains counts; the diagonal and upper triangle are empty.
+              Pair meeting counts for each participant pair. Pair cells are rendered as a left-aligned upper triangle.
             </caption>
             <thead>
               <tr>
@@ -220,21 +263,25 @@ export function ResultsPairMeetingMatrix({ matrix, sessionCount }: ResultsPairMe
                 >
                   Person
                 </th>
-                {matrix.participants.map((participant) => (
+                {matrix.participants.slice(1).map((participant) => (
                   <th
                     key={participant.personId}
                     scope="col"
-                    className="top-0 w-12 min-w-12 border-b px-1 py-3 text-center text-xs font-semibold"
+                    className="relative h-32 w-12 min-w-12 border-b px-1 py-2 align-bottom"
                     style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)', color: 'var(--text-secondary)' }}
                     title={participant.displayName}
                   >
-                    <span className="block max-w-12 truncate">{participant.displayName}</span>
+                    <span className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
+                      <span className="origin-bottom rotate-[-90deg] whitespace-nowrap text-xs font-semibold">
+                        {participant.displayName}
+                      </span>
+                    </span>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
+              {visibleRows.map((row) => (
                 <tr key={row.personId}>
                   <th
                     scope="row"
@@ -244,67 +291,62 @@ export function ResultsPairMeetingMatrix({ matrix, sessionCount }: ResultsPairMe
                   >
                     <span className="block max-w-[12rem] truncate">{row.displayName}</span>
                   </th>
-                  {row.cells.map((cell, columnIndex) => {
-                    const participant = matrix.participants[columnIndex];
-                    const tone = cell ? getResultsPairMeetingCellTone(cell, matrix.maxCount, sessionCount) : 'neutral';
+                  {row.cells.map((cell) => {
+                    const tone = getResultsPairMeetingCellTone(cell, matrix.maxCount, sessionCount);
                     const toneStyles = getPairMeetingToneStyles(tone);
 
                     return (
                       <td
-                        key={`${row.personId}-${participant?.personId ?? columnIndex}`}
+                        key={`${row.personId}-${cell.columnPersonId}`}
                         className="w-12 min-w-12 border-b px-1 py-1 text-center tabular-nums"
                         style={{ borderColor: 'var(--border-primary)' }}
                       >
-                        {cell ? (
-                          <Tooltip
-                            content={() => <ResultsPairMeetingDetailContent cell={cell} tone={tone} variant="tooltip" />}
-                            placement="top"
-                            offset={6}
-                            maxWidth={380}
-                            includeScreenReaderContent={false}
+                        <Tooltip
+                          content={() => <ResultsPairMeetingDetailContent cell={cell} tone={tone} variant="tooltip" />}
+                          placement="top"
+                          offset={6}
+                          maxWidth={380}
+                          includeScreenReaderContent={false}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => setSelectedCell(cell)}
+                            className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-offset-2"
+                            style={{
+                              ...toneStyles,
+                              '--tw-ring-color': toneStyles.borderColor,
+                              '--tw-ring-offset-color': 'var(--bg-primary)',
+                            } as CSSProperties}
+                            aria-label={`${cell.rowDisplayName} and ${cell.columnDisplayName}: ${cell.count} shared session${cell.count === 1 ? '' : 's'}. Open pair detail.`}
                           >
-                            <button
-                              type="button"
-                              onClick={() => setSelectedCell(cell)}
-                              className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border text-sm font-semibold tabular-nums focus:outline-none focus:ring-2 focus:ring-offset-2"
-                              style={{
-                                ...toneStyles,
-                                '--tw-ring-color': toneStyles.borderColor,
-                                '--tw-ring-offset-color': 'var(--bg-primary)',
-                              } as CSSProperties}
-                              aria-label={`${cell.rowDisplayName} and ${cell.columnDisplayName}: ${cell.count} shared session${cell.count === 1 ? '' : 's'}. Open pair detail.`}
-                            >
-                              <span>{cell.count}</span>
-                              {(() => {
-                                const Icon = getPrimaryPairMeetingAnnotationIcon(cell);
-                                if (!Icon) {
-                                  return null;
-                                }
+                            <span>{cell.count}</span>
+                            {(() => {
+                              const Icon = getPrimaryPairMeetingAnnotationIcon(cell);
+                              if (!Icon) {
+                                return null;
+                              }
 
-                                return (
-                                  <span
-                                    className="absolute right-0.5 top-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full"
-                                    style={{ backgroundColor: 'var(--bg-primary)', color: toneStyles.color }}
-                                    aria-hidden="true"
-                                  >
-                                    <Icon className="h-2.5 w-2.5" />
-                                  </span>
-                                );
-                              })()}
-                              {cell.annotations.length > 1 ? (
+                              return (
                                 <span
-                                  className="absolute bottom-0.5 right-0.5 text-[0.55rem] font-bold leading-none"
-                                  style={{ color: toneStyles.color }}
+                                  className="absolute right-0.5 top-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full"
+                                  style={{ backgroundColor: 'var(--bg-primary)', color: toneStyles.color }}
                                   aria-hidden="true"
                                 >
-                                  +{cell.annotations.length - 1}
+                                  <Icon className="h-2.5 w-2.5" />
                                 </span>
-                              ) : null}
-                            </button>
-                          </Tooltip>
-                        ) : (
-                          <span className="inline-flex h-10 w-10 items-center justify-center" aria-hidden="true" style={{ color: 'var(--text-tertiary)' }}>·</span>
-                        )}
+                              );
+                            })()}
+                            {cell.annotations.length > 1 ? (
+                              <span
+                                className="absolute bottom-0.5 right-0.5 text-[0.55rem] font-bold leading-none"
+                                style={{ color: toneStyles.color }}
+                                aria-hidden="true"
+                              >
+                                +{cell.annotations.length - 1}
+                              </span>
+                            ) : null}
+                          </button>
+                        </Tooltip>
                       </td>
                     );
                   })}
