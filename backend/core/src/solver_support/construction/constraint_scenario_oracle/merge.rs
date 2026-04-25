@@ -201,43 +201,45 @@ fn accepted_template_targets_for_session(
     }
 
     for &real_group_idx in selected_groups {
-        candidate_people_by_group[real_group_idx].sort_by(|&left, &right| {
-            let left_score = template_target_acceptance_score(
-                compiled,
-                scaffold,
-                signals,
-                real_session_idx,
-                left,
-                real_group_idx,
-                selected_groups,
-            );
-            let right_score = template_target_acceptance_score(
-                compiled,
-                scaffold,
-                signals,
-                real_session_idx,
-                right,
-                real_group_idx,
-                selected_groups,
-            );
-            right_score
-                .partial_cmp(&left_score)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| left.cmp(&right))
-        });
+        let mut remaining_candidates =
+            std::mem::take(&mut candidate_people_by_group[real_group_idx]);
+        while remaining_capacity_by_group[real_group_idx] > 0 {
+            let mut best_candidate = None::<(usize, usize, f64)>;
+            for (candidate_idx, &real_person_idx) in remaining_candidates.iter().enumerate() {
+                if group_has_hard_apart_conflict(
+                    compiled,
+                    real_session_idx,
+                    &accepted_members_by_group[real_group_idx],
+                    real_person_idx,
+                ) {
+                    continue;
+                }
+                let score = template_target_acceptance_score(
+                    compiled,
+                    scaffold,
+                    signals,
+                    real_session_idx,
+                    real_person_idx,
+                    real_group_idx,
+                    selected_groups,
+                    &accepted_members_by_group[real_group_idx],
+                );
+                let replace = best_candidate
+                    .map(|(_, best_person_idx, best_score)| {
+                        score > best_score + f64::EPSILON
+                            || ((score - best_score).abs() <= f64::EPSILON
+                                && real_person_idx < best_person_idx)
+                    })
+                    .unwrap_or(true);
+                if replace {
+                    best_candidate = Some((candidate_idx, real_person_idx, score));
+                }
+            }
 
-        for &real_person_idx in &candidate_people_by_group[real_group_idx] {
-            if remaining_capacity_by_group[real_group_idx] == 0 {
+            let Some((candidate_idx, real_person_idx, _)) = best_candidate else {
                 break;
-            }
-            if group_has_hard_apart_conflict(
-                compiled,
-                real_session_idx,
-                &accepted_members_by_group[real_group_idx],
-                real_person_idx,
-            ) {
-                continue;
-            }
+            };
+            remaining_candidates.swap_remove(candidate_idx);
             accepted_target_by_person[real_person_idx] = Some(real_group_idx);
             accepted_members_by_group[real_group_idx].push(real_person_idx);
             remaining_capacity_by_group[real_group_idx] -= 1;
@@ -254,6 +256,7 @@ fn template_target_acceptance_score(
     person_idx: usize,
     target_group_idx: usize,
     selected_groups: &[usize],
+    accepted_group_members: &[usize],
 ) -> f64 {
     let current_group_idx = current_group_in_session(scaffold, session_idx, person_idx);
     let keep_bonus = if current_group_idx == Some(target_group_idx) {
@@ -274,24 +277,22 @@ fn template_target_acceptance_score(
         + signals.placement_frequency(compiled, session_idx, person_idx, target_group_idx)
         + target_group_pair_pressure(
             compiled,
-            scaffold,
             signals,
             session_idx,
             person_idx,
-            target_group_idx,
+            accepted_group_members,
         )
         - outside_region_move_penalty
 }
 
 fn target_group_pair_pressure(
     compiled: &CompiledProblem,
-    scaffold: &PackedSchedule,
     signals: &ConstraintScenarioSignals,
     session_idx: usize,
     person_idx: usize,
-    target_group_idx: usize,
+    target_group_members: &[usize],
 ) -> f64 {
-    scaffold[session_idx][target_group_idx]
+    target_group_members
         .iter()
         .copied()
         .filter(|&other_idx| other_idx != person_idx)

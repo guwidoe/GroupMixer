@@ -642,9 +642,7 @@ impl RuntimeState {
             budget.scaffold_budget_seconds,
         )?;
         ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
-        if scaffold.score <= f64::EPSILON
-            || attribute_only_contact_scenario_prefers_scaffold(&self.compiled)
-        {
+        if scaffold.score <= f64::EPSILON {
             return Ok(ConstraintScenarioOracleConstructionResult {
                 schedule: scaffold.schedule,
                 telemetry: ConstraintScenarioOracleTelemetry {
