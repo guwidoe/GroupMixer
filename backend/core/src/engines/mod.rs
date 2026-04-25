@@ -444,6 +444,7 @@ const AUTO_SOLVER_MAX_ITERATIONS: u64 = 1_000_000_000;
 const AUTO_CONSTRUCTION_BUDGET_FRACTION: f64 = 0.30;
 const AUTO_SCAFFOLD_BUDGET_FRACTION: f64 = 0.30;
 const AUTO_MIN_CONSTRUCTION_BUDGET_SECONDS: f64 = 0.1;
+const AUTO_RUNTIME_SCALED_NO_IMPROVEMENT_GRACE_SECONDS: f64 = 0.5;
 
 #[derive(Debug, Clone)]
 struct AutoSolvePlan {
@@ -530,7 +531,7 @@ fn auto_solver3_input(input: &ApiInput, plan: &AutoSolvePlan) -> ApiInput {
     params
         .search_driver
         .runtime_scaled_no_improvement_stop
-        .grace_seconds = 0.1;
+        .grace_seconds = AUTO_RUNTIME_SCALED_NO_IMPROVEMENT_GRACE_SECONDS;
 
     let mut solver = SolverConfiguration {
         solver_type: SolverKind::Solver3.canonical_id().into(),
@@ -768,6 +769,31 @@ mod tests {
         assert_eq!(
             plan.scaffold_budget_seconds,
             plan.oracle_construction_budget_seconds * AUTO_SCAFFOLD_BUDGET_FRACTION
+        );
+    }
+
+    #[test]
+    fn auto_solver3_search_policy_uses_half_second_grace() {
+        let input = ApiInput {
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            problem: simple_problem(),
+            objectives: vec![],
+            constraints: vec![],
+            solver: default_solver_configuration_for(SolverKind::Auto),
+        };
+        let plan = AutoSolvePlan::from_input(&input).unwrap();
+        let solver3_input = auto_solver3_input(&input, &plan);
+        let SolverParams::Solver3(params) = solver3_input.solver.solver_params else {
+            panic!("auto should configure solver3 params");
+        };
+
+        assert_eq!(
+            params
+                .search_driver
+                .runtime_scaled_no_improvement_stop
+                .grace_seconds,
+            AUTO_RUNTIME_SCALED_NO_IMPROVEMENT_GRACE_SECONDS
         );
     }
 
