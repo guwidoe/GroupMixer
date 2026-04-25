@@ -8,7 +8,7 @@ use super::types::{
     OracleTemplateProjectionResult, PureStructureOracleRequest, PureStructureOracleSchedule,
 };
 
-const PERSON_ASSIGNMENT_ITERATIONS: usize = 3;
+const PERSON_ASSIGNMENT_ITERATIONS: usize = 2;
 const PARTICIPATION_REWARD: f64 = 0.05;
 const ABSENT_SESSION_PENALTY: f64 = 0.20;
 const PLACEMENT_ANCHOR_WEIGHT: f64 = 0.25;
