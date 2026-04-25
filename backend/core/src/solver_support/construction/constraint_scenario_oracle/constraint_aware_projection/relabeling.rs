@@ -196,6 +196,7 @@ pub(super) struct TimedRelabelingSearchResult {
 pub(super) struct ProjectionRelabeling {
     real_person_by_oracle_person: Vec<Option<usize>>,
     oracle_person_by_real_person: Vec<Option<usize>>,
+    clique_oracle_candidates_by_real_person: Vec<Option<BTreeSet<usize>>>,
     real_session_by_oracle_session: Vec<Option<usize>>,
     oracle_session_by_real_session: Vec<Option<usize>>,
     real_group_by_oracle_session_group: Vec<Vec<Option<usize>>>,
@@ -210,6 +211,7 @@ impl ProjectionRelabeling {
         Self {
             real_person_by_oracle_person: vec![None; candidate.oracle_capacity],
             oracle_person_by_real_person: vec![None; compiled.num_people],
+            clique_oracle_candidates_by_real_person: vec![None; compiled.num_people],
             real_session_by_oracle_session: vec![None; candidate.num_sessions()],
             oracle_session_by_real_session: vec![None; compiled.num_sessions],
             real_group_by_oracle_session_group: vec![
@@ -237,6 +239,7 @@ impl ProjectionRelabeling {
     ) -> bool {
         self.real_person_by_oracle_person.len() == candidate.oracle_capacity
             && self.oracle_person_by_real_person.len() == compiled.num_people
+            && self.clique_oracle_candidates_by_real_person.len() == compiled.num_people
             && self.real_session_by_oracle_session.len() == candidate.num_sessions()
             && self.oracle_session_by_real_session.len() == compiled.num_sessions
             && self.real_group_by_oracle_session_group.len() == candidate.num_sessions()
@@ -366,9 +369,77 @@ impl ProjectionRelabeling {
         ) {
             return None;
         }
+        if !self.refine_clique_person_candidates(compiled, candidate, atom) {
+            return None;
+        }
         Some(RelabelingScoreImpact::structural_reward(
             (atom.required_people_count * atom.real_sessions.len()).max(1) as f64 * 10.0,
         ))
+    }
+
+    fn refine_clique_person_candidates(
+        &mut self,
+        compiled: &CompiledProblem,
+        candidate: &OracleTemplateCandidate,
+        atom: &CliqueProjectionAtom,
+    ) -> bool {
+        let oracle_pool = atom
+            .oracle_people_pool
+            .iter()
+            .copied()
+            .collect::<BTreeSet<_>>();
+        for &real_person in &atom.real_people {
+            if clique_member_occurrence_count(compiled, real_person) <= 1 {
+                continue;
+            }
+            if !self.refine_clique_person_candidate_set(candidate, real_person, &oracle_pool) {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn refine_clique_person_candidate_set(
+        &mut self,
+        candidate: &OracleTemplateCandidate,
+        real_person: usize,
+        oracle_pool: &BTreeSet<usize>,
+    ) -> bool {
+        if real_person >= self.oracle_person_by_real_person.len()
+            || oracle_pool
+                .iter()
+                .any(|&person| person >= candidate.oracle_capacity)
+        {
+            return false;
+        }
+        if let Some(mapped_oracle) = self.oracle_person_by_real_person[real_person] {
+            return oracle_pool.contains(&mapped_oracle);
+        }
+
+        let mut next_candidates = self.clique_oracle_candidates_by_real_person[real_person]
+            .as_ref()
+            .map(|existing| {
+                existing
+                    .intersection(oracle_pool)
+                    .copied()
+                    .collect::<BTreeSet<_>>()
+            })
+            .unwrap_or_else(|| oracle_pool.clone());
+        next_candidates.retain(|&oracle_person| {
+            self.real_person_by_oracle_person[oracle_person]
+                .is_none_or(|mapped_real| mapped_real == real_person)
+        });
+        if next_candidates.is_empty() {
+            return false;
+        }
+        if next_candidates.len() == 1 {
+            let oracle_person = *next_candidates.iter().next().expect("singleton candidate");
+            if !self.bind_person(candidate, oracle_person, real_person) {
+                return false;
+            }
+        }
+        self.clique_oracle_candidates_by_real_person[real_person] = Some(next_candidates);
+        true
     }
 
     fn try_accept_hard_apart_atom(
@@ -948,6 +1019,14 @@ fn immovable_person_occurrence_count(compiled: &CompiledProblem, real_person: us
         .immovable_assignments
         .iter()
         .filter(|assignment| assignment.person_idx == real_person)
+        .count()
+}
+
+fn clique_member_occurrence_count(compiled: &CompiledProblem, real_person: usize) -> usize {
+    compiled
+        .cliques
+        .iter()
+        .filter(|clique| clique.members.contains(&real_person))
         .count()
 }
 

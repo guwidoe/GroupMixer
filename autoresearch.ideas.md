@@ -20,6 +20,14 @@
 - Add microdiagnostic cases/tests that prove a symmetry-breaking capability before expecting full benchmark score gains. If the benchmark target changes materially, re-run `init_experiment` with a new baseline.
 - Keep the diagnostic suite strong; do not reduce case sizes or planted constraint counts just because the current implementation times out or fails.
 
+## Tried / pruned in this lane
+
+- Global beam-width increases are stale: width 64 timed out and regressed primary loss. Keep width small and improve candidate diversity/representatives instead.
+- Comparator-only changes are stale: ranking the beam by the diagnostic loss instead of the reward scalar did not change the primary result.
+- Blanket lazy immovable binding is stale: deferring every immovable person regressed before the more nuanced rule. The kept rule is to defer isolated/weak repeated immovable people and only promote stronger repetition.
+- Slot-diverse pruning alone was tried and did not improve primary; candidate generation diversity mattered more.
+- Kept useful scaffolds: bounded factor beam, scoped pair penalties, lazy unanchored pair factors, session-diverse beam retention, slot-diverse immovable candidate emission, and representative fast-pathing for unanchored weak pair factors.
+
 ## Things to avoid
 
 - Do not anchor on names like `relabel_p001`, `relabel_g01`, `session_0`, `Alice`, or `g0` unless an external non-symmetric constraint truly fixes that label.
