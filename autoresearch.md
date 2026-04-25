@@ -20,6 +20,18 @@ The relabeling problem is a symmetry-breaking problem, not a local repair proble
 - partial attendance and availability,
 - non-uniform session/group capacities.
 
+The 13x13x14 suite deliberately remains the primary full-flow diagnostic, but it is a weak standalone test for pair-family constraints because a complete/perfect horizon makes every pair meet exactly once. Supplemental pair-sensitive A/B suites now cover non-complete horizons (`13x13x10` and `6x6x3`) for hard-apart, pair-meeting, and soft-pair behavior:
+
+```bash
+cargo run -q -p gm-cli -- benchmark run \
+  --manifest backend/benchmarking/suites/solver3-relabeling-projection-pair-sensitive.yaml \
+  --cargo-profile dev
+
+cargo run -q -p gm-cli -- benchmark run \
+  --manifest backend/benchmarking/suites/solver3-relabeling-projection-pair-sensitive-legacy.yaml \
+  --cargo-profile dev
+```
+
 The current scaffold builds typed atoms and a timeout-aware partial bijection. It now reaches zero direct identifiable-anchor loss, so the next development direction is to turn those anchors into a concrete trajectory-permutation projection plan that legacy merge can consume. This lane should rethink the relabeling engine aggressively while preserving solver architecture:
 
 - `solver6` remains a pure-SGP oracle.
@@ -116,9 +128,14 @@ Constraint presolve support:
 
 Benchmark/autoresearch support:
 
-- `backend/benchmarking/suites/solver3-relabeling-projection.yaml` — diagnostic suite manifest. Do not weaken cases to pass.
-- `backend/benchmarking/cases/stretch/relabeling_projection/*.json` — committed diagnostic cases; do not edit to improve metric.
-- `tools/benchmarking/generate_relabeling_projection_cases.py` — generator for planted cases; can be extended for development-only metadata/harnesses, but canonical cases must remain honest.
+- `backend/benchmarking/suites/solver3-relabeling-projection.yaml` — new constraint-aware projection diagnostic suite manifest. Do not weaken cases to pass.
+- `backend/benchmarking/suites/solver3-relabeling-projection-legacy.yaml` — old/legacy projection A/B control using the same cases and timeout headroom with `solver3_relabeling_projection.enabled: false`.
+- `backend/benchmarking/suites/solver3-relabeling-projection-pair-sensitive.yaml` — supplemental non-complete-horizon pair-sensitive diagnostic suite with constraint-aware projection enabled.
+- `backend/benchmarking/suites/solver3-relabeling-projection-pair-sensitive-legacy.yaml` — legacy projection A/B control for the pair-sensitive suite.
+- `backend/benchmarking/cases/stretch/relabeling_projection/*.json` — committed 13x13x14 diagnostic cases; do not edit to improve metric.
+- `backend/benchmarking/cases/stretch/relabeling_projection_pair_sensitive/*.json` — committed non-complete-horizon pair-sensitive cases; do not edit to improve metric.
+- `tools/benchmarking/generate_relabeling_projection_cases.py` — generator for the 13x13x14 planted cases; can be extended for development-only metadata/harnesses, but canonical cases must remain honest.
+- `tools/benchmarking/generate_pair_sensitive_relabeling_projection_cases.py` — generator for supplemental 13x13x10 and 6x6x3 pair-sensitive planted cases.
 - `backend/benchmarking/src/manifest.rs` and `backend/benchmarking/src/runner.rs` — only for diagnostic policy/telemetry plumbing, not cheating.
 - `tools/autoresearch/solver3-relabeling-projection/*`, `autoresearch.md`, `autoresearch.sh`, `autoresearch.checks.sh`, `autoresearch.ideas.md` — this autoresearch lane.
 

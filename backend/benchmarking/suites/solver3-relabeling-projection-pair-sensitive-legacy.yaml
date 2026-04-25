@@ -1,0 +1,22 @@
+schema_version: 1
+suite_id: solver3-relabeling-projection-pair-sensitive-legacy
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: allow_non_canonical
+class: stretch
+timeout_policy: complexity_based_wall_time
+solver_policy: solver3_construct_then_search
+solver3_relabeling_projection:
+  enabled: false
+  relabeling_timeout_seconds: 5.0
+title: Solver3 relabeling projection pair-sensitive diagnostic suite
+description: Supplemental non-complete SGP-shaped relabeling cases where hard-apart, pair-meeting, and soft-pair constraints are not constant over a perfect full horizon.
+cases:
+  - manifest: ../cases/stretch/relabeling_projection_pair_sensitive/13x13x10_hard_apart.json
+  - manifest: ../cases/stretch/relabeling_projection_pair_sensitive/13x13x10_pair_meeting.json
+  - manifest: ../cases/stretch/relabeling_projection_pair_sensitive/13x13x10_soft_pairs.json
+  - manifest: ../cases/stretch/relabeling_projection_pair_sensitive/13x13x10_pair_mixed.json
+  - manifest: ../cases/stretch/relabeling_projection_pair_sensitive/6x6x3_hard_apart.json
+  - manifest: ../cases/stretch/relabeling_projection_pair_sensitive/6x6x3_pair_meeting.json
+  - manifest: ../cases/stretch/relabeling_projection_pair_sensitive/6x6x3_soft_pairs.json
+  - manifest: ../cases/stretch/relabeling_projection_pair_sensitive/6x6x3_pair_mixed.json

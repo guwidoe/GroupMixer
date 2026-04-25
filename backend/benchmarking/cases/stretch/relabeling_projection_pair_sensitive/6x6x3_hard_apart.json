@@ -1,0 +1,532 @@
+{
+  "schema_version": 1,
+  "id": "stretch.relabeling-projection-pair-sensitive-6x6x3-hard-apart",
+  "class": "stretch",
+  "case_role": "helper",
+  "canonical_case_id": "diagnostic.social-golfer-6x6x3-cyclic",
+  "purpose": "diagnostic_target.constraint_aware_relabeling_projection.pair_sensitive.hard_apart",
+  "provenance": "generated_by_tools/benchmarking/generate_pair_sensitive_relabeling_projection_cases.py from a fixed 6x6x3 non-complete SGP oracle, then hidden person/session/group-slot relabeling seed 90210 planted pair-sensitive constraints",
+  "declared_budget": {
+    "max_iterations": 20000000,
+    "time_limit_seconds": 300
+  },
+  "tags": [
+    "stretch",
+    "diagnostic",
+    "relabeling",
+    "projection",
+    "constraint-aware-projection",
+    "oracle-planted",
+    "social-golfer",
+    "sgp",
+    "6x6x3",
+    "pair-sensitive",
+    "hard-apart"
+  ],
+  "title": "Relabeling projection pair-sensitive 6x6x3 \u2014 hard-apart graph over non-complete pair horizon",
+  "description": "6x6x3 cyclic SGP microcase: Full-horizon planted must-stay-apart pairs selected from oracle pairs that never meet.",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "pair_6_6_3_p001",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p002",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p003",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p004",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p005",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p006",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p007",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p008",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p009",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p010",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p011",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p012",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p013",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p014",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p015",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p016",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p017",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p018",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p019",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p020",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p021",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p022",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p023",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p024",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p025",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p026",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p027",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p028",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p029",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p030",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p031",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p032",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p033",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p034",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p035",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_6_6_3_p036",
+          "attributes": {
+            "pair_shape": "6x6x3",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "pair_6_6_3_g01",
+          "size": 6
+        },
+        {
+          "id": "pair_6_6_3_g02",
+          "size": 6
+        },
+        {
+          "id": "pair_6_6_3_g03",
+          "size": 6
+        },
+        {
+          "id": "pair_6_6_3_g04",
+          "size": 6
+        },
+        {
+          "id": "pair_6_6_3_g05",
+          "size": 6
+        },
+        {
+          "id": "pair_6_6_3_g06",
+          "size": 6
+        }
+      ],
+      "num_sessions": 3
+    },
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 1,
+        "penalty_function": "squared",
+        "penalty_weight": 3.0
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "pair_6_6_3_p026",
+          "pair_6_6_3_p022"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "pair_6_6_3_p013",
+          "pair_6_6_3_p030"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "pair_6_6_3_p013",
+          "pair_6_6_3_p027"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "pair_6_6_3_p004",
+          "pair_6_6_3_p019"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "pair_6_6_3_p010",
+          "pair_6_6_3_p014"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "pair_6_6_3_p036",
+          "pair_6_6_3_p001"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "pair_6_6_3_p003",
+          "pair_6_6_3_p035"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "pair_6_6_3_p015",
+          "pair_6_6_3_p024"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "pair_6_6_3_p021",
+          "pair_6_6_3_p016"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "pair_6_6_3_p030",
+          "pair_6_6_3_p029"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "pair_6_6_3_p022",
+        "group_id": "pair_6_6_3_g05",
+        "sessions": [
+          1
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "pair_6_6_3_p023",
+        "group_id": "pair_6_6_3_g02",
+        "sessions": [
+          0
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "pair_6_6_3_p021",
+        "group_id": "pair_6_6_3_g05",
+        "sessions": [
+          2
+        ]
+      }
+    ],
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 2000000,
+        "time_limit_seconds": 300,
+        "no_improvement_iterations": 1000000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 50.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 10000,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      },
+      "seed": 1691314
+    },
+    "initial_schedule": null
+  }
+}

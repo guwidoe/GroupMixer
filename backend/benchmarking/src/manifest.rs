@@ -151,7 +151,15 @@ pub struct BenchmarkSimulatedAnnealingPolicyOverride {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct BenchmarkSolver3RelabelingProjectionPolicy {
+    /// Enables the constraint-aware projection/relabeling implementation while retaining the
+    /// relabeling benchmark budget headroom. Set false for legacy projection A/B control suites.
+    #[serde(default = "default_solver3_relabeling_projection_enabled")]
+    pub enabled: bool,
     pub relabeling_timeout_seconds: f64,
+}
+
+fn default_solver3_relabeling_projection_enabled() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]

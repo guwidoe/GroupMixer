@@ -1,0 +1,2184 @@
+{
+  "schema_version": 1,
+  "id": "stretch.relabeling-projection-pair-sensitive-13x13x10-soft-pairs",
+  "class": "stretch",
+  "case_role": "helper",
+  "canonical_case_id": "diagnostic.social-golfer-13x13x10-truncated-affine",
+  "purpose": "diagnostic_target.constraint_aware_relabeling_projection.pair_sensitive.soft_pairs",
+  "provenance": "generated_by_tools/benchmarking/generate_pair_sensitive_relabeling_projection_cases.py from a fixed 13x13x10 non-complete SGP oracle, then hidden person/session/group-slot relabeling seed 90210 planted pair-sensitive constraints",
+  "declared_budget": {
+    "max_iterations": 20000000,
+    "time_limit_seconds": 300
+  },
+  "tags": [
+    "stretch",
+    "diagnostic",
+    "relabeling",
+    "projection",
+    "constraint-aware-projection",
+    "oracle-planted",
+    "social-golfer",
+    "sgp",
+    "13x13x10",
+    "pair-sensitive",
+    "soft-pairs"
+  ],
+  "title": "Relabeling projection pair-sensitive 13x13x10 \u2014 soft pair preferences over non-complete pair horizon",
+  "description": "13x13x10 truncated affine SGP: Should-together and should-not-together preferences that are not constant over the truncated oracle horizon.",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "pair_13_13_10_p001",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p002",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p003",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p004",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p005",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p006",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p007",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p008",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p009",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p010",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p011",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p012",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p013",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p014",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p015",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p016",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p017",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p018",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p019",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p020",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p021",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p022",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p023",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p024",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p025",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p026",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p027",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p028",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p029",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p030",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p031",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p032",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p033",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p034",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p035",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p036",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p037",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p038",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p039",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p040",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p041",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p042",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p043",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p044",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p045",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p046",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p047",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p048",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p049",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p050",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p051",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p052",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p053",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p054",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p055",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p056",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p057",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p058",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p059",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p060",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p061",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p062",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p063",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p064",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p065",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p066",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p067",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p068",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p069",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p070",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p071",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p072",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p073",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p074",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p075",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p076",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p077",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p078",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p079",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p080",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p081",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p082",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p083",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p084",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p085",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p086",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p087",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p088",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p089",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p090",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p091",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p092",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p093",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p094",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p095",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p096",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p097",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p098",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p099",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p100",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p101",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p102",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p103",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p104",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p105",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p106",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p107",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p108",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p109",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p110",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p111",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p112",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p113",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p114",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p115",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p116",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p117",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p118",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p119",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p120",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p121",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p122",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p123",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p124",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p125",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p126",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p127",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p128",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p129",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p130",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p131",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p132",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p133",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p134",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p135",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p136",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p137",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p138",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p139",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p140",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p141",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p142",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p143",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p144",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p145",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p146",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p147",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p148",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p149",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p150",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p151",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p152",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p153",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p154",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p155",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p156",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p157",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p158",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p159",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p160",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p161",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p162",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "green",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p163",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p164",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p165",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "beta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p166",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p167",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "alpha"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p168",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "red",
+            "pair_track": "gamma"
+          }
+        },
+        {
+          "id": "pair_13_13_10_p169",
+          "attributes": {
+            "pair_shape": "13x13x10",
+            "pair_cohort": "blue",
+            "pair_track": "delta"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "pair_13_13_10_g01",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g02",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g03",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g04",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g05",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g06",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g07",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g08",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g09",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g10",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g11",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g12",
+          "size": 13
+        },
+        {
+          "id": "pair_13_13_10_g13",
+          "size": 13
+        }
+      ],
+      "num_sessions": 10
+    },
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 1,
+        "penalty_function": "squared",
+        "penalty_weight": 3.0
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p070",
+          "pair_13_13_10_p049"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p070",
+          "pair_13_13_10_p065"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p070",
+          "pair_13_13_10_p132"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p070",
+          "pair_13_13_10_p060"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p070",
+          "pair_13_13_10_p137"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p070",
+          "pair_13_13_10_p120"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p070",
+          "pair_13_13_10_p061"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p015",
+          "pair_13_13_10_p049"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p015",
+          "pair_13_13_10_p157"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p015",
+          "pair_13_13_10_p141"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p015",
+          "pair_13_13_10_p009"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p015",
+          "pair_13_13_10_p034"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p015",
+          "pair_13_13_10_p112"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p015",
+          "pair_13_13_10_p018"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p131",
+          "pair_13_13_10_p049"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "pair_13_13_10_p131",
+          "pair_13_13_10_p074"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p070",
+          "pair_13_13_10_p142"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p070",
+          "pair_13_13_10_p039"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p015",
+          "pair_13_13_10_p036"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p015",
+          "pair_13_13_10_p073"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p131",
+          "pair_13_13_10_p113"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p131",
+          "pair_13_13_10_p100"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p131",
+          "pair_13_13_10_p122"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p130",
+          "pair_13_13_10_p106"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p130",
+          "pair_13_13_10_p009"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p130",
+          "pair_13_13_10_p063"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p010",
+          "pair_13_13_10_p117"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p010",
+          "pair_13_13_10_p116"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p124",
+          "pair_13_13_10_p083"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p124",
+          "pair_13_13_10_p082"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p124",
+          "pair_13_13_10_p064"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "pair_13_13_10_p113",
+          "pair_13_13_10_p095"
+        ],
+        "penalty_weight": 3.0,
+        "sessions": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "pair_13_13_10_p067",
+        "group_id": "pair_13_13_10_g03",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "pair_13_13_10_p084",
+        "group_id": "pair_13_13_10_g13",
+        "sessions": [
+          8
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "pair_13_13_10_p072",
+        "group_id": "pair_13_13_10_g12",
+        "sessions": [
+          1
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "pair_13_13_10_p054",
+        "group_id": "pair_13_13_10_g04",
+        "sessions": [
+          5
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "pair_13_13_10_p010",
+        "group_id": "pair_13_13_10_g10",
+        "sessions": [
+          3
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "pair_13_13_10_p065",
+        "group_id": "pair_13_13_10_g07",
+        "sessions": [
+          2
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "pair_13_13_10_p110",
+        "group_id": "pair_13_13_10_g07",
+        "sessions": [
+          8
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "pair_13_13_10_p107",
+        "group_id": "pair_13_13_10_g13",
+        "sessions": [
+          1
+        ]
+      }
+    ],
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 2000000,
+        "time_limit_seconds": 300,
+        "no_improvement_iterations": 1000000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 50.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 10000,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      },
+      "seed": 1691314
+    },
+    "initial_schedule": null
+  }
+}

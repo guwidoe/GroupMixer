@@ -1,5 +1,5 @@
 schema_version: 1
-suite_id: solver3-relabeling-projection
+suite_id: solver3-relabeling-projection-legacy
 benchmark_mode: full_solve
 comparison_category: score_quality
 case_selection_policy: allow_non_canonical
@@ -7,10 +7,10 @@ class: stretch
 timeout_policy: complexity_based_wall_time
 solver_policy: solver3_construct_then_search
 solver3_relabeling_projection:
-  enabled: true
+  enabled: false
   relabeling_timeout_seconds: 5.0
-title: Solver3 relabeling projection diagnostic suite
-description: Diagnostic 13x13x14 SGP-shaped cases with constraints planted from a fixed solver6 oracle under hidden relabelings. The suite exercises constraint-aware oracle projection/relabeling without joining the canonical broad score lane. Cases are not scaled down to fit the current naive implementation.
+title: Solver3 legacy projection control for relabeling projection diagnostic suite
+description: Same diagnostic 13x13x14 planted relabeling cases as solver3-relabeling-projection, but with constraint-aware projection disabled while retaining the same construction budget headroom. This is the old-projection full-flow A/B control lane.
 cases:
   - manifest: ../cases/stretch/relabeling_projection/immovable.json
   - manifest: ../cases/stretch/relabeling_projection/partial_attendance.json

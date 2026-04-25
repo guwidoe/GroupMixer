@@ -758,7 +758,7 @@ fn solver3_construct_then_search_input(
         if let Some(relabeling_policy) = relabeling_policy {
             params.construction.constraint_aware_projection =
                 Solver3ConstraintAwareProjectionParams {
-                    enabled: true,
+                    enabled: relabeling_policy.enabled,
                     relabeling_timeout_seconds: Some(relabeling_policy.relabeling_timeout_seconds),
                 };
         }

@@ -21,6 +21,7 @@
 - Add telemetry from the diagnostic path for atom counts, factor families, accepted/covered/uncovered constraint keys, mapping completeness, timeout status, and score breakdown. This is benchmark-neutral if it does not alter public defaults.
 - Add microdiagnostic cases/tests that prove a symmetry-breaking capability before expecting full benchmark score gains. If the benchmark target changes materially, re-run `init_experiment` with a new baseline.
 - Keep the diagnostic suite strong; do not reduce case sizes or planted constraint counts just because the current implementation times out or fails.
+- Legacy-vs-new full-flow benchmarking is now explicit: `solver3-relabeling-projection.yaml` enables constraint-aware projection, while `solver3-relabeling-projection-legacy.yaml` disables it but keeps the same relabeling-budget headroom for fair A/B comparison.
 
 ## Tried / pruned in this lane
 
@@ -31,6 +32,11 @@
 - Kept useful scaffolds: bounded factor beam, scoped pair penalties, lazy unanchored pair factors, session-diverse beam retention, slot-diverse immovable candidate emission, representative fast-pathing for unanchored weak pair factors, and repeated-clique candidate intersections.
 - Legacy global mapping loss is stale as a primary target: after coverage reached 237/237 it mostly rewarded arbitrary mappings for pair-only or symmetric cases. Use identifiable-anchor mapping loss only as a guard now that it is zero.
 - Relabeler-only anchor loss is also saturated; further primary improvements must come from consuming the coherent session/slot/person hints in projection/merge, not from weakening direct relabeler scoring.
+- Raw session permutation from factor relabeler into legacy projection is stale: it regressed cliques, attribute, pair/soft-pair, and mixed_light. Session maps need the trajectory scorer/per-session group matching layer before they are safe to consume.
+- Unguarded AttributeBalance-aware group assignment is stale: it improved attribute and some mixed scores, but regressed zero structural cases. Revisit only with lexicographic/acceptance gating that preserves structural/pair/clique risk.
+- Kept scaffold-side construction improvements: place active MustStayApart-constrained people first during baseline construction, and refresh search elapsed time every iteration for short timed local-improver budgets. These reduced final construction failures without weakening validation.
+- Legacy-vs-new full-flow A/B run on 2026-04-25 showed both lanes at 9/11 successes with mixed_structural and mixed_full still timing out. New constraint-aware projection improved partial_attendance, pair_meeting, and mixed_light on that run, but regressed cliques/hard_apart enough that the weighted aggregate was slightly worse than legacy. Treat this as “not yet a full-flow win”; focus on projection materialization/trajectory matching and the remaining mixed timeouts.
+- Added supplemental pair-sensitive diagnostic lanes rather than replacing the 13x13x14 suite: `solver3-relabeling-projection-pair-sensitive.yaml` and `solver3-relabeling-projection-pair-sensitive-legacy.yaml` cover non-complete 13x13x10 and 6x6x3 planted oracles. Initial A/B on 2026-04-25: both lanes 8/8 successes; new projection was slightly worse on 13x13x10 hard_apart (+90), soft_pairs (+18), and pair_mixed (+70), tied pair_meeting and all 6x6x3 cases. This confirms the old 13x13x14 lane hid pair-family weaknesses; use the pair-sensitive suite as a guard/diagnostic for trajectory-level pair scoring.
 
 ## Things to avoid
 
