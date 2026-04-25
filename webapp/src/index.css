@@ -673,6 +673,18 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
 
+  .landing-advanced-options-grid {
+    display: grid;
+    gap: 1.25rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 65rem) {
+    .landing-advanced-options-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
   .landing-resizable-textarea {
     width: 100%;
     min-width: 0;
@@ -1326,7 +1338,7 @@
     gap: 0.5rem;
   }
 
-  .landing-balance-attribute-card {
+  .landing-balance-section {
     container-type: inline-size;
   }
 
@@ -1336,7 +1348,7 @@
     grid-template-columns: 1fr;
   }
 
-  @container (min-width: 44rem) {
+  @container (min-width: 30rem) {
     .landing-balance-target-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
