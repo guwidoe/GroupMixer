@@ -167,7 +167,7 @@ export function AdvancedOptions({ controller, scenarioEditorCtaContent, onOpenSc
                 {analysis.balanceAttributes.map((attribute) => (
                   <div
                     key={attribute.key}
-                    className="rounded-2xl px-4 py-4"
+                    className="landing-balance-attribute-card rounded-2xl px-4 py-4"
                     style={{ backgroundColor: 'var(--bg-secondary)' }}
                   >
                     <div className="mb-3 flex items-center justify-between gap-3">
@@ -198,7 +198,7 @@ export function AdvancedOptions({ controller, scenarioEditorCtaContent, onOpenSc
                         <span>{labels.autoDistributeAttributeLabel}</span>
                       </label>
                     </div>
-                    <div className="grid gap-4 xl:grid-cols-2">
+                    <div className="landing-balance-target-grid">
                       {balanceGroups.map((group) => (
                         <div key={`${attribute.key}-${group.id}`}>
                           <div className="mb-2 text-xs font-medium uppercase tracking-[0.08em]" style={{ color: 'var(--text-secondary)' }}>
