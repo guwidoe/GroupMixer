@@ -89,7 +89,7 @@ export function LandingGuidesSection({ locale }: LandingGuidesSectionProps) {
                 type="button"
                 aria-pressed={isActive}
                 onClick={() => setActiveTopic(topic)}
-                className="rounded-lg border px-3 py-1.5 text-sm font-medium"
+                className="cursor-pointer rounded-lg border px-3 py-1.5 text-sm font-medium"
                 style={{
                   borderColor: isActive
                     ? 'color-mix(in srgb, var(--color-accent) 42%, var(--border-primary) 58%)'
