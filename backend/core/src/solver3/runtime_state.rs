@@ -40,10 +40,11 @@ use crate::models::{
 use crate::solver_support::construction::constraint_scenario_oracle::{
     build_constraint_scenario_scaffold_mask, extract_constraint_scenario_signals_from_scaffold,
     generate_oracle_template_candidates, merge_projected_oracle_template_into_scaffold,
-    project_oracle_schedule_to_template, repeat_pressure_is_relevant,
-    ConstraintScenarioOracleConstructionResult, ConstraintScenarioOracleOutcomeKind,
-    ConstraintScenarioOracleTelemetry, OracleTemplateCandidate, PureStructureOracle,
-    PureStructureOracleRequest, Solver6PureStructureOracle,
+    project_oracle_schedule_to_template, project_oracle_schedule_to_template_constraint_aware,
+    repeat_pressure_is_relevant, ConstraintScenarioOracleConstructionResult,
+    ConstraintScenarioOracleOutcomeKind, ConstraintScenarioOracleTelemetry,
+    OracleTemplateCandidate, PureStructureOracle, PureStructureOracleRequest,
+    Solver6PureStructureOracle,
 };
 use crate::solver_support::construction::{
     apply_baseline_construction_heuristic, apply_freedom_aware_construction_heuristic,
@@ -55,6 +56,7 @@ use crate::solver_support::validation::{
 use crate::solver_support::SolverError;
 
 const DEFAULT_BASELINE_CONSTRUCTION_SEED: u64 = 42;
+const EXPERIMENTAL_CONSTRAINT_AWARE_PROJECTION_ENABLED: bool = false;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn construction_now() -> ConstructionInstant {
@@ -712,13 +714,23 @@ impl RuntimeState {
         })?;
         ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
         ensure_constructor_budget_remaining(oracle_phase_started_at, budget.oracle_budget_seconds)?;
-        let projection = project_oracle_schedule_to_template(
-            &self.compiled,
-            &signals,
-            &scaffold_mask,
-            &candidate,
-            &oracle_schedule,
-        )?;
+        let projection = if EXPERIMENTAL_CONSTRAINT_AWARE_PROJECTION_ENABLED {
+            project_oracle_schedule_to_template_constraint_aware(
+                &self.compiled,
+                &signals,
+                &scaffold_mask,
+                &candidate,
+                &oracle_schedule,
+            )?
+        } else {
+            project_oracle_schedule_to_template(
+                &self.compiled,
+                &signals,
+                &scaffold_mask,
+                &candidate,
+                &oracle_schedule,
+            )?
+        };
         ensure_constructor_budget_remaining(oracle_phase_started_at, budget.oracle_budget_seconds)?;
         let oracle_projection_score = Some(projection.score);
         let merge = merge_projected_oracle_template_into_scaffold(

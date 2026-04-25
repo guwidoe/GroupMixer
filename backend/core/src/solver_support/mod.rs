@@ -1,4 +1,5 @@
 pub mod complexity;
+pub(crate) mod constraint_presolve;
 pub(crate) mod construction;
 pub mod validation;
 

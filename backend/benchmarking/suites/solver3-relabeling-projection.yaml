@@ -1,0 +1,22 @@
+schema_version: 1
+suite_id: solver3-relabeling-projection
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: allow_non_canonical
+class: stretch
+timeout_policy: complexity_based_wall_time
+solver_policy: solver3_construct_then_search
+title: Solver3 relabeling projection diagnostic suite
+description: Diagnostic 13x13x14 SGP-shaped cases with constraints planted from a fixed solver6 oracle under hidden relabelings. The suite exercises constraint-aware oracle projection/relabeling without joining the canonical broad score lane. Cases are not scaled down to fit the current naive implementation.
+cases:
+  - manifest: ../cases/stretch/relabeling_projection/immovable.json
+  - manifest: ../cases/stretch/relabeling_projection/partial_attendance.json
+  - manifest: ../cases/stretch/relabeling_projection/capacity_variation.json
+  - manifest: ../cases/stretch/relabeling_projection/cliques.json
+  - manifest: ../cases/stretch/relabeling_projection/hard_apart.json
+  - manifest: ../cases/stretch/relabeling_projection/attribute_balance.json
+  - manifest: ../cases/stretch/relabeling_projection/pair_meeting.json
+  - manifest: ../cases/stretch/relabeling_projection/soft_pairs.json
+  - manifest: ../cases/stretch/relabeling_projection/mixed_light.json
+  - manifest: ../cases/stretch/relabeling_projection/mixed_structural.json
+  - manifest: ../cases/stretch/relabeling_projection/mixed_full.json

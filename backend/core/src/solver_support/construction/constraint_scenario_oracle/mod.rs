@@ -7,6 +7,7 @@
 //! so construction heuristics have one coherent home, even though the data model
 //! is still solver3-specific today.
 
+mod constraint_aware_projection;
 mod merge;
 mod oracle_backend;
 mod projection;
@@ -19,6 +20,7 @@ mod ensemble;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use constraint_aware_projection::project_oracle_schedule_to_template_constraint_aware;
 pub(crate) use merge::merge_projected_oracle_template_into_scaffold;
 pub(crate) use oracle_backend::{PureStructureOracle, Solver6PureStructureOracle};
 pub(crate) use projection::project_oracle_schedule_to_template;

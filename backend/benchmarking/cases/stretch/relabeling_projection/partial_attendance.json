@@ -1,0 +1,2024 @@
+{
+  "schema_version": 1,
+  "id": "stretch.relabeling-projection-13x13x14-partial-attendance",
+  "class": "stretch",
+  "case_role": "helper",
+  "canonical_case_id": "stretch.social-golfer-169x13x14",
+  "purpose": "diagnostic_target.constraint_aware_relabeling_projection.partial_attendance",
+  "provenance": "generated_by_tools/benchmarking/generate_relabeling_projection_cases.py from a fixed solver6 13x13x14 zero-repeat oracle, then hidden person/session/group-slot relabeling seed 90210 planted this constraint family",
+  "declared_budget": {
+    "max_iterations": 40000000,
+    "time_limit_seconds": 300
+  },
+  "tags": [
+    "stretch",
+    "diagnostic",
+    "relabeling",
+    "projection",
+    "constraint-aware-projection",
+    "oracle-planted",
+    "social-golfer",
+    "sgp",
+    "13x13x14",
+    "zero-repeat",
+    "relabeling-projection-suite",
+    "partial-attendance"
+  ],
+  "title": "Relabeling projection 13x13x14 \u2014 partial attendance",
+  "description": "Light planted person/session attendance omissions over the solver6 relabeling.",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "relabel_p001",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "beta"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p002",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p003",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p004",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p005",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p006",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p007",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p008",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "alpha"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p009",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p010",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p011",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p012",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p013",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p014",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p015",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "beta"
+          },
+          "sessions": [
+            0,
+            1,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p016",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "delta"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p017",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p018",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p019",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p020",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p021",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p022",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p023",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          },
+          "sessions": [
+            1,
+            2,
+            3,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p024",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p025",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p026",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p027",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p028",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p029",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p030",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p031",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p032",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p033",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p034",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p035",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p036",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p037",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p038",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p039",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p040",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p041",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p042",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p043",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p044",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p045",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p046",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p047",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p048",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p049",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p050",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p051",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "alpha"
+          },
+          "sessions": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p052",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "beta"
+          },
+          "sessions": [
+            0,
+            1,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p053",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p054",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p055",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p056",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p057",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p058",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p059",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "gamma"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p060",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p061",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p062",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p063",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p064",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "alpha"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p065",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p066",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "epsilon"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p067",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "epsilon"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p068",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p069",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p070",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p071",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p072",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p073",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p074",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p075",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p076",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p077",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p078",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p079",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p080",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p081",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p082",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p083",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p084",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p085",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p086",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p087",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p088",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p089",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p090",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p091",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p092",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "beta"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p093",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p094",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p095",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p096",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p097",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p098",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p099",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p100",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p101",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p102",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p103",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p104",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p105",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p106",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p107",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p108",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p109",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p110",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "gamma"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p111",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p112",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p113",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p114",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "delta"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ]
+        },
+        {
+          "id": "relabel_p115",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p116",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p117",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p118",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p119",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p120",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p121",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p122",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p123",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p124",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p125",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p126",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p127",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p128",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p129",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p130",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "east",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p131",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p132",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p133",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p134",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p135",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p136",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p137",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p138",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p139",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p140",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p141",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p142",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p143",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p144",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p145",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p146",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p147",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          },
+          "sessions": [
+            0,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p148",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p149",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p150",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p151",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p152",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p153",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p154",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p155",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p156",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p157",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "epsilon"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p158",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "east",
+            "relabel_role": "alpha"
+          }
+        },
+        {
+          "id": "relabel_p159",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p160",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "south",
+            "relabel_role": "epsilon"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ]
+        },
+        {
+          "id": "relabel_p161",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "blue",
+            "relabel_region": "north",
+            "relabel_role": "beta"
+          }
+        },
+        {
+          "id": "relabel_p162",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "red",
+            "relabel_region": "south",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p163",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "east",
+            "relabel_role": "gamma"
+          }
+        },
+        {
+          "id": "relabel_p164",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "delta"
+          },
+          "sessions": [
+            0,
+            1,
+            2,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13
+          ]
+        },
+        {
+          "id": "relabel_p165",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p166",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "south",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p167",
+          "attributes": {
+            "relabel_cohort": "B",
+            "relabel_track": "yellow",
+            "relabel_region": "south",
+            "relabel_role": "delta"
+          }
+        },
+        {
+          "id": "relabel_p168",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "north",
+            "relabel_role": "epsilon"
+          }
+        },
+        {
+          "id": "relabel_p169",
+          "attributes": {
+            "relabel_cohort": "A",
+            "relabel_track": "green",
+            "relabel_region": "east",
+            "relabel_role": "alpha"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "relabel_g01",
+          "size": 13
+        },
+        {
+          "id": "relabel_g02",
+          "size": 13
+        },
+        {
+          "id": "relabel_g03",
+          "size": 13
+        },
+        {
+          "id": "relabel_g04",
+          "size": 13
+        },
+        {
+          "id": "relabel_g05",
+          "size": 13
+        },
+        {
+          "id": "relabel_g06",
+          "size": 13
+        },
+        {
+          "id": "relabel_g07",
+          "size": 13
+        },
+        {
+          "id": "relabel_g08",
+          "size": 13
+        },
+        {
+          "id": "relabel_g09",
+          "size": 13
+        },
+        {
+          "id": "relabel_g10",
+          "size": 13
+        },
+        {
+          "id": "relabel_g11",
+          "size": 13
+        },
+        {
+          "id": "relabel_g12",
+          "size": 13
+        },
+        {
+          "id": "relabel_g13",
+          "size": 13
+        }
+      ],
+      "num_sessions": 14
+    },
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 1,
+        "penalty_function": "squared",
+        "penalty_weight": 3.0
+      }
+    ],
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 2000000,
+        "time_limit_seconds": 300,
+        "no_improvement_iterations": 1000000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 50.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 10000,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      },
+      "seed": 1691314
+    },
+    "initial_schedule": null
+  }
+}
