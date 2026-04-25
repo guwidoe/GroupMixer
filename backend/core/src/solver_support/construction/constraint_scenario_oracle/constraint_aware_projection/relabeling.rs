@@ -598,7 +598,7 @@ impl ProjectionRelabeling {
         ) {
             return None;
         }
-        let over_capacity = atom.oracle_group_size.saturating_sub(atom.real_capacity);
+        let over_capacity = capacity_overage_after_attendance_slack(compiled, atom);
         let mut impact = if over_capacity == 0 {
             RelabelingScoreImpact::default()
         } else {
@@ -1045,6 +1045,32 @@ fn compare_relabeling_with_context(
                 .covered_constraint_units
                 .cmp(&right_score.coverage.covered_constraint_units)
         })
+}
+
+fn capacity_overage_after_attendance_slack(
+    compiled: &CompiledProblem,
+    atom: &CapacityProjectionAtom,
+) -> usize {
+    let raw_over_capacity = atom.oracle_group_size.saturating_sub(atom.real_capacity);
+    if raw_over_capacity == 0 {
+        return 0;
+    }
+    let session_deficit = (0..compiled.num_groups)
+        .map(|group| {
+            atom.oracle_group_size
+                .saturating_sub(compiled.group_capacity(atom.real_session, group))
+        })
+        .sum::<usize>();
+    let inactive_people = compiled
+        .person_participation
+        .iter()
+        .filter(|sessions| !sessions[atom.real_session])
+        .count();
+    if inactive_people >= session_deficit {
+        0
+    } else {
+        raw_over_capacity.min(session_deficit - inactive_people)
+    }
 }
 
 fn immovable_person_occurrence_count(compiled: &CompiledProblem, real_person: usize) -> usize {
