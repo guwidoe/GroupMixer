@@ -53,7 +53,7 @@ Primary-metric details:
 - Cases with nonzero fixed baselines contribute `score / baseline_score`.
 - Key sentinel cases have weight `2`; other nonzero-baseline cases have weight `1`.
 - Cases with zero fixed baseline are guards: staying at zero contributes nothing, but any nonzero score adds a small normalized `log1p(score)` penalty.
-- Cases without a successful fixed baseline yet are tracked as key sentinels and contribute through the catastrophic failure penalty until a successful strict-budget baseline can be established.
+- Cases without a successful fixed baseline yet are tracked as key sentinels and contribute through the catastrophic failure penalty until a successful strict-budget baseline can be established. The flotilla sentinel now has a fixed successful baseline from this round.
 - Failed cases add a catastrophic fixed penalty.
 
 ## How to Run
@@ -171,7 +171,7 @@ Initial single-case construction-suite smoke on current code:
 - Result: `0 ok / 1 failed`
 - Failure: `construction phase exceeded budget: 14.201s elapsed > 9.000s budget`
 
-Because this case has no successful strict-budget construction+search baseline yet, `autoresearch.sh` tracks `score_sailing_flotilla_stress` as an unweighted key sentinel and applies the normal catastrophic failure penalty while it fails. Once the constructor produces a successful strict-budget run, establish a fixed baseline score before using its final-score ratio in the primary metric.
+This case initially had no successful strict-budget construction+search baseline, so `autoresearch.sh` first tracked `score_sailing_flotilla_stress` as an unweighted key sentinel while applying the normal catastrophic failure penalty on failure. After the no-op hard-apart oracle skip made the case pass, the fixed baseline was set to the first kept strict-budget score, `830.0`, so future runs include flotilla in the weighted relative primary metric.
 
 ## New flotilla-baseline autoresearch round — 2026-04-25
 
@@ -183,4 +183,4 @@ Reinitialized autoresearch for the 36-case suite including `stretch.sailing-flot
 - Discarded longer solver6 oracle local search (`max_iterations = 2000`, `no_improvement = 500`): broad metric regressed to `1.188798391`; keep the oracle stop conditions at `500/100`.
 - Discarded reducing projection assignment iterations from 3 to 2: it eliminated the zero-regression guard in that run, but broad relative mean worsened and primary metric regressed to `1.140383684`.
 
-Current best in this round is `1.125625856`. Remaining generic opportunities: remove the `stretch.benchmark-very-large-constrained` zero-regression without broad relative regressions, and improve weak successful-case sentinels such as Google CP, transfer attribute balance, large gender immovable, and real Sailing. Preserve the flotilla no-failure behavior.
+Current best before adding flotilla to the weighted baseline was `1.125625856`. The metric has now been re-baselined to include `stretch.sailing-flotilla-stress-test = 830.0`; remaining generic opportunities are to improve the new weighted flotilla ratio, remove the `stretch.benchmark-very-large-constrained` zero-regression without broad relative regressions, and improve weak successful-case sentinels such as Google CP, transfer attribute balance, large gender immovable, and real Sailing. Preserve the flotilla no-failure behavior.

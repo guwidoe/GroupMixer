@@ -64,10 +64,9 @@ BASELINE_CASE_SCORES = {
     "stretch.large-gender-immovable-110p": 2157.000000,
     "stretch.medium-multi-session": 8.000000,
     "stretch.sailing-trip-demo-real": 2208.000000,
-    # New landing-page stress sentinel added after the fixed baseline line.  It is intentionally
-    # unweighted until the constructor produces a successful strict-budget run; failures still
-    # contribute the global failure penalty and the raw score is emitted as a key metric.
-    "stretch.sailing-flotilla-stress-test": None,
+    # Added after the original 35-case fixed baseline line. Baseline is the first kept
+    # strict-budget successful run from this round after the no-op hard-apart oracle skip.
+    "stretch.sailing-flotilla-stress-test": 830.000000,
     "stretch.sailing-trip-feature-dense": 126.000000,
     "stretch.social-golfer-32x8x15": 0.000000,
     "stretch.social-golfer-32x8x15-constrained": 687.000000,
