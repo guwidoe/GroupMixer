@@ -4,7 +4,7 @@
 
 - User explicitly expects major rewrites, not micro-optimizations: treat the existing atoms/relabeling logic as vague scaffolding that should be replaced by a factor/component reconciliation model.
 - Replace greedy atom acceptance with a bounded beam/backtracking solver over typed factors. State should be partial bijections for oracle people, oracle sessions, and oracle `(session, group)` slots; internal mapping contradictions remain hard rejects.
-- Score factors as a weighted CSP/Max-SAT objective: accepted compatible factors earn structure/contact rewards; uncovered factors add finite hard/soft costs; raw scenario-hard violations are tradeable repair costs, not proof of final infeasibility.
+- Score factors as a weighted CSP/Max-SAT objective: accepted compatible factors earn structure/contact rewards; uncovered factors add finite hard/soft costs; raw scenario-hard violations are tradeable repair costs, not proof of final infeasibility. The relabeler is not required to output a feasible schedule.
 - Build informative connected components first: combine immovable triples, cliques, hard-apart edges, pair-meeting factors, attribute group-slot factors, non-uniform attendance, and capacity asymmetry into factor components before exploring weak symmetric factors.
 - Treat isolated low-information immovables as lazy relational hints, not global anchors. Lone `ImmovablePerson` atoms currently overgenerate; only promote them when coupled to session/group/constraint structure.
 - Represent session relabeling explicitly. For SGP-like shapes, oracle session labels are symmetric unless attendance/capacity/session-scoped constraints remove that symmetry.
@@ -15,6 +15,7 @@
 
 ## Benchmark/system improvements that are allowed in this lane
 
+- Current primary should stay on direct relabeler/factor quality (`relabeling_factor_loss`) rather than final constructor success; final `1000000000` sentinel scores are only secondary monitors until projection/merge integration is coherent.
 - Add telemetry from the diagnostic path for atom counts, factor families, accepted/covered/uncovered constraint keys, mapping completeness, timeout status, and score breakdown. This is benchmark-neutral if it does not alter public defaults.
 - Add microdiagnostic cases/tests that prove a symmetry-breaking capability before expecting full benchmark score gains. If the benchmark target changes materially, re-run `init_experiment` with a new baseline.
 - Keep the diagnostic suite strong; do not reduce case sizes or planted constraint counts just because the current implementation times out or fails.

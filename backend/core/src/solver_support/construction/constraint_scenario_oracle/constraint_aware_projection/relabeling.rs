@@ -224,6 +224,10 @@ impl ProjectionRelabeling {
         }
     }
 
+    pub(super) fn score(&self) -> &RelabelingScore {
+        &self.score
+    }
+
     pub(super) fn is_shape_compatible(
         &self,
         compiled: &CompiledProblem,

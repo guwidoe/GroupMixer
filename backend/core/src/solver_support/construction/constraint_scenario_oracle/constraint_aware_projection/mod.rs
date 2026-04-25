@@ -64,3 +64,222 @@ pub(crate) fn project_oracle_schedule_to_template_constraint_aware(
     );
     Ok(projection)
 }
+
+#[cfg(test)]
+mod diagnostic_metrics {
+    use super::*;
+    use crate::models::ApiInput;
+    use crate::solver_support::construction::constraint_scenario_oracle::{
+        PureStructureOracle, PureStructureOracleRequest, Solver6PureStructureOracle,
+    };
+    use serde::Deserialize;
+    use std::fs;
+
+    const DEFAULT_RELABELING_DIAGNOSTIC_TIMEOUT_SECONDS: f64 = 5.0;
+
+    #[derive(Deserialize)]
+    struct DiagnosticCaseManifest {
+        id: String,
+        input: ApiInput,
+    }
+
+    #[test]
+    fn relabeling_projection_diagnostic_metrics() {
+        let Ok(case_paths) = std::env::var("GROUPMIXER_RELABELING_CASES") else {
+            eprintln!(
+                "skipping relabeling_projection_diagnostic_metrics; \
+                 GROUPMIXER_RELABELING_CASES is not set"
+            );
+            return;
+        };
+        let timeout_seconds = std::env::var("GROUPMIXER_RELABELING_TIMEOUT_SECONDS")
+            .ok()
+            .and_then(|value| value.parse::<f64>().ok())
+            .filter(|value| value.is_finite() && *value >= 0.0)
+            .unwrap_or(DEFAULT_RELABELING_DIAGNOSTIC_TIMEOUT_SECONDS);
+
+        let mut weighted_loss_sum = 0.0;
+        let mut weight_sum = 0.0;
+        let mut total_atoms = 0usize;
+        let mut total_atoms_considered = 0usize;
+        let mut total_atoms_accepted = 0usize;
+        let mut total_covered_units = 0usize;
+        let mut total_uncovered_units = 0usize;
+        let mut timed_out_count = 0usize;
+        let mut hard_cost_sum = 0.0;
+        let mut soft_cost_sum = 0.0;
+        let mut mapping_incomplete_sum = 0.0;
+
+        for raw_path in case_paths.split(':').filter(|path| !path.is_empty()) {
+            let manifest = read_case_manifest(raw_path);
+            let mut input = manifest.input;
+            let seed = input.solver.seed.unwrap_or(1691314);
+            input.solver =
+                crate::default_solver_configuration_for(crate::models::SolverKind::Solver3);
+            input.solver.seed = Some(seed);
+            let compiled = CompiledProblem::compile(&input)
+                .unwrap_or_else(|error| panic!("failed to compile {}: {error}", manifest.id));
+            let candidate = full_problem_oracle_candidate(&compiled);
+            let oracle_schedule = Solver6PureStructureOracle
+                .solve(&PureStructureOracleRequest {
+                    num_groups: candidate.num_groups,
+                    group_size: candidate.group_size,
+                    num_sessions: candidate.num_sessions(),
+                    seed,
+                })
+                .unwrap_or_else(|error| {
+                    panic!("solver6 oracle failed for {}: {error}", manifest.id)
+                });
+            let atoms = build_projection_atoms(&compiled, &candidate, &oracle_schedule.schedule);
+            let result = search_best_relabeling_within_budget(
+                &compiled,
+                &candidate,
+                &atoms,
+                RelabelingSearchBudget::from_remaining_seconds(Some(timeout_seconds)),
+            );
+            let score = result.best.score();
+            let coverage_units =
+                score.coverage.covered_constraint_units + score.coverage.uncovered_constraint_units;
+            let coverage_loss = if coverage_units == 0 {
+                0.0
+            } else {
+                score.coverage.uncovered_constraint_units as f64 / coverage_units as f64
+            };
+            let mapping_loss = mapping_loss(score);
+            let compatibility_loss = (score.hard_compatibility_cost + score.soft_penalty_cost)
+                .max(0.0)
+                .ln_1p()
+                / 10.0;
+            let timeout_loss = if result.timed_out { 1.0 } else { 0.0 };
+            let case_loss =
+                10.0 * coverage_loss + 3.0 * mapping_loss + compatibility_loss + 2.0 * timeout_loss;
+            let weight = diagnostic_case_weight(&manifest.id);
+
+            weighted_loss_sum += weight * case_loss;
+            weight_sum += weight;
+            total_atoms += atoms.atoms.len();
+            total_atoms_considered += result.atoms_considered;
+            total_atoms_accepted += result.atoms_accepted;
+            total_covered_units += score.coverage.covered_constraint_units;
+            total_uncovered_units += score.coverage.uncovered_constraint_units;
+            timed_out_count += usize::from(result.timed_out);
+            hard_cost_sum += score.hard_compatibility_cost;
+            soft_cost_sum += score.soft_penalty_cost;
+            mapping_incomplete_sum += score.mapping_incompleteness_cost;
+
+            println!(
+                "RELABEL_CASE {} loss={:.9} coverage_loss={:.9} mapping_loss={:.9} hard_cost={:.6} soft_cost={:.6} atoms={} accepted={} timed_out={}",
+                manifest.id,
+                case_loss,
+                coverage_loss,
+                mapping_loss,
+                score.hard_compatibility_cost,
+                score.soft_penalty_cost,
+                atoms.atoms.len(),
+                result.atoms_accepted,
+                result.timed_out,
+            );
+            println!(
+                "METRIC {}={:.9}",
+                metric_name_for_case(&manifest.id),
+                case_loss
+            );
+        }
+
+        let relabeling_factor_loss = if weight_sum == 0.0 {
+            0.0
+        } else {
+            weighted_loss_sum / weight_sum
+        };
+        let total_units = total_covered_units + total_uncovered_units;
+        let coverage_rate = if total_units == 0 {
+            1.0
+        } else {
+            total_covered_units as f64 / total_units as f64
+        };
+        let atom_acceptance_rate = if total_atoms_considered == 0 {
+            0.0
+        } else {
+            total_atoms_accepted as f64 / total_atoms_considered as f64
+        };
+
+        println!("METRIC relabeling_factor_loss={relabeling_factor_loss:.9}");
+        println!("METRIC relabeling_coverage_rate={coverage_rate:.9}");
+        println!("METRIC relabeling_total_atoms={total_atoms}");
+        println!("METRIC relabeling_atoms_considered={total_atoms_considered}");
+        println!("METRIC relabeling_atoms_accepted={total_atoms_accepted}");
+        println!("METRIC relabeling_atom_acceptance_rate={atom_acceptance_rate:.9}");
+        println!("METRIC relabeling_covered_units={total_covered_units}");
+        println!("METRIC relabeling_uncovered_units={total_uncovered_units}");
+        println!("METRIC relabeling_timed_out_count={timed_out_count}");
+        println!("METRIC relabeling_hard_cost_sum={hard_cost_sum:.9}");
+        println!("METRIC relabeling_soft_cost_sum={soft_cost_sum:.9}");
+        println!("METRIC relabeling_mapping_incomplete_sum={mapping_incomplete_sum:.9}");
+    }
+
+    fn read_case_manifest(path: &str) -> DiagnosticCaseManifest {
+        let raw = fs::read_to_string(path)
+            .unwrap_or_else(|error| panic!("failed to read diagnostic case {path}: {error}"));
+        serde_json::from_str(&raw)
+            .unwrap_or_else(|error| panic!("failed to parse diagnostic case {path}: {error}"))
+    }
+
+    fn full_problem_oracle_candidate(compiled: &CompiledProblem) -> OracleTemplateCandidate {
+        let num_groups = compiled.num_groups;
+        let group_size = compiled.num_people / compiled.num_groups.max(1);
+        OracleTemplateCandidate {
+            sessions: (0..compiled.num_sessions).collect(),
+            groups_by_session: (0..compiled.num_sessions)
+                .map(|_| (0..compiled.num_groups).collect())
+                .collect(),
+            num_groups,
+            group_size,
+            oracle_capacity: num_groups * group_size,
+            stable_people_count: compiled.num_people,
+            high_attendance_people_count: compiled.num_people,
+            dummy_oracle_people: compiled.num_people.saturating_sub(num_groups * group_size),
+            omitted_high_attendance_people: 0,
+            omitted_group_count: 0,
+            scaffold_disruption_risk: 0.0,
+            estimated_score: 0.0,
+        }
+    }
+
+    fn mapping_loss(score: &relabeling::RelabelingScore) -> f64 {
+        let people_total = score.mapping.mapped_people + score.mapping.unmapped_people;
+        let sessions_total = score.mapping.mapped_sessions + score.mapping.unmapped_sessions;
+        let slots_total = score.mapping.mapped_slots + score.mapping.unmapped_slots;
+        let people_loss = ratio(score.mapping.unmapped_people, people_total);
+        let session_loss = ratio(score.mapping.unmapped_sessions, sessions_total);
+        let slot_loss = ratio(score.mapping.unmapped_slots, slots_total);
+        (people_loss + session_loss + slot_loss) / 3.0
+    }
+
+    fn ratio(numerator: usize, denominator: usize) -> f64 {
+        if denominator == 0 {
+            0.0
+        } else {
+            numerator as f64 / denominator as f64
+        }
+    }
+
+    fn diagnostic_case_weight(case_id: &str) -> f64 {
+        if case_id.contains("mixed")
+            || case_id.contains("hard-apart")
+            || case_id.contains("attribute-balance")
+            || case_id.contains("cliques")
+        {
+            2.0
+        } else {
+            1.0
+        }
+    }
+
+    fn metric_name_for_case(case_id: &str) -> String {
+        let suffix = case_id
+            .strip_prefix("stretch.relabeling-projection-13x13x14-")
+            .unwrap_or(case_id)
+            .replace('-', "_");
+        format!("relabeling_factor_loss_{suffix}")
+    }
+}

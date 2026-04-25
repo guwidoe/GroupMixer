@@ -8,23 +8,47 @@ ARTIFACTS_DIR="${GROUPMIXER_AUTORESEARCH_ARTIFACTS_DIR:-/tmp/groupmixer-autorese
 JOBS="${GROUPMIXER_BENCHMARK_JOBS:-4}"
 CARGO_PROFILE="${GROUPMIXER_BENCHMARK_CARGO_PROFILE:-dev}"
 MANIFEST="backend/benchmarking/suites/solver3-relabeling-projection.yaml"
+RELABELING_TIMEOUT_SECONDS="${GROUPMIXER_RELABELING_TIMEOUT_SECONDS:-5.0}"
 mkdir -p "$ARTIFACTS_DIR"
 
-output_file="$(mktemp)"
-trap 'rm -f "$output_file"' EXIT
+# Primary diagnostic: score the relabeler/factor reconciliation directly, before merge/search.
+# This intentionally gives gradient for cases whose final construction currently fails or times out.
+mapfile -t CASE_FILES < <(find "$ROOT/backend/benchmarking/cases/stretch/relabeling_projection" -maxdepth 1 -name '*.json' | sort)
+if [[ "${#CASE_FILES[@]}" -eq 0 ]]; then
+  echo "no relabeling projection case files found" >&2
+  exit 1
+fi
+case_paths="$(IFS=:; echo "${CASE_FILES[*]}")"
 
+diag_output="$(mktemp)"
+benchmark_output="$(mktemp)"
+trap 'rm -f "$diag_output" "$benchmark_output"' EXIT
+
+if ! GROUPMIXER_RELABELING_CASES="$case_paths" \
+  GROUPMIXER_RELABELING_TIMEOUT_SECONDS="$RELABELING_TIMEOUT_SECONDS" \
+  cargo test -q -p gm-core relabeling_projection_diagnostic_metrics --lib -- --nocapture \
+  >"$diag_output" 2>&1; then
+  tail -160 "$diag_output" >&2
+  exit 1
+fi
+
+grep -E 'RELABEL_CASE|METRIC relabeling_' "$diag_output" || true
+
+# Secondary monitor: run the full diagnostic benchmark too, but do not make its feasibility failures
+# the primary optimization signal. Projection/merge feasibility remains important, but the relabeler
+# is allowed to rank structurally useful mappings that are not raw feasible schedules.
 if ! GROUPMIXER_BENCHMARK_JOBS="$JOBS" \
   cargo run -q -p gm-cli -- benchmark run \
     --manifest "$MANIFEST" \
     --artifacts-dir "$ARTIFACTS_DIR" \
     --cargo-profile "$CARGO_PROFILE" \
-  >"$output_file" 2>&1; then
-  tail -120 "$output_file" >&2
+  >"$benchmark_output" 2>&1; then
+  tail -120 "$benchmark_output" >&2
   exit 1
 fi
 
-grep -E 'Benchmark suite|Run report:' "$output_file" || true
-report_path="$(grep -E 'Run report:' "$output_file" | tail -1 | sed 's/^.*Run report: //')"
+grep -E 'Benchmark suite|Run report:' "$benchmark_output" || true
+report_path="$(grep -E 'Run report:' "$benchmark_output" | tail -1 | sed 's/^.*Run report: //')"
 if [[ -z "${report_path}" || ! -f "${report_path}" ]]; then
   echo "failed to locate benchmark run report" >&2
   exit 1
@@ -36,10 +60,8 @@ import math
 import sys
 from pathlib import Path
 
-# Construction-lane style fixed baselines for the relabeling diagnostic suite.
-# Values come from the first relabeling-lane baseline run on commit 15cce87/f3850270.
-# None means this case had no successful strict-budget baseline yet; it contributes via the
-# failure penalty until an experiment makes it successful, then a new baseline can be established.
+# Construction-lane style fixed baselines retained as secondary final-output monitors only.
+# The primary gradient is relabeling_factor_loss from the direct relabeler diagnostic above.
 BASELINE_CASE_SCORES = {
     "stretch.relabeling-projection-13x13x14-immovable": 0.0,
     "stretch.relabeling-projection-13x13x14-partial-attendance": 310.0,
@@ -55,17 +77,17 @@ BASELINE_CASE_SCORES = {
 }
 
 KEY_CASE_METRICS = {
-    "score_relabel_immovable": "stretch.relabeling-projection-13x13x14-immovable",
-    "score_relabel_partial_attendance": "stretch.relabeling-projection-13x13x14-partial-attendance",
-    "score_relabel_capacity_variation": "stretch.relabeling-projection-13x13x14-capacity-variation",
-    "score_relabel_cliques": "stretch.relabeling-projection-13x13x14-cliques",
-    "score_relabel_hard_apart": "stretch.relabeling-projection-13x13x14-hard-apart",
-    "score_relabel_attribute_balance": "stretch.relabeling-projection-13x13x14-attribute-balance",
-    "score_relabel_pair_meeting": "stretch.relabeling-projection-13x13x14-pair-meeting",
-    "score_relabel_soft_pairs": "stretch.relabeling-projection-13x13x14-soft-pairs",
-    "score_relabel_mixed_light": "stretch.relabeling-projection-13x13x14-mixed-light",
-    "score_relabel_mixed_structural": "stretch.relabeling-projection-13x13x14-mixed-structural",
-    "score_relabel_mixed_full": "stretch.relabeling-projection-13x13x14-mixed-full",
+    "final_score_relabel_immovable": "stretch.relabeling-projection-13x13x14-immovable",
+    "final_score_relabel_partial_attendance": "stretch.relabeling-projection-13x13x14-partial-attendance",
+    "final_score_relabel_capacity_variation": "stretch.relabeling-projection-13x13x14-capacity-variation",
+    "final_score_relabel_cliques": "stretch.relabeling-projection-13x13x14-cliques",
+    "final_score_relabel_hard_apart": "stretch.relabeling-projection-13x13x14-hard-apart",
+    "final_score_relabel_attribute_balance": "stretch.relabeling-projection-13x13x14-attribute-balance",
+    "final_score_relabel_pair_meeting": "stretch.relabeling-projection-13x13x14-pair-meeting",
+    "final_score_relabel_soft_pairs": "stretch.relabeling-projection-13x13x14-soft-pairs",
+    "final_score_relabel_mixed_light": "stretch.relabeling-projection-13x13x14-mixed-light",
+    "final_score_relabel_mixed_structural": "stretch.relabeling-projection-13x13x14-mixed-structural",
+    "final_score_relabel_mixed_full": "stretch.relabeling-projection-13x13x14-mixed-full",
 }
 
 KEY_CASE_IDS = {
@@ -164,7 +186,7 @@ for case in cases:
 
     case_scores[case_id] = score
     print(
-        "CASE {case_id} status={status} score={score:.6f} runtime={runtime:.6f} error={error}".format(
+        "FINAL_CASE {case_id} status={status} score={score:.6f} runtime={runtime:.6f} error={error}".format(
             case_id=case_id,
             status=status,
             score=score,
@@ -173,27 +195,27 @@ for case in cases:
         )
     )
 
-relative_score_mean = weighted_ratio_sum / baseline_weight_sum
-relabeling_relative_score = (
-    relative_score_mean
+final_relative_score_mean = weighted_ratio_sum / baseline_weight_sum
+final_relabeling_relative_score = (
+    final_relative_score_mean
     + zero_regression_penalty
     + failure_count * FAILURE_PENALTY
 )
 
-print(f"METRIC relabeling_relative_score={relabeling_relative_score:.9f}")
-print(f"METRIC relative_score_mean={relative_score_mean:.9f}")
-print(f"METRIC zero_regression_penalty={zero_regression_penalty:.9f}")
-print(f"METRIC failure_count={failure_count}")
-print(f"METRIC timeout_failure_count={timeout_failure_count}")
-print(f"METRIC construction_error_count={construction_error_count}")
-print(f"METRIC zero_regression_count={zero_regression_count}")
-print(f"METRIC success_count={success_count}")
-print(f"METRIC zero_score_count={zero_score_count}")
-print(f"METRIC mixed_success_count={mixed_success_count}")
-print(f"METRIC unbaselined_success_count={unbaselined_success_count}")
-print(f"METRIC diagnostic_final_score_sum={final_score_sum:.6f}")
-print(f"METRIC runtime_seconds={runtime_total:.9f}")
-print(f"METRIC construction_seconds_total={construction_total:.9f}")
+print(f"METRIC final_relabeling_relative_score={final_relabeling_relative_score:.9f}")
+print(f"METRIC final_relative_score_mean={final_relative_score_mean:.9f}")
+print(f"METRIC final_zero_regression_penalty={zero_regression_penalty:.9f}")
+print(f"METRIC final_failure_count={failure_count}")
+print(f"METRIC final_timeout_failure_count={timeout_failure_count}")
+print(f"METRIC final_construction_error_count={construction_error_count}")
+print(f"METRIC final_zero_regression_count={zero_regression_count}")
+print(f"METRIC final_success_count={success_count}")
+print(f"METRIC final_zero_score_count={zero_score_count}")
+print(f"METRIC final_mixed_success_count={mixed_success_count}")
+print(f"METRIC final_unbaselined_success_count={unbaselined_success_count}")
+print(f"METRIC final_diagnostic_score_sum={final_score_sum:.6f}")
+print(f"METRIC final_runtime_seconds={runtime_total:.9f}")
+print(f"METRIC final_construction_seconds_total={construction_total:.9f}")
 for metric_name, case_id in KEY_CASE_METRICS.items():
     print(f"METRIC {metric_name}={case_scores[case_id]:.6f}")
 PY

@@ -29,37 +29,35 @@ The current scaffold builds typed atoms and a timeout-aware partial bijection, b
 
 ## Metrics
 
-- **Primary**: `relabeling_relative_score` (unitless, lower is better) — construction-lane-style fixed-baseline aggregate. Successful nonzero-baseline cases contribute weighted `final_score / fixed_baseline_score`; zero-baseline cases are guards that add a small normalized `log1p(score)` penalty if they regress above zero; failed cases add a catastrophic fixed penalty. Cases without a successful strict-budget baseline yet contribute through the failure penalty until an experiment makes them successful, at which point this lane can be re-baselined.
-- **Secondary monitors**:
-  - `relative_score_mean`
-  - `zero_regression_penalty`
-  - `failure_count`
-  - `timeout_failure_count`
-  - `construction_error_count`
-  - `zero_regression_count`
-  - `success_count`
-  - `zero_score_count`
-  - `mixed_success_count`
-  - `unbaselined_success_count`
-  - `diagnostic_final_score_sum`
-  - `runtime_seconds`
-  - `construction_seconds_total`
-  - per-case scores: `score_relabel_immovable`, `score_relabel_partial_attendance`, `score_relabel_capacity_variation`, `score_relabel_cliques`, `score_relabel_hard_apart`, `score_relabel_attribute_balance`, `score_relabel_pair_meeting`, `score_relabel_soft_pairs`, `score_relabel_mixed_light`, `score_relabel_mixed_structural`, `score_relabel_mixed_full`.
+- **Primary**: `relabeling_factor_loss` (unitless, lower is better) — direct relabeler/factor diagnostic loss computed before projection merge or final solver search. This intentionally gives gradient on `hard_apart`, `mixed_structural`, and `mixed_full` even when final construction currently fails or times out.
+- **Secondary relabeler monitors**:
+  - `relabeling_coverage_rate`
+  - `relabeling_total_atoms`
+  - `relabeling_atoms_considered`
+  - `relabeling_atoms_accepted`
+  - `relabeling_atom_acceptance_rate`
+  - `relabeling_covered_units`
+  - `relabeling_uncovered_units`
+  - `relabeling_timed_out_count`
+  - `relabeling_hard_cost_sum`
+  - `relabeling_soft_cost_sum`
+  - `relabeling_mapping_incomplete_sum`
+  - per-case factor losses: `relabeling_factor_loss_immovable`, `relabeling_factor_loss_partial_attendance`, `relabeling_factor_loss_capacity_variation`, `relabeling_factor_loss_cliques`, `relabeling_factor_loss_hard_apart`, `relabeling_factor_loss_attribute_balance`, `relabeling_factor_loss_pair_meeting`, `relabeling_factor_loss_soft_pairs`, `relabeling_factor_loss_mixed_light`, `relabeling_factor_loss_mixed_structural`, `relabeling_factor_loss_mixed_full`.
+- **Secondary final-output monitors** use the old construction-style fixed-baseline aggregate with `final_` prefixes, e.g. `final_relabeling_relative_score`, `final_failure_count`, `final_timeout_failure_count`, and per-case `final_score_relabel_*`. These are **not** the primary gradient while the relabeler is being rewritten.
 
-Primary-metric details mirror the recent construction-heuristic lane:
+Primary-metric details:
 
-- fixed successful baselines are recorded in `tools/autoresearch/solver3-relabeling-projection/autoresearch.sh`,
-- nonzero fixed baselines contribute weighted relative ratios,
-- zero fixed baselines are guard cases and add only a normalized `log1p(score)` penalty when they regress,
-- cases with no successful fixed baseline yet (`hard_apart`, `mixed_structural`, `mixed_full` at setup time) are tracked as sentinels and improve the primary metric by removing the catastrophic failure penalty when they become successful,
-- key symmetry-breaking sentinels (`cliques`, `hard_apart`, `attribute_balance`, and all mixed cases) use weight `2`; other cases use weight `1`,
-- runtime is secondary only; correctness/structure beats speed until the algorithm works.
+- The relabeler is scored directly on typed constraint/factor reconciliation over the fixed diagnostic cases, before merge/search.
+- The raw relabeled oracle is **not required to be a feasible schedule**. Scenario-hard mismatches contribute finite compatibility costs and uncovered-factor penalties; only internal mapping contradictions are hard rejects.
+- `relabeling_factor_loss` combines uncovered-factor coverage loss, mapping incompleteness, finite compatibility/soft costs, and timeout count.
+- Final constructor failures remain visible as secondary `final_*` metrics, but they no longer flatten the primary gradient to `1000000000`/`1000` sentinels.
+- Key symmetry-breaking cases (`cliques`, `hard_apart`, `attribute_balance`, and all mixed cases) still receive higher diagnostic weight.
 
 ## Conceptual Keep Policy
 
 This is a development lane, so do **not** blindly discard elegant symmetry-breaking foundations merely because legacy final benchmark score does not immediately improve. Instead:
 
-1. If the idea changes projection behavior and lowers `relabeling_relative_score`, keep it normally.
+1. If the idea changes relabeler/factor behavior and lowers `relabeling_factor_loss`, keep it normally.
 2. If the idea is a conceptually strong scaffold but the current metric cannot observe it yet, add a focused diagnostic/telemetry/test that makes the capability measurable, update this file and `autoresearch.sh` if needed, call `init_experiment` again if the optimization target materially changes, then evaluate it against that explicit metric.
 3. Keep non-behavior-changing instrumentation or representation work when it is internal, tested, benchmark-neutral for public defaults, and clearly unlocks measuring or implementing a symmetry-breaking capability.
 4. Do not use broad-suite score as the first-order target until the relabeling result actually influences projection/merge. Broad remains a later safety check, not the metric for early relabeling intelligence.
@@ -164,14 +162,14 @@ Commit `f3850270 feat(solver3): score constraint-aware relabeling` added structu
 A diagnostic suite run on that commit produced:
 
 - under the original temporary log/failure aggregate: `11 cases: 8 ok / 3 failed`,
-- under the construction-style relative aggregate initialized afterward: baseline metric is expected around `3001` plus benchmark noise because three cases have no successful baseline yet,
+- under the later construction-style relative aggregate: baseline metric was around `3001` but provided no useful gradient on failing `1000000000` sentinel cases,
 - failures:
   - hard-apart: constructor placement error,
   - mixed-structural: construction budget exceeded,
   - mixed-full: construction budget exceeded,
 - report: `backend/benchmarking/artifacts/runs/solver3-relabeling-projection-20260425T132244Z-83cba6fd/run-report.json`.
 
-Interpretation: the metric now needs to drive smarter factor reconciliation and actual projection/merge influence. The current greedy relabeler is not enough and mostly acts as scored scaffolding.
+Interpretation: the metric must drive smarter factor reconciliation directly, not final feasibility. The current greedy relabeler is not enough and mostly acts as scored scaffolding. Final construction failures are secondary until the relabeling result is coherent enough to merge.
 
 ### Preferred next experiments
 
@@ -186,7 +184,8 @@ User direction after setup: do **not** start with micro-optimizations. The curre
 
 ### Strong negative guidance from prior construction work
 
-- Do not do sparse hard overlays from the current greedy relabeler. Experiment #3 overlaid accepted partial relabeling maps onto legacy projection; it regressed `relabeling_relative_score` from `3000.840` to `3125.666`, blew up previously good zero/low-score cases, and kept the same three failures. A pending group-only overlay follow-up was abandoned before running after user feedback because it was still too small/micro relative to the needed rewrite.
+- Do not do sparse hard overlays from the current greedy relabeler. Experiment #3 overlaid accepted partial relabeling maps onto legacy projection; it regressed the old final-output aggregate from `3000.840` to `3125.666`, blew up previously good zero/low-score cases, and kept the same three failures. A pending group-only overlay follow-up was abandoned before running after user feedback because it was still too small/micro relative to the needed rewrite.
+- The old final-output aggregate is now explicitly secondary because it flattened failed cases to sentinel values and incorrectly encouraged treating final construction feasibility as the relabeler objective.
 - Do not try to solve this with late runtime repair or blunt per-session relabeling in every construction phase; a previous blunt session-local group relabeling fixed one minor attribute diagnostic but regressed broad construction badly because it perturbed solver3's internal coordinate system too early.
 - Do not use arbitrary scalar local objective hacks for attributes/contacts. Use constraint-induced structure and assignment/factor reconciliation.
 - Do not treat group IDs as purely cosmetic once constraints exist. Relabel official group IDs deliberately at projection/merge boundaries.
