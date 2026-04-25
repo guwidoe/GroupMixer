@@ -246,6 +246,45 @@ export function ParticipantColumnsInput({
   const hasAppliedInitialBodyFocusRef = useRef(false);
   const previousColumnsLengthRef = useRef(columns.length);
 
+  const fitCustomGhostColumnToContainer = useCallback(() => {
+    if (!hasCustomColumnWidthsRef.current || dragStateRef.current) {
+      return;
+    }
+
+    const node = columnsContainerRef.current;
+    const containerWidth = node?.getBoundingClientRect().width ?? 0;
+    if (containerWidth <= 0) {
+      return;
+    }
+
+    const nextColumnWidths = Array.from({ length: columns.length }, (_, index) => (
+      Math.max(
+        getMinimumColumnWidth(index),
+        columnWidthsRef.current[index] ?? getDefaultColumnWidth(index),
+      )
+    ));
+    const separatorWidth = columns.length * COLUMN_SEPARATOR_WIDTH;
+    const occupiedWithoutGhost = nextColumnWidths.reduce((sum, width) => sum + width, 0) + separatorWidth;
+    const nextGhostColumnWidth = Math.max(MIN_GHOST_COLUMN_WIDTH, containerWidth - occupiedWithoutGhost);
+
+    if (
+      areWidthsApproximatelyEqual(columnWidthsRef.current.slice(0, columns.length), nextColumnWidths)
+      && columnWidthsRef.current.length === columns.length
+      && Math.abs(ghostColumnWidthRef.current - nextGhostColumnWidth) < 0.5
+    ) {
+      return;
+    }
+
+    columnWidthsRef.current = nextColumnWidths;
+    ghostColumnWidthRef.current = nextGhostColumnWidth;
+    setColumnWidths(nextColumnWidths);
+    setGhostColumnWidth(nextGhostColumnWidth);
+    writeStoredParticipantColumnsLayout({
+      columnWidths: nextColumnWidths,
+      ghostColumnWidth: nextGhostColumnWidth,
+    });
+  }, [columns.length]);
+
   const focusColumnHeader = useCallback((columnId: string, token?: number) => {
     if (token != null && fulfilledFocusRequestTokenRef.current === token) {
       return true;
@@ -340,6 +379,7 @@ export function ParticipantColumnsInput({
       setHorizontalScrollbarHeight((previous) => (
         Math.abs(previous - nextHorizontalScrollbarHeight) < 0.5 ? previous : nextHorizontalScrollbarHeight
       ));
+      fitCustomGhostColumnToContainer();
     };
 
     measure();
@@ -360,7 +400,7 @@ export function ParticipantColumnsInput({
       window.removeEventListener('resize', measure);
       observer?.disconnect();
     };
-  }, [columnWidths, columns.length, ghostColumnWidth, height]);
+  }, [columnWidths, columns.length, fitCustomGhostColumnToContainer, ghostColumnWidth, height]);
 
   useLayoutEffect(() => {
     if (hasCustomColumnWidthsRef.current) {
@@ -419,43 +459,8 @@ export function ParticipantColumnsInput({
       return;
     }
 
-    if (!hasCustomColumnWidthsRef.current || dragStateRef.current) {
-      return;
-    }
-
-    const node = columnsContainerRef.current;
-    const containerWidth = node?.getBoundingClientRect().width ?? 0;
-    if (containerWidth <= 0) {
-      return;
-    }
-
-    const nextColumnWidths = Array.from({ length: columns.length }, (_, index) => (
-      Math.max(
-        getMinimumColumnWidth(index),
-        columnWidthsRef.current[index] ?? getDefaultColumnWidth(index),
-      )
-    ));
-    const separatorWidth = columns.length * COLUMN_SEPARATOR_WIDTH;
-    const occupiedWithoutGhost = nextColumnWidths.reduce((sum, width) => sum + width, 0) + separatorWidth;
-    const nextGhostColumnWidth = Math.max(MIN_GHOST_COLUMN_WIDTH, containerWidth - occupiedWithoutGhost);
-
-    if (
-      areWidthsApproximatelyEqual(columnWidthsRef.current.slice(0, columns.length), nextColumnWidths)
-      && columnWidthsRef.current.length === columns.length
-      && Math.abs(ghostColumnWidthRef.current - nextGhostColumnWidth) < 0.5
-    ) {
-      return;
-    }
-
-    columnWidthsRef.current = nextColumnWidths;
-    ghostColumnWidthRef.current = nextGhostColumnWidth;
-    setColumnWidths(nextColumnWidths);
-    setGhostColumnWidth(nextGhostColumnWidth);
-    writeStoredParticipantColumnsLayout({
-      columnWidths: nextColumnWidths,
-      ghostColumnWidth: nextGhostColumnWidth,
-    });
-  }, [columns.length]);
+    fitCustomGhostColumnToContainer();
+  }, [columns.length, fitCustomGhostColumnToContainer]);
 
   const getColumnWidth = useCallback(
     (index: number) => columnWidths[index] ?? getDefaultColumnWidth(index),

@@ -221,6 +221,42 @@ describe('ParticipantColumnsInput resize behavior', () => {
     expect(storedLayout.ghostColumnWidth).toBeGreaterThan(MIN_GHOST_COLUMN_WIDTH);
   });
 
+  it('resizes the ghost column when a custom-width layout gains space', async () => {
+    let containerWidth = 392;
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function getRect() {
+      return {
+        bottom: 0,
+        height: 0,
+        left: 0,
+        right: this.classList.contains('landing-participant-columns__columns') ? containerWidth : 0,
+        top: 0,
+        width: this.classList.contains('landing-participant-columns__columns') ? containerWidth : 0,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      } as DOMRect;
+    });
+
+    render(<ParticipantColumnsInput {...baseProps} />);
+
+    fireEvent.pointerDown(screen.getByLabelText('Resize ghost column'), {
+      clientX: 0,
+      pointerId: 1,
+    });
+    fireEvent.pointerMove(window, { clientX: 220 });
+    fireEvent.pointerUp(window);
+
+    containerWidth = 650;
+    fireEvent.resize(window);
+
+    await waitFor(() => {
+      const storedLayout = JSON.parse(window.localStorage.getItem(PARTICIPANT_COLUMNS_LAYOUT_STORAGE_KEY) ?? '{}') as {
+        ghostColumnWidth?: number;
+      };
+      expect(storedLayout.ghostColumnWidth).toBeGreaterThan(MIN_GHOST_COLUMN_WIDTH);
+    });
+  });
+
   it('scrolls to the right after adding an attribute column', async () => {
     function StatefulParticipantColumnsInput() {
       const [columns, setColumns] = React.useState(baseProps.columns);
