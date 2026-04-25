@@ -12,6 +12,7 @@
 # Not scanned (legacy/non-production code):
 #   - c-cpp (legacy_cpp/)
 #   - python (python/)
+#   - Rust examples and tests (diagnostic harnesses that intentionally print solver internals)
 
 name: "CodeQL"
 
@@ -61,6 +62,12 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+          config: |
+            paths-ignore:
+              - backend/core/examples/**
+              - backend/core/src/**/tests.rs
+              - backend/core/src/**/tests/**
+              - backend/core/tests/**
           # For custom queries, see:
           # https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
           # queries: security-extended,security-and-quality
