@@ -26,8 +26,8 @@ use super::scoring::recompute::recompute_oracle_score;
 use super::search::SearchEngine as Solver3SearchEngine;
 use super::validation::validate_invariants;
 use crate::models::{
-    ApiInput, Solver3ConstructionMode, Solver3Params, SolverConfiguration, SolverKind,
-    SolverParams, StopConditions,
+    ApiInput, AutoConstructorOutcome, Solver3ConstructionMode, Solver3Params, SolverConfiguration,
+    SolverKind, SolverParams, StopConditions,
 };
 use crate::solver_support::construction::constraint_scenario_oracle::{
     build_constraint_scenario_scaffold_mask, extract_constraint_scenario_signals_from_scaffold,
@@ -47,6 +47,30 @@ use crate::solver_support::validation::{
 use crate::solver_support::SolverError;
 
 const DEFAULT_BASELINE_CONSTRUCTION_SEED: u64 = 42;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct AutoConstructionPolicy {
+    pub(crate) oracle_construction_budget_seconds: f64,
+    pub(crate) scaffold_budget_seconds: f64,
+    pub(crate) oracle_recombination_budget_seconds: f64,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct AutoConstructionResult {
+    pub(crate) state: RuntimeState,
+    pub(crate) attempt_label: &'static str,
+    pub(crate) outcome: AutoConstructorOutcome,
+    pub(crate) fallback_used: bool,
+    pub(crate) failure: Option<String>,
+    pub(crate) constructor_wall_seconds: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct ConstraintScenarioConstructionBudget {
+    total_budget_seconds: Option<f64>,
+    scaffold_budget_seconds: Option<f64>,
+    oracle_budget_seconds: Option<f64>,
+}
 
 #[derive(Debug, Clone, Copy)]
 enum ConstructionHeuristicSelection {
@@ -135,6 +159,135 @@ impl RuntimeState {
             construction,
             input.solver.stop_conditions.time_limit_seconds,
         )
+    }
+
+    pub(crate) fn from_input_with_auto_construction(
+        input: &ApiInput,
+        policy: AutoConstructionPolicy,
+    ) -> Result<AutoConstructionResult, SolverError> {
+        validate_schedule_input_mode(input)?;
+        let compiled = Arc::new(CompiledProblem::compile(input)?);
+        let effective_seed = input
+            .solver
+            .seed
+            .unwrap_or(DEFAULT_BASELINE_CONSTRUCTION_SEED);
+
+        if let Some(initial_schedule) = &input.initial_schedule {
+            let started_at = Instant::now();
+            let validated = validate_schedule_as_incumbent(input, initial_schedule)?;
+            let state = Self::from_compiled_schedule(compiled, validated.schedule)?;
+            return Ok(AutoConstructionResult {
+                state,
+                attempt_label: "initial_schedule",
+                outcome: AutoConstructorOutcome::InitialSchedule,
+                fallback_used: false,
+                failure: None,
+                constructor_wall_seconds: started_at.elapsed().as_secs_f64(),
+            });
+        }
+
+        let construction_started_at = Instant::now();
+        let empty = Self::empty_for_compiled(Arc::clone(&compiled));
+        let budget = ConstraintScenarioConstructionBudget {
+            total_budget_seconds: Some(policy.oracle_construction_budget_seconds),
+            scaffold_budget_seconds: Some(policy.scaffold_budget_seconds),
+            oracle_budget_seconds: Some(policy.oracle_recombination_budget_seconds),
+        };
+
+        let attempt = empty
+            .build_constraint_scenario_oracle_guided_schedule_with_budget(effective_seed, budget)
+            .and_then(|result| {
+                empty.validate_constructed_schedule(
+                    &result.schedule,
+                    ConstructionHeuristicSelection::ConstraintScenarioOracleGuided.label(),
+                )?;
+                Ok(result.schedule)
+            });
+
+        match attempt {
+            Ok(schedule)
+                if construction_started_at.elapsed().as_secs_f64()
+                    <= policy.oracle_construction_budget_seconds =>
+            {
+                let state = Self::from_compiled_schedule(compiled, schedule)?;
+                Ok(AutoConstructionResult {
+                    state,
+                    attempt_label: "constraint_scenario_oracle_guided",
+                    outcome: AutoConstructorOutcome::Success,
+                    fallback_used: false,
+                    failure: None,
+                    constructor_wall_seconds: construction_started_at.elapsed().as_secs_f64(),
+                })
+            }
+            Ok(_) => {
+                let failure = format!(
+                    "constraint-scenario oracle-guided construction exceeded budget: {:.3}s elapsed > {:.3}s budget",
+                    construction_started_at.elapsed().as_secs_f64(),
+                    policy.oracle_construction_budget_seconds
+                );
+                Self::auto_baseline_fallback(
+                    compiled,
+                    effective_seed,
+                    construction_started_at,
+                    AutoConstructorOutcome::Timeout,
+                    failure,
+                )
+            }
+            Err(error) => {
+                let failure = error.to_string();
+                let outcome = classify_auto_constructor_failure(&failure);
+                Self::auto_baseline_fallback(
+                    compiled,
+                    effective_seed,
+                    construction_started_at,
+                    outcome,
+                    failure,
+                )
+            }
+        }
+    }
+
+    fn empty_for_compiled(compiled: Arc<CompiledProblem>) -> Self {
+        let np = compiled.num_people;
+        let ng = compiled.num_groups;
+        let ns = compiled.num_sessions;
+        Self {
+            compiled,
+            person_location: vec![None::<usize>; ns * np],
+            group_members: vec![Vec::new(); ns * ng],
+            group_sizes: vec![0usize; ns * ng],
+            pair_contacts: vec![0u16; np.saturating_mul(np.saturating_sub(1)) / 2],
+            unique_contacts: 0,
+            repetition_penalty_raw: 0,
+            weighted_repetition_penalty: 0.0,
+            attribute_balance_penalty: 0.0,
+            constraint_penalty_weighted: 0.0,
+            total_score: 0.0,
+        }
+    }
+
+    fn auto_baseline_fallback(
+        compiled: Arc<CompiledProblem>,
+        effective_seed: u64,
+        started_at: Instant,
+        outcome: AutoConstructorOutcome,
+        failure: String,
+    ) -> Result<AutoConstructionResult, SolverError> {
+        let empty = Self::empty_for_compiled(Arc::clone(&compiled));
+        let schedule = empty.build_constructed_schedule(
+            effective_seed,
+            ConstructionHeuristicSelection::BaselineLegacy,
+            None,
+        )?;
+        let state = Self::from_compiled_schedule(compiled, schedule)?;
+        Ok(AutoConstructionResult {
+            state,
+            attempt_label: "constraint_scenario_oracle_guided",
+            outcome,
+            fallback_used: true,
+            failure: Some(failure),
+            constructor_wall_seconds: started_at.elapsed().as_secs_f64(),
+        })
     }
 
     /// Builds a `RuntimeState` from a pre-compiled problem.
@@ -423,6 +576,16 @@ impl RuntimeState {
         effective_seed: u64,
         construction_total_time_limit_seconds: Option<u64>,
     ) -> Result<ConstraintScenarioOracleConstructionResult, SolverError> {
+        let budget =
+            ConstraintScenarioConstructionBudget::legacy(construction_total_time_limit_seconds);
+        self.build_constraint_scenario_oracle_guided_schedule_with_budget(effective_seed, budget)
+    }
+
+    fn build_constraint_scenario_oracle_guided_schedule_with_budget(
+        &self,
+        effective_seed: u64,
+        budget: ConstraintScenarioConstructionBudget,
+    ) -> Result<ConstraintScenarioOracleConstructionResult, SolverError> {
         let started_at = Instant::now();
         if !repeat_pressure_is_relevant(&self.compiled) {
             let schedule = self.build_constructed_schedule(
@@ -441,10 +604,12 @@ impl RuntimeState {
             });
         }
 
+        ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
         let scaffold = self.build_constraint_scenario_warmup_scaffold(
             effective_seed,
-            construction_total_time_limit_seconds,
+            budget.scaffold_budget_seconds,
         )?;
+        ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
         if scaffold.score <= f64::EPSILON {
             return Ok(ConstraintScenarioOracleConstructionResult {
                 schedule: scaffold.schedule,
@@ -459,6 +624,7 @@ impl RuntimeState {
                 },
             });
         }
+        ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
         let signals =
             extract_constraint_scenario_signals_from_scaffold(&self.compiled, &scaffold.schedule);
         let scaffold_mask =
@@ -486,12 +652,16 @@ impl RuntimeState {
                 },
             });
         };
+        ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
+        let oracle_phase_started_at = Instant::now();
         let oracle_schedule = Solver6PureStructureOracle.solve(&PureStructureOracleRequest {
             num_groups: candidate.num_groups,
             group_size: candidate.group_size,
             num_sessions: candidate.num_sessions(),
             seed: effective_seed ^ 0x5eed_600d_u64,
         })?;
+        ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
+        ensure_constructor_budget_remaining(oracle_phase_started_at, budget.oracle_budget_seconds)?;
         let projection = project_oracle_schedule_to_template(
             &self.compiled,
             &signals,
@@ -499,6 +669,7 @@ impl RuntimeState {
             &candidate,
             &oracle_schedule,
         )?;
+        ensure_constructor_budget_remaining(oracle_phase_started_at, budget.oracle_budget_seconds)?;
         let oracle_projection_score = Some(projection.score);
         let merge = merge_projected_oracle_template_into_scaffold(
             &self.compiled,
@@ -514,6 +685,8 @@ impl RuntimeState {
                 "constraint-scenario oracle-guided construction could not merge oracle template while preserving hard constraints: {err}"
             ))
         })?;
+        ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
+        ensure_constructor_budget_remaining(oracle_phase_started_at, budget.oracle_budget_seconds)?;
         let snapshot = self.score_constructed_schedule(&merge.schedule)?;
         let selected_schedule = merge.schedule;
         let merged_score = snapshot.total_score;
@@ -549,16 +722,15 @@ impl RuntimeState {
     fn build_constraint_scenario_warmup_scaffold(
         &self,
         effective_seed: u64,
-        construction_total_time_limit_seconds: Option<u64>,
+        budget_seconds: Option<f64>,
     ) -> Result<ConstraintScenarioWarmupScaffold, SolverError> {
-        let budget_seconds =
-            constraint_scenario_warmup_budget_seconds(construction_total_time_limit_seconds);
+        let budget_seconds = budget_seconds.unwrap_or(1.0).max(0.0);
         let baseline_schedule = self.build_constructed_schedule(
             effective_seed ^ 0x0c5c_aff0_1d5c_aff0_u64,
             ConstructionHeuristicSelection::BaselineLegacy,
             None,
         )?;
-        if budget_seconds == 0 {
+        if budget_seconds <= f64::EPSILON {
             let snapshot = self.score_constructed_schedule(&baseline_schedule)?;
             return Ok(ConstraintScenarioWarmupScaffold {
                 schedule: baseline_schedule,
@@ -572,7 +744,12 @@ impl RuntimeState {
             effective_seed ^ 0x57a9_1e5c_affe_f00d_u64,
             budget_seconds,
         );
-        Solver3SearchEngine::new(&warmup_config).solve(&mut warmup_state, None, None)?;
+        Solver3SearchEngine::new(&warmup_config).solve_with_time_limit_override(
+            &mut warmup_state,
+            None,
+            None,
+            Some(budget_seconds),
+        )?;
         let schedule = warmup_state.to_packed_schedule();
         let snapshot = self.score_constructed_schedule(&schedule)?;
         Ok(ConstraintScenarioWarmupScaffold {
@@ -926,22 +1103,61 @@ struct ConstraintScenarioWarmupScaffold {
     score: f64,
 }
 
-fn constraint_scenario_warmup_budget_seconds(total_time_limit_seconds: Option<u64>) -> u64 {
-    match total_time_limit_seconds {
-        Some(0) => 0,
-        Some(_) | None => 1,
+impl ConstraintScenarioConstructionBudget {
+    fn legacy(total_time_limit_seconds: Option<u64>) -> Self {
+        Self {
+            total_budget_seconds: None,
+            scaffold_budget_seconds: Some(match total_time_limit_seconds {
+                Some(0) => 0.0,
+                Some(_) | None => 1.0,
+            }),
+            oracle_budget_seconds: None,
+        }
     }
+}
+
+fn classify_auto_constructor_failure(failure: &str) -> AutoConstructorOutcome {
+    let normalized = failure.to_ascii_lowercase();
+    if normalized.contains("exceeded") && normalized.contains("budget") {
+        AutoConstructorOutcome::Timeout
+    } else if normalized.contains("repeat pressure is not relevant")
+        || normalized.contains("repeat/contact pressure is absent")
+        || normalized.contains("not applicable")
+        || normalized.contains("unsupported")
+    {
+        AutoConstructorOutcome::Unsupported
+    } else if normalized.contains("validation") || normalized.contains("invalid") {
+        AutoConstructorOutcome::ValidationError
+    } else {
+        AutoConstructorOutcome::FallbackBaseline
+    }
+}
+
+fn ensure_constructor_budget_remaining(
+    started_at: Instant,
+    total_budget_seconds: Option<f64>,
+) -> Result<(), SolverError> {
+    let Some(total_budget_seconds) = total_budget_seconds else {
+        return Ok(());
+    };
+    if started_at.elapsed().as_secs_f64() > total_budget_seconds {
+        return Err(SolverError::ValidationError(format!(
+            "constraint-scenario oracle-guided construction exceeded its {:.3}s budget",
+            total_budget_seconds
+        )));
+    }
+    Ok(())
 }
 
 fn constraint_scenario_warmup_solver_configuration(
     effective_seed: u64,
-    budget_seconds: u64,
+    budget_seconds: f64,
 ) -> SolverConfiguration {
     SolverConfiguration {
         solver_type: SolverKind::Solver3.canonical_id().into(),
         stop_conditions: StopConditions {
             max_iterations: Some(1_000_000),
-            time_limit_seconds: Some(budget_seconds),
+            time_limit_seconds: Some(budget_seconds.ceil().max(1.0) as u64),
             no_improvement_iterations: None,
             stop_on_optimal_score: true,
         },

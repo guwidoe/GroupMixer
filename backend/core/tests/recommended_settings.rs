@@ -39,25 +39,15 @@ fn test_calculate_recommended_settings_initial_temp_above_one() {
         calculate_recommended_settings(&problem, &[], &[], 1 /* desired runtime seconds */)
             .expect("calculate_recommended_settings should succeed");
 
+    assert_eq!(cfg.solver_type, "auto");
     match cfg.solver_params {
-        SolverParams::SimulatedAnnealing(sa) => {
-            assert!(
-                sa.initial_temperature.is_finite() && sa.initial_temperature > 0.0,
-                "Expected a positive finite initial temperature, got {}",
-                sa.initial_temperature
-            );
-            assert!(
-                sa.initial_temperature > sa.final_temperature,
-                "Expected initial temperature {} to stay above final temperature {}",
-                sa.initial_temperature,
-                sa.final_temperature
-            );
-        }
-        SolverParams::Solver3(_)
+        SolverParams::Auto(_) => {}
+        SolverParams::SimulatedAnnealing(_)
+        | SolverParams::Solver3(_)
         | SolverParams::Solver4(_)
         | SolverParams::Solver5(_)
         | SolverParams::Solver6(_) => {
-            panic!("default recommended settings should still route through solver1")
+            panic!("default recommended settings should route through auto")
         }
     }
 }

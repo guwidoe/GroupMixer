@@ -47,7 +47,7 @@ pub(crate) fn run(
             effective_seed: run_context.effective_seed,
             max_iterations: run_context.max_iterations,
             no_improvement_limit: run_context.no_improvement_limit,
-            time_limit_seconds: run_context.time_limit_seconds.map(|limit| limit as f64),
+            time_limit_seconds: run_context.time_limit_seconds,
             stop_on_optimal_score: run_context.stop_on_optimal_score,
             runtime_scaled_no_improvement_stop: run_context.runtime_scaled_no_improvement_stop,
         },

@@ -28,12 +28,25 @@ impl SearchEngine {
         progress_callback: Option<&ProgressCallback>,
         benchmark_observer: Option<&BenchmarkObserver>,
     ) -> Result<SolverResult, SolverError> {
+        self.solve_with_time_limit_override(state, progress_callback, benchmark_observer, None)
+    }
+
+    pub(crate) fn solve_with_time_limit_override(
+        &self,
+        state: &mut RuntimeState,
+        progress_callback: Option<&ProgressCallback>,
+        benchmark_observer: Option<&BenchmarkObserver>,
+        time_limit_seconds: Option<f64>,
+    ) -> Result<SolverResult, SolverError> {
         let effective_seed = self
             .configuration
             .seed
             .unwrap_or_else(|| rng().random::<u64>());
-        let run_context =
+        let mut run_context =
             SearchRunContext::from_solver(&self.configuration, state, effective_seed)?;
+        if let Some(time_limit_seconds) = time_limit_seconds {
+            run_context.time_limit_seconds = Some(time_limit_seconds);
+        }
 
         match (
             run_context.search_driver_mode,

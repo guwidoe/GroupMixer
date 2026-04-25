@@ -2,6 +2,17 @@
 
 This document defines the current human-facing role of each backend solver.
 
+## auto = product-default solver
+
+The default public solve policy.
+
+- Always delegates actual solving to solver3
+- Computes a canonical complexity-derived runtime budget
+- Attempts bounded constraint-scenario oracle-guided construction first
+- Falls back explicitly to baseline solver3 construction when the oracle attempt times out or fails
+- Reserves the majority of runtime for solver3 search with runtime-scaled no-improvement stopping
+- Exposes route, budget, constructor outcome, and fallback telemetry
+
 ## solver1 = legacy-solver
 
 The original legacy solver family.

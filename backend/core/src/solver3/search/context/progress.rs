@@ -271,7 +271,9 @@ impl SearchProgressState {
                 completed_iterations,
                 run_context.max_iterations,
                 elapsed_seconds,
-                run_context.time_limit_seconds,
+                run_context
+                    .time_limit_seconds
+                    .map(|seconds| seconds.ceil() as u64),
                 stop_reason,
             ),
             temperature,
@@ -315,7 +317,9 @@ impl SearchProgressState {
                 iteration,
                 run_context.max_iterations,
                 elapsed_seconds,
-                run_context.time_limit_seconds,
+                run_context
+                    .time_limit_seconds
+                    .map(|seconds| seconds.ceil() as u64),
             ),
             clique_swap_success_rate: ratio(
                 self.move_metrics.clique_swap.accepted,
@@ -388,6 +392,7 @@ impl SearchProgressState {
                 .multi_root_balanced_session_inheritance_telemetry
                 .clone(),
             solver4_paper_trace: None,
+            auto: None,
             moves: self.move_metrics.clone(),
         }
     }

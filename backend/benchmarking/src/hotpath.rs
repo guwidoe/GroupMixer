@@ -171,6 +171,10 @@ fn run_hotpath_case(
         SolverKind::Solver4 => Err(format!(
             "hotpath benchmarking is not defined for solver4; solver4 is a dedicated pure-SGP search family, not a hotpath-kernel benchmark target"
         )),
+        SolverKind::Auto => Err(
+            "hotpath benchmarking is not defined for auto; select a concrete solver family"
+                .to_string(),
+        ),
         SolverKind::Solver5 | SolverKind::Solver6 => Err(format!(
             "hotpath benchmarking is not defined for {}; pure-SGP construction/search families do not expose solver1/solver3-style move-kernel hotpaths",
             solver_kind.canonical_id()

@@ -602,6 +602,9 @@ pub struct SolverConfiguration {
 )]
 #[serde(rename_all = "snake_case")]
 pub enum SolverKind {
+    /// Automatic product default: solver3 with complexity-derived budgets, oracle-guided
+    /// construction attempt, explicit baseline fallback, and runtime-scaled search stopping.
+    Auto,
     /// The current production solver family backed by the `solver1` simulated annealing engine.
     Solver1,
     /// Bootstrap scaffold for the `solver3` performance-oriented dense-state solver family.
@@ -619,11 +622,12 @@ pub enum SolverKind {
 }
 
 /// Default solver family used by current public callers.
-pub const DEFAULT_SOLVER_KIND: SolverKind = SolverKind::Solver1;
+pub const DEFAULT_SOLVER_KIND: SolverKind = SolverKind::Auto;
 
 impl SolverKind {
     pub const fn canonical_id(self) -> &'static str {
         match self {
+            Self::Auto => "auto",
             Self::Solver1 => "solver1",
             Self::Solver3 => "solver3",
             Self::Solver4 => "solver4",
@@ -634,6 +638,7 @@ impl SolverKind {
 
     pub const fn display_name(self) -> &'static str {
         match self {
+            Self::Auto => "Auto",
             Self::Solver1 => "Solver 1",
             Self::Solver3 => "Solver 3",
             Self::Solver4 => "Solver 4",
@@ -644,6 +649,7 @@ impl SolverKind {
 
     pub fn accepted_config_ids(self) -> &'static [&'static str] {
         match self {
+            Self::Auto => &["auto", "default"],
             Self::Solver1 => &[
                 "solver1",
                 "legacy_simulated_annealing",
@@ -659,6 +665,7 @@ impl SolverKind {
 
     pub fn parse_config_id(value: &str) -> Result<Self, String> {
         match value {
+            "auto" | "default" => Ok(Self::Auto),
             "solver1"
             | "legacy_simulated_annealing"
             | "simulated_annealing"
@@ -670,6 +677,7 @@ impl SolverKind {
             other => Err(format!(
                 "Unknown solver type '{other}'. Supported solver IDs: {}",
                 [
+                    Self::Auto,
                     Self::Solver1,
                     Self::Solver3,
                     Self::Solver4,
@@ -984,6 +992,9 @@ impl StopConditions {
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
 #[serde(tag = "solver_type")]
 pub enum SolverParams {
+    /// Parameters for the automatic product default solver policy.
+    #[serde(rename = "auto")]
+    Auto(AutoSolverParams),
     /// Parameters for the Simulated Annealing algorithm
     SimulatedAnnealing(SimulatedAnnealingParams),
     /// Parameters for the internal `solver3` family.
@@ -1006,6 +1017,7 @@ pub enum SolverParams {
 impl SolverParams {
     pub fn solver_kind(&self) -> SolverKind {
         match self {
+            Self::Auto(_) => SolverKind::Auto,
             Self::SimulatedAnnealing(_) => SolverKind::Solver1,
             Self::Solver3(_) => SolverKind::Solver3,
             Self::Solver4(_) => SolverKind::Solver4,
@@ -1017,20 +1029,33 @@ impl SolverParams {
     pub fn simulated_annealing_params(&self) -> Option<&SimulatedAnnealingParams> {
         match self {
             Self::SimulatedAnnealing(params) => Some(params),
-            Self::Solver3(_) | Self::Solver4(_) | Self::Solver5(_) | Self::Solver6(_) => None,
+            Self::Auto(_)
+            | Self::Solver3(_)
+            | Self::Solver4(_)
+            | Self::Solver5(_)
+            | Self::Solver6(_) => None,
         }
     }
 
     pub fn solver3_params(&self) -> Option<&Solver3Params> {
         match self {
             Self::Solver3(params) => Some(params),
-            Self::SimulatedAnnealing(_)
+            Self::Auto(_)
+            | Self::SimulatedAnnealing(_)
             | Self::Solver4(_)
             | Self::Solver5(_)
             | Self::Solver6(_) => None,
         }
     }
 }
+
+/// Parameters for the automatic product-default solver.
+///
+/// `auto` intentionally exposes no public routing knobs: it deterministically runs solver3 with
+/// complexity-derived budgets, the constraint-scenario oracle constructor attempt, explicit
+/// baseline fallback, and runtime-scaled search stopping.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
+pub struct AutoSolverParams {}
 
 /// Parameters for the internal `solver5` family.
 ///
@@ -2866,7 +2891,46 @@ pub struct SolverBenchmarkTelemetry {
         Option<MultiRootBalancedSessionInheritanceBenchmarkTelemetry>,
     #[serde(default)]
     pub solver4_paper_trace: Option<Solver4PaperTrace>,
+    #[serde(default)]
+    pub auto: Option<AutoSolveTelemetry>,
     pub moves: MoveFamilyBenchmarkTelemetrySummary,
+}
+
+/// Auto-solver construction/search budgeting telemetry.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq)]
+pub struct AutoSolveTelemetry {
+    pub selected_solver: SolverKind,
+    pub complexity_model_version: String,
+    pub complexity_score: f64,
+    pub total_budget_seconds: f64,
+    pub oracle_construction_budget_seconds: f64,
+    pub scaffold_budget_seconds: f64,
+    pub oracle_recombination_budget_seconds: f64,
+    pub search_budget_seconds: f64,
+    pub constructor_attempt: String,
+    pub constructor_outcome: AutoConstructorOutcome,
+    pub constructor_fallback_used: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub constructor_failure: Option<String>,
+    pub constructor_wall_seconds: f64,
+}
+
+/// High-level constructor attempt outcome selected by the auto solver.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum AutoConstructorOutcome {
+    /// A caller-provided initial schedule was used directly.
+    InitialSchedule,
+    /// The constraint-scenario oracle-guided constructor produced the incumbent.
+    Success,
+    /// The oracle-guided constructor exceeded its budget and baseline construction was used.
+    Timeout,
+    /// The oracle-guided constructor produced invalid output or hit a validation failure.
+    ValidationError,
+    /// The oracle-guided constructor was not applicable to this input.
+    Unsupported,
+    /// Baseline construction was the explicit final source after an unclassified oracle failure.
+    FallbackBaseline,
 }
 
 /// Benchmark observer lifecycle events.

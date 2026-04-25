@@ -171,7 +171,7 @@ fn default_solver_may_explicitly_reject_generated_problem(
                 || error_message
                     .contains("solver6 requires zero-repeat meet-at-most-once semantics")
         }
-        SolverKind::Solver1 | SolverKind::Solver3 => false,
+        SolverKind::Auto | SolverKind::Solver1 | SolverKind::Solver3 => false,
     }
 }
 

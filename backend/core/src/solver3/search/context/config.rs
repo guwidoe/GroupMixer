@@ -22,7 +22,7 @@ pub(crate) struct SearchRunContext {
     pub(crate) local_improver_mode: Solver3LocalImproverMode,
     pub(crate) max_iterations: u64,
     pub(crate) no_improvement_limit: Option<u64>,
-    pub(crate) time_limit_seconds: Option<u64>,
+    pub(crate) time_limit_seconds: Option<f64>,
     pub(crate) stop_on_optimal_score: bool,
     pub(crate) runtime_scaled_no_improvement_stop: Option<RuntimeScaledNoImprovementStopConfig>,
     pub(crate) allowed_sessions: Vec<usize>,
@@ -737,7 +737,10 @@ impl SearchRunContext {
                 .max_iterations
                 .unwrap_or(DEFAULT_MAX_ITERATIONS),
             no_improvement_limit: configuration.stop_conditions.no_improvement_iterations,
-            time_limit_seconds: configuration.stop_conditions.time_limit_seconds,
+            time_limit_seconds: configuration
+                .stop_conditions
+                .time_limit_seconds
+                .map(|seconds| seconds as f64),
             stop_on_optimal_score: configuration.stop_conditions.stop_on_optimal_score,
             runtime_scaled_no_improvement_stop: runtime_scaled_no_improvement_stop
                 .enabled

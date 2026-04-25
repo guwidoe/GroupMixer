@@ -1,17 +1,20 @@
 use crate::models::{
-    ApiInput, BenchmarkObserver, Constraint, LoggingOptions, Objective, ProblemDefinition,
-    ProgressCallback, SimulatedAnnealingParams, Solver3Params, Solver4Params, Solver5Params,
-    Solver6Params, SolverConfiguration, SolverKind, SolverParams, SolverResult, StopConditions,
+    ApiInput, AutoSolveTelemetry, AutoSolverParams, BenchmarkEvent, BenchmarkObserver, Constraint,
+    LoggingOptions, Objective, ProblemDefinition, ProgressCallback, SimulatedAnnealingParams,
+    Solver3ConstructionMode, Solver3Params, Solver4Params, Solver5Params, Solver6Params,
+    SolverConfiguration, SolverKind, SolverParams, SolverResult, StopConditions,
     DEFAULT_SOLVER_KIND,
 };
 use crate::runtime_target::runtime_target_iteration_cap;
 use crate::solver1::search::simulated_annealing::SimulatedAnnealing;
 use crate::solver1::search::Solver as _;
 use crate::solver1::State;
+use crate::solver3::runtime_state::AutoConstructionPolicy;
 use crate::solver3::{SearchEngine as Solver3SearchEngine, SOLVER3_BOOTSTRAP_NOTES};
 use crate::solver4::{SearchEngine as Solver4SearchEngine, SOLVER4_NOTES};
 use crate::solver5::{SearchEngine as Solver5SearchEngine, SOLVER5_NOTES};
 use crate::solver6::{SearchEngine as Solver6SearchEngine, SOLVER6_NOTES};
+use crate::solver_support::complexity::evaluate_problem_complexity;
 use crate::solver_support::SolverError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -69,6 +72,19 @@ const SOLVER1_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
     notes: "Current production Rust solver family backed by the `solver1` State + simulated annealing search implementation.",
 };
 
+const AUTO_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
+    kind: SolverKind::Auto,
+    display_name: "Auto",
+    capabilities: SolverEngineCapabilities {
+        supports_initial_schedule: true,
+        supports_progress_callback: true,
+        supports_benchmark_observer: true,
+        supports_recommended_settings: true,
+        supports_deterministic_seed: true,
+    },
+    notes: "Product-default solve policy: always runs solver3 with complexity-derived runtime, bounded constraint-scenario oracle construction, explicit baseline fallback, and runtime-scaled search stopping.",
+};
+
 const SOLVER3_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
     kind: SolverKind::Solver3,
     display_name: "Solver 3",
@@ -121,7 +137,8 @@ const SOLVER6_DESCRIPTOR: SolverDescriptor = SolverDescriptor {
     notes: SOLVER6_NOTES,
 };
 
-const SOLVER_DESCRIPTORS: [SolverDescriptor; 5] = [
+const SOLVER_DESCRIPTORS: [SolverDescriptor; 6] = [
+    AUTO_DESCRIPTOR,
     SOLVER1_DESCRIPTOR,
     SOLVER3_DESCRIPTOR,
     SOLVER4_DESCRIPTOR,
@@ -129,11 +146,81 @@ const SOLVER_DESCRIPTORS: [SolverDescriptor; 5] = [
     SOLVER6_DESCRIPTOR,
 ];
 
+struct AutoEngine;
 struct Solver1Engine;
 struct Solver3Engine;
 struct Solver4Engine;
 struct Solver5Engine;
 struct Solver6Engine;
+
+impl SolverEngine for AutoEngine {
+    fn descriptor(&self) -> &'static SolverDescriptor {
+        &AUTO_DESCRIPTOR
+    }
+
+    fn solve(&self, request: SolveRequest<'_>) -> Result<SolverResult, SolverError> {
+        let plan = AutoSolvePlan::from_input(request.input)?;
+        let solver3_input = auto_solver3_input(request.input, &plan);
+        let construction = crate::solver3::RuntimeState::from_input_with_auto_construction(
+            &solver3_input,
+            AutoConstructionPolicy {
+                oracle_construction_budget_seconds: plan.oracle_construction_budget_seconds,
+                scaffold_budget_seconds: plan.scaffold_budget_seconds,
+                oracle_recombination_budget_seconds: plan.oracle_recombination_budget_seconds,
+            },
+        )?;
+
+        let auto_telemetry = plan.telemetry(&construction);
+        let mut state = construction.state;
+        let solver = Solver3SearchEngine::new(&solver3_input.solver);
+        let mut result = solver.solve_with_time_limit_override(
+            &mut state,
+            request.progress_callback,
+            None,
+            Some(plan.search_budget_seconds),
+        )?;
+
+        if let Some(telemetry) = result.benchmark_telemetry.as_mut() {
+            telemetry.initialization_seconds = construction.constructor_wall_seconds;
+            telemetry.total_seconds = telemetry.initialization_seconds
+                + telemetry.search_seconds
+                + telemetry.finalization_seconds;
+            telemetry.auto = Some(auto_telemetry.clone());
+        }
+        if let (Some(observer), Some(telemetry)) = (
+            request.benchmark_observer,
+            result.benchmark_telemetry.clone(),
+        ) {
+            observer(&BenchmarkEvent::RunCompleted(telemetry));
+        }
+        Ok(result)
+    }
+
+    fn default_configuration(&self) -> SolverConfiguration {
+        SolverConfiguration {
+            solver_type: SolverKind::Auto.canonical_id().into(),
+            stop_conditions: StopConditions {
+                max_iterations: None,
+                time_limit_seconds: None,
+                no_improvement_iterations: None,
+                stop_on_optimal_score: true,
+            },
+            solver_params: SolverParams::Auto(AutoSolverParams::default()),
+            logging: LoggingOptions::default(),
+            telemetry: Default::default(),
+            seed: None,
+            move_policy: None,
+            allowed_sessions: None,
+        }
+    }
+
+    fn recommend_configuration(
+        &self,
+        _request: RecommendationRequest<'_>,
+    ) -> Result<SolverConfiguration, SolverError> {
+        Ok(self.default_configuration())
+    }
+}
 
 impl SolverEngine for Solver1Engine {
     fn descriptor(&self) -> &'static SolverDescriptor {
@@ -353,6 +440,149 @@ impl SolverEngine for Solver6Engine {
     }
 }
 
+const AUTO_SOLVER_MAX_ITERATIONS: u64 = 1_000_000_000;
+const AUTO_CONSTRUCTION_BUDGET_FRACTION: f64 = 0.30;
+const AUTO_SCAFFOLD_BUDGET_FRACTION: f64 = 0.30;
+const AUTO_MIN_CONSTRUCTION_BUDGET_SECONDS: f64 = 0.1;
+
+#[derive(Debug, Clone)]
+struct AutoSolvePlan {
+    complexity_model_version: String,
+    complexity_score: f64,
+    total_budget_seconds: f64,
+    oracle_construction_budget_seconds: f64,
+    scaffold_budget_seconds: f64,
+    oracle_recombination_budget_seconds: f64,
+    search_budget_seconds: f64,
+}
+
+impl AutoSolvePlan {
+    fn from_input(input: &ApiInput) -> Result<Self, SolverError> {
+        let complexity = evaluate_problem_complexity(input)?;
+        let total_budget_seconds = auto_complexity_wall_time_seconds(complexity.score) as f64;
+        let search_reserve_seconds =
+            total_budget_seconds * (1.0 - AUTO_CONSTRUCTION_BUDGET_FRACTION);
+        let oracle_construction_budget_seconds = if input.initial_schedule.is_some() {
+            0.0
+        } else {
+            let max_construction_budget_seconds =
+                (total_budget_seconds - search_reserve_seconds).max(0.0);
+            // The complexity policy floors total runtime at 1s, so the 0.1s minimum is compatible
+            // with the 70% search reserve. The clamp is a defensive guard if that floor changes.
+            (total_budget_seconds * AUTO_CONSTRUCTION_BUDGET_FRACTION)
+                .max(AUTO_MIN_CONSTRUCTION_BUDGET_SECONDS)
+                .min(max_construction_budget_seconds)
+        };
+        let search_budget_seconds = if input.initial_schedule.is_some() {
+            total_budget_seconds
+        } else {
+            (total_budget_seconds - oracle_construction_budget_seconds).max(search_reserve_seconds)
+        };
+        let scaffold_budget_seconds =
+            oracle_construction_budget_seconds * AUTO_SCAFFOLD_BUDGET_FRACTION;
+        let oracle_recombination_budget_seconds =
+            oracle_construction_budget_seconds - scaffold_budget_seconds;
+
+        Ok(Self {
+            complexity_model_version: complexity.model_version,
+            complexity_score: complexity.score,
+            total_budget_seconds,
+            oracle_construction_budget_seconds,
+            scaffold_budget_seconds,
+            oracle_recombination_budget_seconds,
+            search_budget_seconds,
+        })
+    }
+
+    fn telemetry(
+        &self,
+        construction: &crate::solver3::runtime_state::AutoConstructionResult,
+    ) -> AutoSolveTelemetry {
+        AutoSolveTelemetry {
+            selected_solver: SolverKind::Solver3,
+            complexity_model_version: self.complexity_model_version.clone(),
+            complexity_score: self.complexity_score,
+            total_budget_seconds: self.total_budget_seconds,
+            oracle_construction_budget_seconds: self.oracle_construction_budget_seconds,
+            scaffold_budget_seconds: self.scaffold_budget_seconds,
+            oracle_recombination_budget_seconds: self.oracle_recombination_budget_seconds,
+            search_budget_seconds: self.search_budget_seconds,
+            constructor_attempt: construction.attempt_label.to_string(),
+            constructor_outcome: construction.outcome,
+            constructor_fallback_used: construction.fallback_used,
+            constructor_failure: construction.failure.clone(),
+            constructor_wall_seconds: construction.constructor_wall_seconds,
+        }
+    }
+}
+
+fn auto_solver3_input(input: &ApiInput, plan: &AutoSolvePlan) -> ApiInput {
+    let mut params = Solver3Params::default();
+    params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    params
+        .search_driver
+        .runtime_scaled_no_improvement_stop
+        .enabled = true;
+    params
+        .search_driver
+        .runtime_scaled_no_improvement_stop
+        .runtime_scale_factor = 1.0;
+    params
+        .search_driver
+        .runtime_scaled_no_improvement_stop
+        .grace_seconds = 0.1;
+
+    let mut solver = SolverConfiguration {
+        solver_type: SolverKind::Solver3.canonical_id().into(),
+        stop_conditions: StopConditions {
+            max_iterations: Some(AUTO_SOLVER_MAX_ITERATIONS),
+            time_limit_seconds: Some(plan.search_budget_seconds.ceil().max(1.0) as u64),
+            no_improvement_iterations: None,
+            stop_on_optimal_score: true,
+        },
+        solver_params: SolverParams::Solver3(params),
+        logging: input.solver.logging.clone(),
+        telemetry: input.solver.telemetry.clone(),
+        seed: input.solver.seed,
+        move_policy: input.solver.move_policy.clone(),
+        allowed_sessions: input.solver.allowed_sessions.clone(),
+    };
+    solver.stop_conditions.stop_on_optimal_score =
+        input.solver.stop_conditions.stop_on_optimal_score;
+
+    ApiInput {
+        problem: input.problem.clone(),
+        initial_schedule: input.initial_schedule.clone(),
+        construction_seed_schedule: input.construction_seed_schedule.clone(),
+        objectives: input.objectives.clone(),
+        constraints: input.constraints.clone(),
+        solver,
+    }
+}
+
+fn auto_complexity_wall_time_seconds(complexity: f64) -> u64 {
+    let complexity = if complexity.is_finite() {
+        complexity.max(0.0)
+    } else {
+        0.0
+    };
+    let raw = 0.75 * complexity.sqrt();
+    let floored = if complexity < 1.0 {
+        1.0
+    } else if complexity < 10.0 {
+        raw.max(2.0)
+    } else if complexity < 50.0 {
+        raw.max(4.0)
+    } else if complexity < 150.0 {
+        raw.max(8.0)
+    } else if complexity < 500.0 {
+        raw.max(12.0)
+    } else {
+        raw.max(15.0)
+    };
+    floored.round().clamp(1.0, 30.0) as u64
+}
+
 pub fn default_solver_kind() -> SolverKind {
     DEFAULT_SOLVER_KIND
 }
@@ -363,6 +593,7 @@ pub fn available_solver_descriptors() -> &'static [SolverDescriptor] {
 
 pub fn solver_descriptor(kind: SolverKind) -> &'static SolverDescriptor {
     match kind {
+        SolverKind::Auto => &AUTO_DESCRIPTOR,
         SolverKind::Solver1 => &SOLVER1_DESCRIPTOR,
         SolverKind::Solver3 => &SOLVER3_DESCRIPTOR,
         SolverKind::Solver4 => &SOLVER4_DESCRIPTOR,
@@ -393,6 +624,7 @@ pub fn calculate_recommended_settings_for(
 
 fn create_solver_engine(kind: SolverKind) -> Box<dyn SolverEngine> {
     match kind {
+        SolverKind::Auto => Box::new(AutoEngine),
         SolverKind::Solver1 => Box::new(Solver1Engine),
         SolverKind::Solver3 => Box::new(Solver3Engine),
         SolverKind::Solver4 => Box::new(Solver4Engine),
@@ -417,8 +649,8 @@ fn runtime_target_configuration(
 mod tests {
     use super::*;
     use crate::models::{
-        Constraint, Group, Person, ProblemDefinition, RepeatEncounterParams, SolverKind,
-        SolverParams,
+        AutoConstructorOutcome, Constraint, Group, Objective, Person, ProblemDefinition,
+        RepeatEncounterParams, SolverKind, SolverParams,
     };
     use std::collections::HashMap;
 
@@ -496,8 +728,111 @@ mod tests {
     #[test]
     fn registry_exposes_default_solver_descriptor() {
         let descriptor = solver_descriptor(default_solver_kind());
-        assert_eq!(descriptor.kind, SolverKind::Solver1);
+        assert_eq!(descriptor.kind, SolverKind::Auto);
         assert!(descriptor.capabilities.supports_recommended_settings);
+        assert!(descriptor.notes.contains("always runs solver3"));
+    }
+
+    #[test]
+    fn auto_default_configuration_round_trips_through_typed_solver_selection() {
+        let config = default_solver_configuration_for(SolverKind::Auto);
+        assert_eq!(config.solver_type, "auto");
+        assert_eq!(
+            config.validate_solver_selection().unwrap(),
+            SolverKind::Auto
+        );
+        assert!(matches!(config.solver_params, SolverParams::Auto(_)));
+        assert_eq!(
+            SolverKind::parse_config_id("default").unwrap(),
+            SolverKind::Auto
+        );
+    }
+
+    #[test]
+    fn auto_plan_reserves_search_budget() {
+        let input = ApiInput {
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            problem: simple_problem(),
+            objectives: vec![],
+            constraints: vec![],
+            solver: default_solver_configuration_for(SolverKind::Auto),
+        };
+        let plan = AutoSolvePlan::from_input(&input).unwrap();
+        assert!(plan.total_budget_seconds >= 1.0);
+        assert!(plan.oracle_construction_budget_seconds >= 0.1);
+        assert!(
+            plan.search_budget_seconds
+                >= plan.total_budget_seconds * (1.0 - AUTO_CONSTRUCTION_BUDGET_FRACTION)
+        );
+        assert_eq!(
+            plan.scaffold_budget_seconds,
+            plan.oracle_construction_budget_seconds * AUTO_SCAFFOLD_BUDGET_FRACTION
+        );
+    }
+
+    #[test]
+    fn auto_run_delegates_to_solver3_with_telemetry() {
+        let input = ApiInput {
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            problem: simple_problem(),
+            objectives: vec![],
+            constraints: vec![],
+            solver: default_solver_configuration_for(SolverKind::Auto),
+        };
+
+        let result = run_solver_with_engine(SolveRequest {
+            input: &input,
+            progress_callback: None,
+            benchmark_observer: None,
+        })
+        .expect("auto should execute through solver3");
+
+        let telemetry = result
+            .benchmark_telemetry
+            .and_then(|telemetry| telemetry.auto)
+            .expect("auto telemetry should be attached");
+        assert_eq!(telemetry.selected_solver, SolverKind::Solver3);
+        assert_eq!(
+            telemetry.constructor_attempt,
+            "constraint_scenario_oracle_guided"
+        );
+        assert!(matches!(
+            telemetry.constructor_outcome,
+            AutoConstructorOutcome::Success
+        ));
+        assert!(!telemetry.constructor_fallback_used);
+        assert!(telemetry.search_budget_seconds >= telemetry.total_budget_seconds * 0.70);
+    }
+
+    #[test]
+    fn auto_constructor_timeout_falls_back_to_baseline() {
+        let input = ApiInput {
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            problem: simple_problem(),
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".to_string(),
+                weight: 1.0,
+            }],
+            constraints: vec![],
+            solver: default_solver_configuration_for(SolverKind::Solver3),
+        };
+
+        let construction = crate::solver3::RuntimeState::from_input_with_auto_construction(
+            &input,
+            AutoConstructionPolicy {
+                oracle_construction_budget_seconds: -1.0,
+                scaffold_budget_seconds: 0.0,
+                oracle_recombination_budget_seconds: 0.0,
+            },
+        )
+        .expect("baseline fallback should produce a valid incumbent");
+
+        assert_eq!(construction.outcome, AutoConstructorOutcome::Timeout);
+        assert!(construction.fallback_used);
+        assert!(construction.failure.unwrap().contains("budget"));
     }
 
     #[test]

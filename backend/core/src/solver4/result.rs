@@ -66,6 +66,7 @@ pub(super) fn build_local_search_telemetry(
         session_aligned_path_relinking: None,
         multi_root_balanced_session_inheritance: None,
         solver4_paper_trace: paper_trace,
+        auto: None,
         moves: MoveFamilyBenchmarkTelemetrySummary::default(),
     }
 }

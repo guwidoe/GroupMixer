@@ -214,7 +214,7 @@ mod tests {
         );
         assert_eq!(context.max_iterations, 123);
         assert_eq!(context.no_improvement_limit, Some(17));
-        assert_eq!(context.time_limit_seconds, Some(9));
+        assert_eq!(context.time_limit_seconds, Some(9.0));
         assert_eq!(context.runtime_scaled_no_improvement_stop, None);
         assert_eq!(context.allowed_sessions, vec![0, 1]);
         assert!(!context.correctness_lane_enabled);
