@@ -48,6 +48,7 @@ const NAME_COLUMN_WIDTH = 112;
 const ATTRIBUTE_COLUMN_WIDTH = 128;
 const MIN_NAME_WIDTH = 88;
 const MIN_ATTRIBUTE_WIDTH = 58;
+export const MIN_GHOST_COLUMN_WIDTH = 120;
 const HEADER_HEIGHT = 32;
 const LINE_HEIGHT = 26;
 const BODY_PADDING = 18;
@@ -86,6 +87,14 @@ function distributeBalancedWidths(availableWidth: number, minimumWidths: number[
   }
 
   return widths;
+}
+
+function getMinimumColumnWidth(index: number) {
+  return index === 0 ? MIN_NAME_WIDTH : MIN_ATTRIBUTE_WIDTH;
+}
+
+function getDefaultColumnWidth(index: number) {
+  return index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH;
 }
 
 function readEditableValue(element: HTMLDivElement) {
@@ -214,6 +223,8 @@ export function ParticipantColumnsInput({
     startX: number;
     leftWidth: number;
     rightWidth: number;
+    containerWidth: number;
+    fixedWidthBeforePair: number;
     index: number;
     rightIsGhost: boolean;
   } | null>(null);
@@ -231,6 +242,7 @@ export function ParticipantColumnsInput({
   const ghostColumnWidthRef = useRef(ghostColumnWidth);
   const primaryBodyInputRef = useRef<HTMLDivElement | null>(null);
   const hasAppliedInitialBodyFocusRef = useRef(false);
+  const previousColumnsLengthRef = useRef(columns.length);
 
   const focusColumnHeader = useCallback((columnId: string, token?: number) => {
     if (token != null && fulfilledFocusRequestTokenRef.current === token) {
@@ -332,9 +344,9 @@ export function ParticipantColumnsInput({
 
       const minimumWidths = Array.from(
         { length: columns.length },
-        (_, index) => (index === 0 ? MIN_NAME_WIDTH : MIN_ATTRIBUTE_WIDTH),
+        (_, index) => getMinimumColumnWidth(index),
       );
-      minimumWidths.push(MIN_ATTRIBUTE_WIDTH);
+      minimumWidths.push(MIN_GHOST_COLUMN_WIDTH);
 
       const availableWidth = Math.max(0, totalWidth - (columns.length * COLUMN_SEPARATOR_WIDTH));
       const balancedWidths = distributeBalancedWidths(availableWidth, minimumWidths);
@@ -360,8 +372,53 @@ export function ParticipantColumnsInput({
     };
   }, [columns.length]);
 
+  useLayoutEffect(() => {
+    const previousColumnsLength = previousColumnsLengthRef.current;
+    previousColumnsLengthRef.current = columns.length;
+    if (previousColumnsLength === columns.length) {
+      return;
+    }
+
+    if (!hasCustomColumnWidthsRef.current || dragStateRef.current) {
+      return;
+    }
+
+    const node = columnsContainerRef.current;
+    const containerWidth = node?.getBoundingClientRect().width ?? 0;
+    if (containerWidth <= 0) {
+      return;
+    }
+
+    const nextColumnWidths = Array.from({ length: columns.length }, (_, index) => (
+      Math.max(
+        getMinimumColumnWidth(index),
+        columnWidthsRef.current[index] ?? getDefaultColumnWidth(index),
+      )
+    ));
+    const separatorWidth = columns.length * COLUMN_SEPARATOR_WIDTH;
+    const occupiedWithoutGhost = nextColumnWidths.reduce((sum, width) => sum + width, 0) + separatorWidth;
+    const nextGhostColumnWidth = Math.max(MIN_GHOST_COLUMN_WIDTH, containerWidth - occupiedWithoutGhost);
+
+    if (
+      areWidthsApproximatelyEqual(columnWidthsRef.current.slice(0, columns.length), nextColumnWidths)
+      && columnWidthsRef.current.length === columns.length
+      && Math.abs(ghostColumnWidthRef.current - nextGhostColumnWidth) < 0.5
+    ) {
+      return;
+    }
+
+    columnWidthsRef.current = nextColumnWidths;
+    ghostColumnWidthRef.current = nextGhostColumnWidth;
+    setColumnWidths(nextColumnWidths);
+    setGhostColumnWidth(nextGhostColumnWidth);
+    writeStoredParticipantColumnsLayout({
+      columnWidths: nextColumnWidths,
+      ghostColumnWidth: nextGhostColumnWidth,
+    });
+  }, [columns.length]);
+
   const getColumnWidth = useCallback(
-    (index: number) => columnWidths[index] ?? (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH),
+    (index: number) => columnWidths[index] ?? getDefaultColumnWidth(index),
     [columnWidths],
   );
 
@@ -372,11 +429,19 @@ export function ParticipantColumnsInput({
     }
 
     const delta = event.clientX - dragState.startX;
-    const leftMinWidth = dragState.index === 0 ? MIN_NAME_WIDTH : MIN_ATTRIBUTE_WIDTH;
-    const rightMinWidth = MIN_ATTRIBUTE_WIDTH;
+    const leftMinWidth = getMinimumColumnWidth(dragState.index);
+    const rightMinWidth = dragState.rightIsGhost ? MIN_GHOST_COLUMN_WIDTH : MIN_ATTRIBUTE_WIDTH;
     const total = dragState.leftWidth + dragState.rightWidth;
-    const nextLeftWidth = Math.min(total - rightMinWidth, Math.max(leftMinWidth, dragState.leftWidth + delta));
-    const nextRightWidth = total - nextLeftWidth;
+    const targetLeftWidth = Math.max(leftMinWidth, dragState.leftWidth + delta);
+    const nextLeftWidth = dragState.rightIsGhost
+      ? targetLeftWidth
+      : Math.min(total - rightMinWidth, targetLeftWidth);
+    const nextRightWidth = dragState.rightIsGhost
+      ? Math.max(
+        rightMinWidth,
+        dragState.containerWidth - dragState.fixedWidthBeforePair - nextLeftWidth - COLUMN_SEPARATOR_WIDTH,
+      )
+      : total - nextLeftWidth;
     const nextColumnWidths = [...columnWidthsRef.current];
     nextColumnWidths[dragState.index] = nextLeftWidth;
     const nextGhostColumnWidth = dragState.rightIsGhost ? nextRightWidth : ghostColumnWidthRef.current;
@@ -412,12 +477,29 @@ export function ParticipantColumnsInput({
     const rightElement = event.currentTarget.nextElementSibling as HTMLDivElement | null;
     const measuredLeftWidth = leftElement?.getBoundingClientRect().width;
     const measuredRightWidth = rightElement?.getBoundingClientRect().width;
+    const startLeftWidth = measuredLeftWidth != null && measuredLeftWidth > 0
+      ? measuredLeftWidth
+      : getColumnWidth(index);
+    const startRightWidth = measuredRightWidth != null && measuredRightWidth > 0
+      ? measuredRightWidth
+      : (rightIsGhost ? ghostColumnWidth : getColumnWidth(index + 1));
+    const measuredContainerWidth = columnsContainerRef.current?.getBoundingClientRect().width ?? 0;
+    const fallbackContainerWidth = columnWidthsRef.current.reduce((sum, width) => sum + width, 0)
+      + ghostColumnWidthRef.current
+      + (columns.length * COLUMN_SEPARATOR_WIDTH);
+    const containerWidth = measuredContainerWidth > 0 ? measuredContainerWidth : fallbackContainerWidth;
+    const fixedWidthBeforePair = columnWidthsRef.current
+      .slice(0, index)
+      .reduce((sum, width) => sum + width, 0)
+      + (index * COLUMN_SEPARATOR_WIDTH);
 
     dragStateRef.current = {
       index,
       startX: event.clientX,
-      leftWidth: measuredLeftWidth ?? getColumnWidth(index),
-      rightWidth: measuredRightWidth ?? (rightIsGhost ? ghostColumnWidth : getColumnWidth(index + 1)),
+      leftWidth: startLeftWidth,
+      rightWidth: startRightWidth,
+      containerWidth,
+      fixedWidthBeforePair,
       rightIsGhost,
     };
 
@@ -587,8 +669,8 @@ export function ParticipantColumnsInput({
                 <div
                   className="landing-participant-columns__column"
                   style={{
-                    minWidth: `${index === 0 ? MIN_NAME_WIDTH : MIN_ATTRIBUTE_WIDTH}px`,
-                    flex: `0 1 ${getColumnWidth(index)}px`,
+                    minWidth: `${getMinimumColumnWidth(index)}px`,
+                    flex: `0 0 ${getColumnWidth(index)}px`,
                   }}
                   data-column-id={column.id}
                 >
@@ -671,8 +753,8 @@ export function ParticipantColumnsInput({
             <div
               className="landing-participant-columns__ghost-column"
               style={{
-                minWidth: `${MIN_ATTRIBUTE_WIDTH}px`,
-                flex: `1 1 ${ghostColumnWidth}px`,
+                minWidth: `${MIN_GHOST_COLUMN_WIDTH}px`,
+                flex: `0 0 ${ghostColumnWidth}px`,
               }}
               role="button"
               tabIndex={0}
