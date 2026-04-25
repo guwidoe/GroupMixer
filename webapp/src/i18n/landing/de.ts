@@ -48,7 +48,7 @@ const USE_CASES_SECTION = {
     },
     {
       title: 'Workshop-Breakout-Gruppen',
-      body: 'Teile Teilnehmende für eine einzelne Session oder für mehrere Runden auf.',
+      body: 'Teile Teilnehmer für eine einzelne Session oder für mehrere Runden auf.',
     },
     {
       title: 'Speed Networking',
@@ -60,7 +60,7 @@ const USE_CASES_SECTION = {
     },
     {
       title: 'Konferenz-Sessions',
-      body: 'Ordne Teilnehmende Tischen oder parallelen Tracks zu und beachte dabei vorhandene Regeln.',
+      body: 'Ordne Teilnehmer Tischen oder parallelen Tracks zu und beachte dabei vorhandene Regeln.',
     },
     {
       title: 'Social Mixer',

@@ -97,7 +97,7 @@ const EN_LANDING_UI: ToolPageSharedUiContent = {
 
 const DE_LANDING_UI: ToolPageSharedUiContent = {
   quickSetup: {
-    participantsLabel: 'Teilnehmende',
+    participantsLabel: 'Teilnehmer',
     participantsHelp: 'Enter one person per line in the first column. Optionally, add attribute columns such as gender, role, or skill-level on the right. Those attributes can then be used to balance groups and set additional rules.',
     nameColumnLabel: 'Name',
     addAttributeLabel: 'Attribut hinzufügen',
@@ -147,7 +147,7 @@ const DE_LANDING_UI: ToolPageSharedUiContent = {
     balanceGroupsByAttributeHelp: 'Set target counts for each attribute value inside each group. Keep auto distribute enabled for fair automatic targets, or edit the counts manually when you need exact control.',
     balanceGroupsEmptyState: 'Lege oben zuerst ein Attribut an, um diesen Bereich zu verwenden.',
     autoDistributeAttributeLabel: 'Attribut automatisch verteilen',
-    fixedPeopleLabel: 'Feste Personen',
+    fixedPeopleLabel: 'Fixierte Personen',
     fixedPeopleHelp: 'Pin specific people to a specific group across all sessions. Enter one name and one group number per row. This is useful for leaders, presenters, or anyone who must stay in a known group.',
     fixedPeopleDescription: 'Halte ausgewählte Personen in allen Runden in einer bestimmten Gruppe.',
     addFixedPersonLabel: 'Feste Person hinzufügen',
@@ -157,7 +157,7 @@ const DE_LANDING_UI: ToolPageSharedUiContent = {
     fixedGroupSelectPlaceholder: 'Gruppe auswählen',
     removeFixedPersonLabel: 'Feste Person entfernen',
     noBalancingLabel: 'Keine Balancierung',
-    ignoredNamesPrefix: 'Ignorierte Namen, die nicht in der Teilnehmendenliste gefunden wurden:',
+    ignoredNamesPrefix: 'Ignorierte Namen, die nicht in der Teilnehmernliste gefunden wurden:',
   },
   results: {
     yourGroupsHeading: 'Deine Gruppen',
