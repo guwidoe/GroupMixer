@@ -1,186 +1,183 @@
-# Autoresearch: solver3 construction heuristic broad-suite quality
+# Autoresearch: solver3 constraint-aware oracle relabeling
 
 ## Objective
-Improve the new `Solver3ConstructionMode::ConstraintScenarioOracleGuided` constructor for the full `solver3-constructor-broad` suite. The constructor is evaluated only by the **final score after construction plus normal solver3 search** using the benchmark runner's `solver3_construct_then_search` policy. Construction-only score is intentionally not an optimization target.
 
-The current baseline behavior is:
-
-1. build a baseline/constraint-scenario scaffold,
-2. optionally generate and project a pure-contact oracle template,
-3. merge into a feasible incumbent while owning hard-constraint validity,
-4. run normal solver3 search from that incumbent for the remaining complexity-based wall time.
-
-Runtime construction handoff is intentionally strict: constructors must return a hard-constraint-valid schedule or explicit validation error. `RuntimeState` validates shape/capacity/participation/cliques/immovable placements/`MustStayApart` and fails fast; it must not silently repair or rebuild invalid constructor output.
-
-The broad suite is the canonical development workload for this autoresearch session:
+Make `Solver3ConstructionMode::ConstraintScenarioOracleGuided` much smarter at interpreting a pure-SGP oracle schedule under hidden relabelings. The target is the internal constraint-aware projection path used by the diagnostic `solver3-relabeling-projection` benchmark suite:
 
 ```bash
-GROUPMIXER_BENCHMARK_JOBS=4 cargo run -q -p gm-cli -- benchmark run \
-  --manifest backend/benchmarking/suites/solver3-constructor-broad.yaml \
+cargo run -q -p gm-cli -- benchmark run \
+  --manifest backend/benchmarking/suites/solver3-relabeling-projection.yaml \
   --cargo-profile dev
 ```
 
-Latest pre-autoresearch broad run after the scaffold fallback and 30% construction budget:
+The relabeling problem is a symmetry-breaking problem, not a local repair problem. The solver6 oracle gives a zero-repeat unlabeled structure. Projection must infer how oracle people, oracle sessions, and oracle group slots map to real labels from constraint-induced structure:
 
-- Report: `backend/benchmarking/artifacts/runs/solver3-constructor-broad-20260424T205017Z-462bba2c/run-report.json`
-- Result: `35 cases: 35 ok / 0 failed`
+- cliques / must-together sets,
+- hard-apart graph factors,
+- pair-meeting counts,
+- attribute-balance group-slot requirements,
+- immovable person/session/group triples,
+- partial attendance and availability,
+- non-uniform session/group capacities.
+
+The current scaffold builds typed atoms and a timeout-aware partial bijection, but it is still a naive greedy scan and the selected relabeling does not yet influence legacy projection/merge. This lane should rethink that algorithm aggressively while preserving solver architecture:
+
+- `solver6` remains a pure-SGP oracle.
+- `solver3` remains the general solver/search core.
+- The new path remains internal/diagnostic-gated until it is robust.
+- Normal product/default/broad behavior must not gain user-facing knobs or hidden fallbacks.
 
 ## Metrics
-- **Primary**: `broad_relative_score` (unitless, lower is better) — weighted mean of each nonzero-baseline case's `final_score / baseline_final_score`, plus a small logarithmic guard penalty for zero-baseline regressions and a catastrophic failure penalty. This makes a large case improvement such as Sailing `4000 -> 2000` count as a real 50% improvement instead of being mostly hidden by logarithms. Fixed per-case baselines are baked into `autoresearch.sh` from the current best constructor line (`b5fa1752`, run `solver3-constructor-broad-20260424T211040Z-6000a6ee`).
-- **Secondary normalized/safety/operability monitors**:
-  - `relative_score_mean` — weighted relative mean before penalties.
-  - `zero_regression_penalty` — normalized guard penalty from zero-baseline cases that regressed above zero.
+
+- **Primary**: `relabeling_research_loss` (unitless, lower is better) — composite diagnostic loss from the relabeling projection suite. It heavily penalizes failed diagnostic cases, separately penalizes construction budget failures and constructor errors, and otherwise uses weighted `log1p(final_score)` so improvements on both small and large planted cases are visible.
+- **Secondary monitors**:
+  - `weighted_log_score_mean`
+  - `weighted_failure_rate`
   - `failure_count`
-  - `zero_regression_count` — cases whose fixed baseline is zero but current final score is nonzero.
+  - `timeout_failure_count`
+  - `construction_error_count`
+  - `success_count`
+  - `zero_score_count`
+  - `mixed_success_count`
+  - `diagnostic_final_score_sum`
   - `runtime_seconds`
   - `construction_seconds_total`
-- **Key final-score sentinels** tracked every run:
-  - `score_sailing_real` — real Sailing workload / search-basin sentinel.
-  - `score_sailing_flotilla_stress` — landing-page Sailing flotilla stress sentinel (132 sailors, 11 boats, 6 rotations, role balance, hard-apart pairs, fixed skipper anchors).
-  - `score_synthetic_152p` — hardest partial-attendance/capacity-pressure stretch case.
-  - `score_large_gender_immovable_110p` — large heterogeneous immovable-anchor case.
-  - `score_transfer_attribute_111p` — large attribute-balance workload.
-  - `score_google_cp` — mixed-constraint Google-CP-equivalent fixture.
-  - `score_ui_demo` and `score_ui_demo_no_attr` — representative product-sized cases with/without attribute pressure.
-  - `score_clique_swap_35p` — nontrivial clique/path constraint behavior.
-  - `score_sgp_169x13x14` — large pure SGP oracle/exact-structure sentinel; should remain zero.
-  - `score_sgp_32x8x20_constrained`, `score_sgp_49x7x8_constrained`, `score_sgp_169x13x14_constrained` — constrained SGP geometry/scaling sentinels.
-  - `score_no_template_clique_immovable`, `score_no_template_constraint_heavy_partial`, `score_no_template_late_arrivals` — oracle-inapplicable feasible-case sentinels.
+  - per-case scores: `score_relabel_immovable`, `score_relabel_partial_attendance`, `score_relabel_capacity_variation`, `score_relabel_cliques`, `score_relabel_hard_apart`, `score_relabel_attribute_balance`, `score_relabel_pair_meeting`, `score_relabel_soft_pairs`, `score_relabel_mixed_light`, `score_relabel_mixed_structural`, `score_relabel_mixed_full`.
 
-Raw aggregate/mean/max final score is intentionally not tracked because raw score scales are not comparable between benchmark cases. The full run report still contains every per-case score for deeper analysis.
+Current intentionally weighted failure/score priorities:
 
-Primary-metric details:
-- Cases with nonzero fixed baselines contribute `score / baseline_score`.
-- Key sentinel cases have weight `2`; other nonzero-baseline cases have weight `1`.
-- Cases with zero fixed baseline are guards: staying at zero contributes nothing, but any nonzero score adds a small normalized `log1p(score)` penalty.
-- Cases without a successful fixed baseline yet are tracked as key sentinels and contribute through the catastrophic failure penalty until a successful strict-budget baseline can be established. The flotilla sentinel now has a fixed successful baseline from this round.
-- Failed cases add a catastrophic fixed penalty.
+- mixed structural/full cases have high weight because they require combining symmetry-breaking signals,
+- cliques/hard-apart/attribute-balance have high weight because they expose real label symmetry,
+- runtime has only a tiny primary penalty; correctness/structure beats speed until the algorithm works.
+
+## Conceptual Keep Policy
+
+This is a development lane, so do **not** blindly discard elegant symmetry-breaking foundations merely because legacy final benchmark score does not immediately improve. Instead:
+
+1. If the idea changes projection behavior and lowers `relabeling_research_loss`, keep it normally.
+2. If the idea is a conceptually strong scaffold but the current metric cannot observe it yet, add a focused diagnostic/telemetry/test that makes the capability measurable, update this file and `autoresearch.sh` if needed, call `init_experiment` again if the optimization target materially changes, then evaluate it against that explicit metric.
+3. Keep non-behavior-changing instrumentation or representation work when it is internal, tested, benchmark-neutral for public defaults, and clearly unlocks measuring or implementing a symmetry-breaking capability.
+4. Do not use broad-suite score as the first-order target until the relabeling result actually influences projection/merge. Broad remains a later safety check, not the metric for early relabeling intelligence.
+
+A kept conceptual scaffold should leave durable evidence: tests, telemetry, a microdiagnostic, or an explicit benchmark metric. Do not keep vague complexity with no measurable symmetry-breaking value.
 
 ## How to Run
+
 `./autoresearch.sh`
 
 Root wrappers delegate to:
-- `tools/autoresearch/solver3-construction/autoresearch.sh`
-- `tools/autoresearch/solver3-construction/autoresearch.checks.sh`
 
-The script runs the broad benchmark suite, parses the generated run report, and emits structured `METRIC name=value` lines. It writes benchmark artifacts outside the repo by default under `/tmp/groupmixer-autoresearch-solver3-construction` unless `GROUPMIXER_AUTORESEARCH_ARTIFACTS_DIR` is set.
+- `tools/autoresearch/solver3-relabeling-projection/autoresearch.sh`
+- `tools/autoresearch/solver3-relabeling-projection/autoresearch.checks.sh`
+
+The script writes benchmark artifacts outside the repo by default under `/tmp/groupmixer-autoresearch-relabeling-projection` unless `GROUPMIXER_AUTORESEARCH_ARTIFACTS_DIR` is set.
 
 ## Files in Scope
-Primary heuristic/code paths:
 
-Primary research target:
-- `backend/core/src/solver_support/construction/constraint_scenario_oracle/*.rs` — projection, merge, template generation, oracle backend, signal extraction, shared telemetry/types.
-Only in exceptional cases and with very compelling reason:
-- `backend/core/src/solver3/runtime_state.rs` — construction orchestration, warmup scaffold, and strict validation handoff only; no hidden runtime repair/rebuild layer.
-- `backend/core/src/solver_support/construction/baseline/mod.rs` — baseline constructor behavior and fill order, if needed to implement oracle-guided baseline fill.
-- `backend/core/src/solver_support/construction/freedom_aware/mod.rs` — reference only unless a small reusable idea is clearly beneficial.
-- `backend/core/src/models.rs` — only for internal telemetry/config structure needed by the constructor; no user-facing knobs without explicit approval.
+Primary relabeling implementation:
 
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/atoms.rs` — typed symmetry-breaking atom definitions.
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/builders.rs` — atom generation from constraints and oracle structure.
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/oracle_index.rs` — oracle schedule indexing helpers.
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/relabeling.rs` — timeout-aware partial-bijection search, scoring, and future CSP/beam reconciliation.
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/deadline.rs` — native/WASM-safe relabeling budget handling.
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/mod.rs` — diagnostic entry point and eventual bridge into projection/merge.
+
+Projection/merge integration, only when the relabeling plan is ready to affect output:
+
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/projection.rs` — legacy projection; use as a reference and eventual integration point.
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/merge.rs` — consumer of projected oracle template; should apply a selected projection plan, not own full symmetry search.
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/types.rs` — shared projection/template/result types if explicit relabeling maps need to be carried.
+- `backend/core/src/solver3/runtime_state.rs` — orchestration only; avoid hidden repair/rebuild. Internal diagnostic params may be passed through here.
+- `backend/core/src/models.rs` — internal-only params/telemetry only; no user-facing relabeling knobs.
+
+Constraint presolve support:
+
+- `backend/core/src/solver_support/constraint_presolve/*.rs` — reusable constraint-unit extraction, clique/immovable/hard-apart presolve.
 
 Benchmark/autoresearch support:
 
-- `backend/benchmarking/src/runner.rs` — only for benchmark policy bugs/instrumentation, not to game the target.
-- `backend/benchmarking/src/artifacts.rs` — only if additional telemetry is genuinely needed.
-- `autoresearch.md`, `autoresearch.sh`, `autoresearch.checks.sh`, `autoresearch.ideas.md` — session documentation, benchmark script, checks, and backlog.
+- `backend/benchmarking/suites/solver3-relabeling-projection.yaml` — diagnostic suite manifest. Do not weaken cases to pass.
+- `backend/benchmarking/cases/stretch/relabeling_projection/*.json` — committed diagnostic cases; do not edit to improve metric.
+- `tools/benchmarking/generate_relabeling_projection_cases.py` — generator for planted cases; can be extended for development-only metadata/harnesses, but canonical cases must remain honest.
+- `backend/benchmarking/src/manifest.rs` and `backend/benchmarking/src/runner.rs` — only for diagnostic policy/telemetry plumbing, not cheating.
+- `tools/autoresearch/solver3-relabeling-projection/*`, `autoresearch.md`, `autoresearch.sh`, `autoresearch.checks.sh`, `autoresearch.ideas.md` — this autoresearch lane.
 
 ## Off Limits
-- Do not edit benchmark case JSON files or suite membership to improve the metric.
-- Do not simplify, proxy, warm-start, or substitute canonical benchmark cases.
-- Do not add case-ID-specific logic or shape-specific hacks.
-- Do not add user-facing projection/oracle policy knobs.
-- Do not add hidden fallbacks that mask merge/repair bugs; if a path claims oracle applicability and then fails, keep the failure visible unless the scenario is structurally oracle-inapplicable and a named deterministic scaffold/baseline outcome is recorded.
-- Do not change standalone solver6 away from pure-SGP semantics.
-- Do not touch webapp, API, CLI UX, or unrelated docs.
-- Do not optimize construction-only score at the expense of final construction+search score.
+
+- Do not edit benchmark case JSON or suite membership to make the metric easier.
+- Do not reduce diagnostic case sizes, planted constraint counts, or the fixed 13x13x14 shape because the current implementation times out.
+- Do not add case-ID-specific branches, hardcoded planted mappings, hardcoded scores, fixture names, participant counts, or sentinel-specific logic.
+- Do not expose user-facing oracle/projection/relabeling knobs.
+- Do not add hidden solver-family fallback or silent runtime repair.
+- Do not weaken strict `RuntimeState` validation after merge.
+- Do not convert product hard constraints into soft final constraints. The relabeler may use finite compatibility costs internally, but the final constructed schedule must satisfy hard constraints or fail honestly.
+- Do not change solver6 away from pure-SGP repeat minimization.
+- Do not use named labels as anchors unless a real non-symmetric constraint fixes them.
 
 ## Constraints
-- Feasible scheduling scenarios must construct a valid incumbent; no failure solely because no oracle template exists.
-- Preserve fixed/frozen/immovable semantics. Frozen placements may guide projection, but merge/repair must not move them.
-- Hard constraints are hard: constructors must satisfy them or fail honestly; do not convert them into weighted soft penalties, and do not rely on hidden runtime repair.
-- No benchmark cheating or overfitting.
-- Maintain deterministic behavior for a fixed seed.
-- Use targeted `rustfmt`, not broad `cargo fmt -p gm-core`.
-- Checks in `autoresearch.checks.sh` must pass for a kept experiment.
-- Existing unrelated Rust warnings are tolerated.
+
+- Timeout-aware search is required: the relabeler must return best-so-far within the configured 5 second diagnostic budget.
+- Native and WASM timing must remain safe; use existing `deadline.rs` patterns rather than raw `std::time::Instant` in wasm paths.
+- Internal mapping contradictions are hard rejects/infinite:
+  - one oracle person mapped to two real people,
+  - one real person mapped from two oracle people,
+  - one oracle session mapped to two real sessions,
+  - one real session/group slot mapped from two oracle slots.
+- Scenario-hard mismatches inside the raw relabeled oracle are finite/tradeable compatibility costs for ranking; final feasibility remains the responsibility of merge plus strict validation.
+- AttributeBalance is soft and must use actual `penalty_weight` / expected violation impact, not fixed magic weights.
+- Prefer typed factors/components over over-generic blobs.
+- Prefer exact/assignment subproblems where the symmetry suggests them.
+- Checks must pass for kept behavior-changing work:
+  - `cargo check -q -p gm-core`
+  - `cargo check -q -p gm-benchmarking`
+  - `cargo test -q -p gm-core constraint_aware_projection::relabeling --lib`
+  - `cargo test -q -p gm-benchmarking`
 
 ## What's Been Tried
-- Built solver6 pure-SGP oracle and integrated it as a pure-contact prior for solver3 construction.
-- Replaced the old repeat-blind CS ensemble source with baseline construction plus a short internal solver3 full-objective warmup scaffold.
-- Split oracle construction into explicit phases under `solver_support/construction/constraint_scenario_oracle/`.
-- Implemented capacity-ladder template generation, assignment-based projection, ranked capacity-aware merge, and later removed hidden runtime hard repair in favor of constructor-owned feasibility plus runtime validation.
-- Fixed rigidity bug: CS rigidity is now a soft prior; hard scaffold mask is limited to immovable placements and active must-stay cliques.
-- Fixed hard constraint semantics after construction.
-- Made no-template cases feasible: when repeat pressure exists but no meaningful pure-contact template can be generated, the constructor returns the scaffold with outcome `ConstraintScenarioOnly` instead of erroring.
-- Increased broad-suite construction budget fraction to 30%; this made the broad suite pass `35/35` after earlier 20% runs still had SGP construction-budget failures.
-- Kept a 3x penalty on oracle template scaffold disruption: under the old log metric, broad log score improved from `103.92` to `101.93`, likely by preserving more search-friendly basins.
-- Counted frozen placements as scaffold disruption when ranking oracle templates: old log metric improved further to `101.57`; this is the current fixed-baseline reference line for the new relative metric.
-- Tried 5x scaffold-disruption penalty: discarded; too conservative and worse than 3x.
-- Tried 2x and 2.5x scaffold-disruption penalties: discarded; sometimes improved Sailing/raw total but worsened old broad log aggregate through small/constrained-case regressions.
-- Tried merge-side outside-region and keep-bonus tweaks: improved some large raw scores but failed the old log aggregate.
-- Switched primary metric from `broad_log_score` to `broad_relative_score` because log scaling made large real-world improvements on nonzero-optimum cases too small.
 
-Current suspected improvement direction:
+### Existing scaffold before this lane
 
-**Important: larger heuristic changes are explicitly allowed and preferred.** Do not restrict the loop to microscopic scalar tuning. Scalar changes are acceptable only when they test a structural hypothesis. The highest-value experiments should change the generic constructor strategy while preserving the strict/no-cheating constraints below.
+- Built `constraint_aware_projection` as a parallel internal module.
+- Added typed atoms for cliques, hard-apart, attribute balance, immovable triples, pair meeting, soft pairs, and capacity.
+- Added `constraint_presolve` for clique components, effective immovables, and hard-apart unit constraints.
+- Added a timeout-aware relabeler with partial bijective maps and WASM-safe deadlines.
+- Added `solver3-relabeling-projection.yaml` with 11 fixed 13x13x14 planted diagnostic cases and 5 second relabeling timeout.
+- The current diagnostic path still delegates to legacy projection after running relabeling, so relabeling intelligence is not yet reflected in projection output.
 
-Preferred structural directions:
+### Latest baseline before this autoresearch setup
 
-- Move from "template overwrite + repair" toward **oracle-guided baseline fill**:
-  - place immovables first,
-  - place active cliques,
-  - use projected oracle groups as soft contact/cohort preferences,
-  - fill remaining movable capacity using real objective marginal plus oracle agreement,
-  - keep the output search-friendly rather than merely oracle-aligned.
-- Learn from `BaselineLegacy` on Sailing-style cases: its strength is basin quality, not construction-only score.
-- Add telemetry only when it improves diagnosis of final construction+search outcomes.
-- Prefer multi-template/risk-aware selection, projection/merge redesign, and fill-order changes over more one-constant experiments.
+Commit `f3850270 feat(solver3): score constraint-aware relabeling` added structured relabeling scoring:
 
-## Current restore note — 2026-04-25
+- finite hard compatibility costs,
+- soft penalty costs using actual weights,
+- mapping incompleteness costs,
+- structural/contact/mapping rewards,
+- coverage and breakdown telemetry in internal score structures,
+- tests for timeout/uncovered scoring, compatible immovable acceptance, incompatible mapping rejection, and soft-pair weight use.
 
-Root autoresearch files have been restored to this construction-heuristic lane from `autoresearch/solver3-construction-20260424`, and the recovered script/checks now live permanently under `tools/autoresearch/solver3-construction/`. The solver3 broad multiseed root state from `origin/master` was archived under `tools/autoresearch/archive/solver3-broad-quality-root-20260425/`.
+A diagnostic suite run on that commit produced:
 
-Recent diagnostic construction-lane runs after master integration:
+- `11 cases: 8 ok / 3 failed`,
+- failures:
+  - hard-apart: constructor placement error,
+  - mixed-structural: construction budget exceeded,
+  - mixed-full: construction budget exceeded,
+- report: `backend/benchmarking/artifacts/runs/solver3-relabeling-projection-20260425T132244Z-83cba6fd/run-report.json`.
 
-- Current HEAD `9c5361b9 fix(solver3): make oracle construction honor hard-apart` before adding the landing flotilla stress sentinel:
-  - `35 cases: 35 ok / 0 failed`
-  - `broad_relative_score = 1.179793654`
-  - `relative_score_mean = 1.108467780`
-  - `zero_regression_penalty = 0.071325874`
-  - `failure_count = 0`
-  - `zero_regression_count = 1`
-  - run report: `/tmp/groupmixer-autoresearch-solver3-construction/runs/solver3-constructor-broad-20260425T005419Z-022b6d4b/run-report.json`
-- Immediate pre-hard-apart parent `d9650927 chore(merge): integrate latest master updates`:
-  - `broad_relative_score = 1.197170647`
-  - `failure_count = 0`
-  - `zero_regression_count = 1`
-- Pre-master finalized construction branch `f4549664 feat(solver3): improve oracle-guided construction`:
-  - `broad_relative_score = 1.059812452`
-  - `failure_count = 0`
-  - `zero_regression_count = 0`
+Interpretation: the metric now needs to drive smarter factor reconciliation and actual projection/merge influence. The current greedy relabeler is not enough and mostly acts as scored scaffolding.
 
-Interpretation: the current hard-apart constructor-ownership commit did not cause the construction-lane regression; it slightly improved the post-merge parent. The remaining gap appears to come primarily from the master/search/runtime integration state. Current regressions to investigate generically, without case-ID hacks or benchmark changes: Google-CP equivalent, transfer attribute balance, large gender immovable, constrained 169x13x14 SGP, Sailing, and the zero-baseline `stretch.benchmark-very-large-constrained` guard.
+### Preferred next experiments
 
-## Landing flotilla stress sentinel — 2026-04-25
+1. Replace greedy single-state atom scan with a small beam search that keeps multiple partial bijections, ordered by finalized `RelabelingScore` including uncovered penalties and mapping completeness.
+2. Prioritize atom/factor ordering by symmetry-breaking power: immovable triples and clique/group-slot factors first, then hard-apart/pair factors, then softer attribute/pair polishing.
+3. Group atoms into connected components over real people/session/slot variables and solve each component independently before composing maps.
+4. Add lazy weak-factor generation to avoid over-anchoring isolated immovables and symmetric soft pairs.
+5. Make best relabeling affect projection in the diagnostic path, initially by permuting candidate/oracle labels before delegating to legacy projection.
+6. Add telemetry metrics for relabeler score breakdowns into benchmark reports once useful.
 
-The broad suite now also includes `stretch.sailing-flotilla-stress-test`, copied from the landing-page `Sailing flotilla stress test` example without simplifying its 132 sailors, 11 boats, 6 sessions, role-balance targets, 48 hard-apart pairs, 11 fixed skipper anchors, or repeat-limit behavior. The case intentionally has no session-aware people, no session-aware group sizes, no session-specific constraints, and no soft constraints beyond attribute balance plus repeat-limit scoring.
+### Strong negative guidance from prior construction work
 
-Initial single-case construction-suite smoke on current code:
-
-- Suite: `/tmp/sailing-flotilla-construction-suite.yaml`
-- Report: `/tmp/groupmixer-sailing-flotilla-smoke/runs/sailing-flotilla-construction-smoke-20260425T040352Z-a2f172fb/run-report.json`
-- Result: `0 ok / 1 failed`
-- Failure: `construction phase exceeded budget: 14.201s elapsed > 9.000s budget`
-
-This case initially had no successful strict-budget construction+search baseline, so `autoresearch.sh` first tracked `score_sailing_flotilla_stress` as an unweighted key sentinel while applying the normal catastrophic failure penalty on failure. After the no-op hard-apart oracle skip made the case pass, the fixed baseline was set to the first kept strict-budget score, `830.0`, so future runs include flotilla in the weighted relative primary metric.
-
-## New flotilla-baseline autoresearch round — 2026-04-25
-
-Reinitialized autoresearch for the 36-case suite including `stretch.sailing-flotilla-stress-test`.
-
-- New baseline: `broad_relative_score = 1001.137436834`, with `failure_count = 1`; the flotilla sentinel failed strict construction budget and emitted `score_sailing_flotilla_stress = 1000000000`.
-- Kept `perf(solver3): skip no-op hard-apart oracle templates`: if every selected template session is hard-apart-preserving and all selected groups are already full, the non-displacing hard-apart merge cannot change the scaffold, so the constructor returns the scaffold instead of spending the oracle/projection budget. This removed the flotilla failure and produced `broad_relative_score = 1.154026295`.
-- Kept `perf(solver3): skip no-op oracle candidates`: choose the first generated candidate that can actually change the scaffold instead of stopping on a no-op top candidate. This improved the best observed metric to `1.125625856` while keeping flotilla successful.
-- Discarded longer solver6 oracle local search (`max_iterations = 2000`, `no_improvement = 500`): broad metric regressed to `1.188798391`; keep the oracle stop conditions at `500/100`.
-- Discarded reducing projection assignment iterations from 3 to 2: it eliminated the zero-regression guard in that run, but broad relative mean worsened and primary metric regressed to `1.140383684`.
-
-Current best before adding flotilla to the weighted baseline was `1.125625856`. The metric has now been re-baselined to include `stretch.sailing-flotilla-stress-test = 830.0`; remaining generic opportunities are to improve the new weighted flotilla ratio, remove the `stretch.benchmark-very-large-constrained` zero-regression without broad relative regressions, and improve weak successful-case sentinels such as Google CP, transfer attribute balance, large gender immovable, and real Sailing. Preserve the flotilla no-failure behavior.
+- Do not try to solve this with late runtime repair or blunt per-session relabeling in every construction phase; a previous blunt session-local group relabeling fixed one minor attribute diagnostic but regressed broad construction badly because it perturbed solver3's internal coordinate system too early.
+- Do not use arbitrary scalar local objective hacks for attributes/contacts. Use constraint-induced structure and assignment/factor reconciliation.
+- Do not treat group IDs as purely cosmetic once constraints exist. Relabel official group IDs deliberately at projection/merge boundaries.

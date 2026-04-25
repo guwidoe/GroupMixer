@@ -1,4 +1,5 @@
-# Archived / reset
+# Relabeling projection ideas-to-try
 
-Old pre-solver4 backlog archived to `.pi/autoresearch-archive/2026-04-15-pre-solver4-8x4x10-reset/`.
-Use `autoresearch.ideas.md` for new solver4-specific deferred ideas.
+Use `autoresearch.ideas.md` as the active backlog for this relabeling-projection lane.
+
+The previous solver3-construction backlog lives in git history and under `tools/autoresearch/solver3-construction/`.
