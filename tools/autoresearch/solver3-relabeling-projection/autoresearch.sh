@@ -36,38 +36,49 @@ import math
 import sys
 from pathlib import Path
 
-CASE_WEIGHTS = {
-    "stretch.relabeling-projection-13x13x14-immovable": 1.5,
-    "stretch.relabeling-projection-13x13x14-partial-attendance": 1.0,
-    "stretch.relabeling-projection-13x13x14-capacity-variation": 1.0,
-    "stretch.relabeling-projection-13x13x14-cliques": 2.0,
-    "stretch.relabeling-projection-13x13x14-hard-apart": 2.0,
-    "stretch.relabeling-projection-13x13x14-attribute-balance": 2.0,
-    "stretch.relabeling-projection-13x13x14-pair-meeting": 1.5,
-    "stretch.relabeling-projection-13x13x14-soft-pairs": 1.25,
-    "stretch.relabeling-projection-13x13x14-mixed-light": 2.0,
-    "stretch.relabeling-projection-13x13x14-mixed-structural": 3.0,
-    "stretch.relabeling-projection-13x13x14-mixed-full": 3.0,
+# Construction-lane style fixed baselines for the relabeling diagnostic suite.
+# Values come from the first relabeling-lane baseline run on commit 15cce87/f3850270.
+# None means this case had no successful strict-budget baseline yet; it contributes via the
+# failure penalty until an experiment makes it successful, then a new baseline can be established.
+BASELINE_CASE_SCORES = {
+    "stretch.relabeling-projection-13x13x14-immovable": 0.0,
+    "stretch.relabeling-projection-13x13x14-partial-attendance": 310.0,
+    "stretch.relabeling-projection-13x13x14-capacity-variation": 0.0,
+    "stretch.relabeling-projection-13x13x14-cliques": 96.0,
+    "stretch.relabeling-projection-13x13x14-hard-apart": None,
+    "stretch.relabeling-projection-13x13x14-attribute-balance": 1492.0,
+    "stretch.relabeling-projection-13x13x14-pair-meeting": 45.0,
+    "stretch.relabeling-projection-13x13x14-soft-pairs": 36.0,
+    "stretch.relabeling-projection-13x13x14-mixed-light": 15476.0,
+    "stretch.relabeling-projection-13x13x14-mixed-structural": None,
+    "stretch.relabeling-projection-13x13x14-mixed-full": None,
 }
 
-CASE_METRIC_NAMES = {
-    "stretch.relabeling-projection-13x13x14-immovable": "score_relabel_immovable",
-    "stretch.relabeling-projection-13x13x14-partial-attendance": "score_relabel_partial_attendance",
-    "stretch.relabeling-projection-13x13x14-capacity-variation": "score_relabel_capacity_variation",
-    "stretch.relabeling-projection-13x13x14-cliques": "score_relabel_cliques",
-    "stretch.relabeling-projection-13x13x14-hard-apart": "score_relabel_hard_apart",
-    "stretch.relabeling-projection-13x13x14-attribute-balance": "score_relabel_attribute_balance",
-    "stretch.relabeling-projection-13x13x14-pair-meeting": "score_relabel_pair_meeting",
-    "stretch.relabeling-projection-13x13x14-soft-pairs": "score_relabel_soft_pairs",
-    "stretch.relabeling-projection-13x13x14-mixed-light": "score_relabel_mixed_light",
-    "stretch.relabeling-projection-13x13x14-mixed-structural": "score_relabel_mixed_structural",
-    "stretch.relabeling-projection-13x13x14-mixed-full": "score_relabel_mixed_full",
+KEY_CASE_METRICS = {
+    "score_relabel_immovable": "stretch.relabeling-projection-13x13x14-immovable",
+    "score_relabel_partial_attendance": "stretch.relabeling-projection-13x13x14-partial-attendance",
+    "score_relabel_capacity_variation": "stretch.relabeling-projection-13x13x14-capacity-variation",
+    "score_relabel_cliques": "stretch.relabeling-projection-13x13x14-cliques",
+    "score_relabel_hard_apart": "stretch.relabeling-projection-13x13x14-hard-apart",
+    "score_relabel_attribute_balance": "stretch.relabeling-projection-13x13x14-attribute-balance",
+    "score_relabel_pair_meeting": "stretch.relabeling-projection-13x13x14-pair-meeting",
+    "score_relabel_soft_pairs": "stretch.relabeling-projection-13x13x14-soft-pairs",
+    "score_relabel_mixed_light": "stretch.relabeling-projection-13x13x14-mixed-light",
+    "score_relabel_mixed_structural": "stretch.relabeling-projection-13x13x14-mixed-structural",
+    "score_relabel_mixed_full": "stretch.relabeling-projection-13x13x14-mixed-full",
 }
 
-FAILURE_LOSS = 100.0
-TIMEOUT_EXTRA_LOSS = 25.0
-CONSTRUCTION_ERROR_EXTRA_LOSS = 10.0
-RUNTIME_SECONDS_WEIGHT = 0.001
+KEY_CASE_IDS = {
+    "stretch.relabeling-projection-13x13x14-cliques",
+    "stretch.relabeling-projection-13x13x14-hard-apart",
+    "stretch.relabeling-projection-13x13x14-attribute-balance",
+    "stretch.relabeling-projection-13x13x14-mixed-light",
+    "stretch.relabeling-projection-13x13x14-mixed-structural",
+    "stretch.relabeling-projection-13x13x14-mixed-full",
+}
+KEY_CASE_WEIGHT = 2.0
+DEFAULT_CASE_WEIGHT = 1.0
+FAILURE_PENALTY = 1000.0
 FAILURE_SCORE_SENTINEL = 1_000_000_000.0
 
 report_path = Path(sys.argv[1])
@@ -76,65 +87,80 @@ cases = report.get("cases", [])
 if not cases:
     raise SystemExit("benchmark report contains no cases")
 
+baseline_case_ids = set(BASELINE_CASE_SCORES)
 report_case_ids = {case.get("case_id") for case in cases}
-missing = sorted(set(CASE_WEIGHTS) - report_case_ids)
-unknown = sorted(report_case_ids - set(CASE_WEIGHTS))
-if missing:
-    raise SystemExit(f"benchmark report missing relabeling cases: {', '.join(missing)}")
-if unknown:
-    raise SystemExit(f"benchmark report contains unweighted relabeling cases: {', '.join(unknown)}")
+missing_from_report = sorted(baseline_case_ids - report_case_ids)
+unknown_in_report = sorted(report_case_ids - baseline_case_ids)
+if missing_from_report:
+    raise SystemExit(f"benchmark report missing baseline cases: {', '.join(missing_from_report)}")
+if unknown_in_report:
+    raise SystemExit(f"benchmark report contains cases without fixed baseline: {', '.join(unknown_in_report)}")
 
-weighted_log_score_sum = 0.0
-weight_sum = sum(CASE_WEIGHTS.values())
-weighted_failure_sum = 0.0
+weighted_ratio_sum = 0.0
+baseline_weight_sum = 0.0
 failure_count = 0
 timeout_failure_count = 0
 construction_error_count = 0
+zero_regression_count = 0
+zero_regression_penalty = 0.0
 success_count = 0
 zero_score_count = 0
 mixed_success_count = 0
+unbaselined_success_count = 0
 runtime_total = 0.0
 construction_total = 0.0
 final_score_sum = 0.0
 case_scores = {}
 
+for case_id, baseline_score in BASELINE_CASE_SCORES.items():
+    if baseline_score is not None and baseline_score > 0.0:
+        baseline_weight_sum += KEY_CASE_WEIGHT if case_id in KEY_CASE_IDS else DEFAULT_CASE_WEIGHT
+if baseline_weight_sum <= 0.0:
+    raise SystemExit("no positive fixed baselines configured")
+
 print(f"REPORT {report_path}")
 
 for case in cases:
     case_id = case.get("case_id", "unknown")
-    weight = CASE_WEIGHTS[case_id]
     status = case.get("status")
     error_message = case.get("error_message") or ""
+    final_score = case.get("final_score")
+    baseline_score = BASELINE_CASE_SCORES[case_id]
+    weight = KEY_CASE_WEIGHT if case_id in KEY_CASE_IDS else DEFAULT_CASE_WEIGHT
+
     timing = case.get("timing") or {}
     runtime = float(case.get("runtime_seconds") or timing.get("total_seconds") or 0.0)
     construction = float(timing.get("initialization_seconds") or 0.0)
     runtime_total += runtime
     construction_total += construction
 
-    if status == "success" and case.get("final_score") is not None:
-        success_count += 1
-        if "mixed" in case_id:
-            mixed_success_count += 1
-        score = max(0.0, float(case["final_score"]))
-        if not math.isfinite(score):
-            score = FAILURE_SCORE_SENTINEL
-            failure_count += 1
-            weighted_failure_sum += weight
-        else:
-            final_score_sum += score
-            weighted_log_score_sum += weight * math.log1p(score)
-            if score == 0.0:
-                zero_score_count += 1
-    else:
+    if status != "success" or final_score is None:
         failure_count += 1
-        weighted_failure_sum += weight
         score = FAILURE_SCORE_SENTINEL
-        # Keep failed cases visible in score-shaped metrics without letting log overflow.
-        weighted_log_score_sum += weight * math.log1p(score)
         if "exceeded budget" in error_message:
             timeout_failure_count += 1
         elif "construction phase failed" in error_message or "Constraint violation" in error_message:
             construction_error_count += 1
+    else:
+        score = float(final_score)
+        if not math.isfinite(score):
+            failure_count += 1
+            score = FAILURE_SCORE_SENTINEL
+        else:
+            score = max(0.0, score)
+            success_count += 1
+            final_score_sum += score
+            if score == 0.0:
+                zero_score_count += 1
+            if "mixed" in case_id:
+                mixed_success_count += 1
+            if baseline_score is None:
+                unbaselined_success_count += 1
+            elif baseline_score > 0.0:
+                weighted_ratio_sum += weight * (score / baseline_score)
+            elif score > 0.0:
+                zero_regression_count += 1
+                zero_regression_penalty += weight * math.log1p(score) / baseline_weight_sum
 
     case_scores[case_id] = score
     print(
@@ -147,28 +173,27 @@ for case in cases:
         )
     )
 
-weighted_log_score_mean = weighted_log_score_sum / weight_sum
-weighted_failure_rate = weighted_failure_sum / weight_sum
-relabeling_research_loss = (
-    weighted_log_score_mean
-    + FAILURE_LOSS * weighted_failure_rate
-    + TIMEOUT_EXTRA_LOSS * timeout_failure_count
-    + CONSTRUCTION_ERROR_EXTRA_LOSS * construction_error_count
-    + RUNTIME_SECONDS_WEIGHT * runtime_total
+relative_score_mean = weighted_ratio_sum / baseline_weight_sum
+relabeling_relative_score = (
+    relative_score_mean
+    + zero_regression_penalty
+    + failure_count * FAILURE_PENALTY
 )
 
-print(f"METRIC relabeling_research_loss={relabeling_research_loss:.9f}")
-print(f"METRIC weighted_log_score_mean={weighted_log_score_mean:.9f}")
-print(f"METRIC weighted_failure_rate={weighted_failure_rate:.9f}")
+print(f"METRIC relabeling_relative_score={relabeling_relative_score:.9f}")
+print(f"METRIC relative_score_mean={relative_score_mean:.9f}")
+print(f"METRIC zero_regression_penalty={zero_regression_penalty:.9f}")
 print(f"METRIC failure_count={failure_count}")
 print(f"METRIC timeout_failure_count={timeout_failure_count}")
 print(f"METRIC construction_error_count={construction_error_count}")
+print(f"METRIC zero_regression_count={zero_regression_count}")
 print(f"METRIC success_count={success_count}")
 print(f"METRIC zero_score_count={zero_score_count}")
 print(f"METRIC mixed_success_count={mixed_success_count}")
+print(f"METRIC unbaselined_success_count={unbaselined_success_count}")
 print(f"METRIC diagnostic_final_score_sum={final_score_sum:.6f}")
 print(f"METRIC runtime_seconds={runtime_total:.9f}")
 print(f"METRIC construction_seconds_total={construction_total:.9f}")
-for case_id, metric_name in CASE_METRIC_NAMES.items():
+for metric_name, case_id in KEY_CASE_METRICS.items():
     print(f"METRIC {metric_name}={case_scores[case_id]:.6f}")
 PY

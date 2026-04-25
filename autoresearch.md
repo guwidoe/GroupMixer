@@ -29,32 +29,37 @@ The current scaffold builds typed atoms and a timeout-aware partial bijection, b
 
 ## Metrics
 
-- **Primary**: `relabeling_research_loss` (unitless, lower is better) — composite diagnostic loss from the relabeling projection suite. It heavily penalizes failed diagnostic cases, separately penalizes construction budget failures and constructor errors, and otherwise uses weighted `log1p(final_score)` so improvements on both small and large planted cases are visible.
+- **Primary**: `relabeling_relative_score` (unitless, lower is better) — construction-lane-style fixed-baseline aggregate. Successful nonzero-baseline cases contribute weighted `final_score / fixed_baseline_score`; zero-baseline cases are guards that add a small normalized `log1p(score)` penalty if they regress above zero; failed cases add a catastrophic fixed penalty. Cases without a successful strict-budget baseline yet contribute through the failure penalty until an experiment makes them successful, at which point this lane can be re-baselined.
 - **Secondary monitors**:
-  - `weighted_log_score_mean`
-  - `weighted_failure_rate`
+  - `relative_score_mean`
+  - `zero_regression_penalty`
   - `failure_count`
   - `timeout_failure_count`
   - `construction_error_count`
+  - `zero_regression_count`
   - `success_count`
   - `zero_score_count`
   - `mixed_success_count`
+  - `unbaselined_success_count`
   - `diagnostic_final_score_sum`
   - `runtime_seconds`
   - `construction_seconds_total`
   - per-case scores: `score_relabel_immovable`, `score_relabel_partial_attendance`, `score_relabel_capacity_variation`, `score_relabel_cliques`, `score_relabel_hard_apart`, `score_relabel_attribute_balance`, `score_relabel_pair_meeting`, `score_relabel_soft_pairs`, `score_relabel_mixed_light`, `score_relabel_mixed_structural`, `score_relabel_mixed_full`.
 
-Current intentionally weighted failure/score priorities:
+Primary-metric details mirror the recent construction-heuristic lane:
 
-- mixed structural/full cases have high weight because they require combining symmetry-breaking signals,
-- cliques/hard-apart/attribute-balance have high weight because they expose real label symmetry,
-- runtime has only a tiny primary penalty; correctness/structure beats speed until the algorithm works.
+- fixed successful baselines are recorded in `tools/autoresearch/solver3-relabeling-projection/autoresearch.sh`,
+- nonzero fixed baselines contribute weighted relative ratios,
+- zero fixed baselines are guard cases and add only a normalized `log1p(score)` penalty when they regress,
+- cases with no successful fixed baseline yet (`hard_apart`, `mixed_structural`, `mixed_full` at setup time) are tracked as sentinels and improve the primary metric by removing the catastrophic failure penalty when they become successful,
+- key symmetry-breaking sentinels (`cliques`, `hard_apart`, `attribute_balance`, and all mixed cases) use weight `2`; other cases use weight `1`,
+- runtime is secondary only; correctness/structure beats speed until the algorithm works.
 
 ## Conceptual Keep Policy
 
 This is a development lane, so do **not** blindly discard elegant symmetry-breaking foundations merely because legacy final benchmark score does not immediately improve. Instead:
 
-1. If the idea changes projection behavior and lowers `relabeling_research_loss`, keep it normally.
+1. If the idea changes projection behavior and lowers `relabeling_relative_score`, keep it normally.
 2. If the idea is a conceptually strong scaffold but the current metric cannot observe it yet, add a focused diagnostic/telemetry/test that makes the capability measurable, update this file and `autoresearch.sh` if needed, call `init_experiment` again if the optimization target materially changes, then evaluate it against that explicit metric.
 3. Keep non-behavior-changing instrumentation or representation work when it is internal, tested, benchmark-neutral for public defaults, and clearly unlocks measuring or implementing a symmetry-breaking capability.
 4. Do not use broad-suite score as the first-order target until the relabeling result actually influences projection/merge. Broad remains a later safety check, not the metric for early relabeling intelligence.
@@ -158,7 +163,8 @@ Commit `f3850270 feat(solver3): score constraint-aware relabeling` added structu
 
 A diagnostic suite run on that commit produced:
 
-- `11 cases: 8 ok / 3 failed`,
+- under the original temporary log/failure aggregate: `11 cases: 8 ok / 3 failed`,
+- under the construction-style relative aggregate initialized afterward: baseline metric is expected around `3001` plus benchmark noise because three cases have no successful baseline yet,
 - failures:
   - hard-apart: constructor placement error,
   - mixed-structural: construction budget exceeded,
