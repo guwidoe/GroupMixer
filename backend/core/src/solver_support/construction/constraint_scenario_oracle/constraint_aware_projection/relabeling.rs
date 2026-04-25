@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::solver3::compiled_problem::CompiledProblem;
 
@@ -805,7 +805,27 @@ fn prune_relabeling_beam(
     beam.sort_by(|left, right| {
         compare_relabeling_with_context(right, left, uncovered_penalty_by_key)
     });
-    beam.truncate(RELABELING_BEAM_WIDTH);
+    if beam.len() <= RELABELING_BEAM_WIDTH {
+        return;
+    }
+
+    let mut selected = Vec::with_capacity(RELABELING_BEAM_WIDTH);
+    let mut seen_session_signatures = BTreeSet::new();
+    for state in beam.iter() {
+        if selected.len() >= RELABELING_BEAM_WIDTH {
+            break;
+        }
+        if seen_session_signatures.insert(state.oracle_session_by_real_session.clone()) {
+            selected.push(state.clone());
+        }
+    }
+    for state in beam.iter() {
+        if selected.len() >= RELABELING_BEAM_WIDTH {
+            break;
+        }
+        selected.push(state.clone());
+    }
+    *beam = selected;
 }
 
 fn best_relabeling_from_beam(
