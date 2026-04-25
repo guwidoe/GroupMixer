@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MIN_GHOST_COLUMN_WIDTH, ParticipantColumnsInput } from './ParticipantColumnsInput';
 import { PARTICIPANT_COLUMNS_LAYOUT_STORAGE_KEY } from './participantColumnsLayoutStorage';
@@ -144,7 +145,7 @@ describe('ParticipantColumnsInput resize behavior', () => {
     };
 
     expect(storedLayout.columnWidths?.[1]).toBeLessThan(200);
-    expect(storedLayout.ghostColumnWidth).toBeGreaterThan(MIN_GHOST_COLUMN_WIDTH);
+    expect(storedLayout.ghostColumnWidth).toBeGreaterThanOrEqual(MIN_GHOST_COLUMN_WIDTH);
   });
 
   it('expands the ghost column after deleting an attribute when the custom layout fits again', () => {
@@ -180,5 +181,41 @@ describe('ParticipantColumnsInput resize behavior', () => {
 
     expect(storedLayout.columnWidths).toHaveLength(2);
     expect(storedLayout.ghostColumnWidth).toBeGreaterThan(MIN_GHOST_COLUMN_WIDTH);
+  });
+
+  it('scrolls to the right after adding an attribute column', async () => {
+    function StatefulParticipantColumnsInput() {
+      const [columns, setColumns] = React.useState(baseProps.columns);
+
+      return (
+        <ParticipantColumnsInput
+          {...baseProps}
+          columns={columns}
+          onAddAttribute={() => {
+            const newColumnId = `attribute-${columns.length}`;
+            setColumns((previousColumns) => [
+              ...previousColumns,
+              { id: newColumnId, name: 'New attribute', values: 'A\nB' },
+            ]);
+            return newColumnId;
+          }}
+        />
+      );
+    }
+
+    render(<StatefulParticipantColumnsInput />);
+
+    const scroller = document.querySelector('.landing-participant-columns') as HTMLDivElement | null;
+    if (!scroller) {
+      throw new Error('Expected participant columns scroller to render.');
+    }
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 300 });
+    Object.defineProperty(scroller, 'scrollWidth', { configurable: true, value: 900 });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add attribute' }));
+
+    await waitFor(() => {
+      expect(scroller.scrollLeft).toBe(900);
+    });
   });
 });

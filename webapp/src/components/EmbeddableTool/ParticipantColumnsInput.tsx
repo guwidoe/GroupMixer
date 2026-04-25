@@ -50,8 +50,8 @@ const MIN_NAME_WIDTH = 88;
 const MIN_ATTRIBUTE_WIDTH = 58;
 export const MIN_GHOST_COLUMN_WIDTH = 120;
 const HEADER_HEIGHT = 32;
-const LINE_HEIGHT = 26;
-const BODY_PADDING = 18;
+const TEXTAREA_LINE_HEIGHT = 23;
+const TEXTAREA_VERTICAL_PADDING = 10;
 const COLUMN_SEPARATOR_WIDTH = 12;
 
 function areWidthsApproximatelyEqual(left: number[], right: number[]) {
@@ -236,6 +236,7 @@ export function ParticipantColumnsInput({
   const headerInputRefs = useRef(new Map<string, HTMLDivElement>());
   const fulfilledFocusRequestTokenRef = useRef<number | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const columnsContainerRef = useRef<HTMLDivElement | null>(null);
   const hasCustomColumnWidthsRef = useRef(Boolean(initialStoredColumnWidths));
   const columnWidthsRef = useRef(columnWidths);
@@ -312,7 +313,10 @@ export function ParticipantColumnsInput({
     Math.max(1, ...columns.map((column) => Math.max(1, splitParticipantColumnValues(column.values).length)))
   ), [columns]);
 
-  const contentHeight = Math.max(height - HEADER_HEIGHT - 18, maxLineCount * LINE_HEIGHT + BODY_PADDING);
+  const contentHeight = Math.max(
+    height - HEADER_HEIGHT - TEXTAREA_VERTICAL_PADDING,
+    maxLineCount * TEXTAREA_LINE_HEIGHT + TEXTAREA_VERTICAL_PADDING,
+  );
 
   useEffect(() => {
     columnWidthsRef.current = columnWidths;
@@ -631,6 +635,22 @@ export function ParticipantColumnsInput({
     window.addEventListener('pointercancel', stopResize);
   }, [handleResizePointerMove, height, onManualLayoutAdjustment, stopResize]);
 
+  const scrollColumnsToEnd = useCallback(() => {
+    const scrollToEnd = () => {
+      const node = scrollContainerRef.current;
+      if (!node) {
+        return;
+      }
+
+      node.scrollLeft = node.scrollWidth;
+    };
+
+    scrollToEnd();
+    window.requestAnimationFrame(scrollToEnd);
+    window.setTimeout(scrollToEnd, 0);
+    window.setTimeout(scrollToEnd, 50);
+  }, []);
+
   const handleActivateGhostColumn = useCallback(() => {
     let newColumnId: string | null = null;
 
@@ -647,6 +667,7 @@ export function ParticipantColumnsInput({
     });
 
     if (newColumnId) {
+      scrollColumnsToEnd();
       const focusToken = focusRequestTokenRef.current;
       const focusAfterGesture = () => {
         window.requestAnimationFrame(() => {
@@ -657,11 +678,11 @@ export function ParticipantColumnsInput({
       window.addEventListener('pointerup', focusAfterGesture, { once: true });
       window.addEventListener('touchend', focusAfterGesture, { once: true });
     }
-  }, [focusColumnHeader, onAddAttribute]);
+  }, [focusColumnHeader, onAddAttribute, scrollColumnsToEnd]);
 
   return (
     <div ref={setRootRef} className="landing-resizable-textarea landing-resizable-textarea--structured rounded-xl" style={{ backgroundColor: 'var(--bg-secondary)' }}>
-      <div className="theme-scrollbar landing-participant-columns" style={{ height: `${height}px` }}>
+      <div ref={scrollContainerRef} className="theme-scrollbar landing-participant-columns" style={{ height: `${height}px` }}>
         <div className="landing-participant-columns__surface">
           <div ref={columnsContainerRef} className="landing-participant-columns__columns">
             {columns.map((column, index) => (
