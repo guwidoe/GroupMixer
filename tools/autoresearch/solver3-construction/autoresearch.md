@@ -172,3 +172,15 @@ Initial single-case construction-suite smoke on current code:
 - Failure: `construction phase exceeded budget: 14.201s elapsed > 9.000s budget`
 
 Because this case has no successful strict-budget construction+search baseline yet, `autoresearch.sh` tracks `score_sailing_flotilla_stress` as an unweighted key sentinel and applies the normal catastrophic failure penalty while it fails. Once the constructor produces a successful strict-budget run, establish a fixed baseline score before using its final-score ratio in the primary metric.
+
+## New flotilla-baseline autoresearch round — 2026-04-25
+
+Reinitialized autoresearch for the 36-case suite including `stretch.sailing-flotilla-stress-test`.
+
+- New baseline: `broad_relative_score = 1001.137436834`, with `failure_count = 1`; the flotilla sentinel failed strict construction budget and emitted `score_sailing_flotilla_stress = 1000000000`.
+- Kept `perf(solver3): skip no-op hard-apart oracle templates`: if every selected template session is hard-apart-preserving and all selected groups are already full, the non-displacing hard-apart merge cannot change the scaffold, so the constructor returns the scaffold instead of spending the oracle/projection budget. This removed the flotilla failure and produced `broad_relative_score = 1.154026295`.
+- Kept `perf(solver3): skip no-op oracle candidates`: choose the first generated candidate that can actually change the scaffold instead of stopping on a no-op top candidate. This improved the best observed metric to `1.125625856` while keeping flotilla successful.
+- Discarded longer solver6 oracle local search (`max_iterations = 2000`, `no_improvement = 500`): broad metric regressed to `1.188798391`; keep the oracle stop conditions at `500/100`.
+- Discarded reducing projection assignment iterations from 3 to 2: it eliminated the zero-regression guard in that run, but broad relative mean worsened and primary metric regressed to `1.140383684`.
+
+Current best in this round is `1.125625856`. Remaining generic opportunities: remove the `stretch.benchmark-very-large-constrained` zero-regression without broad relative regressions, and improve weak successful-case sentinels such as Google CP, transfer attribute balance, large gender immovable, and real Sailing. Preserve the flotilla no-failure behavior.
