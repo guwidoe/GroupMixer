@@ -529,7 +529,7 @@ describe('ToolLandingPage SEO wiring', () => {
         } as DOMRect;
       }
 
-      if (className.includes('pl-2')) {
+      if (this.previousElementSibling?.getAttribute('aria-label') === 'Resize landing tool columns') {
         return {
           x: 722,
           y: 0,
