@@ -376,7 +376,7 @@ impl ProjectionRelabeling {
         candidate: &OracleTemplateCandidate,
         atom: &HardApartProjectionAtom,
     ) -> Option<RelabelingScoreImpact> {
-        if !self.bind_unordered_pair(candidate, atom.oracle_people, atom.real_people) {
+        if !self.bind_weak_pair_factor(candidate, atom.oracle_people, atom.real_people) {
             return None;
         }
         Some(RelabelingScoreImpact::structural_reward(
@@ -438,7 +438,7 @@ impl ProjectionRelabeling {
         candidate: &OracleTemplateCandidate,
         atom: &PairMeetingProjectionAtom,
     ) -> Option<RelabelingScoreImpact> {
-        if !self.bind_unordered_pair(candidate, atom.oracle_people, atom.real_people) {
+        if !self.bind_weak_pair_factor(candidate, atom.oracle_people, atom.real_people) {
             return None;
         }
         let mut impact = RelabelingScoreImpact::soft_cost(
@@ -456,7 +456,7 @@ impl ProjectionRelabeling {
         candidate: &OracleTemplateCandidate,
         atom: &SoftPairProjectionAtom,
     ) -> Option<RelabelingScoreImpact> {
-        if !self.bind_unordered_pair(candidate, atom.oracle_people, atom.real_people) {
+        if !self.bind_weak_pair_factor(candidate, atom.oracle_people, atom.real_people) {
             return None;
         }
         let session_count = atom.oracle_session_positions.len() as f64;
@@ -497,6 +497,33 @@ impl ProjectionRelabeling {
         Some(RelabelingScoreImpact::structural_reward(
             (atom.real_capacity.saturating_sub(atom.oracle_group_size) + 1) as f64,
         ))
+    }
+
+    fn bind_weak_pair_factor(
+        &mut self,
+        candidate: &OracleTemplateCandidate,
+        oracle_people: [usize; 2],
+        real_people: [usize; 2],
+    ) -> bool {
+        if oracle_people
+            .iter()
+            .any(|&person| person >= candidate.oracle_capacity)
+            || real_people
+                .iter()
+                .any(|&person| person >= self.oracle_person_by_real_person.len())
+        {
+            return false;
+        }
+        let has_existing_person_anchor = oracle_people
+            .iter()
+            .any(|&person| self.real_person_by_oracle_person[person].is_some())
+            || real_people
+                .iter()
+                .any(|&person| self.oracle_person_by_real_person[person].is_some());
+        if !has_existing_person_anchor {
+            return true;
+        }
+        self.bind_unordered_pair(candidate, oracle_people, real_people)
     }
 
     fn bind_unordered_pair(
