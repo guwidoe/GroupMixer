@@ -613,6 +613,18 @@ impl RuntimeState {
         self.build_constraint_scenario_oracle_guided_schedule_with_budget(effective_seed, budget)
     }
 
+    #[cfg(test)]
+    pub(crate) fn build_constraint_scenario_oracle_guided_schedule_for_test(
+        &self,
+        effective_seed: u64,
+        construction_total_time_limit_seconds: Option<u64>,
+    ) -> Result<ConstraintScenarioOracleConstructionResult, SolverError> {
+        self.build_constraint_scenario_oracle_guided_schedule(
+            effective_seed,
+            construction_total_time_limit_seconds,
+        )
+    }
+
     fn build_constraint_scenario_oracle_guided_schedule_with_budget(
         &self,
         effective_seed: u64,
@@ -1152,18 +1164,6 @@ impl ConstraintScenarioConstructionBudget {
             oracle_budget_seconds: None,
         }
     }
-}
-
-fn attribute_only_contact_scenario_prefers_scaffold(compiled: &CompiledProblem) -> bool {
-    compiled.maximize_unique_contacts_weight > 0.0
-        && compiled.repeat_encounter.is_none()
-        && !compiled.attribute_balance_constraints.is_empty()
-        && compiled.cliques.is_empty()
-        && compiled.hard_apart_pairs.is_empty()
-        && compiled.soft_apart_pairs.is_empty()
-        && compiled.should_together_pairs.is_empty()
-        && compiled.immovable_assignments.is_empty()
-        && compiled.pair_meeting_constraints.is_empty()
 }
 
 fn classify_auto_constructor_failure(failure: &str) -> AutoConstructorOutcome {

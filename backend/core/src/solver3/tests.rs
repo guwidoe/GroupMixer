@@ -50,8 +50,9 @@ use crate::solver_support::construction::constraint_scenario_oracle::{
     extract_constraint_scenario_signals, generate_oracle_template_candidates,
     merge_projected_oracle_template_into_scaffold, project_oracle_schedule_to_template,
     validate_pure_oracle_schedule, ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
-    OracleTemplateCandidate, OracleTemplateProjectionResult, PureStructureOracle,
-    PureStructureOracleRequest, PureStructureOracleSchedule, Solver6PureStructureOracle,
+    ConstraintScenarioOracleOutcomeKind, OracleTemplateCandidate, OracleTemplateProjectionResult,
+    PureStructureOracle, PureStructureOracleRequest, PureStructureOracleSchedule,
+    Solver6PureStructureOracle,
 };
 
 // ---------------------------------------------------------------------------
@@ -599,6 +600,48 @@ fn constraint_scenario_oracle_constructor_declines_when_repeat_pressure_absent()
     let state = RuntimeState::from_input(&input).unwrap();
     validate_invariants(&state).unwrap();
     assert_eq!(state.compiled.maximize_unique_contacts_weight, 0.0);
+}
+
+#[test]
+fn constraint_scenario_oracle_constructor_does_not_blanket_skip_minor_attribute_balance_sgp() {
+    let mut input = pure_sgp_solver3_input(13, 13, 14);
+    input.constraints.clear();
+    for (idx, person) in input.problem.people.iter_mut().enumerate() {
+        person.attributes.insert(
+            "gender".into(),
+            if idx % 2 == 0 { "male" } else { "female" }.into(),
+        );
+    }
+    input
+        .constraints
+        .push(Constraint::AttributeBalance(AttributeBalanceParams {
+            group_id: "g0".into(),
+            attribute_key: "gender".into(),
+            desired_values: HashMap::from([("male".into(), 6), ("female".into(), 7)]),
+            penalty_weight: 1.0,
+            mode: AttributeBalanceMode::Exact,
+            sessions: Some(vec![0]),
+        }));
+    input.solver.seed = Some(13);
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    }
+
+    let constructed = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&constructed).unwrap();
+    assert!(constructed.compiled.repeat_encounter.is_none());
+    assert_eq!(constructed.compiled.attribute_balance_constraints.len(), 1);
+
+    let probe = constructed
+        .build_constraint_scenario_oracle_guided_schedule_for_test(13, Some(0))
+        .unwrap();
+    assert_eq!(
+        probe.telemetry.outcome,
+        ConstraintScenarioOracleOutcomeKind::OracleMerged,
+        "minor AttributeBalance constraints on a large contact-only SGP-shaped instance must not blanket-disable oracle-guided construction"
+    );
+    assert!(probe.telemetry.oracle_merge_attempted);
+    assert!(probe.telemetry.oracle_template_sessions > 0);
 }
 
 #[test]
