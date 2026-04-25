@@ -14,6 +14,7 @@ interface RecommendedSettingsPanelProps {
   solverCatalogErrorMessage: string | null;
   supportsRecommendedSettings: boolean;
   solverDisplayName: string;
+  usesAutoRuntimePolicy?: boolean;
 }
 
 export function RecommendedSettingsPanel({
@@ -27,6 +28,7 @@ export function RecommendedSettingsPanel({
   solverCatalogErrorMessage,
   supportsRecommendedSettings,
   solverDisplayName,
+  usesAutoRuntimePolicy = false,
 }: RecommendedSettingsPanelProps) {
   void solverFormInputs;
   if (solverCatalogStatus !== 'ready') {
@@ -73,32 +75,47 @@ export function RecommendedSettingsPanel({
           Recommended Settings
         </h3>
         <p className="mt-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
-          Estimate a good configuration for the chosen runtime budget.
+          {usesAutoRuntimePolicy
+            ? 'Auto is already the product-default policy. It derives runtime from scenario complexity and exposes route/budget telemetry after each run.'
+            : 'Estimate a good configuration for the chosen runtime budget.'}
         </p>
       </div>
-      <div className="flex items-end gap-2">
-        <div className="flex-grow">
-          <NumberField
-            label="Desired Runtime (s)"
-            value={desiredRuntimeSettings}
-            onChange={() => {}}
-            onCommit={(value) => {
-              if (value != null && value >= 1) {
-                setDesiredRuntimeSettings(Math.round(value));
-                setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeSettings: undefined }));
-              }
-            }}
-            disabled={isRunning}
-            {...NUMBER_FIELD_PRESETS.runtimeSeconds}
-            className="w-full md:w-[20rem]"
-          />
+      {usesAutoRuntimePolicy ? (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: 'var(--border-secondary)', color: 'var(--text-secondary)' }}>
+            Runtime: complexity-derived · Search reserve: ≥70% · Construction fallback: telemetry-visible
+          </div>
+          <Tooltip content={<span>Reset the scenario to the default Auto solver configuration.</span>}>
+            <button onClick={onAutoSetSettings} disabled={isRunning} className="btn-primary whitespace-nowrap">
+              Reset Auto Defaults
+            </button>
+          </Tooltip>
         </div>
-        <Tooltip content={<span>Run a short trial to estimate solver parameters for the specified runtime.</span>}>
-          <button onClick={onAutoSetSettings} disabled={isRunning} className="btn-primary whitespace-nowrap">
-            Auto-set
-          </button>
-        </Tooltip>
-      </div>
+      ) : (
+        <div className="flex items-end gap-2">
+          <div className="flex-grow">
+            <NumberField
+              label="Desired Runtime (s)"
+              value={desiredRuntimeSettings}
+              onChange={() => {}}
+              onCommit={(value) => {
+                if (value != null && value >= 1) {
+                  setDesiredRuntimeSettings(Math.round(value));
+                  setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeSettings: undefined }));
+                }
+              }}
+              disabled={isRunning}
+              {...NUMBER_FIELD_PRESETS.runtimeSeconds}
+              className="w-full md:w-[20rem]"
+            />
+          </div>
+          <Tooltip content={<span>Run a short trial to estimate solver parameters for the specified runtime.</span>}>
+            <button onClick={onAutoSetSettings} disabled={isRunning} className="btn-primary whitespace-nowrap">
+              Auto-set
+            </button>
+          </Tooltip>
+        </div>
+      )}
     </div>
   );
 }

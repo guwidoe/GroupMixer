@@ -19,6 +19,8 @@ export function DetailedMetricsPanel({
 }: DetailedMetricsPanelProps) {
   const solverUiSpec = getSolverUiSpecForSettings(displaySettings.solver_type);
   const latestProgress = solverState.latestProgress ?? null;
+  const latestSolution = solverState.latestSolution ?? null;
+  const benchmarkTelemetry = latestSolution?.benchmark_telemetry ?? null;
 
   return (
     <section
@@ -45,23 +47,34 @@ export function DetailedMetricsPanel({
       {showMetrics ? (
         <div className="space-y-5">
           {solverUiSpec ? (
-            solverUiSpec.liveMetricSections.map((section) => (
-              <div key={section.id}>
-                <div className="mb-3">
-                  <h4 className="font-medium" style={{ color: 'var(--text-primary)' }}>
-                    {section.title}
-                  </h4>
-                  {section.description ? (
-                    <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      {section.description}
-                    </p>
-                  ) : null}
-                </div>
+            solverUiSpec.liveMetricSections.map((section) => {
+              const metricContext = {
+                progress: latestProgress,
+                settings: displaySettings,
+                solution: latestSolution,
+                benchmarkTelemetry,
+              };
+              const visibleMetrics = section.metrics.filter((metric) => metric.isVisible?.(metricContext) ?? true);
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                  {section.metrics
-                    .filter((metric) => metric.isVisible?.({ progress: latestProgress, settings: displaySettings }) ?? true)
-                    .map((metric) => (
+              if (visibleMetrics.length === 0) {
+                return null;
+              }
+
+              return (
+                <div key={section.id}>
+                  <div className="mb-3">
+                    <h4 className="font-medium" style={{ color: 'var(--text-primary)' }}>
+                      {section.title}
+                    </h4>
+                    {section.description ? (
+                      <p className="mt-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                        {section.description}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {visibleMetrics.map((metric) => (
                       <div
                         key={metric.id}
                         className="rounded-lg p-3"
@@ -77,13 +90,14 @@ export function DetailedMetricsPanel({
                           </Tooltip>
                         </div>
                         <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
-                          {metric.render({ progress: latestProgress, settings: displaySettings })}
+                          {metric.render(metricContext)}
                         </div>
                       </div>
                     ))}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               No solver-specific metric specification is available for <code>{displaySettings.solver_type}</code>.

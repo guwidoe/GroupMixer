@@ -4,5 +4,6 @@ export * from './translate';
 export * from './registry';
 export * from './universal';
 export * from './localSearch';
+export * from './auto';
 export * from './solver1';
 export * from './solver3';

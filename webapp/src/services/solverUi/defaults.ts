@@ -6,7 +6,7 @@ import type {
 } from '../../types';
 import type { SolverFamilyId } from './types';
 
-export const DEFAULT_SOLVER_FAMILY_ID: SolverFamilyId = 'solver1';
+export const DEFAULT_SOLVER_FAMILY_ID: SolverFamilyId = 'auto';
 export const LEGACY_SOLVER1_CONFIG_ID = 'SimulatedAnnealing';
 
 const DEFAULT_STOP_CONDITIONS: StopConditions = {
@@ -42,6 +42,17 @@ export const DEFAULT_SOLVER3_CORRECTNESS_LANE: Solver3CorrectnessLaneParams = {
 
 export function createDefaultSolverSettings(familyId: SolverFamilyId = DEFAULT_SOLVER_FAMILY_ID): SolverSettings {
   switch (familyId) {
+    case 'auto':
+      return {
+        solver_type: 'auto',
+        stop_conditions: {
+          stop_on_optimal_score: true,
+        },
+        solver_params: {
+          solver_type: 'auto',
+        },
+        logging: { ...DEFAULT_LOGGING },
+      };
     case 'solver1':
       return {
         solver_type: LEGACY_SOLVER1_CONFIG_ID,

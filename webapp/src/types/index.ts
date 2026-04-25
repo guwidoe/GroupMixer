@@ -154,8 +154,33 @@ export type StopReason =
   | "max_iterations_reached"
   | "time_limit_reached"
   | "no_improvement_limit_reached"
+  | "no_improvement_time_limit_reached"
   | "progress_callback_requested_stop"
   | "optimal_score_reached";
+
+export type AutoConstructorOutcome =
+  | "initial_schedule"
+  | "success"
+  | "timeout"
+  | "validation_error"
+  | "unsupported"
+  | "fallback_baseline";
+
+export interface AutoSolveTelemetry {
+  selected_solver: string;
+  complexity_model_version: string;
+  complexity_score: number;
+  total_budget_seconds: number;
+  oracle_construction_budget_seconds: number;
+  scaffold_budget_seconds: number;
+  oracle_recombination_budget_seconds: number;
+  search_budget_seconds: number;
+  constructor_attempt: string;
+  constructor_outcome: AutoConstructorOutcome;
+  constructor_fallback_used: boolean;
+  constructor_failure?: string | null;
+  constructor_wall_seconds: number;
+}
 
 export interface MoveFamilyBenchmarkTelemetry {
   attempts: number;
@@ -187,6 +212,7 @@ export interface SolverBenchmarkTelemetry {
   search_seconds: number;
   finalization_seconds: number;
   total_seconds: number;
+  auto?: AutoSolveTelemetry | null;
   moves: MoveFamilyBenchmarkTelemetrySummary;
 }
 
@@ -199,6 +225,7 @@ export interface StopConditions {
 
 export interface SolverParams {
   SimulatedAnnealing?: SimulatedAnnealingParams;
+  auto?: Record<string, never>;
   solver3?: Solver3Params;
   solver_type?: 'SimulatedAnnealing' | 'solver3' | string;
   initial_temperature?: number;

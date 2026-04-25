@@ -12,11 +12,30 @@ import {
 
 describe('solverUi translate', () => {
   it('normalizes solver ids and legacy aliases to canonical family ids', () => {
+    expect(normalizeSolverFamilyId('auto')).toBe('auto');
+    expect(normalizeSolverFamilyId('default')).toBe('auto');
     expect(normalizeSolverFamilyId('SimulatedAnnealing')).toBe('solver1');
     expect(normalizeSolverFamilyId('legacy_simulated_annealing')).toBe('solver1');
     expect(normalizeSolverFamilyId('solver1')).toBe('solver1');
     expect(normalizeSolverFamilyId('solver3')).toBe('solver3');
     expect(normalizeSolverFamilyId('unknown')).toBeNull();
+  });
+
+  it('round-trips auto settings through the draft translator', () => {
+    const settings = createDefaultSolverSettings('auto');
+
+    const draft = fromContractSolverSettings(settings);
+    const roundTrip = toContractSolverSettings(draft);
+
+    expect(draft.familyId).toBe('auto');
+    expect(roundTrip).toEqual({
+      solver_type: 'auto',
+      stop_conditions: settings.stop_conditions,
+      solver_params: {
+        solver_type: 'auto',
+      },
+      logging: settings.logging,
+    });
   });
 
   it('round-trips solver1 settings through the draft translator', () => {
@@ -75,5 +94,19 @@ describe('solverUi translate', () => {
       sample_every_accepted_moves: 16,
     });
     expect((switched.solver_params as Record<string, unknown>).SimulatedAnnealing).toBeUndefined();
+  });
+
+  it('switches to auto while preserving shared settings and removing manual solver params', () => {
+    const settings = {
+      ...createSampleSolverSettings(),
+      seed: 42,
+    };
+
+    const switched = switchSolverFamily(settings, 'auto');
+
+    expect(switched.solver_type).toBe('auto');
+    expect(switched.stop_conditions).toEqual(settings.stop_conditions);
+    expect(switched.seed).toBe(42);
+    expect(switched.solver_params).toEqual({ solver_type: 'auto' });
   });
 });

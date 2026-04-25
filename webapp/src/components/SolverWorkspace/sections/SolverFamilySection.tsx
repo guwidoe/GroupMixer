@@ -82,6 +82,7 @@ export function SolverFamilySection({ section }: SolverFamilySectionProps) {
             solverCatalogErrorMessage={controller.solverCatalogErrorMessage}
             supportsRecommendedSettings={controller.selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false}
             solverDisplayName={controller.selectedSolverCatalogEntry?.displayName ?? controller.solverSettings.solver_type}
+            usesAutoRuntimePolicy={controller.selectedSolverFamilyId === 'auto'}
           />
 
           <WarmStartPanel

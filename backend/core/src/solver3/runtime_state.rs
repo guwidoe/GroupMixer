@@ -18,7 +18,15 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
+
+#[cfg(target_arch = "wasm32")]
+use js_sys;
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant as ConstructionInstant;
+
+#[cfg(target_arch = "wasm32")]
+type ConstructionInstant = f64;
 
 use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::oracle::maybe_cross_check_runtime_state;
@@ -47,6 +55,30 @@ use crate::solver_support::validation::{
 use crate::solver_support::SolverError;
 
 const DEFAULT_BASELINE_CONSTRUCTION_SEED: u64 = 42;
+
+#[cfg(not(target_arch = "wasm32"))]
+fn construction_now() -> ConstructionInstant {
+    ConstructionInstant::now()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn construction_now() -> ConstructionInstant {
+    js_sys::Date::now()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn construction_elapsed_seconds(started_at: ConstructionInstant) -> f64 {
+    started_at.elapsed().as_secs_f64()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn construction_elapsed_seconds(started_at: ConstructionInstant) -> f64 {
+    ((js_sys::Date::now() - started_at) / 1000.0).max(0.0)
+}
+
+fn construction_elapsed_millis(started_at: ConstructionInstant) -> u128 {
+    (construction_elapsed_seconds(started_at) * 1000.0).max(0.0) as u128
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct AutoConstructionPolicy {
@@ -173,7 +205,7 @@ impl RuntimeState {
             .unwrap_or(DEFAULT_BASELINE_CONSTRUCTION_SEED);
 
         if let Some(initial_schedule) = &input.initial_schedule {
-            let started_at = Instant::now();
+            let started_at = construction_now();
             let validated = validate_schedule_as_incumbent(input, initial_schedule)?;
             let state = Self::from_compiled_schedule(compiled, validated.schedule)?;
             return Ok(AutoConstructionResult {
@@ -182,11 +214,11 @@ impl RuntimeState {
                 outcome: AutoConstructorOutcome::InitialSchedule,
                 fallback_used: false,
                 failure: None,
-                constructor_wall_seconds: started_at.elapsed().as_secs_f64(),
+                constructor_wall_seconds: construction_elapsed_seconds(started_at),
             });
         }
 
-        let construction_started_at = Instant::now();
+        let construction_started_at = construction_now();
         let empty = Self::empty_for_compiled(Arc::clone(&compiled));
         let budget = ConstraintScenarioConstructionBudget {
             total_budget_seconds: Some(policy.oracle_construction_budget_seconds),
@@ -206,7 +238,7 @@ impl RuntimeState {
 
         match attempt {
             Ok(schedule)
-                if construction_started_at.elapsed().as_secs_f64()
+                if construction_elapsed_seconds(construction_started_at)
                     <= policy.oracle_construction_budget_seconds =>
             {
                 let state = Self::from_compiled_schedule(compiled, schedule)?;
@@ -216,13 +248,13 @@ impl RuntimeState {
                     outcome: AutoConstructorOutcome::Success,
                     fallback_used: false,
                     failure: None,
-                    constructor_wall_seconds: construction_started_at.elapsed().as_secs_f64(),
+                    constructor_wall_seconds: construction_elapsed_seconds(construction_started_at),
                 })
             }
             Ok(_) => {
                 let failure = format!(
                     "constraint-scenario oracle-guided construction exceeded budget: {:.3}s elapsed > {:.3}s budget",
-                    construction_started_at.elapsed().as_secs_f64(),
+                    construction_elapsed_seconds(construction_started_at),
                     policy.oracle_construction_budget_seconds
                 );
                 Self::auto_baseline_fallback(
@@ -269,7 +301,7 @@ impl RuntimeState {
     fn auto_baseline_fallback(
         compiled: Arc<CompiledProblem>,
         effective_seed: u64,
-        started_at: Instant,
+        started_at: ConstructionInstant,
         outcome: AutoConstructorOutcome,
         failure: String,
     ) -> Result<AutoConstructionResult, SolverError> {
@@ -286,7 +318,7 @@ impl RuntimeState {
             outcome,
             fallback_used: true,
             failure: Some(failure),
-            constructor_wall_seconds: started_at.elapsed().as_secs_f64(),
+            constructor_wall_seconds: construction_elapsed_seconds(started_at),
         })
     }
 
@@ -586,7 +618,7 @@ impl RuntimeState {
         effective_seed: u64,
         budget: ConstraintScenarioConstructionBudget,
     ) -> Result<ConstraintScenarioOracleConstructionResult, SolverError> {
-        let started_at = Instant::now();
+        let started_at = construction_now();
         if !repeat_pressure_is_relevant(&self.compiled) {
             let schedule = self.build_constructed_schedule(
                 effective_seed,
@@ -598,7 +630,7 @@ impl RuntimeState {
                 telemetry: ConstraintScenarioOracleTelemetry {
                     outcome: ConstraintScenarioOracleOutcomeKind::RepeatIrrelevant,
                     repeat_relevant: false,
-                    constructor_wall_ms: started_at.elapsed().as_millis(),
+                    constructor_wall_ms: construction_elapsed_millis(started_at),
                     ..ConstraintScenarioOracleTelemetry::default()
                 },
             });
@@ -619,7 +651,7 @@ impl RuntimeState {
                     cs_run_count: 1,
                     cs_best_score: Some(scaffold.score),
                     cs_diversity: Some(0.0),
-                    constructor_wall_ms: started_at.elapsed().as_millis(),
+                    constructor_wall_ms: construction_elapsed_millis(started_at),
                     ..ConstraintScenarioOracleTelemetry::default()
                 },
             });
@@ -647,13 +679,13 @@ impl RuntimeState {
                     cs_diversity: Some(0.0),
                     rigid_placement_count: scaffold_mask.rigid_placement_count,
                     flexible_placement_count: scaffold_mask.flexible_placement_count,
-                    constructor_wall_ms: started_at.elapsed().as_millis(),
+                    constructor_wall_ms: construction_elapsed_millis(started_at),
                     ..ConstraintScenarioOracleTelemetry::default()
                 },
             });
         };
         ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
-        let oracle_phase_started_at = Instant::now();
+        let oracle_phase_started_at = construction_now();
         let oracle_schedule = Solver6PureStructureOracle.solve(&PureStructureOracleRequest {
             num_groups: candidate.num_groups,
             group_size: candidate.group_size,
@@ -713,7 +745,7 @@ impl RuntimeState {
                 oracle_merge_attempted,
                 oracle_merge_accepted,
                 oracle_merge_failed,
-                constructor_wall_ms: started_at.elapsed().as_millis(),
+                constructor_wall_ms: construction_elapsed_millis(started_at),
                 ..ConstraintScenarioOracleTelemetry::default()
             },
         })
@@ -1134,13 +1166,13 @@ fn classify_auto_constructor_failure(failure: &str) -> AutoConstructorOutcome {
 }
 
 fn ensure_constructor_budget_remaining(
-    started_at: Instant,
+    started_at: ConstructionInstant,
     total_budget_seconds: Option<f64>,
 ) -> Result<(), SolverError> {
     let Some(total_budget_seconds) = total_budget_seconds else {
         return Ok(());
     };
-    if started_at.elapsed().as_secs_f64() > total_budget_seconds {
+    if construction_elapsed_seconds(started_at) > total_budget_seconds {
         return Err(SolverError::ValidationError(format!(
             "constraint-scenario oracle-guided construction exceeded its {:.3}s budget",
             total_budget_seconds

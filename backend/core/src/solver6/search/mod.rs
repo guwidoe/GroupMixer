@@ -14,7 +14,39 @@ use crate::models::{Solver6SearchStrategy, StopConditions, StopReason};
 use crate::solver6::problem::PureSgpProblem;
 use crate::solver6::score::{pure_sgp_linear_repeat_excess_lower_bound, PairFrequencyState};
 use crate::solver_support::SolverError;
-use std::time::Instant;
+
+#[cfg(target_arch = "wasm32")]
+use js_sys;
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant as SearchInstant;
+
+#[cfg(target_arch = "wasm32")]
+type SearchInstant = f64;
+
+#[cfg(not(target_arch = "wasm32"))]
+fn search_now() -> SearchInstant {
+    SearchInstant::now()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn search_now() -> SearchInstant {
+    js_sys::Date::now()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn search_elapsed_seconds(started_at: SearchInstant) -> f64 {
+    started_at.elapsed().as_secs_f64()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn search_elapsed_seconds(started_at: SearchInstant) -> f64 {
+    ((js_sys::Date::now() - started_at) / 1000.0).max(0.0)
+}
+
+fn search_elapsed_micros(started_at: SearchInstant) -> u64 {
+    (search_elapsed_seconds(started_at) * 1_000_000.0).max(0.0) as u64
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RepeatAwareLocalSearchConfig {
@@ -176,7 +208,7 @@ pub(crate) fn run_deterministic_hill_climb(
         ));
     }
 
-    let start = Instant::now();
+    let start = search_now();
     let mut improving_moves_accepted = 0u64;
     let mut neighborhood_scans = 0u64;
     let mut candidates_evaluated = 0u64;
@@ -187,14 +219,17 @@ pub(crate) fn run_deterministic_hill_climb(
         if state.current_iteration() >= config.max_iterations {
             break StopReason::MaxIterationsReached;
         }
-        if config.time_limit_seconds.is_some_and(|seconds| start.elapsed().as_secs() >= seconds) {
+        if config
+            .time_limit_seconds
+            .is_some_and(|seconds| search_elapsed_seconds(start) >= seconds as f64)
+        {
             break StopReason::TimeLimitReached;
         }
 
-        let scan_started = Instant::now();
+        let scan_started = search_now();
         let scan_candidate_count = count_same_week_swap_moves(state) as u64;
         let best_move = find_best_same_week_swap(state)?;
-        let scan_elapsed_micros = scan_started.elapsed().as_micros() as u64;
+        let scan_elapsed_micros = search_elapsed_micros(scan_started);
         neighborhood_scans += 1;
         candidates_evaluated += scan_candidate_count;
         total_scan_micros += scan_elapsed_micros;
@@ -265,7 +300,7 @@ pub(crate) fn run_repeat_aware_local_search(
         ));
     }
 
-    let start = Instant::now();
+    let start = search_now();
     let mut tabu_memory = RepeatAwareTabuMemory::new(config.tabu_policy);
     let mut breakout_rng = BreakoutRng::from_seed(config.breakout.rng_seed);
     let mut improving_moves_accepted = 0u64;
@@ -284,7 +319,10 @@ pub(crate) fn run_repeat_aware_local_search(
         if state.current_iteration() >= config.max_iterations {
             break StopReason::MaxIterationsReached;
         }
-        if config.time_limit_seconds.is_some_and(|seconds| start.elapsed().as_secs() >= seconds) {
+        if config
+            .time_limit_seconds
+            .is_some_and(|seconds| search_elapsed_seconds(start) >= seconds as f64)
+        {
             break StopReason::TimeLimitReached;
         }
         if state.current_iteration() > 0 && no_improvement_streak >= config.no_improvement_limit {
@@ -418,7 +456,7 @@ pub(crate) fn select_best_admissible_same_week_swap(
     state: &LocalSearchState,
     tabu_memory: &RepeatAwareTabuMemory,
 ) -> Result<CandidateSelection, SolverError> {
-    let started = Instant::now();
+    let started = search_now();
     let mut best: Option<EvaluatedSameWeekSwapMove> = None;
     let mut tabu_pruned_candidates = 0u64;
     let mut candidates_evaluated = 0u64;
@@ -444,7 +482,7 @@ pub(crate) fn select_best_admissible_same_week_swap(
         best_move: best,
         tabu_pruned_candidates,
         candidates_evaluated,
-        elapsed_micros: started.elapsed().as_micros() as u64,
+        elapsed_micros: search_elapsed_micros(started),
     })
 }
 

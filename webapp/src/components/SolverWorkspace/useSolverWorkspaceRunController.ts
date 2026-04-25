@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import {
   buildSolverCatalog,
   createDefaultSolverSettings,
+  DEFAULT_SOLVER_FAMILY_ID,
   findSolverCatalogEntry,
   getSolverUiSpec,
   normalizeSolverFamilyId,
@@ -93,7 +94,7 @@ export function useSolverWorkspaceRunController(): SolverWorkspaceRunController 
   );
 
   const solverSettings = scenario?.settings || createDefaultSolverSettings();
-  const selectedSolverFamilyId = normalizeSolverFamilyId(solverSettings.solver_type) ?? 'solver1';
+  const selectedSolverFamilyId = normalizeSolverFamilyId(solverSettings.solver_type) ?? DEFAULT_SOLVER_FAMILY_ID;
   const selectedSolverCatalogEntry = findSolverCatalogEntry(solverCatalog, selectedSolverFamilyId);
   const selectedSolverUiSpec = getSolverUiSpec(selectedSolverFamilyId);
 

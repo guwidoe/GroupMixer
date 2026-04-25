@@ -79,7 +79,7 @@ describe('quick setup scenario mapping', () => {
     });
     expect(scenario.groups.map((group) => group.id)).toEqual(['Group 1', 'Group 2']);
     expect(scenario.num_sessions).toBe(3);
-    expect(scenario.settings.solver_type).toBe('SimulatedAnnealing');
+    expect(scenario.settings.solver_type).toBe('auto');
     expect(scenario.objectives).toEqual([{ type: 'maximize_unique_contacts', weight: 1 }]);
     expect(scenario.constraints).toEqual(
       expect.arrayContaining([

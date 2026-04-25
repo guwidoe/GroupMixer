@@ -172,7 +172,7 @@ describe('demoDataService', () => {
     expect(scenario.people.length).toBeGreaterThan(0);
     expect(scenario.groups.length).toBeGreaterThan(0);
     expect(scenario.constraints.length).toBeGreaterThan(0);
-    expect(scenario.settings.solver_type).toBe('SimulatedAnnealing');
+    expect(scenario.settings.solver_type).toBe('auto');
   });
 
   it('keeps the synthetic partial-attendance demo fixture aligned with the benchmark case input', () => {

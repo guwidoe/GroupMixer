@@ -8,6 +8,8 @@ import {
 
 describe('solverCatalog', () => {
   it('normalizes accepted solver type aliases to the canonical family id', () => {
+    expect(normalizeSolverFamilyId('auto')).toBe('auto');
+    expect(normalizeSolverFamilyId('default')).toBe('auto');
     expect(normalizeSolverFamilyId('SimulatedAnnealing')).toBe('solver1');
     expect(normalizeSolverFamilyId('simulated_annealing')).toBe('solver1');
     expect(normalizeSolverFamilyId('legacy_simulated_annealing')).toBe('solver1');

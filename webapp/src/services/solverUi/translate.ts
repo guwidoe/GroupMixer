@@ -16,6 +16,7 @@ import type {
 } from './types';
 
 const SOLVER_FAMILY_ALIASES: Record<SolverFamilyId, readonly string[]> = {
+  auto: ['auto', 'default'],
   solver1: ['solver1', 'legacy_simulated_annealing', 'simulated_annealing', LEGACY_SOLVER1_CONFIG_ID],
   solver3: ['solver3'],
 };
@@ -127,6 +128,12 @@ export function fromContractSolverSettings(settings: SolverSettings): SolverDraf
   const common = cloneCommonDraft(settings);
 
   switch (familyId) {
+    case 'auto':
+      return {
+        familyId,
+        common,
+        specific: {},
+      };
     case 'solver1': {
       const params = getSolver1Params(settings);
       return {
@@ -187,6 +194,14 @@ export function toContractSolverSettings(draft: SolverDraft): SolverSettings {
   }
 
   switch (draft.familyId) {
+    case 'auto':
+      return {
+        ...common,
+        solver_type: 'auto',
+        solver_params: {
+          solver_type: 'auto',
+        },
+      };
     case 'solver1':
       return {
         ...common,

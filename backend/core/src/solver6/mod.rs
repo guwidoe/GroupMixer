@@ -5,7 +5,39 @@ use crate::solver5::atoms::{
     query_construction_atom_from_solver6_input, Solver5AtomSpanRequest, Solver5ConstructionAtom,
 };
 use crate::solver_support::SolverError;
-use std::time::Instant;
+
+#[cfg(target_arch = "wasm32")]
+use js_sys;
+
+#[cfg(not(target_arch = "wasm32"))]
+use std::time::Instant as Solver6Instant;
+
+#[cfg(target_arch = "wasm32")]
+type Solver6Instant = f64;
+
+#[cfg(not(target_arch = "wasm32"))]
+fn solver6_now() -> Solver6Instant {
+    Solver6Instant::now()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn solver6_now() -> Solver6Instant {
+    js_sys::Date::now()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn solver6_elapsed_seconds(started_at: Solver6Instant) -> f64 {
+    started_at.elapsed().as_secs_f64()
+}
+
+#[cfg(target_arch = "wasm32")]
+fn solver6_elapsed_seconds(started_at: Solver6Instant) -> f64 {
+    ((js_sys::Date::now() - started_at) / 1000.0).max(0.0)
+}
+
+fn solver6_elapsed_micros(started_at: Solver6Instant) -> u64 {
+    (solver6_elapsed_seconds(started_at) * 1_000_000.0).max(0.0) as u64
+}
 
 pub mod catalog;
 mod problem;
@@ -168,7 +200,7 @@ fn execute_solver6_run(
         seed_schedule,
         params.pair_repeat_penalty_model,
     )?;
-    let local_search_started = Instant::now();
+    let local_search_started = solver6_now();
     let mut local_search_stop_conditions = configuration.stop_conditions.clone();
     local_search_stop_conditions.time_limit_seconds = params.local_search_time_limit_seconds;
     let outcome = run_configured_local_search(
@@ -178,7 +210,7 @@ fn execute_solver6_run(
         &problem,
         effective_seed,
     )?;
-    let local_search_runtime_micros = local_search_started.elapsed().as_micros() as u64;
+    let local_search_runtime_micros = solver6_elapsed_micros(local_search_started);
     let cache_store_outcome = if let Some(cache) = params.cache.as_ref() {
         Some(store_cache_incumbent(
             cache,
@@ -216,13 +248,15 @@ fn build_preferred_mixed_seed_with_deadline(
             "solver6 seed timeout reached before seed construction could start".into(),
         ));
     }
-    let seed_started = Instant::now();
+    let seed_started = solver6_now();
     let selection = build_preferred_mixed_seed(input)?;
-    let runtime_micros = seed_started.elapsed().as_micros() as u64;
-    if seed_time_limit_seconds.is_some_and(|seconds| seed_started.elapsed().as_secs() >= seconds) {
+    let runtime_micros = solver6_elapsed_micros(seed_started);
+    if seed_time_limit_seconds
+        .is_some_and(|seconds| solver6_elapsed_seconds(seed_started) >= seconds as f64)
+    {
         return Err(SolverError::ValidationError(format!(
             "solver6 seed timeout reached after {:.3}s while constructing the initial incumbent",
-            seed_started.elapsed().as_secs_f64()
+            solver6_elapsed_seconds(seed_started)
         )));
     }
     Ok((selection, runtime_micros))

@@ -101,6 +101,7 @@ function solverStateFromWorkspaceSolution(solution: Solution | null) {
     currentScore: solution.final_score,
     elapsedTime: solution.elapsed_time_ms,
     noImprovementCount: solution.benchmark_telemetry?.no_improvement_count ?? 0,
+    latestSolution: solution,
   };
 }
 

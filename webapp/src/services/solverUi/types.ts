@@ -1,7 +1,7 @@
-import type { SolverSettings } from '../../types';
+import type { Solution, SolverBenchmarkTelemetry, SolverSettings } from '../../types';
 import type { RuntimeProgressUpdate, RuntimeSolverDescriptor } from '../runtime';
 
-export type SolverFamilyId = 'solver1' | 'solver3';
+export type SolverFamilyId = 'auto' | 'solver1' | 'solver3';
 export type SolverUiSectionKind = 'universal' | 'family_shared' | 'solver_specific';
 export type SolverFormInputKey =
   | 'maxIterations'
@@ -80,6 +80,8 @@ export interface SolverSettingsSectionSpec {
 export interface SolverMetricContext {
   progress: RuntimeProgressUpdate | null;
   settings: SolverSettings;
+  solution?: Solution | null;
+  benchmarkTelemetry?: SolverBenchmarkTelemetry | null;
   descriptor?: RuntimeSolverDescriptor | null;
 }
 
@@ -132,7 +134,14 @@ export interface Solver3SpecificDraft {
   correctnessLaneSampleEveryAcceptedMoves: number;
 }
 
+export type AutoSpecificDraft = Record<string, never>;
+
 export type SolverDraft =
+  | {
+      familyId: 'auto';
+      common: CommonSolverSettingsDraft;
+      specific: AutoSpecificDraft;
+    }
   | {
       familyId: 'solver1';
       common: CommonSolverSettingsDraft;

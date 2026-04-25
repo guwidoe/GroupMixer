@@ -1,6 +1,13 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { buildSolverCatalog, normalizeSolverFamilyId, switchSolverFamily, type SolverCatalogEntry } from '../../services/solverUi';
+import {
+  DEFAULT_SOLVER_FAMILY_ID,
+  buildSolverCatalog,
+  normalizeSolverFamilyId,
+  switchSolverFamily,
+  type SolverCatalogEntry,
+  type SolverFamilyId,
+} from '../../services/solverUi';
 import { useAppStore } from '../../store';
 import {
   getResolvedSolverWorkspaceSectionsByGroup,
@@ -22,7 +29,7 @@ export interface SolverWorkspaceController {
   solverCatalog: readonly SolverCatalogEntry[];
   solverCatalogStatus: 'loading' | 'ready' | 'error';
   solverCatalogErrorMessage: string | null;
-  selectedSolverFamilyId: 'solver1' | 'solver3';
+  selectedSolverFamilyId: SolverFamilyId;
   activeManualFamilyId: 'solver1' | 'solver3' | null;
   navigateToSection: (sectionId: SolverWorkspaceSectionId) => void;
 }
@@ -44,7 +51,7 @@ export function useSolverWorkspaceController(): SolverWorkspaceController {
     () => getResolvedSolverWorkspaceSectionsByGroup(solverCatalog, solverCatalogStatus),
     [solverCatalog, solverCatalogStatus],
   );
-  const selectedSolverFamilyId = (normalizeSolverFamilyId(scenario?.settings.solver_type) ?? 'solver1') as 'solver1' | 'solver3';
+  const selectedSolverFamilyId = normalizeSolverFamilyId(scenario?.settings.solver_type) ?? DEFAULT_SOLVER_FAMILY_ID;
   const activeManualFamilyId = activeSection === 'run' ? null : activeSection;
 
   useEffect(() => {

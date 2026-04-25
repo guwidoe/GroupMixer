@@ -47,6 +47,10 @@ export function SolverRunControls({
     ? selectedSolverCatalogEntry?.capabilities.supportsRecommendedSettings ?? false
     : false;
   const shouldUseRecommended = startMode === 'recommended' && supportsRecommendedSettings;
+  const usesAutoRuntimePolicy = selectedSolverCatalogEntry?.id === 'auto';
+  const runtimeTooltipContent = usesAutoRuntimePolicy
+    ? 'Auto derives total runtime from canonical scenario complexity, then reserves at least 70% for solver3 search.'
+    : runtimeHelpText;
   const idleButtonLabel = catalogReady
     ? startMode === 'manual'
       ? 'Run with Manual Settings'
@@ -84,10 +88,10 @@ export function SolverRunControls({
         <div className="flex flex-col items-start">
           <div className="mb-1 flex items-center gap-1.5">
             <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>
-              Desired Runtime (s)
+              {usesAutoRuntimePolicy ? 'Auto Runtime Policy' : 'Desired Runtime (s)'}
             </span>
-            {runtimeHelpText ? (
-              <Tooltip content={runtimeHelpText} placement="top">
+            {runtimeTooltipContent ? (
+              <Tooltip content={runtimeTooltipContent} placement="top">
                 <button
                   type="button"
                   className="inline-flex items-center justify-center"
@@ -98,18 +102,31 @@ export function SolverRunControls({
               </Tooltip>
             ) : null}
           </div>
-          <NumberField
-            label={undefined}
-            value={desiredRuntimeMain}
-            onChange={setDesiredRuntimeMain}
-            onCommit={(value) => {
-              setDesiredRuntimeMain(value);
-              setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeMain: undefined }));
-            }}
-            disabled={solverState.isRunning}
-            {...NUMBER_FIELD_PRESETS.runtimeSeconds}
-            className="w-full sm:w-[20rem]"
-          />
+          {usesAutoRuntimePolicy ? (
+            <div
+              className="w-full rounded-lg border px-3 py-2 text-sm sm:w-[20rem]"
+              style={{
+                borderColor: 'var(--border-secondary)',
+                backgroundColor: 'var(--background-secondary)',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              Complexity-derived budget
+            </div>
+          ) : (
+            <NumberField
+              label={undefined}
+              value={desiredRuntimeMain}
+              onChange={setDesiredRuntimeMain}
+              onCommit={(value) => {
+                setDesiredRuntimeMain(value);
+                setSolverFormInputs((prev) => ({ ...prev, desiredRuntimeMain: undefined }));
+              }}
+              disabled={solverState.isRunning}
+              {...NUMBER_FIELD_PRESETS.runtimeSeconds}
+              className="w-full sm:w-[20rem]"
+            />
+          )}
         </div>
 
         {!solverState.isRunning ? (

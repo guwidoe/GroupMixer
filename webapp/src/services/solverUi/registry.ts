@@ -1,7 +1,8 @@
 import type { RuntimeSolverDescriptor } from '../runtime';
+import { AUTO_TELEMETRY_METRIC_SECTION, AUTO_UI_SPEC, summarizeAutoSettings } from './auto';
 import { LOCAL_SEARCH_METRIC_SECTION, LOCAL_SEARCH_SETTINGS_SECTION, summarizeLocalSearchSettings } from './localSearch';
 import { SOLVER1_UI_SPEC, summarizeSolver1Settings } from './solver1';
-import { SOLVER3_UI_SPEC, summarizeSolver3Settings } from './solver3';
+import { SOLVER3_METRIC_SECTION, SOLVER3_UI_SPEC, summarizeSolver3Settings } from './solver3';
 import { normalizeSolverFamilyId } from './translate';
 import type {
   SolverCatalogEntry,
@@ -12,7 +13,18 @@ import type {
 } from './types';
 import { UNIVERSAL_METRIC_SECTION, UNIVERSAL_SETTINGS_SECTION, summarizeUniversalSettings } from './universal';
 
-const SOLVER_UI_SPECS: Record<'solver1' | 'solver3', SolverUiSpec> = {
+const SOLVER_UI_SPECS: Record<SolverFamilyId, SolverUiSpec> = {
+  auto: {
+    ...AUTO_UI_SPEC,
+    settingsSections: AUTO_UI_SPEC.settingsSections,
+    liveMetricSections: [
+      UNIVERSAL_METRIC_SECTION,
+      LOCAL_SEARCH_METRIC_SECTION,
+      SOLVER3_METRIC_SECTION,
+      AUTO_TELEMETRY_METRIC_SECTION,
+    ],
+    summarizeSettings: (settings) => summarizeAutoSettings(settings),
+  },
   solver1: {
     ...SOLVER1_UI_SPEC,
     settingsSections: [UNIVERSAL_SETTINGS_SECTION, LOCAL_SEARCH_SETTINGS_SECTION, ...SOLVER1_UI_SPEC.settingsSections],
@@ -67,7 +79,7 @@ export function buildSolverCatalogEntry(descriptor: RuntimeSolverDescriptor): So
     notes: descriptor.notes,
     capabilities: descriptorCapabilitiesToUiSummary(descriptor),
     uiSpecAvailable: spec !== null,
-    experimental: familyId !== 'solver1',
+    experimental: familyId !== 'auto' && familyId !== 'solver1',
   };
 }
 
