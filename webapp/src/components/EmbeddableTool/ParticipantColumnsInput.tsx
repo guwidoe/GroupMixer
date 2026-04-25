@@ -49,9 +49,9 @@ const ATTRIBUTE_COLUMN_WIDTH = 128;
 const MIN_NAME_WIDTH = 88;
 const MIN_ATTRIBUTE_WIDTH = 58;
 export const MIN_GHOST_COLUMN_WIDTH = 120;
-const HEADER_HEIGHT = 32;
 const TEXTAREA_LINE_HEIGHT = 23;
 const TEXTAREA_VERTICAL_PADDING = 10;
+const STRUCTURED_GRID_VERTICAL_CHROME = 48;
 const COLUMN_SEPARATOR_WIDTH = 12;
 
 function areWidthsApproximatelyEqual(left: number[], right: number[]) {
@@ -314,7 +314,7 @@ export function ParticipantColumnsInput({
   ), [columns]);
 
   const contentHeight = Math.max(
-    height - HEADER_HEIGHT - TEXTAREA_VERTICAL_PADDING,
+    height - STRUCTURED_GRID_VERTICAL_CHROME,
     maxLineCount * TEXTAREA_LINE_HEIGHT + TEXTAREA_VERTICAL_PADDING,
   );
 

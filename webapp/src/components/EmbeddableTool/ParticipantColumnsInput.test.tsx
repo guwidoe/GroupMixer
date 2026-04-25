@@ -77,6 +77,18 @@ describe('ParticipantColumnsInput resize behavior', () => {
     expect(window.localStorage.getItem(PARTICIPANT_COLUMNS_LAYOUT_STORAGE_KEY)).toContain('"height":190');
   });
 
+  it('keeps the initial body height within the structured control chrome', () => {
+    render(
+      <ParticipantColumnsInput
+        {...baseProps}
+        columns={[{ id: 'name', name: 'Name', values: '' }]}
+        minHeight={130}
+      />,
+    );
+
+    expect(screen.getByRole('textbox', { name: 'Participants' })).toHaveStyle({ height: '82px' });
+  });
+
   it('allows the final separator to grow the real column beyond the ghost column minimum', () => {
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function getRect() {
       return {
