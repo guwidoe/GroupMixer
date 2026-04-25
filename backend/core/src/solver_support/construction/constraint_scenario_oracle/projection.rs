@@ -18,6 +18,8 @@ const IMMOVABLE_ANCHOR_WEIGHT: f64 = 12.0;
 const CONTACT_SIGNATURE_WEIGHT: f64 = 0.10;
 const PERSON_PRIORITY_WEIGHT: f64 = 0.01;
 const DUMMY_ASSIGNMENT_SCORE: f64 = 0.0;
+const HARD_APART_GROUP_CONFLICT_PENALTY: f64 = 4.0;
+const HARD_APART_PAIR_ALIGNMENT_PENALTY: f64 = 1_000.0;
 
 /// Projects oracle-local people and groups into one capacity-template candidate.
 ///
@@ -212,16 +214,20 @@ fn build_contact_pressure_by_person_session_group(
                     {
                         continue;
                     }
+                    let placement =
+                        signals.placement_frequency(compiled, session_idx, other_idx, group_idx);
+                    if compiled.hard_apart_active(session_idx, person_idx, other_idx) {
+                        pressure -= HARD_APART_GROUP_CONFLICT_PENALTY * placement;
+                        continue;
+                    }
                     let pair_pressure = signals.pair_pressure(
                         compiled,
                         session_idx,
                         compiled.pair_idx(person_idx, other_idx),
                     );
-                    if pair_pressure <= 0.0 {
-                        continue;
+                    if pair_pressure > 0.0 {
+                        pressure += pair_pressure * placement;
                     }
-                    pressure += pair_pressure
-                        * signals.placement_frequency(compiled, session_idx, other_idx, group_idx);
                 }
                 contact_pressure
                     [contact_pressure_index(compiled, session_idx, person_idx, group_idx)] =
@@ -408,11 +414,15 @@ fn oracle_template_pair_alignment_score(
                         real_session_idx,
                         right,
                     )?;
-                    Some(signals.pair_pressure(
-                        compiled,
-                        real_session_idx,
-                        compiled.pair_idx(real_left, real_right),
-                    ))
+                    if compiled.hard_apart_active(real_session_idx, real_left, real_right) {
+                        Some(-HARD_APART_PAIR_ALIGNMENT_PENALTY)
+                    } else {
+                        Some(signals.pair_pressure(
+                            compiled,
+                            real_session_idx,
+                            compiled.pair_idx(real_left, real_right),
+                        ))
+                    }
                 })
                 .sum::<f64>()
         })
@@ -508,7 +518,7 @@ fn oracle_template_group_alignment_score(
     contact_pressure_by_person_session_group: &[f64],
     real_person_by_oracle_person: &[Option<usize>],
 ) -> f64 {
-    oracle_group
+    let projected_people = oracle_group
         .iter()
         .filter_map(|&oracle_person_idx| {
             projected_oracle_person_for_projection_session(
@@ -518,6 +528,23 @@ fn oracle_template_group_alignment_score(
                 oracle_person_idx,
             )
         })
+        .collect::<Vec<_>>();
+    let hard_apart_penalty = projected_people
+        .iter()
+        .enumerate()
+        .flat_map(|(idx, &left)| {
+            projected_people
+                .iter()
+                .skip(idx + 1)
+                .map(move |&right| (left, right))
+        })
+        .filter(|&(left, right)| compiled.hard_apart_active(real_session_idx, left, right))
+        .count() as f64
+        * HARD_APART_PAIR_ALIGNMENT_PENALTY;
+
+    projected_people
+        .iter()
+        .copied()
         .map(|real_person_idx| {
             placement_anchor_score(
                 compiled,
@@ -534,7 +561,8 @@ fn oracle_template_group_alignment_score(
                     real_group_idx,
                 )]
         })
-        .sum()
+        .sum::<f64>()
+        - hard_apart_penalty
 }
 
 fn oracle_template_group_rigidity_mismatch(

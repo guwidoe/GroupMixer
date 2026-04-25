@@ -602,6 +602,30 @@ fn constraint_scenario_oracle_constructor_declines_when_repeat_pressure_absent()
 }
 
 #[test]
+fn constraint_scenario_oracle_constructor_preserves_must_stay_apart() {
+    let mut input = pure_sgp_solver3_input(3, 3, 4);
+    input.constraints.push(Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: None,
+    });
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    }
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&state).unwrap();
+    let p0 = state.compiled.person_id_to_idx["p0"];
+    let p1 = state.compiled.person_id_to_idx["p1"];
+    for session_idx in 0..state.compiled.num_sessions {
+        assert_ne!(
+            state.person_location[state.people_slot(session_idx, p0)],
+            state.person_location[state.people_slot(session_idx, p1)],
+            "ConstraintScenarioOracleGuided placed a MustStayApart pair together in session {session_idx}"
+        );
+    }
+}
+
+#[test]
 fn constraint_scenario_signals_capture_pair_pressure_and_rigidity() {
     let input = minimal_input();
     let compiled = CompiledProblem::compile(&input).unwrap();
@@ -1085,7 +1109,7 @@ fn runtime_state_freedom_aware_mode_respects_seed_and_constraints() {
 }
 
 #[test]
-fn runtime_state_handles_partially_anchored_clique_without_normalization_failure() {
+fn runtime_state_constructor_handles_partially_anchored_clique() {
     let mut input = minimal_input();
     input.constraints = vec![
         Constraint::MustStayTogether {
@@ -1261,7 +1285,7 @@ fn runtime_state_construction_respects_must_stay_apart() {
 }
 
 #[test]
-fn runtime_state_normalizes_invalid_construction_seed_must_stay_apart_violation() {
+fn runtime_state_rejects_invalid_constructor_must_stay_apart_output() {
     let mut input = minimal_input();
     input.constraints = vec![Constraint::MustStayApart {
         people: vec!["p0".into(), "p1".into()],
@@ -1275,15 +1299,10 @@ fn runtime_state_normalizes_invalid_construction_seed_must_stay_apart_violation(
         ]),
     )]));
 
-    let state = RuntimeState::from_input(&input).unwrap();
-    let cp = &state.compiled;
-    let p0 = cp.person_id_to_idx["p0"];
-    let p1 = cp.person_id_to_idx["p1"];
-
-    assert_ne!(
-        state.person_location[state.people_slot(0, p0)],
-        state.person_location[state.people_slot(0, p1)],
-        "construction normalization must repair must-stay-apart seed violations"
+    let err = RuntimeState::from_input(&input).unwrap_err().to_string();
+    assert!(
+        err.contains("constructor produced invalid schedule") && err.contains("MustStayApart"),
+        "unexpected error: {err}"
     );
 }
 
