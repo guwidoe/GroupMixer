@@ -232,6 +232,31 @@ impl ProjectionRelabeling {
         &self.score
     }
 
+    pub(super) fn maps_real_person(&self, real_person: usize) -> bool {
+        self.oracle_person_by_real_person
+            .get(real_person)
+            .is_some_and(Option::is_some)
+    }
+
+    pub(super) fn maps_real_session(&self, real_session: usize) -> bool {
+        self.oracle_session_by_real_session
+            .get(real_session)
+            .is_some_and(Option::is_some)
+    }
+
+    pub(super) fn maps_real_group_slot(
+        &self,
+        compiled: &CompiledProblem,
+        real_session: usize,
+        real_group: usize,
+    ) -> bool {
+        if real_session >= compiled.num_sessions || real_group >= compiled.num_groups {
+            return false;
+        }
+        self.oracle_slot_by_real_session_group[real_session * compiled.num_groups + real_group]
+            .is_some()
+    }
+
     pub(super) fn is_shape_compatible(
         &self,
         compiled: &CompiledProblem,

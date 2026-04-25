@@ -73,6 +73,7 @@ mod diagnostic_metrics {
         PureStructureOracle, PureStructureOracleRequest, Solver6PureStructureOracle,
     };
     use serde::Deserialize;
+    use std::collections::{BTreeMap, BTreeSet};
     use std::fs;
 
     const DEFAULT_RELABELING_DIAGNOSTIC_TIMEOUT_SECONDS: f64 = 5.0;
@@ -99,6 +100,7 @@ mod diagnostic_metrics {
             .unwrap_or(DEFAULT_RELABELING_DIAGNOSTIC_TIMEOUT_SECONDS);
 
         let mut weighted_loss_sum = 0.0;
+        let mut weighted_anchor_loss_sum = 0.0;
         let mut weight_sum = 0.0;
         let mut total_atoms = 0usize;
         let mut total_atoms_considered = 0usize;
@@ -146,6 +148,7 @@ mod diagnostic_metrics {
                 score.coverage.uncovered_constraint_units as f64 / coverage_units as f64
             };
             let mapping_loss = mapping_loss(score);
+            let anchor_mapping_loss = anchored_mapping_loss(&compiled, &candidate, &result.best);
             let compatibility_loss = (score.hard_compatibility_cost + score.soft_penalty_cost)
                 .max(0.0)
                 .ln_1p()
@@ -153,9 +156,14 @@ mod diagnostic_metrics {
             let timeout_loss = if result.timed_out { 1.0 } else { 0.0 };
             let case_loss =
                 10.0 * coverage_loss + 3.0 * mapping_loss + compatibility_loss + 2.0 * timeout_loss;
+            let case_anchor_loss = 10.0 * coverage_loss
+                + 3.0 * anchor_mapping_loss
+                + compatibility_loss
+                + 2.0 * timeout_loss;
             let weight = diagnostic_case_weight(&manifest.id);
 
             weighted_loss_sum += weight * case_loss;
+            weighted_anchor_loss_sum += weight * case_anchor_loss;
             weight_sum += weight;
             total_atoms += atoms.atoms.len();
             total_atoms_considered += result.atoms_considered;
@@ -168,11 +176,13 @@ mod diagnostic_metrics {
             mapping_incomplete_sum += score.mapping_incompleteness_cost;
 
             println!(
-                "RELABEL_CASE {} loss={:.9} coverage_loss={:.9} mapping_loss={:.9} hard_cost={:.6} soft_cost={:.6} atoms={} accepted={} timed_out={}",
+                "RELABEL_CASE {} loss={:.9} anchor_loss={:.9} coverage_loss={:.9} mapping_loss={:.9} anchor_mapping_loss={:.9} hard_cost={:.6} soft_cost={:.6} atoms={} accepted={} timed_out={}",
                 manifest.id,
                 case_loss,
+                case_anchor_loss,
                 coverage_loss,
                 mapping_loss,
+                anchor_mapping_loss,
                 score.hard_compatibility_cost,
                 score.soft_penalty_cost,
                 atoms.atoms.len(),
@@ -184,12 +194,22 @@ mod diagnostic_metrics {
                 metric_name_for_case(&manifest.id),
                 case_loss
             );
+            println!(
+                "METRIC {}={:.9}",
+                anchor_metric_name_for_case(&manifest.id),
+                case_anchor_loss
+            );
         }
 
         let relabeling_factor_loss = if weight_sum == 0.0 {
             0.0
         } else {
             weighted_loss_sum / weight_sum
+        };
+        let relabeling_anchor_loss = if weight_sum == 0.0 {
+            0.0
+        } else {
+            weighted_anchor_loss_sum / weight_sum
         };
         let total_units = total_covered_units + total_uncovered_units;
         let coverage_rate = if total_units == 0 {
@@ -203,6 +223,7 @@ mod diagnostic_metrics {
             total_atoms_accepted as f64 / total_atoms_considered as f64
         };
 
+        println!("METRIC relabeling_anchor_loss={relabeling_anchor_loss:.9}");
         println!("METRIC relabeling_factor_loss={relabeling_factor_loss:.9}");
         println!("METRIC relabeling_coverage_rate={coverage_rate:.9}");
         println!("METRIC relabeling_total_atoms={total_atoms}");
@@ -255,6 +276,173 @@ mod diagnostic_metrics {
         (people_loss + session_loss + slot_loss) / 3.0
     }
 
+    fn anchored_mapping_loss(
+        compiled: &CompiledProblem,
+        candidate: &OracleTemplateCandidate,
+        relabeling: &relabeling::ProjectionRelabeling,
+    ) -> f64 {
+        let targets = identifiable_mapping_targets(compiled, candidate);
+        let mut loss_sum = 0.0;
+        let mut loss_dimensions = 0usize;
+
+        if !targets.people.is_empty() {
+            let unmapped = targets
+                .people
+                .iter()
+                .filter(|&&person| !relabeling.maps_real_person(person))
+                .count();
+            loss_sum += ratio(unmapped, targets.people.len());
+            loss_dimensions += 1;
+        }
+        if !targets.sessions.is_empty() {
+            let unmapped = targets
+                .sessions
+                .iter()
+                .filter(|&&session| !relabeling.maps_real_session(session))
+                .count();
+            loss_sum += ratio(unmapped, targets.sessions.len());
+            loss_dimensions += 1;
+        }
+        if !targets.slots.is_empty() {
+            let unmapped = targets
+                .slots
+                .iter()
+                .filter(|&&(session, group)| {
+                    !relabeling.maps_real_group_slot(compiled, session, group)
+                })
+                .count();
+            loss_sum += ratio(unmapped, targets.slots.len());
+            loss_dimensions += 1;
+        }
+
+        if loss_dimensions == 0 {
+            0.0
+        } else {
+            loss_sum / loss_dimensions as f64
+        }
+    }
+
+    struct IdentifiableMappingTargets {
+        people: BTreeSet<usize>,
+        sessions: BTreeSet<usize>,
+        slots: BTreeSet<(usize, usize)>,
+    }
+
+    fn identifiable_mapping_targets(
+        compiled: &CompiledProblem,
+        candidate: &OracleTemplateCandidate,
+    ) -> IdentifiableMappingTargets {
+        let mut people = BTreeSet::new();
+        let mut sessions = BTreeSet::new();
+        let mut slots = BTreeSet::new();
+
+        for person in 0..compiled.num_people {
+            let clique_count = compiled
+                .cliques
+                .iter()
+                .filter(|clique| clique.members.contains(&person))
+                .count();
+            let immovable_count = compiled
+                .immovable_assignments
+                .iter()
+                .filter(|assignment| assignment.person_idx == person)
+                .count();
+            if clique_count > 1 || immovable_count > 2 {
+                people.insert(person);
+            }
+        }
+
+        for assignment in &compiled.immovable_assignments {
+            if candidate.sessions.contains(&assignment.session_idx) {
+                sessions.insert(assignment.session_idx);
+                slots.insert((assignment.session_idx, assignment.group_idx));
+            }
+        }
+
+        for clique in &compiled.cliques {
+            for session in active_sessions_for_diagnostic(
+                clique.sessions.as_deref(),
+                compiled.num_sessions,
+                candidate,
+            ) {
+                sessions.insert(session);
+            }
+        }
+
+        for constraint in &compiled.attribute_balance_constraints {
+            for session in active_sessions_for_diagnostic(
+                constraint.sessions.as_deref(),
+                compiled.num_sessions,
+                candidate,
+            ) {
+                sessions.insert(session);
+                for &group in &constraint.target_group_indices {
+                    slots.insert((session, group));
+                }
+            }
+        }
+
+        for (session, group, _) in
+            capacity_symmetry_breaking_slots_for_diagnostic(compiled, candidate)
+        {
+            sessions.insert(session);
+            slots.insert((session, group));
+        }
+
+        IdentifiableMappingTargets {
+            people,
+            sessions,
+            slots,
+        }
+    }
+
+    fn active_sessions_for_diagnostic(
+        sessions: Option<&[usize]>,
+        num_sessions: usize,
+        candidate: &OracleTemplateCandidate,
+    ) -> Vec<usize> {
+        sessions
+            .map(|sessions| sessions.to_vec())
+            .unwrap_or_else(|| (0..num_sessions).collect())
+            .into_iter()
+            .filter(|session| candidate.sessions.contains(session))
+            .collect()
+    }
+
+    fn capacity_symmetry_breaking_slots_for_diagnostic(
+        compiled: &CompiledProblem,
+        candidate: &OracleTemplateCandidate,
+    ) -> Vec<(usize, usize, usize)> {
+        let mut capacity_frequency = BTreeMap::<usize, usize>::new();
+        for &capacity in &compiled.effective_group_capacities {
+            *capacity_frequency.entry(capacity).or_default() += 1;
+        }
+        if capacity_frequency.len() <= 1 {
+            return Vec::new();
+        }
+
+        let dominant_frequency = capacity_frequency.values().copied().max().unwrap_or(0);
+        let dominant_capacity_count = capacity_frequency
+            .values()
+            .filter(|&&frequency| frequency == dominant_frequency)
+            .count();
+        let include_capacity = |capacity: usize| {
+            let frequency = capacity_frequency.get(&capacity).copied().unwrap_or(0);
+            dominant_capacity_count > 1 || frequency < dominant_frequency
+        };
+
+        let mut slots = Vec::new();
+        for &session in &candidate.sessions {
+            for group in 0..compiled.num_groups {
+                let capacity = compiled.group_capacity(session, group);
+                if include_capacity(capacity) {
+                    slots.push((session, group, capacity));
+                }
+            }
+        }
+        slots
+    }
+
     fn ratio(numerator: usize, denominator: usize) -> f64 {
         if denominator == 0 {
             0.0
@@ -276,10 +464,19 @@ mod diagnostic_metrics {
     }
 
     fn metric_name_for_case(case_id: &str) -> String {
-        let suffix = case_id
+        let suffix = metric_case_suffix(case_id);
+        format!("relabeling_factor_loss_{suffix}")
+    }
+
+    fn anchor_metric_name_for_case(case_id: &str) -> String {
+        let suffix = metric_case_suffix(case_id);
+        format!("relabeling_anchor_loss_{suffix}")
+    }
+
+    fn metric_case_suffix(case_id: &str) -> String {
+        case_id
             .strip_prefix("stretch.relabeling-projection-13x13x14-")
             .unwrap_or(case_id)
-            .replace('-', "_");
-        format!("relabeling_factor_loss_{suffix}")
+            .replace('-', "_")
     }
 }
