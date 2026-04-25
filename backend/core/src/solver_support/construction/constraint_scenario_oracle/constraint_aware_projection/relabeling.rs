@@ -754,15 +754,31 @@ pub(super) fn search_best_relabeling_within_budget(
         let mut next_beam = Vec::with_capacity(beam.len() * 2);
         for state in &beam {
             next_beam.push(state.clone());
-            for atom in &factor_group {
+            if let Some(representative_atom) = factor_group
+                .first()
+                .copied()
+                .filter(|atom| weak_pair_factor_is_unanchored(state, candidate, atom))
+            {
                 if deadline.is_expired() {
                     timed_out = true;
                     break;
                 }
                 atoms_considered += 1;
                 let mut next = state.clone();
-                if next.try_accept_atom(compiled, candidate, atom) {
+                if next.try_accept_atom(compiled, candidate, representative_atom) {
                     next_beam.push(next);
+                }
+            } else {
+                for atom in &factor_group {
+                    if deadline.is_expired() {
+                        timed_out = true;
+                        break;
+                    }
+                    atoms_considered += 1;
+                    let mut next = state.clone();
+                    if next.try_accept_atom(compiled, candidate, atom) {
+                        next_beam.push(next);
+                    }
                 }
             }
             if timed_out {
@@ -789,6 +805,45 @@ pub(super) fn search_best_relabeling_within_budget(
         timed_out,
         atoms_considered,
         elapsed_seconds: deadline.elapsed_seconds(),
+    }
+}
+
+fn weak_pair_factor_is_unanchored(
+    state: &ProjectionRelabeling,
+    candidate: &OracleTemplateCandidate,
+    atom: &ProjectionAtom,
+) -> bool {
+    let Some((oracle_people, real_people)) = weak_pair_people(atom) else {
+        return false;
+    };
+    if oracle_people
+        .iter()
+        .any(|&person| person >= candidate.oracle_capacity)
+        || real_people
+            .iter()
+            .any(|&person| person >= state.oracle_person_by_real_person.len())
+    {
+        return false;
+    }
+    !oracle_people
+        .iter()
+        .any(|&person| state.real_person_by_oracle_person[person].is_some())
+        && !real_people
+            .iter()
+            .any(|&person| state.oracle_person_by_real_person[person].is_some())
+}
+
+fn weak_pair_people(atom: &ProjectionAtom) -> Option<([usize; 2], [usize; 2])> {
+    match atom {
+        ProjectionAtom::HardApart(atom) => Some((atom.oracle_people, atom.real_people)),
+        ProjectionAtom::PairMeeting(atom) => Some((atom.oracle_people, atom.real_people)),
+        ProjectionAtom::SoftApart(atom) | ProjectionAtom::ShouldTogether(atom) => {
+            Some((atom.oracle_people, atom.real_people))
+        }
+        ProjectionAtom::Clique(_)
+        | ProjectionAtom::AttributeBalance(_)
+        | ProjectionAtom::ImmovableTriple(_)
+        | ProjectionAtom::Capacity(_) => None,
     }
 }
 
