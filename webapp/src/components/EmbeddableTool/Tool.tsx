@@ -9,7 +9,9 @@ import {
   readTelemetryAttributionFromSearch,
   trackLandingEvent,
 } from '../../services/landingInstrumentation';
+import { getPersonDisplayName } from '../../services/scenarioAttributes';
 import { useAppStore } from '../../store';
+import type { Person } from '../../types';
 import { normalizeParticipantColumns } from '../../utils/quickSetup/participantColumns';
 import { buildResultsSessionData } from '../results/buildResultsViewModel';
 import { GroupTool, type ToolResultFormat } from './GroupTool';
@@ -54,7 +56,7 @@ const EMBEDDABLE_TOOL_RIGHT_MIN_WIDTH = 340;
 const EMBEDDABLE_TOOL_RESIZE_MIN_WIDTH = EMBEDDABLE_TOOL_LEFT_MIN_WIDTH + EMBEDDABLE_TOOL_RIGHT_MIN_WIDTH + EMBEDDABLE_TOOL_RESIZE_HANDLE_WIDTH + (EMBEDDABLE_TOOL_COLUMN_GAP * EMBEDDABLE_TOOL_RESIZE_GAP_COUNT);
 
 function buildDisplaySessions(
-  sharedSessionData: Array<{ sessionIndex: number; groups: Array<{ id: string; people: Array<{ id: string }> }> }>,
+  sharedSessionData: Array<{ sessionIndex: number; groups: Array<{ id: string; people: Person[] }> }>,
   fallbackSessions: Array<{ sessionNumber: number; groups: Array<{ id: string; members: Array<{ name: string }> }> }>,
 ): DisplaySession[] {
   if (sharedSessionData.length > 0) {
@@ -62,7 +64,7 @@ function buildDisplaySessions(
       sessionNumber: session.sessionIndex + 1,
       groups: session.groups.map((group) => ({
         id: group.id,
-        members: group.people.map((person) => person.id),
+        members: group.people.map((person) => getPersonDisplayName(person)),
       })),
     }));
   }

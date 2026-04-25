@@ -867,6 +867,10 @@ describe('ToolLandingPage SEO wiring', () => {
 
   it('offers multiple copy-friendly result formats after generating groups', async () => {
     const user = userEvent.setup();
+    const createObjectURL = vi.fn(() => 'blob:groupmixer-groups');
+    const revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
 
     render(
       <MemoryRouter>
@@ -883,20 +887,40 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByRole('tab', { name: 'csv' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'text' }));
-    expect((screen.getByRole('textbox', { name: /text results/i }) as HTMLTextAreaElement).value).toContain('Session 1');
+    const textResults = screen.getByRole('textbox', { name: /text results/i }) as HTMLTextAreaElement;
+    expect(textResults.value).toContain('Session 1');
+    expect(textResults.value).toContain('Alex');
+    expect(textResults.value).not.toContain('person_1');
     expect(screen.getByRole('button', { name: /copy text/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'list' }));
     expect(document.querySelector('.grid-cols-\\[repeat\\(auto-fit\\,minmax\\(min\\(100\\%\\,24rem\\)\\,1fr\\)\\)\\]')).toBeInTheDocument();
+    const resultsPanel = screen.getByTestId('landing-results-panel');
+    expect(within(resultsPanel).getAllByText(/Alex/).length).toBeGreaterThan(0);
+    expect(within(resultsPanel).queryByText(/person_1/)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'lines' }));
-    expect((screen.getByRole('textbox', { name: /line-by-line text results/i }) as HTMLTextAreaElement).value).toMatch(
+    const lineResults = screen.getByRole('textbox', { name: /line-by-line text results/i }) as HTMLTextAreaElement;
+    expect(lineResults.value).toMatch(
       /Session 1\n\nGroup 1\n/,
     );
+    expect(lineResults.value).toContain('Alex');
+    expect(lineResults.value).not.toContain('person_1');
     expect(screen.getByRole('button', { name: /copy text/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'csv' }));
-    expect((screen.getByRole('textbox', { name: /csv results/i }) as HTMLTextAreaElement).value).toContain('session,group,members');
+    const csvResults = screen.getByRole('textbox', { name: /csv results/i }) as HTMLTextAreaElement;
+    expect(csvResults.value).toContain('session,group,members');
+    expect(csvResults.value).toContain('Alex');
+    expect(csvResults.value).not.toContain('person_1');
     expect(screen.getByRole('button', { name: /copy csv/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /export csv/i }));
+    expect(createObjectURL).toHaveBeenCalledTimes(1);
+    const exportedBlob = createObjectURL.mock.calls[0]?.[0] as Blob;
+    const exportedCsv = await exportedBlob.text();
+    expect(exportedCsv).toContain('Alex');
+    expect(exportedCsv).not.toContain('person_1');
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:groupmixer-groups');
   });
 });
