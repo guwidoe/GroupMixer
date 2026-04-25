@@ -149,6 +149,11 @@ pub struct BenchmarkSimulatedAnnealingPolicyOverride {
     pub reheat_after_no_improvement: Option<u64>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct BenchmarkSolver3RelabelingProjectionPolicy {
+    pub relabeling_timeout_seconds: f64,
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[serde(rename_all = "snake_case")]
 pub enum BenchmarkSuiteClass {
@@ -214,6 +219,8 @@ pub struct BenchmarkSuiteManifest {
     pub timeout_policy: Option<BenchmarkTimeoutPolicy>,
     #[serde(default)]
     pub solver_policy: Option<BenchmarkSolverPolicy>,
+    #[serde(default)]
+    pub solver3_relabeling_projection: Option<BenchmarkSolver3RelabelingProjectionPolicy>,
     #[serde(default)]
     pub default_warmup_iterations: Option<u64>,
     pub cases: Vec<BenchmarkCaseOverride>,
@@ -537,6 +544,21 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
             default_search_policy,
         )?;
     }
+    if let Some(relabeling_policy) = manifest.solver3_relabeling_projection.as_ref() {
+        if manifest.solver_policy != Some(BenchmarkSolverPolicy::Solver3ConstructThenSearch) {
+            bail!(
+                "benchmark suite manifest {} sets solver3_relabeling_projection but does not use solver_policy: solver3_construct_then_search",
+                path.display()
+            );
+        }
+        validate_solver3_relabeling_projection_policy(
+            &format!(
+                "benchmark suite manifest {} solver3_relabeling_projection",
+                path.display()
+            ),
+            relabeling_policy,
+        )?;
+    }
     validate_search_iteration_iteration_floor(path, manifest)?;
     for case in &manifest.cases {
         validate_case_identity_fields(
@@ -749,6 +771,19 @@ fn validate_search_policy_override(
         );
     }
 
+    Ok(())
+}
+
+fn validate_solver3_relabeling_projection_policy(
+    context: &str,
+    policy: &BenchmarkSolver3RelabelingProjectionPolicy,
+) -> Result<()> {
+    if !policy.relabeling_timeout_seconds.is_finite() || policy.relabeling_timeout_seconds <= 0.0 {
+        bail!(
+            "{} must set relabeling_timeout_seconds to a positive finite value",
+            context
+        );
+    }
     Ok(())
 }
 

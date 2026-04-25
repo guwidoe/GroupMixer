@@ -638,6 +638,8 @@ def write_suite(path: Path, case_files: list[Path]) -> None:
         "class: stretch",
         "timeout_policy: complexity_based_wall_time",
         "solver_policy: solver3_construct_then_search",
+        "solver3_relabeling_projection:",
+        "  relabeling_timeout_seconds: 5.0",
         "title: Solver3 relabeling projection diagnostic suite",
         "description: Diagnostic 13x13x14 SGP-shaped cases with constraints planted from a fixed solver6 oracle under hidden relabelings. The suite exercises constraint-aware oracle projection/relabeling without joining the canonical broad score lane. Cases are not scaled down to fit the current naive implementation.",
         "cases:",

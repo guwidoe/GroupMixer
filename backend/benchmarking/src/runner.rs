@@ -10,8 +10,9 @@ use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
 use crate::hotpath::run_hotpath_case_artifact;
 use crate::machine::{capture_git_identity, capture_machine_identity};
 use crate::manifest::{
-    load_suite_manifest, BenchmarkSearchPolicyOverride, BenchmarkSolverPolicy, BenchmarkSuiteClass,
-    BenchmarkTimeoutPolicy, LoadedBenchmarkCase, LoadedBenchmarkSuite,
+    load_suite_manifest, BenchmarkSearchPolicyOverride, BenchmarkSolver3RelabelingProjectionPolicy,
+    BenchmarkSolverPolicy, BenchmarkSuiteClass, BenchmarkTimeoutPolicy, LoadedBenchmarkCase,
+    LoadedBenchmarkSuite,
 };
 use crate::storage::{machine_identity_label, BenchmarkStorage};
 use crate::validation::{
@@ -20,8 +21,8 @@ use crate::validation::{
 use anyhow::{Context, Result};
 use chrono::Utc;
 use gm_core::models::{
-    MoveFamilyBenchmarkTelemetrySummary, Solver3ConstructionMode, SolverConfiguration, SolverKind,
-    SolverParams,
+    MoveFamilyBenchmarkTelemetrySummary, Solver3ConstraintAwareProjectionParams,
+    Solver3ConstructionMode, SolverConfiguration, SolverKind, SolverParams,
 };
 use gm_core::solver_support::complexity::evaluate_problem_complexity;
 use gm_core::{default_solver_configuration_for, run_solver, solver_descriptor};
@@ -597,7 +598,13 @@ fn run_solver3_construct_then_search_case(
             );
         }
     };
-    let total_timeout_seconds = complexity_timeout_seconds(timeout_policy, complexity.score, case);
+    let mut total_timeout_seconds =
+        complexity_timeout_seconds(timeout_policy, complexity.score, case);
+    if let Some(relabeling_policy) = suite.manifest.solver3_relabeling_projection.as_ref() {
+        total_timeout_seconds = total_timeout_seconds.max(
+            minimum_total_timeout_seconds_for_relabeling_projection(relabeling_policy),
+        );
+    }
     let construction_budget_seconds = construction_phase_budget_seconds(total_timeout_seconds);
     let construction_time_limit_seconds =
         construction_phase_time_limit_seconds(total_timeout_seconds);
@@ -607,7 +614,10 @@ fn run_solver3_construct_then_search_case(
         no_improvement_iterations: None,
     };
 
-    let mut construction_input = solver3_construct_then_search_input(input.clone());
+    let mut construction_input = solver3_construct_then_search_input(
+        input.clone(),
+        suite.manifest.solver3_relabeling_projection.as_ref(),
+    );
     construction_input.solver.stop_conditions.max_iterations = Some(0);
     construction_input.solver.stop_conditions.time_limit_seconds =
         Some(construction_time_limit_seconds);
@@ -669,7 +679,10 @@ fn run_solver3_construct_then_search_case(
         );
     }
 
-    let mut search_input = solver3_construct_then_search_input(input);
+    let mut search_input = solver3_construct_then_search_input(
+        input,
+        suite.manifest.solver3_relabeling_projection.as_ref(),
+    );
     search_input.initial_schedule = Some(construction_result.schedule.clone());
     search_input.construction_seed_schedule = None;
     search_input.solver.stop_conditions.max_iterations =
@@ -723,13 +736,32 @@ fn run_solver3_construct_then_search_case(
 
 const SOLVER3_COMPLEXITY_POLICY_MAX_ITERATIONS: u64 = 1_000_000_000;
 const SOLVER3_CONSTRUCT_THEN_SEARCH_CONSTRUCTION_BUDGET_FRACTION: f64 = 0.30;
+/// Extra construction-phase headroom for scaffold/oracle work before the relabeler starts.
+const SOLVER3_RELABELING_PROJECTION_BENCHMARK_HEADROOM_SECONDS: f64 = 2.0;
+
+fn minimum_total_timeout_seconds_for_relabeling_projection(
+    policy: &BenchmarkSolver3RelabelingProjectionPolicy,
+) -> u64 {
+    ((policy.relabeling_timeout_seconds + SOLVER3_RELABELING_PROJECTION_BENCHMARK_HEADROOM_SECONDS)
+        / SOLVER3_CONSTRUCT_THEN_SEARCH_CONSTRUCTION_BUDGET_FRACTION)
+        .ceil()
+        .max(1.0) as u64
+}
 
 fn solver3_construct_then_search_input(
     input: gm_core::models::ApiInput,
+    relabeling_policy: Option<&BenchmarkSolver3RelabelingProjectionPolicy>,
 ) -> gm_core::models::ApiInput {
     let mut input = retarget_input_for_solver_kind(&input, SolverKind::Solver3);
     if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
         params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+        if let Some(relabeling_policy) = relabeling_policy {
+            params.construction.constraint_aware_projection =
+                Solver3ConstraintAwareProjectionParams {
+                    enabled: true,
+                    relabeling_timeout_seconds: Some(relabeling_policy.relabeling_timeout_seconds),
+                };
+        }
         params
             .search_driver
             .runtime_scaled_no_improvement_stop

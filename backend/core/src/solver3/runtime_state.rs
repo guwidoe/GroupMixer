@@ -34,8 +34,9 @@ use super::scoring::recompute::recompute_oracle_score;
 use super::search::SearchEngine as Solver3SearchEngine;
 use super::validation::validate_invariants;
 use crate::models::{
-    ApiInput, AutoConstructorOutcome, Solver3ConstructionMode, Solver3Params, SolverConfiguration,
-    SolverKind, SolverParams, StopConditions,
+    ApiInput, AutoConstructorOutcome, Solver3ConstraintAwareProjectionParams,
+    Solver3ConstructionMode, Solver3Params, SolverConfiguration, SolverKind, SolverParams,
+    StopConditions,
 };
 use crate::solver_support::construction::constraint_scenario_oracle::{
     build_constraint_scenario_scaffold_mask, extract_constraint_scenario_signals_from_scaffold,
@@ -104,13 +105,14 @@ struct ConstraintScenarioConstructionBudget {
     total_budget_seconds: Option<f64>,
     scaffold_budget_seconds: Option<f64>,
     oracle_budget_seconds: Option<f64>,
+    constraint_aware_projection: Solver3ConstraintAwareProjectionParams,
 }
 
 #[derive(Debug, Clone, Copy)]
 enum ConstructionHeuristicSelection {
     BaselineLegacy,
     FreedomAwareRandomized(FreedomAwareConstructionParams),
-    ConstraintScenarioOracleGuided,
+    ConstraintScenarioOracleGuided(Solver3ConstraintAwareProjectionParams),
 }
 
 impl ConstructionHeuristicSelection {
@@ -118,7 +120,7 @@ impl ConstructionHeuristicSelection {
         match self {
             Self::BaselineLegacy => "baseline legacy",
             Self::FreedomAwareRandomized(_) => "freedom-aware randomized",
-            Self::ConstraintScenarioOracleGuided => "constraint-scenario oracle-guided",
+            Self::ConstraintScenarioOracleGuided(_) => "constraint-scenario oracle-guided",
         }
     }
 }
@@ -226,6 +228,7 @@ impl RuntimeState {
             total_budget_seconds: Some(policy.oracle_construction_budget_seconds),
             scaffold_budget_seconds: Some(policy.scaffold_budget_seconds),
             oracle_budget_seconds: Some(policy.oracle_recombination_budget_seconds),
+            constraint_aware_projection: Solver3ConstraintAwareProjectionParams::default(),
         };
 
         let attempt = empty
@@ -233,7 +236,10 @@ impl RuntimeState {
             .and_then(|result| {
                 empty.validate_constructed_schedule(
                     &result.schedule,
-                    ConstructionHeuristicSelection::ConstraintScenarioOracleGuided.label(),
+                    ConstructionHeuristicSelection::ConstraintScenarioOracleGuided(
+                        Solver3ConstraintAwareProjectionParams::default(),
+                    )
+                    .label(),
                 )?;
                 Ok(result.schedule)
             });
@@ -521,14 +527,15 @@ impl RuntimeState {
         // metadata through `BaselineConstructionContext`; ConstraintScenarioOracleGuided
         // must preserve those constraints through scaffold selection, projection, and merge.
         // Runtime validation below is only a fail-fast guardrail, not a repair fallback.
-        if matches!(
-            construction,
-            ConstructionHeuristicSelection::ConstraintScenarioOracleGuided
-        ) {
+        if let ConstructionHeuristicSelection::ConstraintScenarioOracleGuided(
+            constraint_aware_projection,
+        ) = construction
+        {
             let schedule = self
                 .build_constraint_scenario_oracle_guided_schedule(
                     effective_seed,
                     construction_total_time_limit_seconds,
+                    constraint_aware_projection,
                 )?
                 .schedule;
             self.validate_constructed_schedule(&schedule, construction.label())?;
@@ -577,7 +584,7 @@ impl RuntimeState {
             ConstructionHeuristicSelection::FreedomAwareRandomized(params) => {
                 apply_freedom_aware_construction_heuristic(&mut construction_context, &params)?;
             }
-            ConstructionHeuristicSelection::ConstraintScenarioOracleGuided => unreachable!(
+            ConstructionHeuristicSelection::ConstraintScenarioOracleGuided(_) => unreachable!(
                 "constraint-scenario oracle-guided construction returns before shared constructor context setup"
             ),
         }
@@ -609,9 +616,11 @@ impl RuntimeState {
         &self,
         effective_seed: u64,
         construction_total_time_limit_seconds: Option<u64>,
+        constraint_aware_projection: Solver3ConstraintAwareProjectionParams,
     ) -> Result<ConstraintScenarioOracleConstructionResult, SolverError> {
-        let budget =
+        let mut budget =
             ConstraintScenarioConstructionBudget::legacy(construction_total_time_limit_seconds);
+        budget.constraint_aware_projection = constraint_aware_projection;
         self.build_constraint_scenario_oracle_guided_schedule_with_budget(effective_seed, budget)
     }
 
@@ -624,6 +633,7 @@ impl RuntimeState {
         self.build_constraint_scenario_oracle_guided_schedule(
             effective_seed,
             construction_total_time_limit_seconds,
+            Solver3ConstraintAwareProjectionParams::default(),
         )
     }
 
@@ -714,13 +724,25 @@ impl RuntimeState {
         })?;
         ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
         ensure_constructor_budget_remaining(oracle_phase_started_at, budget.oracle_budget_seconds)?;
-        let projection = if EXPERIMENTAL_CONSTRAINT_AWARE_PROJECTION_ENABLED {
+        let projection = if EXPERIMENTAL_CONSTRAINT_AWARE_PROJECTION_ENABLED
+            || budget.constraint_aware_projection.enabled
+        {
+            let relabeling_timeout_seconds = budget
+                .constraint_aware_projection
+                .relabeling_timeout_seconds
+                .or_else(|| {
+                    remaining_constructor_budget_seconds(
+                        oracle_phase_started_at,
+                        budget.oracle_budget_seconds,
+                    )
+                });
             project_oracle_schedule_to_template_constraint_aware(
                 &self.compiled,
                 &signals,
                 &scaffold_mask,
                 &candidate,
                 &oracle_schedule,
+                relabeling_timeout_seconds,
             )?
         } else {
             project_oracle_schedule_to_template(
@@ -1174,6 +1196,7 @@ impl ConstraintScenarioConstructionBudget {
                 Some(_) | None => 1.0,
             }),
             oracle_budget_seconds: None,
+            constraint_aware_projection: Solver3ConstraintAwareProjectionParams::default(),
         }
     }
 }
@@ -1226,6 +1249,15 @@ fn session_has_active_hard_apart_for_oracle_merge(
         compiled.person_participation[left][session_idx]
             && compiled.person_participation[right][session_idx]
             && compiled.hard_apart_active(session_idx, left, right)
+    })
+}
+
+fn remaining_constructor_budget_seconds(
+    started_at: ConstructionInstant,
+    total_budget_seconds: Option<f64>,
+) -> Option<f64> {
+    total_budget_seconds.map(|total_budget_seconds| {
+        (total_budget_seconds - construction_elapsed_seconds(started_at)).max(0.0)
     })
 }
 
@@ -1289,8 +1321,10 @@ fn resolve_construction_selection(
                 FreedomAwareConstructionParams { gamma },
             ))
         }
-        Solver3ConstructionMode::ConstraintScenarioOracleGuided => {
-            Ok(ConstructionHeuristicSelection::ConstraintScenarioOracleGuided)
-        }
+        Solver3ConstructionMode::ConstraintScenarioOracleGuided => Ok(
+            ConstructionHeuristicSelection::ConstraintScenarioOracleGuided(
+                solver3_params.construction.constraint_aware_projection,
+            ),
+        ),
     }
 }

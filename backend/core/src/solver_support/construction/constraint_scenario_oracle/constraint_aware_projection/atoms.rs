@@ -9,6 +9,10 @@ pub(super) struct ProjectionAtomSet {
 }
 
 impl ProjectionAtomSet {
+    pub(super) fn iter(&self) -> impl Iterator<Item = &ProjectionAtom> {
+        self.atoms.iter()
+    }
+
     pub(super) fn is_shape_compatible(
         &self,
         compiled: &CompiledProblem,

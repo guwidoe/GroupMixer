@@ -12,7 +12,9 @@
 
 mod atoms;
 mod builders;
+mod deadline;
 mod oracle_index;
+mod relabeling;
 
 use crate::solver3::compiled_problem::CompiledProblem;
 use crate::solver_support::constraint_presolve::presolve_constraints;
@@ -24,6 +26,8 @@ use super::types::{
     OracleTemplateProjectionResult, PureStructureOracleSchedule,
 };
 use builders::build_projection_atoms;
+use deadline::RelabelingSearchBudget;
+use relabeling::search_best_relabeling_within_budget;
 
 /// Experimental projection entry point for constraint-aware relabeling research.
 ///
@@ -37,12 +41,26 @@ pub(crate) fn project_oracle_schedule_to_template_constraint_aware(
     mask: &ConstraintScenarioScaffoldMask,
     candidate: &OracleTemplateCandidate,
     oracle_schedule: &PureStructureOracleSchedule,
+    relabeling_timeout_seconds: Option<f64>,
 ) -> Result<OracleTemplateProjectionResult, SolverError> {
     let presolved = presolve_constraints(compiled)?;
     let atoms = build_projection_atoms(compiled, candidate, &oracle_schedule.schedule);
+    let relabeling = search_best_relabeling_within_budget(
+        compiled,
+        candidate,
+        &atoms,
+        RelabelingSearchBudget::from_remaining_seconds(relabeling_timeout_seconds),
+    );
     let projection =
         project_oracle_schedule_to_template(compiled, signals, mask, candidate, oracle_schedule)?;
     debug_assert!(presolved.is_shape_compatible(compiled));
     debug_assert!(atoms.is_shape_compatible(compiled, candidate));
+    debug_assert!(relabeling.best.is_shape_compatible(compiled, candidate));
+    debug_assert!(relabeling.elapsed_seconds >= 0.0);
+    let _ = (
+        relabeling.timed_out,
+        relabeling.atoms_considered,
+        relabeling.atoms_accepted,
+    );
     Ok(projection)
 }

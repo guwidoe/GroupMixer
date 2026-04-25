@@ -1301,6 +1301,25 @@ pub struct Solver3ConstructionParams {
     /// Parameters for the freedom-aware randomized greedy constructor.
     #[serde(default)]
     pub freedom_aware: Solver3FreedomAwareConstructionParams,
+    /// Internal benchmark/research controls for the constraint-aware projection prototype.
+    ///
+    /// This is intentionally skipped at the public JSON boundary so product callers do not get a
+    /// user-facing oracle/projection knob. Internal benchmark policy code may still set it after
+    /// loading a scenario.
+    #[serde(skip)]
+    pub constraint_aware_projection: Solver3ConstraintAwareProjectionParams,
+}
+
+/// Internal controls for the constraint-aware projection/relabeling prototype.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Default)]
+pub struct Solver3ConstraintAwareProjectionParams {
+    /// Enable the prototype path for internal benchmarks/research.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Relabeling wall-clock budget in seconds. When omitted, the constructor passes its remaining
+    /// internal budget to the relabeler.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relabeling_timeout_seconds: Option<f64>,
 }
 
 /// Explicit constructor selection for `solver3`.
