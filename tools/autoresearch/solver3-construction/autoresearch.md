@@ -36,6 +36,7 @@ Latest pre-autoresearch broad run after the scaffold fallback and 30% constructi
   - `construction_seconds_total`
 - **Key final-score sentinels** tracked every run:
   - `score_sailing_real` — real Sailing workload / search-basin sentinel.
+  - `score_sailing_flotilla_stress` — landing-page Sailing flotilla stress sentinel (132 sailors, 11 boats, 6 rotations, role balance, hard-apart pairs, fixed skipper anchors).
   - `score_synthetic_152p` — hardest partial-attendance/capacity-pressure stretch case.
   - `score_large_gender_immovable_110p` — large heterogeneous immovable-anchor case.
   - `score_transfer_attribute_111p` — large attribute-balance workload.
@@ -52,6 +53,7 @@ Primary-metric details:
 - Cases with nonzero fixed baselines contribute `score / baseline_score`.
 - Key sentinel cases have weight `2`; other nonzero-baseline cases have weight `1`.
 - Cases with zero fixed baseline are guards: staying at zero contributes nothing, but any nonzero score adds a small normalized `log1p(score)` penalty.
+- Cases without a successful fixed baseline yet are tracked as key sentinels and contribute through the catastrophic failure penalty until a successful strict-budget baseline can be established.
 - Failed cases add a catastrophic fixed penalty.
 
 ## How to Run
@@ -139,7 +141,7 @@ Root autoresearch files have been restored to this construction-heuristic lane f
 
 Recent diagnostic construction-lane runs after master integration:
 
-- Current HEAD `9c5361b9 fix(solver3): make oracle construction honor hard-apart`:
+- Current HEAD `9c5361b9 fix(solver3): make oracle construction honor hard-apart` before adding the landing flotilla stress sentinel:
   - `35 cases: 35 ok / 0 failed`
   - `broad_relative_score = 1.179793654`
   - `relative_score_mean = 1.108467780`
@@ -157,3 +159,16 @@ Recent diagnostic construction-lane runs after master integration:
   - `zero_regression_count = 0`
 
 Interpretation: the current hard-apart constructor-ownership commit did not cause the construction-lane regression; it slightly improved the post-merge parent. The remaining gap appears to come primarily from the master/search/runtime integration state. Current regressions to investigate generically, without case-ID hacks or benchmark changes: Google-CP equivalent, transfer attribute balance, large gender immovable, constrained 169x13x14 SGP, Sailing, and the zero-baseline `stretch.benchmark-very-large-constrained` guard.
+
+## Landing flotilla stress sentinel — 2026-04-25
+
+The broad suite now also includes `stretch.sailing-flotilla-stress-test`, copied from the landing-page `Sailing flotilla stress test` example without simplifying its 132 sailors, 11 boats, 6 sessions, role-balance targets, 48 hard-apart pairs, 11 fixed skipper anchors, or repeat-limit behavior. The case intentionally has no session-aware people, no session-aware group sizes, no session-specific constraints, and no soft constraints beyond attribute balance plus repeat-limit scoring.
+
+Initial single-case construction-suite smoke on current code:
+
+- Suite: `/tmp/sailing-flotilla-construction-suite.yaml`
+- Report: `/tmp/groupmixer-sailing-flotilla-smoke/runs/sailing-flotilla-construction-smoke-20260425T040352Z-a2f172fb/run-report.json`
+- Result: `0 ok / 1 failed`
+- Failure: `construction phase exceeded budget: 14.201s elapsed > 9.000s budget`
+
+Because this case has no successful strict-budget construction+search baseline yet, `autoresearch.sh` tracks `score_sailing_flotilla_stress` as an unweighted key sentinel and applies the normal catastrophic failure penalty while it fails. Once the constructor produces a successful strict-budget run, establish a fixed baseline score before using its final-score ratio in the primary metric.

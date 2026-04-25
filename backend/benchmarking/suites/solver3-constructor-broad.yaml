@@ -40,6 +40,7 @@ cases:
   - manifest: ../cases/stretch/large_gender_immovable_110p.json
   - manifest: ../cases/stretch/medium_multi_session.json
   - manifest: ../cases/stretch/sailing_trip_demo_real.json
+  - manifest: ../cases/stretch/sailing_flotilla_stress_test.json
   - manifest: ../cases/stretch/sailing_trip_feature_dense.json
   - manifest: ../cases/stretch/social_golfer_32x8x15.json
   - manifest: ../cases/stretch/social_golfer_32x8x15_constrained.json

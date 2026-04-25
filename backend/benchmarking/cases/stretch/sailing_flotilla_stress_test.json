@@ -1,0 +1,1460 @@
+{
+  "schema_version": 1,
+  "id": "stretch.sailing-flotilla-stress-test",
+  "class": "stretch",
+  "case_role": "canonical",
+  "purpose": "landing-page sailing flotilla stress case for solver3 construction heuristic development",
+  "provenance": "copied from the deterministic Sailing flotilla stress test in webapp/src/utils/quickSetup/landingGuideExamples.ts without simplifying the participant counts, group counts, session count, role balance, fixed skipper anchors, hard-apart pairs, or repeat-limit behavior",
+  "tags": [
+    "stretch",
+    "landing",
+    "sailing",
+    "stress",
+    "construction",
+    "role-balance",
+    "hard-apart",
+    "immovable"
+  ],
+  "title": "Sailing flotilla landing stress test",
+  "description": "132 sailors, eleven boats, six rotations, skipper anchors, hard-apart crew pairs, exact role balance, and a repeat limit; mirrors the landing-page stress example.",
+  "input": {
+    "initial_schedule": null,
+    "problem": {
+      "people": [
+        {
+          "id": "person_1",
+          "attributes": {
+            "Role": "Skipper"
+          }
+        },
+        {
+          "id": "person_2",
+          "attributes": {
+            "Role": "Skipper"
+          }
+        },
+        {
+          "id": "person_3",
+          "attributes": {
+            "Role": "Skipper"
+          }
+        },
+        {
+          "id": "person_4",
+          "attributes": {
+            "Role": "Skipper"
+          }
+        },
+        {
+          "id": "person_5",
+          "attributes": {
+            "Role": "Skipper"
+          }
+        },
+        {
+          "id": "person_6",
+          "attributes": {
+            "Role": "Skipper"
+          }
+        },
+        {
+          "id": "person_7",
+          "attributes": {
+            "Role": "Skipper"
+          }
+        },
+        {
+          "id": "person_8",
+          "attributes": {
+            "Role": "Skipper"
+          }
+        },
+        {
+          "id": "person_9",
+          "attributes": {
+            "Role": "Skipper"
+          }
+        },
+        {
+          "id": "person_10",
+          "attributes": {
+            "Role": "Skipper"
+          }
+        },
+        {
+          "id": "person_11",
+          "attributes": {
+            "Role": "Skipper"
+          }
+        },
+        {
+          "id": "person_12",
+          "attributes": {
+            "Role": "Co-skipper"
+          }
+        },
+        {
+          "id": "person_13",
+          "attributes": {
+            "Role": "Co-skipper"
+          }
+        },
+        {
+          "id": "person_14",
+          "attributes": {
+            "Role": "Co-skipper"
+          }
+        },
+        {
+          "id": "person_15",
+          "attributes": {
+            "Role": "Co-skipper"
+          }
+        },
+        {
+          "id": "person_16",
+          "attributes": {
+            "Role": "Co-skipper"
+          }
+        },
+        {
+          "id": "person_17",
+          "attributes": {
+            "Role": "Co-skipper"
+          }
+        },
+        {
+          "id": "person_18",
+          "attributes": {
+            "Role": "Co-skipper"
+          }
+        },
+        {
+          "id": "person_19",
+          "attributes": {
+            "Role": "Co-skipper"
+          }
+        },
+        {
+          "id": "person_20",
+          "attributes": {
+            "Role": "Co-skipper"
+          }
+        },
+        {
+          "id": "person_21",
+          "attributes": {
+            "Role": "Co-skipper"
+          }
+        },
+        {
+          "id": "person_22",
+          "attributes": {
+            "Role": "Co-skipper"
+          }
+        },
+        {
+          "id": "person_23",
+          "attributes": {
+            "Role": "Navigator"
+          }
+        },
+        {
+          "id": "person_24",
+          "attributes": {
+            "Role": "Navigator"
+          }
+        },
+        {
+          "id": "person_25",
+          "attributes": {
+            "Role": "Navigator"
+          }
+        },
+        {
+          "id": "person_26",
+          "attributes": {
+            "Role": "Navigator"
+          }
+        },
+        {
+          "id": "person_27",
+          "attributes": {
+            "Role": "Navigator"
+          }
+        },
+        {
+          "id": "person_28",
+          "attributes": {
+            "Role": "Navigator"
+          }
+        },
+        {
+          "id": "person_29",
+          "attributes": {
+            "Role": "Navigator"
+          }
+        },
+        {
+          "id": "person_30",
+          "attributes": {
+            "Role": "Navigator"
+          }
+        },
+        {
+          "id": "person_31",
+          "attributes": {
+            "Role": "Navigator"
+          }
+        },
+        {
+          "id": "person_32",
+          "attributes": {
+            "Role": "Navigator"
+          }
+        },
+        {
+          "id": "person_33",
+          "attributes": {
+            "Role": "Navigator"
+          }
+        },
+        {
+          "id": "person_34",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_35",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_36",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_37",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_38",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_39",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_40",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_41",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_42",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_43",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_44",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_45",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_46",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_47",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_48",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_49",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_50",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_51",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_52",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_53",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_54",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_55",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_56",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_57",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_58",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_59",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_60",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_61",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_62",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_63",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_64",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_65",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_66",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_67",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_68",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_69",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_70",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_71",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_72",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_73",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_74",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_75",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_76",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_77",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_78",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_79",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_80",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_81",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_82",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_83",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_84",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_85",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_86",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_87",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_88",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_89",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_90",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_91",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_92",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_93",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_94",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_95",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_96",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_97",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_98",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_99",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_100",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_101",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_102",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_103",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_104",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_105",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_106",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_107",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_108",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_109",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_110",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_111",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_112",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_113",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_114",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_115",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_116",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_117",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_118",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_119",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_120",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_121",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_122",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_123",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_124",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_125",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_126",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_127",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_128",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_129",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_130",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_131",
+          "attributes": {
+            "Role": "Crew"
+          }
+        },
+        {
+          "id": "person_132",
+          "attributes": {
+            "Role": "Crew"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "Group 1",
+          "size": 12
+        },
+        {
+          "id": "Group 2",
+          "size": 12
+        },
+        {
+          "id": "Group 3",
+          "size": 12
+        },
+        {
+          "id": "Group 4",
+          "size": 12
+        },
+        {
+          "id": "Group 5",
+          "size": 12
+        },
+        {
+          "id": "Group 6",
+          "size": 12
+        },
+        {
+          "id": "Group 7",
+          "size": 12
+        },
+        {
+          "id": "Group 8",
+          "size": 12
+        },
+        {
+          "id": "Group 9",
+          "size": 12
+        },
+        {
+          "id": "Group 10",
+          "size": 12
+        },
+        {
+          "id": "Group 11",
+          "size": 12
+        }
+      ],
+      "num_sessions": 6
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 1,
+        "penalty_function": "squared",
+        "penalty_weight": 1.0
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_34",
+          "person_57"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_35",
+          "person_64"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_36",
+          "person_71"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_37",
+          "person_78"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_38",
+          "person_85"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_39",
+          "person_92"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_40",
+          "person_99"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_41",
+          "person_106"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_42",
+          "person_113"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_43",
+          "person_120"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_44",
+          "person_127"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_45",
+          "person_35"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_46",
+          "person_42"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_47",
+          "person_49"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_48",
+          "person_56"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_49",
+          "person_63"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_50",
+          "person_70"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_51",
+          "person_77"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_52",
+          "person_84"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_53",
+          "person_91"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_54",
+          "person_98"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_55",
+          "person_105"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_56",
+          "person_112"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_57",
+          "person_119"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_58",
+          "person_126"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_59",
+          "person_34"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_60",
+          "person_41"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_61",
+          "person_48"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_62",
+          "person_55"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_63",
+          "person_62"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_64",
+          "person_69"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_65",
+          "person_76"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_66",
+          "person_83"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_67",
+          "person_90"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_68",
+          "person_97"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_69",
+          "person_104"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_70",
+          "person_111"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_71",
+          "person_118"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_72",
+          "person_125"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_73",
+          "person_132"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_74",
+          "person_40"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_75",
+          "person_47"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_76",
+          "person_54"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_77",
+          "person_61"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_78",
+          "person_68"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_79",
+          "person_75"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_80",
+          "person_82"
+        ]
+      },
+      {
+        "type": "MustStayApart",
+        "people": [
+          "person_81",
+          "person_89"
+        ]
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_1"
+        ],
+        "group_id": "Group 1"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_2"
+        ],
+        "group_id": "Group 2"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_3"
+        ],
+        "group_id": "Group 3"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_4"
+        ],
+        "group_id": "Group 4"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_5"
+        ],
+        "group_id": "Group 5"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_6"
+        ],
+        "group_id": "Group 6"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_7"
+        ],
+        "group_id": "Group 7"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_8"
+        ],
+        "group_id": "Group 8"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_9"
+        ],
+        "group_id": "Group 9"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_10"
+        ],
+        "group_id": "Group 10"
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "person_11"
+        ],
+        "group_id": "Group 11"
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group 1",
+        "attribute_key": "Role",
+        "desired_values": {
+          "Co-skipper": 1,
+          "Crew": 9,
+          "Navigator": 1,
+          "Skipper": 1
+        },
+        "penalty_weight": 30.0,
+        "mode": "exact"
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group 2",
+        "attribute_key": "Role",
+        "desired_values": {
+          "Co-skipper": 1,
+          "Crew": 9,
+          "Navigator": 1,
+          "Skipper": 1
+        },
+        "penalty_weight": 30.0,
+        "mode": "exact"
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group 3",
+        "attribute_key": "Role",
+        "desired_values": {
+          "Co-skipper": 1,
+          "Crew": 9,
+          "Navigator": 1,
+          "Skipper": 1
+        },
+        "penalty_weight": 30.0,
+        "mode": "exact"
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group 4",
+        "attribute_key": "Role",
+        "desired_values": {
+          "Co-skipper": 1,
+          "Crew": 9,
+          "Navigator": 1,
+          "Skipper": 1
+        },
+        "penalty_weight": 30.0,
+        "mode": "exact"
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group 5",
+        "attribute_key": "Role",
+        "desired_values": {
+          "Co-skipper": 1,
+          "Crew": 9,
+          "Navigator": 1,
+          "Skipper": 1
+        },
+        "penalty_weight": 30.0,
+        "mode": "exact"
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group 6",
+        "attribute_key": "Role",
+        "desired_values": {
+          "Co-skipper": 1,
+          "Crew": 9,
+          "Navigator": 1,
+          "Skipper": 1
+        },
+        "penalty_weight": 30.0,
+        "mode": "exact"
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group 7",
+        "attribute_key": "Role",
+        "desired_values": {
+          "Co-skipper": 1,
+          "Crew": 9,
+          "Navigator": 1,
+          "Skipper": 1
+        },
+        "penalty_weight": 30.0,
+        "mode": "exact"
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group 8",
+        "attribute_key": "Role",
+        "desired_values": {
+          "Co-skipper": 1,
+          "Crew": 9,
+          "Navigator": 1,
+          "Skipper": 1
+        },
+        "penalty_weight": 30.0,
+        "mode": "exact"
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group 9",
+        "attribute_key": "Role",
+        "desired_values": {
+          "Co-skipper": 1,
+          "Crew": 9,
+          "Navigator": 1,
+          "Skipper": 1
+        },
+        "penalty_weight": 30.0,
+        "mode": "exact"
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group 10",
+        "attribute_key": "Role",
+        "desired_values": {
+          "Co-skipper": 1,
+          "Crew": 9,
+          "Navigator": 1,
+          "Skipper": 1
+        },
+        "penalty_weight": 30.0,
+        "mode": "exact"
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "Group 11",
+        "attribute_key": "Role",
+        "desired_values": {
+          "Co-skipper": 1,
+          "Crew": 9,
+          "Navigator": 1,
+          "Skipper": 1
+        },
+        "penalty_weight": 30.0,
+        "mode": "exact"
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 2000000,
+        "time_limit_seconds": 240,
+        "no_improvement_iterations": 1000000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 50.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 10000,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      },
+      "seed": 1321106
+    }
+  }
+}

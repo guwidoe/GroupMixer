@@ -887,7 +887,7 @@ mod tests {
             suite.manifest.solver_policy,
             Some(BenchmarkSolverPolicy::Solver3ConstructThenSearch)
         );
-        assert_eq!(suite.cases.len(), 35);
+        assert_eq!(suite.cases.len(), 36);
         assert!(suite.manifest.default_solver_family.is_none());
         assert!(suite.manifest.default_solver.is_none());
         assert!(suite
@@ -926,6 +926,7 @@ mod tests {
         assert!(case_ids.contains(&"stretch.social-golfer-49x7x8-constrained"));
         assert!(case_ids.contains(&"stretch.social-golfer-169x13x14"));
         assert!(case_ids.contains(&"stretch.social-golfer-169x13x14-constrained"));
+        assert!(case_ids.contains(&"stretch.sailing-flotilla-stress-test"));
 
         for case in &suite.cases {
             let input = case

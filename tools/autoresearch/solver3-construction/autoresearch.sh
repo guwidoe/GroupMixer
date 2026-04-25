@@ -64,6 +64,10 @@ BASELINE_CASE_SCORES = {
     "stretch.large-gender-immovable-110p": 2157.000000,
     "stretch.medium-multi-session": 8.000000,
     "stretch.sailing-trip-demo-real": 2208.000000,
+    # New landing-page stress sentinel added after the fixed baseline line.  It is intentionally
+    # unweighted until the constructor produces a successful strict-budget run; failures still
+    # contribute the global failure penalty and the raw score is emitted as a key metric.
+    "stretch.sailing-flotilla-stress-test": None,
     "stretch.sailing-trip-feature-dense": 126.000000,
     "stretch.social-golfer-32x8x15": 0.000000,
     "stretch.social-golfer-32x8x15-constrained": 687.000000,
@@ -79,6 +83,7 @@ BASELINE_CASE_SCORES = {
 
 KEY_CASE_METRICS = {
     "score_sailing_real": "stretch.sailing-trip-demo-real",
+    "score_sailing_flotilla_stress": "stretch.sailing-flotilla-stress-test",
     "score_synthetic_152p": "stretch.synthetic-partial-attendance-capacity-pressure-152p",
     "score_large_gender_immovable_110p": "stretch.large-gender-immovable-110p",
     "score_transfer_attribute_111p": "adversarial.transfer-attribute-balance-111p",
@@ -125,7 +130,7 @@ runtime_total = 0.0
 case_scores = {}
 
 for case_id, baseline_score in BASELINE_CASE_SCORES.items():
-    if baseline_score > 0.0:
+    if baseline_score is not None and baseline_score > 0.0:
         baseline_weight_sum += KEY_CASE_WEIGHT if case_id in KEY_CASE_IDS else DEFAULT_CASE_WEIGHT
 
 print(f"REPORT {report_path}")
@@ -149,7 +154,7 @@ for case in cases:
             score = max(0.0, score)
     case_scores[case_id] = score
 
-    if status == "success" and math.isfinite(score):
+    if status == "success" and math.isfinite(score) and baseline_score is not None:
         if baseline_score > 0.0:
             weighted_ratio_sum += weight * (score / baseline_score)
         elif score > 0.0:
