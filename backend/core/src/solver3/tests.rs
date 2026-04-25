@@ -1015,7 +1015,7 @@ fn oracle_template_projection_uses_structurally_frozen_people_as_anchors() {
 }
 
 #[test]
-fn pure_repeat_only_sgp_selects_the_whole_problem_as_oracle_template() {
+fn pure_repeat_only_sgp_exposes_the_whole_problem_as_oracle_template() {
     let input = pure_sgp_solver3_input(8, 4, 10);
     let compiled = CompiledProblem::compile(&input).unwrap();
     let scaffold = repeated_partition_schedule(8, 4, 10);
@@ -1030,9 +1030,15 @@ fn pure_repeat_only_sgp_selects_the_whole_problem_as_oracle_template() {
     let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
     let mask = build_constraint_scenario_scaffold_mask(&compiled, &scaffold, &signals);
 
-    let template = generate_oracle_template_candidates(&compiled, &scaffold, &signals, &mask)
+    let candidates = generate_oracle_template_candidates(&compiled, &scaffold, &signals, &mask);
+    let template = candidates
         .into_iter()
-        .next()
+        .find(|candidate| {
+            candidate.oracle_capacity == 32
+                && candidate.num_sessions() == 10
+                && candidate.num_groups == 8
+                && candidate.group_size == 4
+        })
         .expect("pure SGP should expose the full instance as flexible");
     assert_eq!(template.oracle_capacity, 32);
     assert_eq!(template.num_sessions(), 10);

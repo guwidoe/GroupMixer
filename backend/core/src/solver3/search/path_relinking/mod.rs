@@ -578,6 +578,7 @@ mod tests {
             no_improvement_limit: None,
             time_limit_seconds: None,
             stop_on_optimal_score: false,
+            runtime_scaled_no_improvement_stop: None,
             allowed_sessions: vec![0, 1, 2],
             correctness_lane_enabled: false,
             correctness_sample_every_accepted_moves: 100,

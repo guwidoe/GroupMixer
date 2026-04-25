@@ -41,8 +41,7 @@ test.describe('Scenario data-grid workspace', () => {
     const peopleCsv = page.getByRole('textbox', { name: /people grid csv/i });
     await expect(peopleCsv).toBeVisible();
     await expect(peopleCsv).toHaveValue(/Name,Sessions/);
-    await expect(peopleCsv).toHaveValue(/"\{""mode"":""all""\}"/);
-    await expect(page.getByText(/sessions use json session-scope objects/i)).toBeVisible();
+    await expect(peopleCsv).toHaveValue(/Alice,all/);
 
     await page.getByRole('button', { name: /^edit table$/i }).click();
     await expect(page.getByRole('button', { name: /apply changes/i })).toBeVisible();
@@ -122,7 +121,7 @@ test.describe('Scenario data-grid workspace', () => {
     const attributeBalanceCsv = page.getByRole('textbox', { name: /balance attributes csv/i });
     await expect(attributeBalanceCsv).toBeVisible();
     await expect(attributeBalanceCsv).toHaveValue(/Group,Attribute,Targets,Mode,Weight,Sessions/);
-    await expect(attributeBalanceCsv).toHaveValue(/G1,gender,"\{""asdf \\| asdf:"":2,""female"":1\}",exact,10,"\{""mode"":""all""\}"/);
+    await expect(attributeBalanceCsv).toHaveValue(/G1,gender,"\{""asdf \\| asdf:"":2,""female"":1\}",exact,10,all/);
 
     await attributeBalanceCsv.fill('Group,Attribute,Targets,Mode,Weight,Sessions\nG1,gender,"{""asdf | asdf:"":2,""female"":3}",exact,10,"{""mode"":""selected"",""sessions"":[0,1,2]}"');
     await page.getByRole('button', { name: /apply changes/i }).click();
@@ -131,6 +130,6 @@ test.describe('Scenario data-grid workspace', () => {
     await expect(page.getByText(/^1, 2, 3$/i)).toBeVisible();
 
     await page.getByRole('button', { name: /^csv$/i }).click();
-    await expect(page.getByRole('textbox', { name: /balance attributes csv/i })).toHaveValue(/G1,gender,"\{""asdf \\| asdf:"":2,""female"":3\}",exact,10,"\{""mode"":""selected"",""sessions"":\[0,1,2\]\}"/);
+    await expect(page.getByRole('textbox', { name: /balance attributes csv/i })).toHaveValue(/G1,gender,"\{""asdf \\| asdf:"":2,""female"":3\}",exact,10,"\[0,1,2\]"/);
   });
 });

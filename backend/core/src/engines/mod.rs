@@ -1315,8 +1315,12 @@ mod tests {
     }
 
     #[test]
-    fn available_solver_descriptors_include_solver4_and_solver5() {
+    fn available_solver_descriptors_include_registered_solver_families() {
         let descriptors = available_solver_descriptors();
+        assert!(
+            descriptors.iter().any(|d| d.kind == SolverKind::Auto),
+            "auto should appear in available_solver_descriptors"
+        );
         assert!(
             descriptors.iter().any(|d| d.kind == SolverKind::Solver3),
             "solver3 should appear in available_solver_descriptors"
@@ -1333,6 +1337,6 @@ mod tests {
             descriptors.iter().any(|d| d.kind == SolverKind::Solver6),
             "solver6 should appear in available_solver_descriptors"
         );
-        assert_eq!(descriptors.len(), 5);
+        assert_eq!(descriptors.len(), 6);
     }
 }
