@@ -66,8 +66,11 @@ fn best_spec_with_predicate(
         best = Some(match best {
             None => candidate,
             Some(current)
-                if (candidate.mols_count, candidate.right_order, candidate.left_order)
-                    > (current.mols_count, current.right_order, current.left_order) =>
+                if (
+                    candidate.mols_count,
+                    candidate.right_order,
+                    candidate.left_order,
+                ) > (current.mols_count, current.right_order, current.left_order) =>
             {
                 candidate
             }

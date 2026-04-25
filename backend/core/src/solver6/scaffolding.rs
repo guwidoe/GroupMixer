@@ -1,5 +1,5 @@
 use crate::models::{
-    Solver6PairRepeatPenaltyModel, Solver6Params, Solver6SeedStrategy, Solver6SearchStrategy,
+    Solver6PairRepeatPenaltyModel, Solver6Params, Solver6SearchStrategy, Solver6SeedStrategy,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,7 +18,12 @@ impl ReservedExecutionPlan {
         }
     }
 
-    pub(super) fn reserved_message(&self, groups: usize, group_size: usize, weeks: usize) -> String {
+    pub(super) fn reserved_message(
+        &self,
+        groups: usize,
+        group_size: usize,
+        weeks: usize,
+    ) -> String {
         format!(
             "solver6 accepted pure-SGP instance {groups}-{group_size}-{weeks}, but the seeded repeat-minimization pipeline is still scaffold-only after exact solver5 handoff. Reserved execution plan: objective={}, seed_strategy={}, search_strategy={}",
             self.objective, self.seed_strategy, self.search_strategy
@@ -49,9 +54,7 @@ fn objective_label(model: Solver6PairRepeatPenaltyModel) -> &'static str {
 
 fn seed_strategy_label(strategy: Solver6SeedStrategy) -> &'static str {
     match strategy {
-        Solver6SeedStrategy::Solver5ExactThenReservedHybrid => {
-            "solver5_exact_then_reserved_hybrid"
-        }
+        Solver6SeedStrategy::Solver5ExactThenReservedHybrid => "solver5_exact_then_reserved_hybrid",
         Solver6SeedStrategy::Solver5ExactBlockComposition => "solver5_exact_block_composition",
     }
 }

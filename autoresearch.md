@@ -20,12 +20,22 @@ The relabeling problem is a symmetry-breaking problem, not a local repair proble
 - partial attendance and availability,
 - non-uniform session/group capacities.
 
-The current scaffold builds typed atoms and a timeout-aware partial bijection, but it is still a naive greedy scan and the selected relabeling does not yet influence legacy projection/merge. This lane should rethink that algorithm aggressively while preserving solver architecture:
+The current scaffold builds typed atoms and a timeout-aware partial bijection. It now reaches zero direct identifiable-anchor loss, so the next development direction is to turn those anchors into a concrete trajectory-permutation projection plan that legacy merge can consume. This lane should rethink the relabeling engine aggressively while preserving solver architecture:
 
 - `solver6` remains a pure-SGP oracle.
 - `solver3` remains the general solver/search core.
 - The new path remains internal/diagnostic-gated until it is robust.
 - Normal product/default/broad behavior must not gain user-facing knobs or hidden fallbacks.
+
+The near-term north star is **not** a new schedule solver. It is an internal labeler over a fixed oracle incidence design:
+
+```text
+real person -> oracle trajectory/person
+real session -> oracle session
+per real session: oracle group -> real group, solved by tiny assignment
+```
+
+The current atom/factor relabeler should be treated as a seed/anchor source for this trajectory labeler, not as the final architecture.
 
 ## Metrics
 
@@ -46,11 +56,11 @@ The current scaffold builds typed atoms and a timeout-aware partial bijection, b
   - `relabeling_mapping_incomplete_sum`
   - per-case anchor losses: `relabeling_anchor_loss_immovable`, `relabeling_anchor_loss_partial_attendance`, `relabeling_anchor_loss_capacity_variation`, `relabeling_anchor_loss_cliques`, `relabeling_anchor_loss_hard_apart`, `relabeling_anchor_loss_attribute_balance`, `relabeling_anchor_loss_pair_meeting`, `relabeling_anchor_loss_soft_pairs`, `relabeling_anchor_loss_mixed_light`, `relabeling_anchor_loss_mixed_structural`, `relabeling_anchor_loss_mixed_full`.
   - per-case legacy factor losses: `relabeling_factor_loss_immovable`, `relabeling_factor_loss_partial_attendance`, `relabeling_factor_loss_capacity_variation`, `relabeling_factor_loss_cliques`, `relabeling_factor_loss_hard_apart`, `relabeling_factor_loss_attribute_balance`, `relabeling_factor_loss_pair_meeting`, `relabeling_factor_loss_soft_pairs`, `relabeling_factor_loss_mixed_light`, `relabeling_factor_loss_mixed_structural`, `relabeling_factor_loss_mixed_full`.
-- **Secondary final-output monitors** use the old construction-style fixed-baseline aggregate with `final_` prefixes, e.g. `final_relabeling_relative_score`, `final_failure_count`, `final_timeout_failure_count`, and per-case `final_score_relabel_*`. These are **not** the primary gradient while the relabeler is being rewritten.
+- **Final-output monitors** use the construction-style fixed-baseline aggregate with `final_` prefixes. `final_relabeling_relative_score` is the active primary in the projection/merge-consumption phase; related monitors such as `final_failure_count`, `final_timeout_failure_count`, and per-case `final_score_relabel_*` explain where the primary is coming from.
 
-Primary-metric details:
+Metric details:
 
-- The relabeler is scored directly on typed constraint/factor reconciliation over the fixed diagnostic cases, before merge/search.
+- The active primary now measures final diagnostic projection/merge output because direct relabeler anchors are saturated. Any trajectory-labeler work must still preserve the direct relabeler diagnostics as guards.
 - The raw relabeled oracle is **not required to be a feasible schedule**. Scenario-hard mismatches contribute finite compatibility costs and uncovered-factor penalties; only internal mapping contradictions are hard rejects.
 - `relabeling_anchor_loss` combines uncovered-factor coverage loss, finite compatibility/soft costs, timeout count, and **identifiable** mapping incompleteness only. Identifiable mapping targets currently include repeated clique members, strongly repeated immovable people, explicit immovable/attribute/capacity session and slot anchors, and other typed factors that genuinely break symmetry.
 - The previous `relabeling_factor_loss` remains printed as a secondary monitor, but it is no longer a primary because once factor coverage reached 237/237 it mostly rewarded arbitrary mappings for pair-only or otherwise symmetric cases.
@@ -85,8 +95,10 @@ Primary relabeling implementation:
 
 - `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/atoms.rs` — typed symmetry-breaking atom definitions.
 - `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/builders.rs` — atom generation from constraints and oracle structure.
-- `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/oracle_index.rs` — oracle schedule indexing helpers.
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/oracle_index.rs` — oracle trajectory/incidence indexing helpers, including the planned meet-bitset view for pair scoring.
 - `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/relabeling.rs` — timeout-aware partial-bijection search, scoring, and future CSP/beam reconciliation.
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/trajectory_labeler.rs` — planned Rust-native trajectory-permutation labeler: fixed oracle incidence, person/session permutation search, and per-session oracle-group assignment. Add once the index/scorer MVP starts.
+- `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/TRAJECTORY_LABELER_PLAN.md` — implementation plan for the active relabeling rewrite.
 - `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/deadline.rs` — native/WASM-safe relabeling budget handling.
 - `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/mod.rs` — diagnostic entry point and eventual bridge into projection/merge.
 
@@ -175,16 +187,41 @@ A diagnostic suite run on that commit produced:
 
 Interpretation: the first direct metric (`relabeling_factor_loss`) exposed coverage/compatibility problems and drove them to saturation, then became dominated by arbitrary global mapping completeness. The follow-up primary (`relabeling_anchor_loss`) kept gradient on identifiable anchors without rewarding mappings that constraints do not actually determine, and reached zero after attendance/capacity slack handling. The active phase is now projection/merge consumption: final construction failures are the target, but direct relabeler anchor loss must stay zero.
 
-### Preferred next experiments
+### Active next experiments
 
-User direction after setup: do **not** start with micro-optimizations. The current atoms/relabeling logic is only vague scaffolding; expect major rewrites to atom generation, factor representation, and reconciliation.
+User direction after setup: do **not** start with micro-optimizations. The current atoms/relabeling logic is useful scaffolding, but the next implementation should move directly toward the trajectory-permutation labeler inside `constraint_aware_projection/`.
 
-1. Replace raw enumerated atoms with symmetry-breaking factors/components. Build connected components over real people, real sessions, real group slots, oracle people, oracle sessions, and oracle group slots before enumerating candidate embeddings.
-2. Generate lazy candidate embeddings per factor family instead of huge flat caps such as the current pair/immovable atom caps. Isolated low-information constraints should remain lazy until connected to stronger asymmetry.
-3. Replace greedy single-state atom scan with a beam/backtracking or assignment/CSP reconciler that keeps multiple partial bijections, ordered by finalized `RelabelingScore` including uncovered penalties and mapping completeness.
-4. Prioritize factor families by symmetry-breaking power: coupled immovable triples, clique components, capacity/attendance asymmetry, hard-apart graph structure, pair-meeting structure, then soft pair/attribute polishing.
-5. Make best relabeling affect projection only once the mapping is coherent enough. Avoid hard-overlaying sparse relabeling maps onto legacy projection; the first attempt destroyed contact structure.
-6. Add telemetry metrics for factor counts, component sizes, accepted/covered/uncovered factors, mapping completeness, and score breakdowns once useful.
+1. Add the oracle trajectory/incidence index in `oracle_index.rs`: `oracle_group[oracle_session][oracle_person]`, pair meet bitsets, scoped meeting counts, and shape/participation tests.
+2. Add a Rust-native scorer for a labeling state: `real_person -> oracle_person`, explicit real-session -> oracle-session mapping, finite pair/fixed/attribute/capacity compatibility costs, and no full schedule mutation.
+3. Add per-session group-label elimination: for each real session, solve a small assignment from oracle groups to real groups using immovable restrictions, AttributeBalance targets/weights, capacity/attendance compatibility, and slot anchors. This is the first concrete consumer of the relabeler and should produce `OracleTemplateProjectionResult.real_group_by_session_oracle_group`.
+4. Seed the trajectory labeler from the current factor relabeler. The factor beam has zero anchor loss; use its session/slot/person hints to initialize or constrain trajectory search rather than hard-overlaying sparse maps onto legacy projection.
+5. Materialize a full/partial `OracleTemplateProjectionResult` from the trajectory scorer and compare it against legacy projection on targeted microdiagnostics before trusting it in the full suite.
+6. Add timeout-aware local search only after exact scoring exists: 2-swap, 3-cycle, and small conflict-guided permutation neighbourhoods under `deadline.rs`.
+7. Keep component/factor improvements only when they feed this trajectory pipeline: e.g. better session/slot/person anchors, better fixed-placement implications, or better candidate neighbourhoods.
+8. Add telemetry metrics for trajectory scorer cost, per-session group assignment feasibility/cost, seeded anchors used, local-search move counts, and projection materialization coverage once useful.
+
+### Trajectory-permutation labeler plan
+
+The symmetry-aware permutation/LNS proposal is compatible with this architecture if implemented directly inside `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/` as an internal projection/relabeling engine, not as a replacement for solver3 search or solver6 oracle generation. The detailed implementation plan lives in `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/TRAJECTORY_LABELER_PLAN.md`. Keep the good parts and avoid the risky parts:
+
+1. **Represent the oracle as fixed trajectories.** Add an oracle-incidence view with `oracle_group[oracle_session][oracle_person]` and compact `meet_mask[oracle_person_a][oracle_person_b]` bitsets. The relabeling state should optimize `real_person -> oracle_person/trajectory` plus explicit real-session -> oracle-session mapping, rather than searching over full schedules.
+2. **Eliminate per-session group-name symmetry with exact matching.** For a fixed person/session labeling, solve a tiny per-real-session assignment from oracle groups to real groups. The cost matrix should include immovable group restrictions, AttributeBalance using actual weights/targets, capacity/attendance compatibility, and any group-slot anchors. This should directly produce `OracleTemplateProjectionResult.real_group_by_session_oracle_group`.
+3. **Use guarded presolve invariants.** Drop uniform global RepeatEncounter terms from the labeler only when they are formally constant for the chosen oracle/candidate shape. Simplify all-session pair constraints only when the oracle is actually a complete/perfect design over the active mapped people. Partial attendance, dummies, omitted people, nonuniform pair weights, and scoped constraints must disable the simplification.
+4. **Compile fixed placements into stronger local implications.** Same-session fixed people in the same target group imply same oracle group for that session; fixed people in different target groups imply different oracle groups. Use these as pruning/scoring hints and matching restrictions, not as a substitute for final strict validation.
+5. **Seed from the current factor relabeler.** The existing atom/factor beam now finds zero anchor loss; use its session, slot, and person hints to initialize or constrain the trajectory permutation search. Do not immediately discard it until the trajectory scorer can explain the same anchors and pass the relabeler diagnostics.
+6. **Start with Rust-native anytime search.** Implement exact scoring plus 2-swap, 3-cycle, and small conflict-guided permutation neighborhoods first. Recompute the tiny per-session group assignments as needed. This fits native/WASM `gm-core` and the existing deadline model.
+7. **Delay heavy dependencies and oracle-specific tricks.** CP-SAT LNS, global CP-SAT certifiers, and affine-plane automorphism moves may be useful later as optional native diagnostics, but they are not MVP requirements and should not become required for WASM/core correctness. Affine-specific transforms must only be used if the oracle backend exposes verified automorphisms generically enough to avoid benchmark-shape overfitting.
+8. **Respect partial/non-ideal cases.** A strict full bijection is valid only when real active people and oracle trajectories match exactly. For partial attendance, dummies, omitted people, or capacity variation, the state must explicitly model unmapped/dummy trajectories or restrict the bijection to the active stable subset.
+9. **Keep raw-oracle mismatches finite inside the labeler.** The trajectory labeler may rank labels with finite compatibility costs for scenario-hard mismatches; it must not replace merge/search feasibility or weaken final `RuntimeState` validation.
+
+Suggested MVP order:
+
+1. Add oracle trajectory/meet-bitset indexing and tests.
+2. Add a pure scorer for a complete/partial `real_person -> oracle_person` labeling plus session map.
+3. Add per-session oracle-group -> real-group assignment with immovable and AttributeBalance costs.
+4. Materialize `OracleTemplateProjectionResult` from a scored labeling and compare against legacy projection on microdiagnostics.
+5. Add swap/3-cycle local search seeded by current relabeling hints.
+6. Only then consider larger LNS neighborhoods or optional native CP-SAT experiments.
 
 ### Strong negative guidance from prior construction work
 

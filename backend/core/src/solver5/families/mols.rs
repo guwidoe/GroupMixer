@@ -41,10 +41,7 @@ pub(super) fn construct_from_mols(mols: &[Vec<Vec<usize>>], group_size: usize) -
 }
 
 pub(super) fn decode_mols(entry: &MolsCatalogEntry) -> Vec<Vec<Vec<usize>>> {
-    let tokens = entry
-        .encoded_mols
-        .split_whitespace()
-        .collect::<Vec<_>>();
+    let tokens = entry.encoded_mols.split_whitespace().collect::<Vec<_>>();
     let order = entry.num_groups;
     let expected = order * entry.mols_count;
     assert_eq!(tokens.len(), expected);

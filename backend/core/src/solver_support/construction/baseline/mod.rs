@@ -404,11 +404,30 @@ pub(crate) fn apply_baseline_construction_heuristic(
         }
 
         // --- Step 3: Place remaining unassigned participating people ---
-        let unassigned_people: Vec<usize> = participating_people
+        let mut unassigned_people: Vec<usize> = participating_people
             .iter()
             .filter(|&&person_idx| !assigned_in_day[person_idx])
             .cloned()
             .collect();
+        unassigned_people.sort_by(|&left, &right| {
+            hard_apart_partners(
+                hard_apart_partners_by_person_session,
+                people_count,
+                day,
+                right,
+            )
+            .len()
+            .cmp(
+                &hard_apart_partners(
+                    hard_apart_partners_by_person_session,
+                    people_count,
+                    day,
+                    left,
+                )
+                .len(),
+            )
+            .then_with(|| left.cmp(&right))
+        });
 
         for person_idx in unassigned_people {
             let mut placed = false;

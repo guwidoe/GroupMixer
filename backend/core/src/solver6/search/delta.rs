@@ -34,7 +34,8 @@ impl PairAdjustmentAccumulator {
             return;
         }
 
-        self.adjustments.push(PairCountAdjustment { pair_idx, delta });
+        self.adjustments
+            .push(PairCountAdjustment { pair_idx, delta });
     }
 
     fn materialize(&self) -> Vec<PairCountAdjustment> {
@@ -92,21 +93,22 @@ impl DensePairAdjustmentScratch {
         model: Solver6PairRepeatPenaltyModel,
     ) -> i64 {
         let pair_state = state.pair_state();
-        self.touched_pairs.iter().fold(0i64, |delta_total, &pair_idx| {
-            let delta = self.deltas_by_pair[pair_idx];
-            if delta == 0 {
-                delta_total
-            } else {
-                delta_total
-                    + match model {
-                        Solver6PairRepeatPenaltyModel::LinearRepeatExcess => pair_state
-                            .linear_score_delta_for_pair_change_known_valid(pair_idx, delta),
-                        _ => pair_state.score_delta_for_pair_change_known_valid(
-                            pair_idx, delta, model,
-                        ),
-                    }
-            }
-        })
+        self.touched_pairs
+            .iter()
+            .fold(0i64, |delta_total, &pair_idx| {
+                let delta = self.deltas_by_pair[pair_idx];
+                if delta == 0 {
+                    delta_total
+                } else {
+                    delta_total
+                        + match model {
+                            Solver6PairRepeatPenaltyModel::LinearRepeatExcess => pair_state
+                                .linear_score_delta_for_pair_change_known_valid(pair_idx, delta),
+                            _ => pair_state
+                                .score_delta_for_pair_change_known_valid(pair_idx, delta, model),
+                        }
+                }
+            })
     }
 
     fn materialize(&self) -> Vec<PairCountAdjustment> {
@@ -162,9 +164,7 @@ impl EvaluatedSameWeekSwapMove {
     }
 }
 
-pub(crate) fn enumerate_same_week_swap_moves(
-    state: &LocalSearchState,
-) -> Vec<SameWeekSwapMove> {
+pub(crate) fn enumerate_same_week_swap_moves(state: &LocalSearchState) -> Vec<SameWeekSwapMove> {
     let mut moves = Vec::with_capacity(count_same_week_swap_moves(state));
     for_each_same_week_swap_move(state, |candidate| moves.push(candidate));
     moves
@@ -193,10 +193,7 @@ pub(crate) fn nth_same_week_swap_move(
     found
 }
 
-fn for_each_same_week_swap_move(
-    state: &LocalSearchState,
-    mut visit: impl FnMut(SameWeekSwapMove),
-) {
+fn for_each_same_week_swap_move(state: &LocalSearchState, mut visit: impl FnMut(SameWeekSwapMove)) {
     for (week_idx, week) in state.schedule().iter().enumerate() {
         for left_group_idx in 0..week.len() {
             for right_group_idx in (left_group_idx + 1)..week.len() {
@@ -248,15 +245,12 @@ pub(crate) fn evaluate_same_week_swap(
     state: &LocalSearchState,
     swap: SameWeekSwapMove,
 ) -> Result<EvaluatedSameWeekSwapMove, SolverError> {
-    let week = state
-        .schedule()
-        .get(swap.week_idx)
-        .ok_or_else(|| {
-            SolverError::ValidationError(format!(
-                "solver6 same-week swap evaluation week {} out of bounds",
-                swap.week_idx
-            ))
-        })?;
+    let week = state.schedule().get(swap.week_idx).ok_or_else(|| {
+        SolverError::ValidationError(format!(
+            "solver6 same-week swap evaluation week {} out of bounds",
+            swap.week_idx
+        ))
+    })?;
     let left_group = week.get(swap.left_group_idx).ok_or_else(|| {
         SolverError::ValidationError(format!(
             "solver6 same-week swap evaluation left group {} out of bounds in week {}",
@@ -286,9 +280,8 @@ pub(crate) fn evaluate_same_week_swap(
         ));
     }
 
-    let mut scratch = PairAdjustmentAccumulator::with_capacity(
-        4 * left_group.len().saturating_sub(1),
-    );
+    let mut scratch =
+        PairAdjustmentAccumulator::with_capacity(4 * left_group.len().saturating_sub(1));
     evaluate_same_week_swap_with_accumulator(state, swap, &mut scratch)
 }
 
@@ -329,7 +322,10 @@ fn evaluate_same_week_swap_summary_with_accumulator(
         if member_idx == swap.right_pos_idx {
             continue;
         }
-        scratch.apply(universe.pair_index_known_valid(swap.right_person, other), -1);
+        scratch.apply(
+            universe.pair_index_known_valid(swap.right_person, other),
+            -1,
+        );
         scratch.apply(universe.pair_index_known_valid(swap.left_person, other), 1);
     }
 
@@ -348,8 +344,8 @@ fn evaluate_same_week_swap_summary_with_accumulator(
     Ok(SameWeekSwapEvaluationSummary {
         active_score_before,
         active_score_after,
-        linear_repeat_excess_after: (state.pair_state().linear_repeat_excess() as i64 + linear_delta)
-            as u64,
+        linear_repeat_excess_after: (state.pair_state().linear_repeat_excess() as i64
+            + linear_delta) as u64,
     })
 }
 
@@ -362,10 +358,12 @@ pub(crate) fn find_best_same_week_swap(
         4 * state.problem().group_size.saturating_sub(1),
     );
     try_for_each_same_week_swap_move(state, |candidate| {
-        let summary = evaluate_same_week_swap_summary_with_dense_scratch(state, candidate, &mut scratch);
-        if best.as_ref().is_none_or(|incumbent| {
-            same_week_swap_summary_is_better(candidate, summary, incumbent)
-        }) {
+        let summary =
+            evaluate_same_week_swap_summary_with_dense_scratch(state, candidate, &mut scratch);
+        if best
+            .as_ref()
+            .is_none_or(|incumbent| same_week_swap_summary_is_better(candidate, summary, incumbent))
+        {
             best = Some(EvaluatedSameWeekSwapMove {
                 swap: candidate,
                 pair_adjustments: scratch.materialize(),
@@ -401,14 +399,15 @@ fn evaluate_same_week_swap_summary_with_dense_scratch(
         if member_idx == swap.right_pos_idx {
             continue;
         }
-        scratch.apply(universe.pair_index_known_valid(swap.right_person, other), -1);
+        scratch.apply(
+            universe.pair_index_known_valid(swap.right_person, other),
+            -1,
+        );
         scratch.apply(universe.pair_index_known_valid(swap.left_person, other), 1);
     }
 
-    let linear_delta = scratch.score_delta_for_model(
-        state,
-        Solver6PairRepeatPenaltyModel::LinearRepeatExcess,
-    );
+    let linear_delta =
+        scratch.score_delta_for_model(state, Solver6PairRepeatPenaltyModel::LinearRepeatExcess);
     let active_delta = match state.active_penalty_model() {
         Solver6PairRepeatPenaltyModel::LinearRepeatExcess => linear_delta,
         active_model => scratch.score_delta_for_model(state, active_model),
@@ -419,8 +418,8 @@ fn evaluate_same_week_swap_summary_with_dense_scratch(
     SameWeekSwapEvaluationSummary {
         active_score_before,
         active_score_after,
-        linear_repeat_excess_after: (state.pair_state().linear_repeat_excess() as i64 + linear_delta)
-            as u64,
+        linear_repeat_excess_after: (state.pair_state().linear_repeat_excess() as i64
+            + linear_delta) as u64,
     }
 }
 
@@ -496,7 +495,9 @@ fn score_delta_for_adjustments(
 
 #[cfg(test)]
 mod tests {
-    use super::{enumerate_same_week_swap_moves, evaluate_same_week_swap, find_best_same_week_swap};
+    use super::{
+        enumerate_same_week_swap_moves, evaluate_same_week_swap, find_best_same_week_swap,
+    };
     use crate::models::Solver6PairRepeatPenaltyModel;
     use crate::solver6::problem::PureSgpProblem;
     use crate::solver6::search::state::LocalSearchState;
@@ -546,11 +547,8 @@ mod tests {
         )
         .unwrap();
 
-        let evaluated = evaluate_same_week_swap(
-            &state,
-            enumerate_same_week_swap_moves(&state)[2],
-        )
-        .unwrap();
+        let evaluated =
+            evaluate_same_week_swap(&state, enumerate_same_week_swap_moves(&state)[2]).unwrap();
         assert_eq!(evaluated.active_score_after, 2);
         assert_eq!(evaluated.linear_repeat_excess_after, 2);
         assert!(!evaluated.improves_current());

@@ -414,9 +414,10 @@ impl State {
             return None;
         }
 
-        group_members.iter().copied().find(|member| {
-            *member != person_idx && partners.binary_search(member).is_ok()
-        })
+        group_members
+            .iter()
+            .copied()
+            .find(|member| *member != person_idx && partners.binary_search(member).is_ok())
     }
 
     #[inline]
@@ -798,7 +799,8 @@ impl State {
                     }
                 }
 
-                if !self.person_participation[p1][day_idx] || !self.person_participation[p2][day_idx]
+                if !self.person_participation[p1][day_idx]
+                    || !self.person_participation[p2][day_idx]
                 {
                     continue;
                 }

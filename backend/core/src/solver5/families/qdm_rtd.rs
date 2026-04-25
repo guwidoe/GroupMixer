@@ -97,7 +97,11 @@ fn oa_from_quasi_difference_matrix(columns: &[[i8; 6]], group_order: usize) -> V
         .collect::<Vec<_>>();
 
     if inf > group_order {
-        assert_eq!(inf - group_order, 1, "only the single-hole QDM case is currently supported");
+        assert_eq!(
+            inf - group_order,
+            1,
+            "only the single-hole QDM case is currently supported"
+        );
         oa.push(vec![group_order; row_width]);
     }
 

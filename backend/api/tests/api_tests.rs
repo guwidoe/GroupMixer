@@ -229,7 +229,10 @@ async fn contract_solver_endpoints_return_public_shapes() {
         json_response(default_config_response).await;
     assert_eq!(default_config_body.solver_type, "auto");
     assert_eq!(default_config_body.stop_conditions.time_limit_seconds, None);
-    assert!(matches!(default_config_body.solver_params, SolverParams::Auto(_)));
+    assert!(matches!(
+        default_config_body.solver_params,
+        SolverParams::Auto(_)
+    ));
 
     let recommend_response = app
         .clone()
@@ -257,7 +260,10 @@ async fn contract_solver_endpoints_return_public_shapes() {
         json_response(recommend_response).await;
     assert_eq!(recommend_body.solver_type, "auto");
     assert_eq!(recommend_body.stop_conditions.time_limit_seconds, None);
-    assert!(matches!(recommend_body.solver_params, SolverParams::Auto(_)));
+    assert!(matches!(
+        recommend_body.solver_params,
+        SolverParams::Auto(_)
+    ));
 
     let evaluate_input = {
         let mut input = valid_request();

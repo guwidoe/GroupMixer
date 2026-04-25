@@ -134,7 +134,10 @@ fn router_selects_catalog_kts_case_for_17_3_25() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 17-3-25");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::KirkmanTripleSystem);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::KirkmanTripleSystem
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::KirkmanTripleSystem
             && attempt.status
@@ -461,7 +464,10 @@ fn router_selects_exact_nkts_catalog_case_for_20_3_20() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 20-3-20");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::NearlyKirkmanTripleSystem);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::NearlyKirkmanTripleSystem
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::NearlyKirkmanTripleSystem
             && attempt.status
@@ -629,7 +635,10 @@ fn router_selects_ownsg_for_12_8_6() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 12-8-6");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::OwnSocialGolfer);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::OwnSocialGolfer
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::OwnSocialGolfer
             && attempt.status
@@ -648,7 +657,10 @@ fn router_selects_ownsg_for_20_6_13() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 20-6-13");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::OwnSocialGolfer);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::OwnSocialGolfer
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::OwnSocialGolfer
             && attempt.status
@@ -667,7 +679,10 @@ fn router_reports_recursive_group_lift_for_14_7_9() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 14-7-9");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::OwnSocialGolfer);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::OwnSocialGolfer
+    );
     assert_eq!(
         decision.result.provenance.operators,
         vec![CompositionOperatorId::RecursiveTransversalLift]
@@ -736,7 +751,10 @@ fn router_selects_rbibd_catalog_for_15_8_17() {
     let problem = PureSgpProblem::from_input(&input).expect("pure input should parse");
     let decision = attempt_construction(&problem).expect("router should construct 15-8-17");
 
-    assert_eq!(decision.result.family, ConstructionFamilyId::ResolvableBIBDCatalog);
+    assert_eq!(
+        decision.result.family,
+        ConstructionFamilyId::ResolvableBIBDCatalog
+    );
     assert!(decision.attempts.iter().any(|attempt| {
         attempt.family == ConstructionFamilyId::ResolvableBIBDCatalog
             && attempt.status

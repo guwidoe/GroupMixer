@@ -279,7 +279,10 @@ fn main() {
     println!("METRIC frontier_gap_sum={frontier_gap_sum}");
     println!("METRIC solved_cells={solved_cells}");
     println!("METRIC exact_frontier_cells={exact_frontier_cells}");
-    println!("METRIC unsolved_cells={}", benchmark_cell_count - solved_cells);
+    println!(
+        "METRIC unsolved_cells={}",
+        benchmark_cell_count - solved_cells
+    );
     for (group_size, total) in per_p_totals {
         println!("METRIC p{}_constructed_weeks={}", group_size, total);
     }

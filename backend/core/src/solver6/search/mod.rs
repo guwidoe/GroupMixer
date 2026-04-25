@@ -161,12 +161,10 @@ pub(crate) fn run_configured_local_search(
     effective_seed: u64,
 ) -> Result<RepeatAwareLocalSearchOutcome, SolverError> {
     match strategy {
-        Solver6SearchStrategy::DeterministicBestImprovingHillClimb => {
-            run_deterministic_hill_climb(
-                state,
-                DeterministicHillClimbConfig::for_solver_configuration(stop_conditions),
-            )
-        }
+        Solver6SearchStrategy::DeterministicBestImprovingHillClimb => run_deterministic_hill_climb(
+            state,
+            DeterministicHillClimbConfig::for_solver_configuration(stop_conditions),
+        ),
         Solver6SearchStrategy::ReservedRepeatAwareLocalSearch => run_repeat_aware_local_search(
             state,
             RepeatAwareLocalSearchConfig::for_solver_configuration(
@@ -488,7 +486,8 @@ pub(crate) fn select_best_admissible_same_week_swap(
 
 fn search_has_reached_known_optimum(state: &LocalSearchState) -> bool {
     state.current_active_score() == 0
-        || (state.active_penalty_model() == crate::models::Solver6PairRepeatPenaltyModel::LinearRepeatExcess
+        || (state.active_penalty_model()
+            == crate::models::Solver6PairRepeatPenaltyModel::LinearRepeatExcess
             && state.current_active_score()
                 == pure_sgp_linear_repeat_excess_lower_bound(
                     state.problem().num_groups,
@@ -507,15 +506,15 @@ mod tests {
         RepeatAwareLocalSearchConfig,
     };
     use crate::models::{
-        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
-        RepeatEncounterParams, Solver6PairRepeatPenaltyModel, Solver6Params,
-        SolverConfiguration, SolverKind, SolverParams, StopConditions, StopReason,
+        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
+        Solver6PairRepeatPenaltyModel, Solver6Params, SolverConfiguration, SolverKind,
+        SolverParams, StopConditions, StopReason,
     };
     use crate::solver6::problem::PureSgpProblem;
-    use crate::solver6::seed::relabeling::build_greedy_exact_block_seed;
     use crate::solver6::search::delta::find_best_same_week_swap;
     use crate::solver6::search::state::LocalSearchState;
     use crate::solver6::search::tabu::{RepeatAwareTabuMemory, RepeatAwareTabuPolicy};
+    use crate::solver6::seed::relabeling::build_greedy_exact_block_seed;
     use std::collections::HashMap;
 
     fn worsened_2_2_3() -> Vec<Vec<Vec<usize>>> {
@@ -611,9 +610,7 @@ mod tests {
         });
         tabu.record_swap(improving.swap, 1);
 
-        let selected = select_best_admissible_same_week_swap(&state, &tabu)
-            .unwrap()
-            ;
+        let selected = select_best_admissible_same_week_swap(&state, &tabu).unwrap();
         assert_eq!(selected.candidates_evaluated, 12);
         let selected = selected
             .best_move

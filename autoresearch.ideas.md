@@ -2,6 +2,7 @@
 
 ## Symmetry-breaking directions
 
+- Active direction promoted from ideas into implementation: build the trajectory-permutation labeler directly under `backend/core/src/solver_support/construction/constraint_scenario_oracle/constraint_aware_projection/`; see `TRAJECTORY_LABELER_PLAN.md` in that directory. The old atom/factor relabeler is now a seed/anchor source for this pipeline, not the intended final consumer.
 - User explicitly expects major rewrites, not micro-optimizations: treat the existing atoms/relabeling logic as vague scaffolding that should be replaced by a factor/component reconciliation model.
 - Replace greedy atom acceptance with a bounded beam/backtracking solver over typed factors. State should be partial bijections for oracle people, oracle sessions, and oracle `(session, group)` slots; internal mapping contradictions remain hard rejects.
 - Score factors as a weighted CSP/Max-SAT objective: accepted compatible factors earn structure/contact rewards; uncovered factors add finite hard/soft costs; raw scenario-hard violations are tradeable repair costs, not proof of final infeasibility. The relabeler is not required to output a feasible schedule.
@@ -12,6 +13,7 @@
 - Use exact assignment subproblems where natural: per-session group-slot assignment for attribute/capacity/immovable factors; bipartite matching for people once factor components propose candidate images.
 - Add planted-mapping shadow diagnostics if needed: the generator has deterministic seed `90210`; a development-only harness can regenerate the hidden mapping and score mapping recovery without making canonical benchmark cases easier.
 - Once a coherent relabeling is found, wire it into projection by normalizing/permuting the oracle schedule/candidate sessions before legacy merge, or by extending `OracleTemplateProjectionResult` with explicit relabeling maps.
+- Promising larger rewrite: build a trajectory-permutation labeler over fixed oracle incidence (`real person -> oracle trajectory`) with session relabeling explicit and per-session group-label symmetry eliminated by a tiny assignment/matching problem. Score pair constraints via precomputed oracle meet bitsets and group/attribute/fixed-placement costs after best group matching; seed from the current factor relabeler, then use Rust-native swap/k-cycle/LNS over permutations. Treat OR-Tools/CP-SAT and affine-specific automorphisms as optional later diagnostics, not as the wasm/core MVP.
 
 ## Benchmark/system improvements that are allowed in this lane
 

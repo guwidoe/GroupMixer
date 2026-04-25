@@ -291,15 +291,13 @@ pub(super) fn validate_full_schedule_shape(
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        ExactBlockSeed, ExactBlockSeedDiagnostics, SeedAtomId, SeedAtomUsage,
-        SeedRelabelingSummary,
-    };
     use super::relabeling::build_identity_exact_block_seed;
+    use super::{
+        ExactBlockSeed, ExactBlockSeedDiagnostics, SeedAtomId, SeedAtomUsage, SeedRelabelingSummary,
+    };
     use crate::models::{
-        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition,
-        RepeatEncounterParams, Solver6Params, SolverConfiguration, SolverKind, SolverParams,
-        StopConditions,
+        ApiInput, Constraint, Group, Objective, Person, ProblemDefinition, RepeatEncounterParams,
+        Solver6Params, SolverConfiguration, SolverKind, SolverParams, StopConditions,
     };
     use crate::solver5::atoms::{Solver5ConstructionAtom, Solver5ConstructionAtomSpan};
     use std::collections::HashMap;
@@ -375,7 +373,10 @@ mod tests {
         let atom_id = SeedAtomId::from_solver5_atom(&sample_atom());
         assert_eq!(atom_id.family_label, "published_schedule_bank");
         assert_eq!(atom_id.max_supported_weeks, 10);
-        assert_eq!(atom_id.display_label(), "solver5:published_schedule_bank:10w:exact_frontier");
+        assert_eq!(
+            atom_id.display_label(),
+            "solver5:published_schedule_bank:10w:exact_frontier"
+        );
     }
 
     #[test]

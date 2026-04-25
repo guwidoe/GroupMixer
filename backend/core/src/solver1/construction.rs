@@ -627,7 +627,10 @@ impl State {
             return Ok(None);
         };
 
-        let mut normalized = sessions.iter().map(|&session| session as usize).collect::<Vec<_>>();
+        let mut normalized = sessions
+            .iter()
+            .map(|&session| session as usize)
+            .collect::<Vec<_>>();
         normalized.sort_unstable();
         normalized.dedup();
 
@@ -771,8 +774,7 @@ impl State {
         // --- Process `ShouldNotBeTogether` (Soft-Apart Pairs) ---
         self.hard_apart_pairs.clear();
         self.hard_apart_pair_sessions.clear();
-        self.hard_apart_partners_by_person_session =
-            vec![Vec::new(); num_sessions * people_count];
+        self.hard_apart_partners_by_person_session = vec![Vec::new(); num_sessions * people_count];
 
         let mut seen_hard_apart = HashSet::new();
         for constraint in &input.constraints {
@@ -787,12 +789,13 @@ impl State {
                                 people[i]
                             ))
                         })?;
-                        let right_idx = *self.person_id_to_idx.get(&people[j]).ok_or_else(|| {
-                            SolverError::ValidationError(format!(
-                                "MustStayApart references unknown person '{}'",
-                                people[j]
-                            ))
-                        })?;
+                        let right_idx =
+                            *self.person_id_to_idx.get(&people[j]).ok_or_else(|| {
+                                SolverError::ValidationError(format!(
+                                    "MustStayApart references unknown person '{}'",
+                                    people[j]
+                                ))
+                            })?;
 
                         for session_idx in 0..num_sessions {
                             if let Some(active_sessions) = compiled_sessions.as_ref() {
@@ -822,7 +825,8 @@ impl State {
                         let dedupe_key = (pair, compiled_sessions.clone());
                         if seen_hard_apart.insert(dedupe_key) {
                             self.hard_apart_pairs.push(pair);
-                            self.hard_apart_pair_sessions.push(compiled_sessions.clone());
+                            self.hard_apart_pair_sessions
+                                .push(compiled_sessions.clone());
                         }
                     }
                 }
@@ -963,26 +967,29 @@ impl State {
 
                         let pair = Self::canonical_pair(p1_idx, p2_idx);
 
-                        if self.hard_apart_pairs.iter().enumerate().any(|(pair_idx, &hard_pair)| {
-                            hard_pair == pair
-                                && Self::sessions_overlap(
-                                    self.hard_apart_pair_sessions[pair_idx].as_deref(),
-                                    compiled_sessions.as_deref(),
-                                )
-                        }) {
+                        if self
+                            .hard_apart_pairs
+                            .iter()
+                            .enumerate()
+                            .any(|(pair_idx, &hard_pair)| {
+                                hard_pair == pair
+                                    && Self::sessions_overlap(
+                                        self.hard_apart_pair_sessions[pair_idx].as_deref(),
+                                        compiled_sessions.as_deref(),
+                                    )
+                            })
+                        {
                             return Err(SolverError::ValidationError(
                                 "ShouldStayTogether conflicts with MustStayApart for the same pair in overlapping sessions".to_string(),
                             ));
                         }
 
                         // Conflict check with existing ShouldNotBeTogether pairs
-                        if let Some((fp_idx, _)) =
-                            self.soft_apart_pairs
-                                .iter()
-                                .enumerate()
-                                .find(|(_, &(a, b))| {
-                                    Self::canonical_pair(a, b) == pair
-                                })
+                        if let Some((fp_idx, _)) = self
+                            .soft_apart_pairs
+                            .iter()
+                            .enumerate()
+                            .find(|(_, &(a, b))| Self::canonical_pair(a, b) == pair)
                         {
                             if Self::sessions_overlap(
                                 self.soft_apart_pair_sessions[fp_idx].as_deref(),

@@ -34,7 +34,8 @@ fn closest_supporting_span_prefers_the_smallest_supporting_atom() {
 #[test]
 fn best_available_full_span_atom_can_bridge_from_solver6_input() {
     let mut input = pure_input(8, 4, 20);
-    input.solver = crate::engines::default_solver_configuration_for(crate::models::SolverKind::Solver6);
+    input.solver =
+        crate::engines::default_solver_configuration_for(crate::models::SolverKind::Solver6);
 
     let atom = query_construction_atom_from_solver6_input(
         &input,
@@ -51,13 +52,12 @@ fn best_available_full_span_atom_can_bridge_from_solver6_input() {
 #[test]
 fn exact_atom_can_be_projected_back_to_a_solver_result_for_solver6() {
     let mut input = pure_input(2, 2, 3);
-    input.solver = crate::engines::default_solver_configuration_for(crate::models::SolverKind::Solver6);
+    input.solver =
+        crate::engines::default_solver_configuration_for(crate::models::SolverKind::Solver6);
 
-    let atom = query_construction_atom_from_solver6_input(
-        &input,
-        Solver5AtomSpanRequest::RequestedSpan,
-    )
-    .expect("2-2-3 should produce an exact solver5 atom");
+    let atom =
+        query_construction_atom_from_solver6_input(&input, Solver5AtomSpanRequest::RequestedSpan)
+            .expect("2-2-3 should produce an exact solver5 atom");
     let result = build_solver_result_from_atom_for_solver6_input(&input, &atom)
         .expect("exact atom should canonicalize back into a solver result");
 

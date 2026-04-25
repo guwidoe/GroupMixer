@@ -44,7 +44,10 @@ impl LocalSearchState {
         active_penalty_model: Solver6PairRepeatPenaltyModel,
     ) -> Result<Self, SolverError> {
         validate_full_schedule_shape(&problem, &schedule)?;
-        let pair_state = PairFrequencyState::from_raw_schedule(problem.num_groups * problem.group_size, &schedule)?;
+        let pair_state = PairFrequencyState::from_raw_schedule(
+            problem.num_groups * problem.group_size,
+            &schedule,
+        )?;
         let best = BestSearchSnapshot {
             iteration: 0,
             schedule: schedule.clone(),
@@ -89,7 +92,9 @@ impl LocalSearchState {
     }
 
     pub(crate) fn best_active_score(&self) -> u64 {
-        self.best.pair_state.score_for_model(self.active_penalty_model)
+        self.best
+            .pair_state
+            .score_for_model(self.active_penalty_model)
     }
 
     pub(crate) fn best_schedule(&self) -> &[Vec<Vec<usize>>] {

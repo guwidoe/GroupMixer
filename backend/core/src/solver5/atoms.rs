@@ -104,11 +104,10 @@ fn query_atom_for_problem(
             .map_err(|failure| {
                 SolverError::ValidationError(failure.to_solver_error_message(problem))
             })?,
-        Solver5AtomSpanRequest::ClosestSupportingSpan => {
-            closest_supporting_construction(problem).map_err(|failure| {
-                SolverError::ValidationError(failure.to_solver_error_message(problem))
-            })?
-        }
+        Solver5AtomSpanRequest::ClosestSupportingSpan => closest_supporting_construction(problem)
+            .map_err(|failure| {
+            SolverError::ValidationError(failure.to_solver_error_message(problem))
+        })?,
     };
 
     Ok(construction_to_atom(input, construction))
@@ -147,11 +146,7 @@ fn construction_to_atom(
             .iter()
             .map(|evidence| evidence.citation.to_string())
             .collect(),
-        residual_label: construction
-            .metadata
-            .residual
-            .as_ref()
-            .map(residual_label),
+        residual_label: construction.metadata.residual.as_ref().map(residual_label),
     }
 }
 

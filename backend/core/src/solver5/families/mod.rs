@@ -348,13 +348,15 @@ impl ConstructionFamily for MolrFromMolsFamily {
     }
 
     fn evaluate(&self, problem: &PureSgpProblem) -> FamilyEvaluation {
-        let explicit_supported = catalog::mols::exact_case(problem.num_groups)
-            .is_some_and(|entry| ((entry.mols_count + 2)..=entry.num_groups).contains(&problem.group_size));
+        let explicit_supported =
+            catalog::mols::exact_case(problem.num_groups).is_some_and(|entry| {
+                ((entry.mols_count + 2)..=entry.num_groups).contains(&problem.group_size)
+            });
         let qdm_supported = catalog::qdm::mols_case(problem.num_groups).is_some_and(|entry| {
             ((qdm_rtd::mols_count(entry) + 2)..=entry.num_groups).contains(&problem.group_size)
         });
-        let product_supported = mols_product::best_molr_spec(problem.num_groups, problem.group_size)
-            .is_some();
+        let product_supported =
+            mols_product::best_molr_spec(problem.num_groups, problem.group_size).is_some();
         if !explicit_supported && !qdm_supported && !product_supported {
             return FamilyEvaluation::NotApplicable {
                 reason: "requires either an explicit MOLS bank (catalog- or QDM-derived) or a direct-product prime-power MOLS bank with enough squares for the MOLR range",
@@ -561,8 +563,7 @@ impl ConstructionFamily for ResolvableBIBDCatalogFamily {
         };
 
         FamilyEvaluation::Applicable {
-            max_supported_weeks: (entry.num_groups * entry.group_size - 1)
-                / (entry.group_size - 1),
+            max_supported_weeks: (entry.num_groups * entry.group_size - 1) / (entry.group_size - 1),
         }
     }
 
@@ -878,7 +879,11 @@ pub(super) fn construct_catalog_mols_transversal(
         construct_max_schedule_recursive,
     );
     let improved_weeks = result.max_supported_weeks;
-    let result = result.with_quality(classify_quality(entry.num_groups, group_size, improved_weeks));
+    let result = result.with_quality(classify_quality(
+        entry.num_groups,
+        group_size,
+        improved_weeks,
+    ));
     if result.provenance.operators.is_empty() {
         result
     } else {
@@ -892,8 +897,8 @@ pub(super) fn construct_product_mols_transversal(
 ) -> ConstructionResult {
     let left_field =
         FiniteField::for_order(spec.left_order).expect("left product factor should be supported");
-    let right_field = FiniteField::for_order(spec.right_order)
-        .expect("right product factor should be supported");
+    let right_field =
+        FiniteField::for_order(spec.right_order).expect("right product factor should be supported");
     let left_bank = mols::prime_power_bank(left_field, spec.mols_count);
     let right_bank = mols::prime_power_bank(right_field, spec.mols_count);
     let product_bank = mols::direct_product(&left_bank, &right_bank);
@@ -937,7 +942,11 @@ pub(super) fn construct_product_mols_transversal(
         construct_max_schedule_recursive,
     );
     let improved_weeks = result.max_supported_weeks;
-    let result = result.with_quality(classify_quality(spec.num_groups, group_size, improved_weeks));
+    let result = result.with_quality(classify_quality(
+        spec.num_groups,
+        group_size,
+        improved_weeks,
+    ));
     if result.provenance.operators.is_empty() {
         result
     } else {
@@ -967,10 +976,9 @@ pub(super) fn construct_molr_from_explicit_mols(
     .with_evidence(EvidenceSourceKind::TheoremFamily, "sharma_das_molr_from_explicit_mols");
 
     if entry.num_groups == group_size {
-        result.schedule.extend(molr_from_mols::row_fill_week(
-            entry.num_groups,
-            group_size,
-        ));
+        result
+            .schedule
+            .extend(molr_from_mols::row_fill_week(entry.num_groups, group_size));
         result.max_supported_weeks = result.schedule.len();
         result = result.add_operator(CompositionOperatorId::RecursiveTransversalLift);
     } else if entry.num_groups % group_size == 0 && (entry.num_groups / group_size) >= 2 {
@@ -987,7 +995,11 @@ pub(super) fn construct_molr_from_explicit_mols(
     }
 
     let improved_weeks = result.max_supported_weeks;
-    let result = result.with_quality(classify_quality(entry.num_groups, group_size, improved_weeks));
+    let result = result.with_quality(classify_quality(
+        entry.num_groups,
+        group_size,
+        improved_weeks,
+    ));
     if result.provenance.operators.is_empty() {
         result
     } else {
@@ -1070,10 +1082,9 @@ pub(super) fn construct_molr_from_qdm_mols(
     .with_evidence(EvidenceSourceKind::TheoremFamily, "sharma_das_molr_from_explicit_mols");
 
     if entry.num_groups == group_size {
-        result.schedule.extend(molr_from_mols::row_fill_week(
-            entry.num_groups,
-            group_size,
-        ));
+        result
+            .schedule
+            .extend(molr_from_mols::row_fill_week(entry.num_groups, group_size));
         result.max_supported_weeks = result.schedule.len();
         result = result.add_operator(CompositionOperatorId::RecursiveTransversalLift);
     } else if entry.num_groups % group_size == 0 && (entry.num_groups / group_size) >= 2 {
@@ -1090,7 +1101,11 @@ pub(super) fn construct_molr_from_qdm_mols(
     }
 
     let improved_weeks = result.max_supported_weeks;
-    let result = result.with_quality(classify_quality(entry.num_groups, group_size, improved_weeks));
+    let result = result.with_quality(classify_quality(
+        entry.num_groups,
+        group_size,
+        improved_weeks,
+    ));
     if result.provenance.operators.is_empty() {
         result
     } else {
@@ -1104,8 +1119,8 @@ pub(super) fn construct_molr_from_product_mols(
 ) -> ConstructionResult {
     let left_field =
         FiniteField::for_order(spec.left_order).expect("left product factor should be supported");
-    let right_field = FiniteField::for_order(spec.right_order)
-        .expect("right product factor should be supported");
+    let right_field =
+        FiniteField::for_order(spec.right_order).expect("right product factor should be supported");
     let left_bank = mols::prime_power_bank(left_field, spec.mols_count);
     let right_bank = mols::prime_power_bank(right_field, spec.mols_count);
     let product_bank = mols::direct_product(&left_bank, &right_bank);
@@ -1134,10 +1149,9 @@ pub(super) fn construct_molr_from_product_mols(
     .with_evidence(EvidenceSourceKind::TheoremFamily, "sharma_das_molr_from_mols");
 
     if spec.num_groups == group_size {
-        result.schedule.extend(molr_from_mols::row_fill_week(
-            spec.num_groups,
-            group_size,
-        ));
+        result
+            .schedule
+            .extend(molr_from_mols::row_fill_week(spec.num_groups, group_size));
         result.max_supported_weeks = result.schedule.len();
         result = result.add_operator(CompositionOperatorId::RecursiveTransversalLift);
     } else if spec.num_groups % group_size == 0 && (spec.num_groups / group_size) >= 2 {
@@ -1154,7 +1168,11 @@ pub(super) fn construct_molr_from_product_mols(
     }
 
     let improved_weeks = result.max_supported_weeks;
-    let result = result.with_quality(classify_quality(spec.num_groups, group_size, improved_weeks));
+    let result = result.with_quality(classify_quality(
+        spec.num_groups,
+        group_size,
+        improved_weeks,
+    ));
     if result.provenance.operators.is_empty() {
         result
     } else {
@@ -1332,10 +1350,12 @@ fn construct_max_schedule_recursive(
         }
         if num_groups % 2 == 0 {
             if let Some(seed) = exact_kirkman_seed_construction(num_groups / 2) {
-                return Some(construct_nearly_kirkman_triple_system_via_exact_kirkman_seed(
-                    seed,
-                    num_groups / 2,
-                ));
+                return Some(
+                    construct_nearly_kirkman_triple_system_via_exact_kirkman_seed(
+                        seed,
+                        num_groups / 2,
+                    ),
+                );
             }
         }
     }

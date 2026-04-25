@@ -312,7 +312,9 @@ fn solver5_solves_published_9_4_11_case() {
 fn solver5_solves_rbibd_15_8_17_case() {
     let input = pure_input(15, 8, 17);
     let solver = SearchEngine::new(&input.solver);
-    let result = solver.solve(&input).expect("rbibd catalog should solve 15-8-17");
+    let result = solver
+        .solve(&input)
+        .expect("rbibd catalog should solve 15-8-17");
 
     assert_eq!(result.final_score, 0.0);
     assert_eq!(result.schedule.len(), 17);
@@ -322,7 +324,14 @@ fn solver5_solves_rbibd_15_8_17_case() {
 fn solver5_solves_mols_catalog_cases() {
     let solver = SearchEngine::new(&pure_input(12, 6, 13).solver);
 
-    for (g, p, w) in [(12, 6, 13), (15, 3, 22), (14, 5, 14), (18, 4, 18), (18, 5, 18), (18, 6, 19)] {
+    for (g, p, w) in [
+        (12, 6, 13),
+        (15, 3, 22),
+        (14, 5, 14),
+        (18, 4, 18),
+        (18, 5, 18),
+        (18, 6, 19),
+    ] {
         let input = pure_input(g, p, w);
         let result = solver
             .solve(&input)

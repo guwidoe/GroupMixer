@@ -116,6 +116,9 @@ mod tests {
     #[test]
     fn tabu_policy_is_deterministic_for_fixed_swap() {
         let policy = RepeatAwareTabuPolicy::default();
-        assert_eq!(policy.tenure_for_swap(sample_swap()), policy.tenure_for_swap(sample_swap()));
+        assert_eq!(
+            policy.tenure_for_swap(sample_swap()),
+            policy.tenure_for_swap(sample_swap())
+        );
     }
 }
