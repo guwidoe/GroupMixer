@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::solver3::compiled_problem::CompiledProblem;
 
 use super::super::types::OracleTemplateCandidate;
@@ -7,6 +9,170 @@ use super::atoms::{
     ProjectionAtom, ProjectionAtomSet, SoftPairProjectionAtom,
 };
 use super::deadline::RelabelingSearchBudget;
+
+const UNMAPPED_PERSON_COST: f64 = 0.05;
+const UNMAPPED_SESSION_COST: f64 = 0.25;
+const UNMAPPED_SLOT_COST: f64 = 0.01;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum RelabelingAtomFamily {
+    Clique,
+    HardApart,
+    AttributeBalance,
+    ImmovableTriple,
+    PairMeeting,
+    SoftApart,
+    ShouldTogether,
+    Capacity,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct RelabelingConstraintKey {
+    family: RelabelingAtomFamily,
+    idx: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(super) struct RelabelingScore {
+    /// Lower is better; finite scenario-hard costs are intentionally tradeable against structure.
+    pub(super) total_cost: f64,
+    /// Higher is better and used by the current greedy scaffold.
+    pub(super) objective_value: f64,
+    pub(super) hard_compatibility_cost: f64,
+    pub(super) soft_penalty_cost: f64,
+    pub(super) mapping_incompleteness_cost: f64,
+    pub(super) structural_reward: f64,
+    pub(super) contact_reward: f64,
+    pub(super) mapping_reward: f64,
+    pub(super) hard: RelabelingHardBreakdown,
+    pub(super) soft: RelabelingSoftBreakdown,
+    pub(super) mapping: RelabelingMappingBreakdown,
+    pub(super) coverage: RelabelingCoverageBreakdown,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(super) struct RelabelingHardBreakdown {
+    pub(super) immovable_cost: f64,
+    pub(super) clique_cost: f64,
+    pub(super) hard_apart_cost: f64,
+    pub(super) capacity_cost: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(super) struct RelabelingSoftBreakdown {
+    pub(super) attribute_balance_penalty: f64,
+    pub(super) pair_meeting_penalty: f64,
+    pub(super) soft_pair_penalty: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+pub(super) struct RelabelingMappingBreakdown {
+    pub(super) mapped_people: usize,
+    pub(super) unmapped_people: usize,
+    pub(super) mapped_sessions: usize,
+    pub(super) unmapped_sessions: usize,
+    pub(super) mapped_slots: usize,
+    pub(super) unmapped_slots: usize,
+    pub(super) incompleteness_cost: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(super) struct RelabelingCoverageBreakdown {
+    pub(super) covered_constraint_units: usize,
+    pub(super) uncovered_constraint_units: usize,
+    pub(super) accepted_atom_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Default)]
+struct RelabelingScoreImpact {
+    hard_compatibility_cost: f64,
+    soft_penalty_cost: f64,
+    structural_reward: f64,
+    contact_reward: f64,
+    mapping_reward: f64,
+    hard: RelabelingHardBreakdown,
+    soft: RelabelingSoftBreakdown,
+}
+
+impl RelabelingScoreImpact {
+    fn total_cost(&self) -> f64 {
+        self.hard_compatibility_cost + self.soft_penalty_cost
+    }
+
+    fn structural_reward(value: f64) -> Self {
+        Self {
+            structural_reward: value.max(0.0),
+            ..Self::default()
+        }
+    }
+
+    fn hard_cost(family: RelabelingAtomFamily, value: f64) -> Self {
+        let value = value.max(0.0);
+        let mut impact = Self {
+            hard_compatibility_cost: value,
+            ..Self::default()
+        };
+        match family {
+            RelabelingAtomFamily::Clique => impact.hard.clique_cost = value,
+            RelabelingAtomFamily::HardApart => impact.hard.hard_apart_cost = value,
+            RelabelingAtomFamily::ImmovableTriple => impact.hard.immovable_cost = value,
+            RelabelingAtomFamily::Capacity => impact.hard.capacity_cost = value,
+            RelabelingAtomFamily::AttributeBalance
+            | RelabelingAtomFamily::PairMeeting
+            | RelabelingAtomFamily::SoftApart
+            | RelabelingAtomFamily::ShouldTogether => {}
+        }
+        impact
+    }
+
+    fn soft_cost(family: RelabelingAtomFamily, value: f64) -> Self {
+        let value = value.max(0.0);
+        let mut impact = Self {
+            soft_penalty_cost: value,
+            ..Self::default()
+        };
+        match family {
+            RelabelingAtomFamily::AttributeBalance => {
+                impact.soft.attribute_balance_penalty = value;
+            }
+            RelabelingAtomFamily::PairMeeting => impact.soft.pair_meeting_penalty = value,
+            RelabelingAtomFamily::SoftApart | RelabelingAtomFamily::ShouldTogether => {
+                impact.soft.soft_pair_penalty = value;
+            }
+            RelabelingAtomFamily::Clique
+            | RelabelingAtomFamily::HardApart
+            | RelabelingAtomFamily::ImmovableTriple
+            | RelabelingAtomFamily::Capacity => {}
+        }
+        impact
+    }
+}
+
+impl RelabelingScore {
+    fn apply(&mut self, impact: &RelabelingScoreImpact) {
+        self.hard_compatibility_cost += impact.hard_compatibility_cost;
+        self.soft_penalty_cost += impact.soft_penalty_cost;
+        self.structural_reward += impact.structural_reward;
+        self.contact_reward += impact.contact_reward;
+        self.mapping_reward += impact.mapping_reward;
+        self.hard.immovable_cost += impact.hard.immovable_cost;
+        self.hard.clique_cost += impact.hard.clique_cost;
+        self.hard.hard_apart_cost += impact.hard.hard_apart_cost;
+        self.hard.capacity_cost += impact.hard.capacity_cost;
+        self.soft.attribute_balance_penalty += impact.soft.attribute_balance_penalty;
+        self.soft.pair_meeting_penalty += impact.soft.pair_meeting_penalty;
+        self.soft.soft_pair_penalty += impact.soft.soft_pair_penalty;
+        self.recompute_totals();
+    }
+
+    fn recompute_totals(&mut self) {
+        self.total_cost = self.hard_compatibility_cost
+            + self.soft_penalty_cost
+            + self.mapping_incompleteness_cost;
+        self.objective_value =
+            self.structural_reward + self.contact_reward + self.mapping_reward - self.total_cost;
+    }
+}
 
 /// Best-effort relabeling search result.
 ///
@@ -32,7 +198,8 @@ pub(super) struct ProjectionRelabeling {
     oracle_session_by_real_session: Vec<Option<usize>>,
     real_group_by_oracle_session_group: Vec<Vec<Option<usize>>>,
     oracle_slot_by_real_session_group: Vec<Option<(usize, usize)>>,
-    score: f64,
+    covered_constraint_keys: Vec<RelabelingConstraintKey>,
+    score: RelabelingScore,
     accepted_atom_count: usize,
 }
 
@@ -51,7 +218,8 @@ impl ProjectionRelabeling {
                 None;
                 compiled.num_sessions * compiled.num_groups
             ],
-            score: 0.0,
+            covered_constraint_keys: Vec::new(),
+            score: RelabelingScore::default(),
             accepted_atom_count: 0,
         }
     }
@@ -101,10 +269,79 @@ impl ProjectionRelabeling {
         let Some(score) = score else {
             return false;
         };
-        next.score += score;
+        next.score.apply(&score);
+        next.cover_constraint(atom.constraint_key(compiled));
         next.accepted_atom_count += 1;
+        next.score.coverage.accepted_atom_count = next.accepted_atom_count;
         *self = next;
         true
+    }
+
+    fn cover_constraint(&mut self, key: RelabelingConstraintKey) {
+        if !self.covered_constraint_keys.contains(&key) {
+            self.covered_constraint_keys.push(key);
+            self.score.coverage.covered_constraint_units = self.covered_constraint_keys.len();
+        }
+    }
+
+    fn mapping_breakdown(&self) -> RelabelingMappingBreakdown {
+        let mapped_people = self
+            .real_person_by_oracle_person
+            .iter()
+            .filter(|mapping| mapping.is_some())
+            .count();
+        let mapped_sessions = self
+            .real_session_by_oracle_session
+            .iter()
+            .filter(|mapping| mapping.is_some())
+            .count();
+        let mapped_slots = self
+            .real_group_by_oracle_session_group
+            .iter()
+            .flatten()
+            .filter(|mapping| mapping.is_some())
+            .count();
+        let unmapped_people = self.real_person_by_oracle_person.len() - mapped_people;
+        let unmapped_sessions = self.real_session_by_oracle_session.len() - mapped_sessions;
+        let total_slots = self
+            .real_group_by_oracle_session_group
+            .iter()
+            .map(Vec::len)
+            .sum::<usize>();
+        let unmapped_slots = total_slots - mapped_slots;
+        RelabelingMappingBreakdown {
+            mapped_people,
+            unmapped_people,
+            mapped_sessions,
+            unmapped_sessions,
+            mapped_slots,
+            unmapped_slots,
+            incompleteness_cost: unmapped_people as f64 * UNMAPPED_PERSON_COST
+                + unmapped_sessions as f64 * UNMAPPED_SESSION_COST
+                + unmapped_slots as f64 * UNMAPPED_SLOT_COST,
+        }
+    }
+
+    fn score_with_uncovered_penalties(
+        &self,
+        uncovered_penalty_by_key: &BTreeMap<RelabelingConstraintKey, RelabelingScoreImpact>,
+    ) -> RelabelingScore {
+        let mut score = self.score.clone();
+        let mut uncovered_count = 0usize;
+        for (key, penalty) in uncovered_penalty_by_key {
+            if self.covered_constraint_keys.contains(&key) {
+                continue;
+            }
+            score.apply(&penalty);
+            uncovered_count += 1;
+        }
+        score.coverage.covered_constraint_units = self.covered_constraint_keys.len();
+        score.coverage.uncovered_constraint_units = uncovered_count;
+        score.coverage.accepted_atom_count = self.accepted_atom_count;
+        score.mapping = self.mapping_breakdown();
+        score.mapping_incompleteness_cost = score.mapping.incompleteness_cost;
+        score.recompute_totals();
+        score
     }
 
     fn try_accept_clique_atom(
@@ -112,7 +349,7 @@ impl ProjectionRelabeling {
         compiled: &CompiledProblem,
         candidate: &OracleTemplateCandidate,
         atom: &CliqueProjectionAtom,
-    ) -> Option<f64> {
+    ) -> Option<RelabelingScoreImpact> {
         if !self.bind_group_slot(
             compiled,
             candidate,
@@ -123,18 +360,22 @@ impl ProjectionRelabeling {
         ) {
             return None;
         }
-        Some((atom.required_people_count * atom.real_sessions.len()).max(1) as f64 * 10.0)
+        Some(RelabelingScoreImpact::structural_reward(
+            (atom.required_people_count * atom.real_sessions.len()).max(1) as f64 * 10.0,
+        ))
     }
 
     fn try_accept_hard_apart_atom(
         &mut self,
         candidate: &OracleTemplateCandidate,
         atom: &HardApartProjectionAtom,
-    ) -> Option<f64> {
+    ) -> Option<RelabelingScoreImpact> {
         if !self.bind_unordered_pair(candidate, atom.oracle_people, atom.real_people) {
             return None;
         }
-        Some(atom.real_sessions.len().max(1) as f64 * 5.0)
+        Some(RelabelingScoreImpact::structural_reward(
+            atom.real_sessions.len().max(1) as f64 * 5.0,
+        ))
     }
 
     fn try_accept_attribute_balance_atom(
@@ -142,7 +383,7 @@ impl ProjectionRelabeling {
         compiled: &CompiledProblem,
         candidate: &OracleTemplateCandidate,
         atom: &AttributeBalanceProjectionAtom,
-    ) -> Option<f64> {
+    ) -> Option<RelabelingScoreImpact> {
         if !self.bind_group_slot(
             compiled,
             candidate,
@@ -159,7 +400,9 @@ impl ProjectionRelabeling {
             .map(|&(_, count)| count as usize)
             .sum::<usize>()
             .max(1);
-        Some(atom.penalty_weight.max(0.0) * desired_people as f64)
+        Some(RelabelingScoreImpact::structural_reward(
+            atom.penalty_weight.max(0.0) * desired_people as f64,
+        ))
     }
 
     fn try_accept_immovable_atom(
@@ -167,7 +410,7 @@ impl ProjectionRelabeling {
         compiled: &CompiledProblem,
         candidate: &OracleTemplateCandidate,
         atom: &ImmovableTripleProjectionAtom,
-    ) -> Option<f64> {
+    ) -> Option<RelabelingScoreImpact> {
         if !self.bind_person(candidate, atom.oracle_person, atom.real_person) {
             return None;
         }
@@ -181,39 +424,52 @@ impl ProjectionRelabeling {
         ) {
             return None;
         }
-        Some(20.0)
+        Some(RelabelingScoreImpact::structural_reward(20.0))
     }
 
     fn try_accept_pair_meeting_atom(
         &mut self,
         candidate: &OracleTemplateCandidate,
         atom: &PairMeetingProjectionAtom,
-    ) -> Option<f64> {
+    ) -> Option<RelabelingScoreImpact> {
         if !self.bind_unordered_pair(candidate, atom.oracle_people, atom.real_people) {
             return None;
         }
-        let zero_penalty_reward = (atom.penalty_weight * (atom.target_meetings as f64 + 1.0)
-            - atom.projected_penalty)
+        let mut impact = RelabelingScoreImpact::soft_cost(
+            RelabelingAtomFamily::PairMeeting,
+            atom.projected_penalty,
+        );
+        impact.contact_reward = (atom.penalty_weight * (atom.target_meetings as f64 + 1.0)
+            + atom.real_sessions.len().max(1) as f64)
             .max(0.0);
-        Some(zero_penalty_reward + atom.real_sessions.len().max(1) as f64)
+        Some(impact)
     }
 
     fn try_accept_soft_pair_atom(
         &mut self,
         candidate: &OracleTemplateCandidate,
         atom: &SoftPairProjectionAtom,
-    ) -> Option<f64> {
+    ) -> Option<RelabelingScoreImpact> {
         if !self.bind_unordered_pair(candidate, atom.oracle_people, atom.real_people) {
             return None;
         }
-        let directional_reward = if atom.prefers_together {
-            atom.oracle_meetings as f64
+        let session_count = atom.oracle_session_positions.len() as f64;
+        let oracle_meetings = atom.oracle_meetings as f64;
+        let realized_penalty = if atom.prefers_together {
+            (session_count - oracle_meetings).max(0.0) * atom.penalty_weight.max(0.0)
         } else {
-            atom.oracle_session_positions
-                .len()
-                .saturating_sub(atom.oracle_meetings as usize) as f64
+            oracle_meetings * atom.penalty_weight.max(0.0)
         };
-        Some(atom.penalty_weight.max(0.0) * directional_reward.max(1.0))
+        let mut impact = RelabelingScoreImpact::soft_cost(
+            if atom.prefers_together {
+                RelabelingAtomFamily::ShouldTogether
+            } else {
+                RelabelingAtomFamily::SoftApart
+            },
+            realized_penalty,
+        );
+        impact.contact_reward = session_count.max(1.0) * atom.penalty_weight.max(0.0);
+        Some(impact)
     }
 
     fn try_accept_capacity_atom(
@@ -221,7 +477,7 @@ impl ProjectionRelabeling {
         compiled: &CompiledProblem,
         candidate: &OracleTemplateCandidate,
         atom: &CapacityProjectionAtom,
-    ) -> Option<f64> {
+    ) -> Option<RelabelingScoreImpact> {
         if !self.bind_group_slot(
             compiled,
             candidate,
@@ -232,7 +488,9 @@ impl ProjectionRelabeling {
         ) {
             return None;
         }
-        Some((atom.real_capacity.saturating_sub(atom.oracle_group_size) + 1) as f64)
+        Some(RelabelingScoreImpact::structural_reward(
+            (atom.real_capacity.saturating_sub(atom.oracle_group_size) + 1) as f64,
+        ))
     }
 
     fn bind_unordered_pair(
@@ -335,6 +593,85 @@ impl ProjectionRelabeling {
     }
 }
 
+impl ProjectionAtom {
+    fn constraint_key(&self, compiled: &CompiledProblem) -> RelabelingConstraintKey {
+        match self {
+            ProjectionAtom::Clique(atom) => RelabelingConstraintKey {
+                family: RelabelingAtomFamily::Clique,
+                idx: atom.clique_idx,
+            },
+            ProjectionAtom::HardApart(atom) => RelabelingConstraintKey {
+                family: RelabelingAtomFamily::HardApart,
+                idx: atom.constraint_idx,
+            },
+            ProjectionAtom::AttributeBalance(atom) => RelabelingConstraintKey {
+                family: RelabelingAtomFamily::AttributeBalance,
+                idx: atom.constraint_idx,
+            },
+            ProjectionAtom::ImmovableTriple(atom) => RelabelingConstraintKey {
+                family: RelabelingAtomFamily::ImmovableTriple,
+                idx: atom.constraint_idx,
+            },
+            ProjectionAtom::PairMeeting(atom) => RelabelingConstraintKey {
+                family: RelabelingAtomFamily::PairMeeting,
+                idx: atom.constraint_idx,
+            },
+            ProjectionAtom::SoftApart(atom) => RelabelingConstraintKey {
+                family: RelabelingAtomFamily::SoftApart,
+                idx: atom.constraint_idx,
+            },
+            ProjectionAtom::ShouldTogether(atom) => RelabelingConstraintKey {
+                family: RelabelingAtomFamily::ShouldTogether,
+                idx: atom.constraint_idx,
+            },
+            ProjectionAtom::Capacity(atom) => RelabelingConstraintKey {
+                family: RelabelingAtomFamily::Capacity,
+                idx: atom.real_session * compiled.num_groups + atom.real_group,
+            },
+        }
+    }
+
+    fn uncovered_penalty(&self, _compiled: &CompiledProblem) -> RelabelingScoreImpact {
+        match self {
+            ProjectionAtom::Clique(atom) => RelabelingScoreImpact::hard_cost(
+                RelabelingAtomFamily::Clique,
+                (atom.required_people_count * atom.real_sessions.len()).max(1) as f64 * 10.0,
+            ),
+            ProjectionAtom::HardApart(atom) => RelabelingScoreImpact::hard_cost(
+                RelabelingAtomFamily::HardApart,
+                atom.real_sessions.len().max(1) as f64 * 8.0,
+            ),
+            ProjectionAtom::AttributeBalance(atom) => RelabelingScoreImpact::soft_cost(
+                RelabelingAtomFamily::AttributeBalance,
+                atom.penalty_weight.max(0.0) * desired_people_count(&atom.desired_counts) as f64,
+            ),
+            ProjectionAtom::ImmovableTriple(_) => {
+                RelabelingScoreImpact::hard_cost(RelabelingAtomFamily::ImmovableTriple, 25.0)
+            }
+            ProjectionAtom::PairMeeting(atom) => RelabelingScoreImpact::soft_cost(
+                RelabelingAtomFamily::PairMeeting,
+                (atom.penalty_weight.max(0.0) * (atom.target_meetings as f64 + 1.0))
+                    .max(atom.projected_penalty),
+            ),
+            ProjectionAtom::SoftApart(atom) | ProjectionAtom::ShouldTogether(atom) => {
+                RelabelingScoreImpact::soft_cost(
+                    if atom.prefers_together {
+                        RelabelingAtomFamily::ShouldTogether
+                    } else {
+                        RelabelingAtomFamily::SoftApart
+                    },
+                    atom.penalty_weight.max(0.0)
+                        * atom.oracle_session_positions.len().max(1) as f64,
+                )
+            }
+            ProjectionAtom::Capacity(atom) => RelabelingScoreImpact::hard_cost(
+                RelabelingAtomFamily::Capacity,
+                (atom.oracle_group_size.saturating_sub(atom.real_capacity) + 1) as f64 * 4.0,
+            ),
+        }
+    }
+}
+
 pub(super) fn search_best_relabeling_within_budget(
     compiled: &CompiledProblem,
     candidate: &OracleTemplateCandidate,
@@ -342,6 +679,7 @@ pub(super) fn search_best_relabeling_within_budget(
     budget: RelabelingSearchBudget,
 ) -> TimedRelabelingSearchResult {
     let deadline = budget.start();
+    let uncovered_penalty_by_key = build_uncovered_penalty_by_key(compiled, atoms);
     let mut best = ProjectionRelabeling::empty(compiled, candidate);
     let mut timed_out = false;
     let mut atoms_considered = 0usize;
@@ -353,10 +691,14 @@ pub(super) fn search_best_relabeling_within_budget(
         }
         atoms_considered += 1;
         let mut next = best.clone();
-        if next.try_accept_atom(compiled, candidate, atom) && relabeling_is_better(&next, &best) {
+        if next.try_accept_atom(compiled, candidate, atom)
+            && relabeling_is_better_with_context(&next, &best, &uncovered_penalty_by_key)
+        {
             best = next;
         }
     }
+
+    best.score = best.score_with_uncovered_penalties(&uncovered_penalty_by_key);
 
     TimedRelabelingSearchResult {
         atoms_accepted: best.accepted_atom_count,
@@ -367,9 +709,44 @@ pub(super) fn search_best_relabeling_within_budget(
     }
 }
 
-fn relabeling_is_better(left: &ProjectionRelabeling, right: &ProjectionRelabeling) -> bool {
-    left.score > right.score
-        || (left.score == right.score && left.accepted_atom_count > right.accepted_atom_count)
+fn relabeling_is_better_with_context(
+    left: &ProjectionRelabeling,
+    right: &ProjectionRelabeling,
+    uncovered_penalty_by_key: &BTreeMap<RelabelingConstraintKey, RelabelingScoreImpact>,
+) -> bool {
+    let left_score = left.score_with_uncovered_penalties(uncovered_penalty_by_key);
+    let right_score = right.score_with_uncovered_penalties(uncovered_penalty_by_key);
+    left_score.objective_value > right_score.objective_value
+        || (left_score.objective_value == right_score.objective_value
+            && left.accepted_atom_count > right.accepted_atom_count)
+}
+
+fn build_uncovered_penalty_by_key(
+    compiled: &CompiledProblem,
+    atoms: &ProjectionAtomSet,
+) -> BTreeMap<RelabelingConstraintKey, RelabelingScoreImpact> {
+    let mut potential_by_key = BTreeMap::<RelabelingConstraintKey, RelabelingScoreImpact>::new();
+    for atom in atoms.iter() {
+        let key = atom.constraint_key(compiled);
+        let penalty = atom.uncovered_penalty(compiled);
+        potential_by_key
+            .entry(key)
+            .and_modify(|current| {
+                if penalty.total_cost() > current.total_cost() {
+                    *current = penalty.clone();
+                }
+            })
+            .or_insert(penalty);
+    }
+    potential_by_key
+}
+
+fn desired_people_count(desired_counts: &[(usize, u32)]) -> usize {
+    desired_counts
+        .iter()
+        .map(|&(_, count)| count as usize)
+        .sum::<usize>()
+        .max(1)
 }
 
 fn single_session(sessions: &[usize]) -> Option<usize> {
@@ -396,7 +773,7 @@ mod tests {
     use super::*;
     use crate::models::{ApiInput, Group, Objective, Person, ProblemDefinition, SolverKind};
     use crate::solver_support::construction::constraint_scenario_oracle::constraint_aware_projection::atoms::{
-        ImmovableTripleProjectionAtom, ProjectionAtom,
+        ImmovableTripleProjectionAtom, ProjectionAtom, SoftPairProjectionAtom,
     };
     use std::collections::HashMap;
 
@@ -477,6 +854,11 @@ mod tests {
         assert_eq!(result.atoms_considered, 0);
         assert_eq!(result.atoms_accepted, 0);
         assert!(result.best.is_shape_compatible(&compiled, &candidate));
+        assert_eq!(result.best.score.coverage.uncovered_constraint_units, 1);
+        assert!(result.best.score.hard_compatibility_cost > 0.0);
+        assert_eq!(result.best.score.mapping.mapped_people, 0);
+        assert!(result.best.score.mapping_incompleteness_cost > 0.0);
+        assert!(result.best.score.total_cost.is_finite());
     }
 
     #[test]
@@ -514,5 +896,87 @@ mod tests {
             result.best.real_group_by_oracle_session_group[0][0],
             Some(0)
         );
+        assert_eq!(result.best.score.coverage.covered_constraint_units, 1);
+        assert_eq!(result.best.score.coverage.uncovered_constraint_units, 0);
+        assert_eq!(result.best.score.hard_compatibility_cost, 0.0);
+        assert_eq!(result.best.score.mapping.mapped_people, 1);
+        assert_eq!(result.best.score.mapping.mapped_sessions, 1);
+        assert_eq!(result.best.score.mapping.mapped_slots, 1);
+        assert!(result.best.score.structural_reward > 0.0);
+    }
+
+    #[test]
+    fn incompatible_mapping_atom_is_rejected_but_scored_as_uncovered() {
+        let input = test_input();
+        let compiled = CompiledProblem::compile(&input).expect("compile");
+        let candidate = test_candidate();
+        let atoms = ProjectionAtomSet {
+            atoms: vec![
+                ProjectionAtom::ImmovableTriple(ImmovableTripleProjectionAtom {
+                    constraint_idx: 0,
+                    real_person: 0,
+                    real_session: 0,
+                    real_group: 0,
+                    oracle_person: 0,
+                    oracle_session_pos: 0,
+                    oracle_group_idx: 0,
+                }),
+                ProjectionAtom::ImmovableTriple(ImmovableTripleProjectionAtom {
+                    constraint_idx: 1,
+                    real_person: 1,
+                    real_session: 0,
+                    real_group: 1,
+                    oracle_person: 0,
+                    oracle_session_pos: 0,
+                    oracle_group_idx: 1,
+                }),
+            ],
+        };
+
+        let result = search_best_relabeling_within_budget(
+            &compiled,
+            &candidate,
+            &atoms,
+            RelabelingSearchBudget::unbounded(),
+        );
+
+        assert_eq!(result.atoms_considered, 2);
+        assert_eq!(result.atoms_accepted, 1);
+        assert_eq!(result.best.real_person_by_oracle_person[0], Some(0));
+        assert_eq!(result.best.score.coverage.covered_constraint_units, 1);
+        assert_eq!(result.best.score.coverage.uncovered_constraint_units, 1);
+        assert!(result.best.score.hard.immovable_cost > 0.0);
+    }
+
+    #[test]
+    fn accepted_soft_pair_atom_uses_real_penalty_weight() {
+        let input = test_input();
+        let compiled = CompiledProblem::compile(&input).expect("compile");
+        let candidate = test_candidate();
+        let atoms = ProjectionAtomSet {
+            atoms: vec![ProjectionAtom::ShouldTogether(SoftPairProjectionAtom {
+                constraint_idx: 0,
+                real_people: [0, 1],
+                real_sessions: vec![0, 1],
+                oracle_people: [0, 1],
+                oracle_session_positions: vec![0, 1],
+                penalty_weight: 3.0,
+                oracle_meetings: 0,
+                prefers_together: true,
+            })],
+        };
+
+        let result = search_best_relabeling_within_budget(
+            &compiled,
+            &candidate,
+            &atoms,
+            RelabelingSearchBudget::unbounded(),
+        );
+
+        assert_eq!(result.atoms_accepted, 1);
+        assert_eq!(result.best.score.coverage.covered_constraint_units, 1);
+        assert_eq!(result.best.score.coverage.uncovered_constraint_units, 0);
+        assert_eq!(result.best.score.soft.soft_pair_penalty, 6.0);
+        assert_eq!(result.best.score.contact_reward, 6.0);
     }
 }
