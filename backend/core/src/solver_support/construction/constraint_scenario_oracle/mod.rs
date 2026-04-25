@@ -29,7 +29,7 @@ pub(crate) use signals::{
 pub(crate) use template_candidates::generate_oracle_template_candidates;
 pub(crate) use types::{
     ConstraintScenarioOracleConstructionResult, ConstraintScenarioOracleOutcomeKind,
-    ConstraintScenarioOracleTelemetry, PureStructureOracleRequest,
+    ConstraintScenarioOracleTelemetry, OracleTemplateCandidate, PureStructureOracleRequest,
 };
 
 #[cfg(test)]
@@ -41,5 +41,5 @@ pub(crate) use signals::extract_constraint_scenario_signals;
 #[cfg(test)]
 pub(crate) use types::{
     ConstraintScenarioCandidate, ConstraintScenarioCandidateSource, ConstraintScenarioSignals,
-    OracleTemplateCandidate, OracleTemplateProjectionResult, PureStructureOracleSchedule,
+    OracleTemplateProjectionResult, PureStructureOracleSchedule,
 };

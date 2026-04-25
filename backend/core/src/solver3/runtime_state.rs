@@ -42,8 +42,8 @@ use crate::solver_support::construction::constraint_scenario_oracle::{
     generate_oracle_template_candidates, merge_projected_oracle_template_into_scaffold,
     project_oracle_schedule_to_template, repeat_pressure_is_relevant,
     ConstraintScenarioOracleConstructionResult, ConstraintScenarioOracleOutcomeKind,
-    ConstraintScenarioOracleTelemetry, PureStructureOracle, PureStructureOracleRequest,
-    Solver6PureStructureOracle,
+    ConstraintScenarioOracleTelemetry, OracleTemplateCandidate, PureStructureOracle,
+    PureStructureOracleRequest, Solver6PureStructureOracle,
 };
 use crate::solver_support::construction::{
     apply_baseline_construction_heuristic, apply_freedom_aware_construction_heuristic,
@@ -684,6 +684,28 @@ impl RuntimeState {
                 },
             });
         };
+        if !oracle_template_can_change_scaffold_under_merge_policy(
+            &self.compiled,
+            &scaffold.schedule,
+            &candidate,
+        ) {
+            return Ok(ConstraintScenarioOracleConstructionResult {
+                schedule: scaffold.schedule,
+                telemetry: ConstraintScenarioOracleTelemetry {
+                    outcome: ConstraintScenarioOracleOutcomeKind::ConstraintScenarioOnly,
+                    repeat_relevant: true,
+                    cs_run_count: 1,
+                    cs_best_score: Some(scaffold.score),
+                    cs_diversity: Some(0.0),
+                    rigid_placement_count: scaffold_mask.rigid_placement_count,
+                    flexible_placement_count: scaffold_mask.flexible_placement_count,
+                    oracle_template_sessions: candidate.num_sessions(),
+                    oracle_template_groups: candidate.num_groups,
+                    constructor_wall_ms: construction_elapsed_millis(started_at),
+                    ..ConstraintScenarioOracleTelemetry::default()
+                },
+            });
+        }
         ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
         let oracle_phase_started_at = construction_now();
         let oracle_schedule = Solver6PureStructureOracle.solve(&PureStructureOracleRequest {
@@ -1163,6 +1185,40 @@ fn classify_auto_constructor_failure(failure: &str) -> AutoConstructorOutcome {
     } else {
         AutoConstructorOutcome::FallbackBaseline
     }
+}
+
+pub(crate) fn oracle_template_can_change_scaffold_under_merge_policy(
+    compiled: &CompiledProblem,
+    scaffold: &PackedSchedule,
+    candidate: &OracleTemplateCandidate,
+) -> bool {
+    for (session_pos, &session_idx) in candidate.sessions.iter().enumerate() {
+        if !session_has_active_hard_apart_for_oracle_merge(compiled, session_idx) {
+            return true;
+        }
+        if candidate.groups_by_session[session_pos]
+            .iter()
+            .any(|&group_idx| {
+                scaffold[session_idx][group_idx].len()
+                    < compiled.group_capacity(session_idx, group_idx)
+            })
+        {
+            return true;
+        }
+    }
+    false
+}
+
+fn session_has_active_hard_apart_for_oracle_merge(
+    compiled: &CompiledProblem,
+    session_idx: usize,
+) -> bool {
+    compiled.hard_apart_pairs.iter().any(|pair| {
+        let (left, right) = pair.people;
+        compiled.person_participation[left][session_idx]
+            && compiled.person_participation[right][session_idx]
+            && compiled.hard_apart_active(session_idx, left, right)
+    })
 }
 
 fn ensure_constructor_budget_remaining(

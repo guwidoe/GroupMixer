@@ -42,7 +42,7 @@ use super::moves::{
     SwapMove, TransferFeasibility, TransferMove,
 };
 use super::oracle::check_drift;
-use super::runtime_state::RuntimeState;
+use super::runtime_state::{oracle_template_can_change_scaffold_under_merge_policy, RuntimeState};
 use super::scoring::recompute::recompute_oracle_score;
 use super::validation::invariants::validate_invariants;
 use crate::solver_support::construction::constraint_scenario_oracle::{
@@ -623,6 +623,46 @@ fn constraint_scenario_oracle_constructor_preserves_must_stay_apart() {
             "ConstraintScenarioOracleGuided placed a MustStayApart pair together in session {session_idx}"
         );
     }
+}
+
+#[test]
+fn constraint_scenario_oracle_constructor_skips_noop_full_hard_apart_template() {
+    let mut input = pure_sgp_solver3_input(2, 2, 2);
+    input.constraints.push(Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: None,
+    });
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let full_scaffold: PackedSchedule =
+        vec![vec![vec![0, 2], vec![1, 3]], vec![vec![0, 3], vec![1, 2]]];
+    let candidate = OracleTemplateCandidate {
+        sessions: vec![0, 1],
+        groups_by_session: vec![vec![0, 1], vec![0, 1]],
+        num_groups: 2,
+        group_size: 2,
+        oracle_capacity: 4,
+        stable_people_count: 4,
+        high_attendance_people_count: 4,
+        dummy_oracle_people: 0,
+        omitted_high_attendance_people: 0,
+        omitted_group_count: 0,
+        scaffold_disruption_risk: 0.0,
+        estimated_score: 1.0,
+    };
+
+    assert!(!oracle_template_can_change_scaffold_under_merge_policy(
+        &compiled,
+        &full_scaffold,
+        &candidate
+    ));
+
+    let underfilled_scaffold: PackedSchedule =
+        vec![vec![vec![0, 2], vec![1]], vec![vec![0, 3], vec![1, 2]]];
+    assert!(oracle_template_can_change_scaffold_under_merge_policy(
+        &compiled,
+        &underfilled_scaffold,
+        &candidate
+    ));
 }
 
 #[test]
