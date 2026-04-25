@@ -655,7 +655,7 @@ impl RuntimeState {
                     ..ConstraintScenarioOracleTelemetry::default()
                 },
             });
-        }
+        };
         ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
         let signals =
             extract_constraint_scenario_signals_from_scaffold(&self.compiled, &scaffold.schedule);
@@ -668,7 +668,13 @@ impl RuntimeState {
             &scaffold_mask,
         )
         .into_iter()
-        .next() else {
+        .find(|candidate| {
+            oracle_template_can_change_scaffold_under_merge_policy(
+                &self.compiled,
+                &scaffold.schedule,
+                candidate,
+            )
+        }) else {
             return Ok(ConstraintScenarioOracleConstructionResult {
                 schedule: scaffold.schedule,
                 telemetry: ConstraintScenarioOracleTelemetry {
@@ -684,28 +690,6 @@ impl RuntimeState {
                 },
             });
         };
-        if !oracle_template_can_change_scaffold_under_merge_policy(
-            &self.compiled,
-            &scaffold.schedule,
-            &candidate,
-        ) {
-            return Ok(ConstraintScenarioOracleConstructionResult {
-                schedule: scaffold.schedule,
-                telemetry: ConstraintScenarioOracleTelemetry {
-                    outcome: ConstraintScenarioOracleOutcomeKind::ConstraintScenarioOnly,
-                    repeat_relevant: true,
-                    cs_run_count: 1,
-                    cs_best_score: Some(scaffold.score),
-                    cs_diversity: Some(0.0),
-                    rigid_placement_count: scaffold_mask.rigid_placement_count,
-                    flexible_placement_count: scaffold_mask.flexible_placement_count,
-                    oracle_template_sessions: candidate.num_sessions(),
-                    oracle_template_groups: candidate.num_groups,
-                    constructor_wall_ms: construction_elapsed_millis(started_at),
-                    ..ConstraintScenarioOracleTelemetry::default()
-                },
-            });
-        }
         ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
         let oracle_phase_started_at = construction_now();
         let oracle_schedule = Solver6PureStructureOracle.solve(&PureStructureOracleRequest {
