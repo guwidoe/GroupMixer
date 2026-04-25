@@ -1,0 +1,1157 @@
+#!/usr/bin/env python3
+import argparse
+import html
+import json
+import math
+from pathlib import Path
+
+
+LAYER_CONFIG = {
+    "overview": {
+        "label": "Dual objective overview",
+        "summary_key": "linear_summary",
+        "status_key": "linear_status",
+        "description": "Each tiny square is split diagonally: upper-left is the linear-objective run, lower-right is the selected squared-objective result. The center glyph shows schedule relationship (= same/tight, → squared run improved, ! linear cost/failure).",
+    },
+    "linear": {
+        "label": "Linear lower-bound attainment",
+        "summary_key": "linear_summary",
+        "status_key": "linear_status",
+        "description": "Dark green = exact zero-repeat, green = lower-bound tight with nonzero repeats, red = miss, gray = unsupported / timeout / error / not-run.",
+    },
+    "squared": {
+        "label": "Squared instance lower-bound attainment",
+        "summary_key": "squared_summary",
+        "status_key": "squared_status",
+        "description": "Same visual grammar, but success is judged against the instance-level squared-repeat lower bound. Conditional repeat-concentration gaps remain visible in details.",
+    },
+    "agreement": {
+        "label": "Linear = squared schedule agreement",
+        "summary_key": "objective_agreement_summary",
+        "status_key": "objective_agreement_status",
+        "description": "Highlights weeks where the canonical linear-objective schedule is also the selected squared-objective schedule and both objective lower bounds are tight.",
+    },
+    "quadratic_delta": {
+        "label": "Quadratic score difference",
+        "summary_key": "linear_summary",
+        "status_key": "linear_status",
+        "description": "Per-week absolute squared-score difference between the linear run and the squared run/selected squared result. Perfect agreement is saturated green; nonzero differences fade from pale green through yellow to red.",
+    },
+    "linear_runtime": {
+        "label": "Linear runtime",
+        "summary_key": "linear_summary",
+        "status_key": "linear_status",
+        "description": "Per-week runtime of the linear-objective solver6 run. Fast runs are green; slower runs fade through yellow to red.",
+    },
+    "quadratic_runtime": {
+        "label": "Quadratic runtime",
+        "summary_key": "squared_summary",
+        "status_key": "squared_status",
+        "description": "Per-week runtime of the separate squared-objective solver6 run. Reused linear schedules are shown as zero-cost dark green; executed slower squared runs fade through yellow to red.",
+    },
+}
+
+
+def status_class(status: str) -> str:
+    return {
+        "exact": "week-exact",
+        "lower_bound_tight": "week-tight",
+        "miss": "week-miss",
+        "unsupported": "week-unavailable",
+        "timeout": "week-unavailable",
+        "error": "week-unavailable",
+        "not_run": "week-unavailable",
+        "same_schedule_both_tight": "week-tight",
+        "same_schedule": "week-same",
+        "different_schedule_same_scores": "week-same",
+        "squared_improves_with_no_linear_loss": "week-improve",
+        "squared_improves_with_linear_loss": "week-tradeoff",
+        "squared_run_did_not_improve": "week-miss",
+        "squared_run_failed": "week-unavailable",
+    }.get(status, "week-unavailable")
+
+
+def status_color(status: str) -> str:
+    return {
+        "exact": "var(--exact)",
+        "lower_bound_tight": "var(--tight)",
+        "miss": "var(--miss)",
+        "unsupported": "var(--na)",
+        "timeout": "var(--na)",
+        "error": "var(--na)",
+        "not_run": "var(--na)",
+    }.get(status, "var(--na)")
+
+
+def agreement_glyph(status: str) -> str:
+    return {
+        "same_schedule_both_tight": "=",
+        "same_schedule": "=",
+        "different_schedule_same_scores": "≈",
+        "squared_improves_with_no_linear_loss": "→",
+        "squared_improves_with_linear_loss": "!",
+        "squared_run_did_not_improve": "·",
+        "squared_run_failed": "!",
+        "not_run": "",
+    }.get(status, "·")
+
+
+def format_delta(value: int) -> str:
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M"
+    if value >= 1_000:
+        return f"{value / 1_000:.1f}k"
+    return str(value)
+
+
+def quadratic_delta_info(week):
+    linear_run = week.get("linear_run") or {}
+    linear_metrics = linear_run.get("final_metrics") or week.get("final_metrics")
+    squared_run = week.get("squared_run") or {}
+    selected = week.get("selected_squared_result") or {}
+    comparison_metrics = squared_run.get("final_metrics") or selected.get("final_metrics")
+    source = "squared_run" if squared_run.get("final_metrics") else selected.get("source", "none")
+    if not linear_metrics or not comparison_metrics:
+        return None
+    linear_score = int(linear_metrics.get("squared_repeat_excess") or 0)
+    quadratic_score = int(comparison_metrics.get("squared_repeat_excess") or 0)
+    signed_delta = linear_score - quadratic_score
+    return {
+        "linear_score": linear_score,
+        "quadratic_score": quadratic_score,
+        "signed_delta": signed_delta,
+        "abs_delta": abs(signed_delta),
+        "source": source,
+    }
+
+
+def max_quadratic_delta(artifact) -> int:
+    max_delta = 0
+    for matrix in artifact.get("matrices", []):
+        for cell in matrix.get("cells", []):
+            for week in cell.get("week_results", []):
+                info = quadratic_delta_info(week)
+                if info:
+                    max_delta = max(max_delta, info["abs_delta"])
+    return max_delta
+
+
+def gradient_color(value: float, max_value: float, *, exact_zero_distinct: bool = False) -> str:
+    if value == 0 and exact_zero_distinct:
+        return "#008a22"
+    if max_value <= 0:
+        t = 0.0
+    else:
+        t = math.log1p(value) / math.log1p(max_value)
+    # Nonzero values start at a pale yellow-green so exact zero/agreement can stand out.
+    # Low-end gradient color intentionally matches --tight / lower-bound-tight green
+    # so runtime/delta views align with the linear lower-bound legend.
+    low = (34, 197, 94)
+    mid = (234, 179, 8)
+    high = (239, 68, 68)
+    if t <= 0.5:
+        local_t = t * 2.0
+        start, end = low, mid
+    else:
+        local_t = (t - 0.5) * 2.0
+        start, end = mid, high
+    channel = lambda idx: round(start[idx] + (end[idx] - start[idx]) * local_t)
+    return f"rgb({channel(0)}, {channel(1)}, {channel(2)})"
+
+
+def delta_color(delta: int, max_delta: int) -> str:
+    return gradient_color(delta, max_delta, exact_zero_distinct=True)
+
+
+def runtime_seconds_for_week(week, runtime_layer):
+    if runtime_layer == "linear_runtime":
+        linear_run = week.get("linear_run") or {}
+        value = linear_run.get("runtime_seconds")
+        if value is None:
+            value = week.get("runtime_seconds")
+        return None if value is None else float(value)
+    if runtime_layer == "quadratic_runtime":
+        squared_run = week.get("squared_run")
+        if squared_run and squared_run.get("runtime_seconds") is not None:
+            return float(squared_run["runtime_seconds"])
+        if (week.get("selected_squared_result") or {}).get("source") == "linear_reused":
+            return 0.0
+        return None
+    raise ValueError(f"unknown runtime layer: {runtime_layer}")
+
+
+def max_runtime_seconds(artifact, runtime_layer):
+    max_runtime = 0.0
+    for matrix in artifact.get("matrices", []):
+        for cell in matrix.get("cells", []):
+            for week in cell.get("week_results", []):
+                runtime = runtime_seconds_for_week(week, runtime_layer)
+                if runtime is not None:
+                    max_runtime = max(max_runtime, runtime)
+    return max_runtime
+
+
+def format_runtime(seconds: float) -> str:
+    if seconds is None:
+        return "—"
+    if seconds >= 10:
+        return f"{seconds:.0f}s"
+    if seconds >= 1:
+        return f"{seconds:.1f}s"
+    return f"{seconds * 1000:.0f}ms"
+
+
+def build_cell_map(cells):
+    return {(cell["g"], cell["p"]): cell for cell in cells}
+
+
+def empty_summary():
+    return {
+        "contiguous_frontier": 0,
+        "best_observed_hit": 0,
+        "exact_week_count": 0,
+        "lower_bound_tight_week_count": 0,
+        "first_miss_week": None,
+        "headline_label": "—",
+    }
+
+
+def render_week_grid(cell, layer_key, week_cap, quadratic_delta_max=0):
+    if layer_key == "overview":
+        return render_dual_objective_week_grid(cell, week_cap)
+    if layer_key == "quadratic_delta":
+        return render_quadratic_delta_week_grid(cell, week_cap, quadratic_delta_max)
+    if layer_key in {"linear_runtime", "quadratic_runtime"}:
+        return render_runtime_week_grid(cell, week_cap, layer_key, quadratic_delta_max)
+    status_key = LAYER_CONFIG[layer_key]["status_key"]
+    rows = max(1, math.ceil(week_cap / 10))
+    total_slots = rows * 10
+    parts = [f"<div class='mini-grid mini-grid-rows-{rows}'>"]
+    for index in range(total_slots):
+        if index < len(cell["week_results"]):
+            week = cell["week_results"][index]
+            status = week.get(status_key, "not_run")
+            tooltip = f"week {week['week']}: {status.replace('_', ' ')}"
+            metrics = week.get("final_metrics")
+            if layer_key == "squared" and week.get("selected_squared_result"):
+                metrics = week["selected_squared_result"]["final_metrics"]
+                tooltip += f" | source={week['selected_squared_result']['source']}"
+            if layer_key == "agreement" and week.get("objective_relationship"):
+                rel = week["objective_relationship"]
+                tooltip += f" | same_schedule={rel['same_schedule']}"
+                if rel.get("squared_run_improved_squared_gap_by") is not None:
+                    tooltip += f" | Δsquared={rel['squared_run_improved_squared_gap_by']}"
+                if rel.get("squared_run_linear_gap_delta") is not None:
+                    tooltip += f" | Δlinear={rel['squared_run_linear_gap_delta']}"
+            if metrics:
+                tooltip += (
+                    f" | linear gap={metrics['linear_repeat_lower_bound_gap']}"
+                    f" | squared instance gap={metrics.get('squared_instance_lower_bound_gap', metrics['squared_repeat_lower_bound_gap'])}"
+                    f" | squared concentration gap={metrics.get('squared_concentration_lower_bound_gap', metrics['squared_repeat_lower_bound_gap'])}"
+                )
+            parts.append(
+                f"<span class='mini-week {status_class(status)}' title='{html.escape(tooltip)}'></span>"
+            )
+        else:
+            parts.append("<span class='mini-week mini-week-empty'></span>")
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def render_quadratic_delta_week_grid(cell, week_cap, quadratic_delta_max):
+    rows = max(1, math.ceil(week_cap / 10))
+    total_slots = rows * 10
+    parts = [f"<div class='mini-grid mini-grid-rows-{rows} quadratic-delta-grid'>"]
+    for index in range(total_slots):
+        if index < len(cell["week_results"]):
+            week = cell["week_results"][index]
+            info = quadratic_delta_info(week)
+            if info is None:
+                tooltip = f"week {week['week']}: no quadratic comparison available"
+                parts.append(
+                    f"<span class='mini-week week-unavailable' title='{html.escape(tooltip)}'></span>"
+                )
+                continue
+            color = delta_color(info["abs_delta"], quadratic_delta_max)
+            tooltip = (
+                f"week {week['week']}: |ΔQ|={info['abs_delta']}"
+                f" | signed ΔQ linear-quadratic={info['signed_delta']}"
+                f" | linear Q={info['linear_score']}"
+                f" | quadratic Q={info['quadratic_score']}"
+                f" | source={info['source']}"
+            )
+            parts.append(
+                "<span class='mini-week quadratic-delta-week' "
+                f"style='background:{color}' title='{html.escape(tooltip)}'></span>"
+            )
+        else:
+            parts.append("<span class='mini-week mini-week-empty'></span>")
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def render_runtime_week_grid(cell, week_cap, runtime_layer, max_runtime):
+    rows = max(1, math.ceil(week_cap / 10))
+    total_slots = rows * 10
+    parts = [f"<div class='mini-grid mini-grid-rows-{rows} runtime-grid'>"]
+    for index in range(total_slots):
+        if index < len(cell["week_results"]):
+            week = cell["week_results"][index]
+            runtime = runtime_seconds_for_week(week, runtime_layer)
+            if runtime is None:
+                tooltip = f"week {week['week']}: no runtime for {LAYER_CONFIG[runtime_layer]['label']}"
+                parts.append(
+                    f"<span class='mini-week week-unavailable' title='{html.escape(tooltip)}'></span>"
+                )
+                continue
+            color = gradient_color(runtime, max_runtime, exact_zero_distinct=True)
+            tooltip = f"week {week['week']}: runtime={format_runtime(runtime)} ({runtime:.6f}s)"
+            if runtime_layer == "quadratic_runtime" and runtime == 0:
+                tooltip += " | linear schedule reused; no separate squared run"
+            parts.append(
+                "<span class='mini-week runtime-week' "
+                f"style='background:{color}' title='{html.escape(tooltip)}'></span>"
+            )
+        else:
+            parts.append("<span class='mini-week mini-week-empty'></span>")
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def render_dual_objective_week_grid(cell, week_cap):
+    rows = max(1, math.ceil(week_cap / 10))
+    total_slots = rows * 10
+    parts = [f"<div class='mini-grid mini-grid-rows-{rows} dual-mini-grid'>"]
+    for index in range(total_slots):
+        if index < len(cell["week_results"]):
+            week = cell["week_results"][index]
+            linear_status = week.get("linear_status", "not_run")
+            squared_status = week.get("squared_status", "not_run")
+            agreement = week.get("objective_agreement_status", "not_run")
+            tooltip = (
+                f"week {week['week']}: linear={linear_status.replace('_', ' ')}"
+                f" | squared={squared_status.replace('_', ' ')}"
+                f" | relation={agreement.replace('_', ' ')}"
+            )
+            if week.get("objective_relationship"):
+                rel = week["objective_relationship"]
+                tooltip += f" | same_schedule={rel['same_schedule']}"
+                if rel.get("squared_run_improved_squared_gap_by") is not None:
+                    tooltip += f" | Δsquared={rel['squared_run_improved_squared_gap_by']}"
+                if rel.get("squared_run_linear_gap_delta") is not None:
+                    tooltip += f" | Δlinear={rel['squared_run_linear_gap_delta']}"
+            selected = week.get("selected_squared_result") or {}
+            metrics = selected.get("final_metrics") or week.get("final_metrics")
+            if metrics:
+                tooltip += (
+                    f" | linear gap={metrics['linear_repeat_lower_bound_gap']}"
+                    f" | squared instance gap={metrics.get('squared_instance_lower_bound_gap', metrics['squared_repeat_lower_bound_gap'])}"
+                )
+            parts.append(
+                "<span class='dual-mini-week' "
+                f"style='--linear-color:{status_color(linear_status)};--squared-color:{status_color(squared_status)}' "
+                f"title='{html.escape(tooltip)}'></span>"
+            )
+        else:
+            parts.append("<span class='mini-week mini-week-empty'></span>")
+    parts.append("</div>")
+    return "".join(parts)
+
+
+def render_outer_cell(cell, layer_key, week_cap, matrix_index, dense=False, quadratic_delta_max=0):
+    summary = cell.get(LAYER_CONFIG[layer_key]["summary_key"], empty_summary())
+    if layer_key == "quadratic_delta":
+        deltas = [
+            info["abs_delta"]
+            for week in cell.get("week_results", [])
+            if (info := quadratic_delta_info(week)) is not None
+        ]
+        max_delta = max(deltas) if deltas else 0
+        nonzero = sum(1 for delta in deltas if delta > 0)
+        headline = (
+            "<span class='headline-metric'>"
+            "<span class='headline-label'>max</span>"
+            f"<span>{html.escape(format_delta(max_delta))}</span>"
+            "</span>"
+            "<span class='headline-metric'>"
+            "<span class='headline-label'>nz</span>"
+            f"<span>{nonzero}</span>"
+            "</span>"
+        )
+        title = f"{cell['g']}-{cell['p']} | max |ΔQ|={max_delta} | nonzero weeks={nonzero}"
+    elif layer_key in {"linear_runtime", "quadratic_runtime"}:
+        runtimes = [
+            runtime
+            for week in cell.get("week_results", [])
+            if (runtime := runtime_seconds_for_week(week, layer_key)) is not None
+        ]
+        max_runtime = max(runtimes) if runtimes else None
+        total_runtime = sum(runtimes)
+        headline = (
+            "<span class='headline-metric'>"
+            "<span class='headline-label'>max</span>"
+            f"<span>{html.escape(format_runtime(max_runtime))}</span>"
+            "</span>"
+            "<span class='headline-metric'>"
+            "<span class='headline-label'>Σ</span>"
+            f"<span>{html.escape(format_runtime(total_runtime))}</span>"
+            "</span>"
+        )
+        title = f"{cell['g']}-{cell['p']} | max runtime={format_runtime(max_runtime)} | total runtime={format_runtime(total_runtime)}"
+    elif layer_key == "overview":
+        linear_summary = cell.get("linear_summary", empty_summary())
+        squared_summary = cell.get("squared_summary", empty_summary())
+        agreement_summary = cell.get("objective_agreement_summary", empty_summary())
+        headline = (
+            "<span class='headline-metric'>"
+            f"<span class='headline-label'>L</span><span>{html.escape(linear_summary['headline_label'])}</span>"
+            "</span>"
+            "<span class='headline-metric'>"
+            f"<span class='headline-label'>S</span><span>{html.escape(squared_summary['headline_label'])}</span>"
+            "</span>"
+            "<span class='headline-metric'>"
+            f"<span class='headline-label'>≡</span><span>{html.escape(agreement_summary['headline_label'])}</span>"
+            "</span>"
+        )
+        title = (
+            f"{cell['g']}-{cell['p']} | linear={linear_summary['headline_label']}"
+            f" | squared={squared_summary['headline_label']}"
+            f" | same_schedule={agreement_summary['headline_label']}"
+        )
+    else:
+        headline = summary["headline_label"]
+        title = (
+            f"{cell['g']}-{cell['p']} | frontier={summary['contiguous_frontier']}"
+            f" | best_observed={summary['best_observed_hit']}"
+            f" | exact_weeks={summary['exact_week_count']}"
+            f" | tight_weeks={summary['lower_bound_tight_week_count']}"
+        )
+    if cell.get("skip_reason"):
+        title += f" | {cell['skip_reason']}"
+    return (
+        f"<button class='outer-cell{' outer-cell-dense' if dense else ''}{' benchmark-skipped' if not cell['benchmark_eligible'] else ''}'"
+        f" title='{html.escape(title)}'"
+        f" data-matrix-index='{matrix_index}' data-g='{cell['g']}' data-p='{cell['p']}'>"
+        f"<div class='outer-cell-headline{' outer-cell-headline-overview' if layer_key in {'overview', 'quadratic_delta', 'linear_runtime', 'quadratic_runtime'} else ''}'>{headline if layer_key in {'overview', 'quadratic_delta', 'linear_runtime', 'quadratic_runtime'} else html.escape(headline)}</div>"
+        f"<div class='outer-cell-subtitle'>{cell['g']}-{cell['p']}</div>"
+        f"{render_week_grid(cell, layer_key, week_cap, quadratic_delta_max)}"
+        "</button>"
+    )
+
+
+def render_matrix_view(matrix, layer_key, week_cap, matrix_index, layer_scale_max=0):
+    bounds = matrix["bounds"]
+    width = bounds["p_max"] - bounds["p_min"] + 1
+    dense = width > 14
+    cell_map = build_cell_map(matrix["cells"])
+    parts = [
+        f"<section class='matrix-view{' matrix-view-dense' if dense else ''}'>",
+        f"<h2>{html.escape(matrix['title'])}</h2>",
+        f"<p class='meta'>{html.escape(matrix['subtitle'])}</p>",
+        "<div class='matrix-scroll'>",
+        f"<table class='outer-matrix{' outer-matrix-dense' if dense else ''}'><thead><tr><th>g\\p</th>",
+    ]
+    for p in range(bounds["p_min"], bounds["p_max"] + 1):
+        parts.append(f"<th>{p}</th>")
+    parts.append("</tr></thead><tbody>")
+    for g in range(bounds["g_min"], bounds["g_max"] + 1):
+        parts.append(f"<tr><th>{g}</th>")
+        for p in range(bounds["p_min"], bounds["p_max"] + 1):
+            cell = cell_map[(g, p)]
+            parts.append(
+                f"<td>{render_outer_cell(cell, layer_key, week_cap, matrix_index, dense, layer_scale_max)}</td>"
+            )
+        parts.append("</tr>")
+    parts.append("</tbody></table></div></section>")
+    return "".join(parts)
+
+
+def render_layer(artifact, layer_key):
+    week_cap = artifact["config"]["week_cap"]
+    config = LAYER_CONFIG[layer_key]
+    if layer_key == "quadratic_delta":
+        layer_scale_max = max_quadratic_delta(artifact)
+    elif layer_key in {"linear_runtime", "quadratic_runtime"}:
+        layer_scale_max = max_runtime_seconds(artifact, layer_key)
+    else:
+        layer_scale_max = 0
+    parts = [
+        f"<section class='layer-panel' data-layer='{layer_key}'>",
+        f"<p class='meta'>{html.escape(config['description'])}</p>",
+    ]
+    for idx, matrix in enumerate(artifact["matrices"]):
+        parts.append(render_matrix_view(matrix, layer_key, week_cap, idx, layer_scale_max))
+    parts.append("</section>")
+    return "".join(parts)
+
+
+def render_legends(quadratic_delta_max, linear_runtime_max, quadratic_runtime_max):
+    return f"""
+    <div class='legend-panel is-active' data-legend='overview'>
+      <span class='legend-chip'><span class='legend-swatch dual-legend-swatch' style='--linear-color:var(--tight);--squared-color:var(--tight)'></span>split square: upper-left linear, lower-right selected squared</span>
+      <span class='legend-chip'><span class='legend-swatch dual-legend-swatch' style='--linear-color:var(--tight);--squared-color:var(--miss)'></span>objectives differ on that week</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>unsupported / timeout / error / not-run</span>
+    </div>
+    <div class='legend-panel' data-legend='linear'>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--exact)'></span>exact zero-repeat linear result</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--tight)'></span>linear lower-bound tight</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--miss)'></span>linear miss</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>unsupported / timeout / error / not-run</span>
+    </div>
+    <div class='legend-panel' data-legend='squared'>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--exact)'></span>selected squared result has zero squared repeats</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--tight)'></span>selected squared result is instance-bound tight</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--miss)'></span>selected squared result misses instance bound</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>unsupported / timeout / error / not-run</span>
+    </div>
+    <div class='legend-panel' data-legend='agreement'>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--tight)'></span>same canonical schedule and both objectives tight</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--same)'></span>same/equivalent schedule but not both tight</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--improve)'></span>squared run improves without linear loss</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--tradeoff)'></span>squared run improves with linear tradeoff</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--miss)'></span>different / no useful squared improvement</span>
+    </div>
+    <div class='legend-panel' data-legend='quadratic_delta'>
+      <span class='legend-chip'><span class='legend-swatch' style='background:#008a22'></span>perfect quadratic-score agreement (|ΔQ| = 0)</span>
+      <span class='legend-chip'><span class='legend-swatch gradient-swatch'></span>nonzero |ΔQ|, lower-bound-tight green → yellow → red as difference grows</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>no comparison available</span>
+      <span class='legend-note'>Current max |ΔQ| scale: {format_delta(quadratic_delta_max)}</span>
+    </div>
+    <div class='legend-panel' data-legend='linear_runtime'>
+      <span class='legend-chip'><span class='legend-swatch gradient-swatch'></span>linear-run runtime, green → yellow → red as runtime grows</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:#008a22'></span>near-zero runtime</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>no runtime available</span>
+      <span class='legend-note'>Current max linear runtime scale: {format_runtime(linear_runtime_max)}</span>
+    </div>
+    <div class='legend-panel' data-legend='quadratic_runtime'>
+      <span class='legend-chip'><span class='legend-swatch gradient-swatch'></span>separate squared-run runtime, green → yellow → red as runtime grows</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:#008a22'></span>linear schedule reused; no separate squared run</span>
+      <span class='legend-chip'><span class='legend-swatch' style='background:var(--na)'></span>no squared runtime available</span>
+      <span class='legend-note'>Current max squared runtime scale: {format_runtime(quadratic_runtime_max)}</span>
+    </div>
+    """
+
+
+def render_html(artifact):
+    config = artifact["config"]
+    quadratic_delta_max = max_quadratic_delta(artifact)
+    linear_runtime_max = max_runtime_seconds(artifact, "linear_runtime")
+    quadratic_runtime_max = max_runtime_seconds(artifact, "quadratic_runtime")
+    embedded_json = json.dumps(artifact)
+    return f"""<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta charset='utf-8'>
+  <title>solver6 optimality frontier report</title>
+  <style>
+    :root {{
+      color-scheme: light dark;
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --panel-3: #0b1220;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --line: #334155;
+      --exact: #166534;
+      --tight: #22c55e;
+      --miss: #ef4444;
+      --tradeoff: #eab308;
+      --improve: #38bdf8;
+      --same: #a3e635;
+      --na: #64748b;
+      --na2: #475569;
+      --accent: #38bdf8;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      padding: 24px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }}
+    h1, h2, h3, p {{ margin-top: 0; }}
+    .meta {{ color: var(--muted); }}
+    .header-card, .legend-card {{
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+    }}
+    .config-grid, .summary-grid {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }}
+    .config-item, .summary-card {{
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(148,163,184,0.2);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }}
+    .config-item .label, .summary-card .label {{ display:block; color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }}
+    .config-item .value, .summary-card .value {{ font-weight: 600; }}
+    .tab-row {{ display:flex; flex-wrap: wrap; gap:10px; margin: 18px 0; }}
+    .tab-button {{
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-weight: 600;
+    }}
+    .tab-button.is-active {{ border-color: #22c55e; box-shadow: 0 0 0 1px rgba(34,197,94,0.35) inset; }}
+    .layer-panel {{ display:none; }}
+    .layer-panel.is-active {{ display:block; }}
+    .legend-panel {{ display: none; }}
+    .legend-panel.is-active {{ display: block; }}
+    .legend-chip {{ display:inline-flex; align-items:center; gap:8px; margin-right:16px; margin-bottom:8px; }}
+    .legend-swatch {{ width:16px; height:16px; border-radius:4px; display:inline-block; border:1px solid rgba(255,255,255,0.15); flex: 0 0 auto; }}
+    .dual-legend-swatch {{ background: linear-gradient(135deg, var(--linear-color) 0 48%, rgba(15,23,42,0.9) 48% 52%, var(--squared-color) 52% 100%); }}
+    .gradient-swatch {{ width: 72px; background: linear-gradient(90deg, var(--tight), var(--tradeoff), var(--miss)); }}
+    .legend-note {{ color: var(--muted); font-size: 12px; }}
+    .matrix-scroll {{ width: 100%; overflow-x: auto; overflow-y: visible; contain: layout paint; }}
+    table.outer-matrix {{ border-collapse: collapse; width: max-content; min-width: 100%; table-layout: fixed; margin-bottom: 28px; }}
+    table.outer-matrix th, table.outer-matrix td {{ border: 1px solid var(--line); padding: 6px; text-align: center; vertical-align: top; width: 86px; min-width: 86px; max-width: 86px; }}
+    table.outer-matrix th:first-child, table.outer-matrix td:first-child {{ width: 58px; min-width: 58px; max-width: 58px; }}
+    table.outer-matrix-dense th, table.outer-matrix-dense td {{ padding: 3px; width: 76px; min-width: 76px; max-width: 76px; }}
+    table.outer-matrix-dense th:first-child, table.outer-matrix-dense td:first-child {{ width: 52px; min-width: 52px; max-width: 52px; }}
+    table.outer-matrix th {{ color: var(--muted); background: rgba(255,255,255,0.02); font-weight: 600; }}
+    .outer-cell {{
+      width: 100%;
+      min-height: 112px;
+      background: var(--panel);
+      border: 1px solid rgba(148,163,184,0.22);
+      border-radius: 12px;
+      color: var(--text);
+      padding: 8px;
+      cursor: pointer;
+      transition: transform .08s ease, border-color .08s ease;
+      overflow: hidden;
+    }}
+    .outer-cell-dense {{ min-height: 76px; padding: 4px; border-radius: 9px; }}
+    .outer-cell:hover {{ border-color: rgba(56,189,248,0.65); transform: translateY(-1px); }}
+    .outer-cell-subtitle {{ color: var(--muted); font-size: 12px; margin-bottom: 6px; }}
+    .outer-cell-dense .outer-cell-subtitle {{ font-size: 10px; margin-bottom: 3px; }}
+    .outer-cell-headline {{ font-size: 24px; font-weight: 800; line-height: 1; margin-bottom: 4px; white-space: nowrap; }}
+    .outer-cell-headline-overview {{ display: grid; grid-template-columns: auto max-content; justify-content: center; column-gap: 4px; row-gap: 1px; font-size: 11px; line-height: 1.05; white-space: normal; letter-spacing: 0; }}
+    .headline-metric {{ display: contents; }}
+    .headline-label {{ color: #bae6fd; text-align: right; font-weight: 900; }}
+    .outer-cell-dense .outer-cell-headline {{ font-size: 16px; margin-bottom: 2px; }}
+    .outer-cell-dense .outer-cell-headline-overview {{ font-size: 9px; column-gap: 3px; }}
+    .benchmark-skipped .outer-cell-headline {{ color: #cbd5e1; }}
+    .mini-grid, .large-grid {{
+      display: grid;
+      grid-template-columns: repeat(10, minmax(0, 1fr));
+      gap: 2px;
+      margin-top: 6px;
+    }}
+    .outer-cell-dense .mini-grid {{ gap: 1px; margin-top: 3px; }}
+    .mini-week {{ aspect-ratio: 1 / 1; border-radius: 2px; background: var(--na); }}
+    .mini-week-empty {{ background: transparent; }}
+    .week-exact {{ background: var(--exact); }}
+    .week-tight {{ background: var(--tight); }}
+    .week-miss {{ background: var(--miss); }}
+    .week-tradeoff {{ background: var(--tradeoff); }}
+    .week-improve {{ background: var(--improve); }}
+    .week-same {{ background: var(--same); }}
+    .week-unavailable {{ background: var(--na); }}
+    .quadratic-delta-week, .runtime-week {{ box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16); }}
+    .dual-mini-week, .dual-large-week {{
+      aspect-ratio: 1 / 1;
+      border-radius: 3px;
+      position: relative;
+      display: block;
+      background: linear-gradient(135deg, var(--linear-color) 0 48%, rgba(15,23,42,0.9) 48% 52%, var(--squared-color) 52% 100%);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16);
+      overflow: hidden;
+    }}
+    .dual-large-week {{ border-radius: 6px; }}
+    .dual-glyph {{
+      position: absolute;
+      inset: 50% auto auto 50%;
+      transform: translate(-50%, -50%);
+      min-width: 11px;
+      height: 11px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(2,6,23,0.78);
+      color: white;
+      font-size: 8px;
+      font-weight: 900;
+      line-height: 1;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+    }}
+    .outer-cell-dense .dual-glyph {{ min-width: 9px; height: 9px; font-size: 7px; }}
+    .dual-large-week .dual-glyph {{ min-width: 20px; height: 20px; font-size: 13px; }}
+    .modal-backdrop {{
+      position: fixed;
+      inset: 0;
+      background: rgba(2,6,23,0.78);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 1000;
+    }}
+    .modal-backdrop.is-open {{ display: flex; }}
+    .detail-modal {{
+      width: min(1400px, 100%);
+      max-height: 92vh;
+      overflow: auto;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    }}
+    .detail-header {{ display:flex; justify-content:space-between; gap:12px; align-items:flex-start; margin-bottom: 14px; }}
+    .close-button {{
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }}
+    .detail-layout {{ display:grid; grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); gap: 18px; }}
+    .detail-card {{ background: var(--panel-3); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 14px; }}
+    .large-week {{ aspect-ratio: 1 / 1; border-radius: 6px; position: relative; min-width: 0; }}
+    .large-week-label {{ position:absolute; inset:auto 4px 4px auto; font-size: 10px; color: rgba(255,255,255,0.85); font-weight: 700; }}
+    .large-week.empty .large-week-label {{ display:none; }}
+    .detail-table-wrap {{ overflow: auto; max-height: 62vh; }}
+    table.detail-table {{ border-collapse: collapse; width: 100%; min-width: 980px; }}
+    table.detail-table th, table.detail-table td {{ border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }}
+    table.detail-table th {{ background: rgba(255,255,255,0.03); position: sticky; top: 0; }}
+    .pill {{ display:inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid rgba(148,163,184,0.25); }}
+    .pill-exact {{ background: rgba(22,101,52,0.35); }}
+    .pill-tight {{ background: rgba(34,197,94,0.22); }}
+    .pill-miss {{ background: rgba(239,68,68,0.18); }}
+    .pill-na {{ background: rgba(100,116,139,0.25); }}
+    .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }}
+    .contribution-note {{ color: var(--muted); font-size: 12px; line-height: 1.4; }}
+    @media (max-width: 980px) {{
+      .detail-layout {{ grid-template-columns: 1fr; }}
+    }}
+  </style>
+</head>
+<body>
+  <section class='header-card'>
+    <h1>solver6 optimality frontier report</h1>
+    <p class='meta'>Outer cells summarize week-sweep lower-bound attainment. Each cell embeds its own tiny week matrix, keeping the week axis visible instead of collapsing it into a single scalar.</p>
+    <div class='config-grid'>
+      <div class='config-item'><span class='label'>week cap</span><span class='value'>{config['week_cap']}</span></div>
+      <div class='config-item'><span class='label'>max people to run</span><span class='value'>{config['max_people_to_run']}</span></div>
+      <div class='config-item'><span class='label'>effective seed</span><span class='value'>{config['effective_seed']}</span></div>
+      <div class='config-item'><span class='label'>active penalty model</span><span class='value'>{html.escape(config['active_penalty_model'])}</span></div>
+      <div class='config-item'><span class='label'>max iterations</span><span class='value'>{config['max_iterations']}</span></div>
+      <div class='config-item'><span class='label'>time limit</span><span class='value'>{config['time_limit_seconds']}s</span></div>
+    </div>
+  </section>
+  <section class='legend-card'>
+    <h2>Legend</h2>
+    {render_legends(quadratic_delta_max, linear_runtime_max, quadratic_runtime_max)}
+  </section>
+  <div class='tab-row'>
+    <button class='tab-button is-active' data-layer-target='overview'>{html.escape(LAYER_CONFIG['overview']['label'])}</button>
+    <button class='tab-button' data-layer-target='linear'>{html.escape(LAYER_CONFIG['linear']['label'])}</button>
+    <button class='tab-button' data-layer-target='squared'>{html.escape(LAYER_CONFIG['squared']['label'])}</button>
+    <button class='tab-button' data-layer-target='agreement'>{html.escape(LAYER_CONFIG['agreement']['label'])}</button>
+    <button class='tab-button' data-layer-target='quadratic_delta'>{html.escape(LAYER_CONFIG['quadratic_delta']['label'])}</button>
+    <button class='tab-button' data-layer-target='linear_runtime'>{html.escape(LAYER_CONFIG['linear_runtime']['label'])}</button>
+    <button class='tab-button' data-layer-target='quadratic_runtime'>{html.escape(LAYER_CONFIG['quadratic_runtime']['label'])}</button>
+  </div>
+  <div id='report-root'>
+    {render_layer(artifact, 'overview')}
+    {render_layer(artifact, 'linear')}
+    {render_layer(artifact, 'squared')}
+    {render_layer(artifact, 'agreement')}
+    {render_layer(artifact, 'quadratic_delta')}
+    {render_layer(artifact, 'linear_runtime')}
+    {render_layer(artifact, 'quadratic_runtime')}
+  </div>
+  <div class='modal-backdrop' id='detail-backdrop'>
+    <div class='detail-modal'>
+      <div class='detail-header'>
+        <div>
+          <h2 id='detail-title'>cell detail</h2>
+          <p class='meta' id='detail-subtitle'></p>
+        </div>
+        <button class='close-button' id='detail-close'>Close</button>
+      </div>
+      <div id='detail-body'></div>
+    </div>
+  </div>
+  <script>
+    const ARTIFACT = {embedded_json};
+    const LAYER_CONFIG = {json.dumps(LAYER_CONFIG)};
+    const QUADRATIC_DELTA_MAX = {quadratic_delta_max};
+    const LINEAR_RUNTIME_MAX = {linear_runtime_max};
+    const QUADRATIC_RUNTIME_MAX = {quadratic_runtime_max};
+    const tabs = document.querySelectorAll('.tab-button');
+    const panels = document.querySelectorAll('.layer-panel');
+    const legendPanels = document.querySelectorAll('.legend-panel');
+    const backdrop = document.getElementById('detail-backdrop');
+    const detailTitle = document.getElementById('detail-title');
+    const detailSubtitle = document.getElementById('detail-subtitle');
+    const detailBody = document.getElementById('detail-body');
+    let currentLayer = 'overview';
+
+    function setLayer(layer) {{
+      currentLayer = layer;
+      tabs.forEach(btn => btn.classList.toggle('is-active', btn.dataset.layerTarget === layer));
+      panels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.layer === layer));
+      legendPanels.forEach(panel => panel.classList.toggle('is-active', panel.dataset.legend === layer));
+    }}
+
+    function statusClass(status) {{
+      return {{
+        exact: 'week-exact',
+        lower_bound_tight: 'week-tight',
+        miss: 'week-miss',
+        unsupported: 'week-unavailable',
+        timeout: 'week-unavailable',
+        error: 'week-unavailable',
+        not_run: 'week-unavailable',
+        same_schedule_both_tight: 'week-tight',
+        same_schedule: 'week-same',
+        different_schedule_same_scores: 'week-same',
+        squared_improves_with_no_linear_loss: 'week-improve',
+        squared_improves_with_linear_loss: 'week-tradeoff',
+        squared_run_did_not_improve: 'week-miss',
+        squared_run_failed: 'week-unavailable',
+      }}[status] || 'week-unavailable';
+    }}
+
+    function statusColor(status) {{
+      return {{
+        exact: 'var(--exact)',
+        lower_bound_tight: 'var(--tight)',
+        miss: 'var(--miss)',
+        unsupported: 'var(--na)',
+        timeout: 'var(--na)',
+        error: 'var(--na)',
+        not_run: 'var(--na)',
+      }}[status] || 'var(--na)';
+    }}
+
+    function formatDelta(value) {{
+      if (value >= 1000000) return `${{(value / 1000000).toFixed(1)}}M`;
+      if (value >= 1000) return `${{(value / 1000).toFixed(1)}}k`;
+      return String(value);
+    }}
+
+    function formatRuntime(seconds) {{
+      if (seconds === null || seconds === undefined) return '—';
+      if (seconds >= 10) return `${{seconds.toFixed(0)}}s`;
+      if (seconds >= 1) return `${{seconds.toFixed(1)}}s`;
+      return `${{(seconds * 1000).toFixed(0)}}ms`;
+    }}
+
+    function gradientColor(value, maxValue, exactZeroDistinct = false) {{
+      if (value === 0 && exactZeroDistinct) return '#008a22';
+      const t = maxValue <= 0 ? 0 : Math.log1p(value) / Math.log1p(maxValue);
+      const low = [34, 197, 94];
+      const mid = [234, 179, 8];
+      const high = [239, 68, 68];
+      const localT = t <= 0.5 ? t * 2 : (t - 0.5) * 2;
+      const start = t <= 0.5 ? low : mid;
+      const end = t <= 0.5 ? mid : high;
+      const channel = idx => Math.round(start[idx] + (end[idx] - start[idx]) * localT);
+      return `rgb(${{channel(0)}}, ${{channel(1)}}, ${{channel(2)}})`;
+    }}
+
+    function deltaColor(delta, maxDelta) {{
+      return gradientColor(delta, maxDelta, true);
+    }}
+
+    function runtimeSecondsForWeek(week, layer) {{
+      if (layer === 'linear_runtime') {{
+        const value = (week.linear_run && week.linear_run.runtime_seconds) ?? week.runtime_seconds;
+        return value === null || value === undefined ? null : Number(value);
+      }}
+      if (layer === 'quadratic_runtime') {{
+        if (week.squared_run && week.squared_run.runtime_seconds !== null && week.squared_run.runtime_seconds !== undefined) {{
+          return Number(week.squared_run.runtime_seconds);
+        }}
+        if (week.selected_squared_result && week.selected_squared_result.source === 'linear_reused') return 0;
+        return null;
+      }}
+      return null;
+    }}
+
+    function quadraticDeltaInfo(week) {{
+      const linearMetrics = (week.linear_run && week.linear_run.final_metrics) || week.final_metrics;
+      const squaredRunMetrics = week.squared_run && week.squared_run.final_metrics;
+      const selectedMetrics = week.selected_squared_result && week.selected_squared_result.final_metrics;
+      const comparisonMetrics = squaredRunMetrics || selectedMetrics;
+      const source = squaredRunMetrics ? 'squared_run' : ((week.selected_squared_result && week.selected_squared_result.source) || 'none');
+      if (!linearMetrics || !comparisonMetrics) return null;
+      const linearScore = linearMetrics.squared_repeat_excess || 0;
+      const quadraticScore = comparisonMetrics.squared_repeat_excess || 0;
+      const signedDelta = linearScore - quadraticScore;
+      return {{ linearScore, quadraticScore, signedDelta, absDelta: Math.abs(signedDelta), source }};
+    }}
+
+    function agreementGlyph(status) {{
+      return {{
+        same_schedule_both_tight: '=',
+        same_schedule: '=',
+        different_schedule_same_scores: '≈',
+        squared_improves_with_no_linear_loss: '→',
+        squared_improves_with_linear_loss: '!',
+        squared_run_did_not_improve: '·',
+        squared_run_failed: '!',
+        not_run: '',
+      }}[status] || '·';
+    }}
+
+    function statusPill(status) {{
+      const label = status.replace(/_/g, ' ');
+      const cls = status === 'exact'
+        ? 'pill pill-exact'
+        : status === 'lower_bound_tight'
+        ? 'pill pill-tight'
+        : status === 'miss'
+        ? 'pill pill-miss'
+        : status === 'same_schedule_both_tight'
+        ? 'pill pill-tight'
+        : status === 'squared_improves_with_no_linear_loss'
+        ? 'pill pill-exact'
+        : 'pill pill-na';
+      return `<span class="${{cls}}">${{label}}</span>`;
+    }}
+
+    function contributionNarrative(week) {{
+      if (!week.seed_metrics || !week.final_metrics) {{
+        return week.error_message || 'no benchmark data';
+      }}
+      const seedLinearGap = week.seed_metrics.linear_repeat_lower_bound_gap;
+      const finalLinearGap = week.final_metrics.linear_repeat_lower_bound_gap;
+      const seedSquaredGap = week.seed_metrics.squared_instance_lower_bound_gap ?? week.seed_metrics.squared_repeat_lower_bound_gap;
+      const finalSquaredGap = week.final_metrics.squared_instance_lower_bound_gap ?? week.final_metrics.squared_repeat_lower_bound_gap;
+      if (seedLinearGap === 0 && finalLinearGap === 0 && seedSquaredGap === 0 && finalSquaredGap === 0) {{
+        return 'seed already tight; search only needed to confirm / preserve the optimum';
+      }}
+      if (seedLinearGap === 0 && finalLinearGap === 0) {{
+        return 'seed already hit the linear bound before local search';
+      }}
+      if (finalLinearGap === 0 && seedLinearGap > 0) {{
+        return 'local search closed the remaining linear lower-bound gap';
+      }}
+      if (finalLinearGap < seedLinearGap || finalSquaredGap < seedSquaredGap) {{
+        return 'local search improved the seed but did not close every gap';
+      }}
+      if (finalLinearGap === seedLinearGap && finalSquaredGap === seedSquaredGap) {{
+        return 'search failed to improve the seed materially';
+      }}
+      return 'search changed the incumbent, but the final result is not better on every tracked gap';
+    }}
+
+    function emptySummary() {{
+      return {{ contiguous_frontier: 0, best_observed_hit: 0, exact_week_count: 0, lower_bound_tight_week_count: 0, first_miss_week: null, headline_label: '—' }};
+    }}
+
+    function renderLargeGrid(cell, layer) {{
+      const statusKey = LAYER_CONFIG[layer].status_key;
+      const weekCap = ARTIFACT.config.week_cap;
+      const rows = Math.max(1, Math.ceil(weekCap / 10));
+      const totalSlots = rows * 10;
+      let html = `<div class="large-grid">`;
+      for (let index = 0; index < totalSlots; index += 1) {{
+        if (index < cell.week_results.length) {{
+          const week = cell.week_results[index];
+          if (layer === 'overview') {{
+            const linearStatus = week.linear_status || 'not_run';
+            const squaredStatus = week.squared_status || 'not_run';
+            const agreement = week.objective_agreement_status || 'not_run';
+            html += `<div class="dual-large-week" style="--linear-color:${'{'}statusColor(linearStatus){'}'};--squared-color:${'{'}statusColor(squaredStatus){'}'}" title="week ${'{'}week.week{'}'}: linear=${'{'}linearStatus.replace(/_/g, ' '){'}'} | squared=${'{'}squaredStatus.replace(/_/g, ' '){'}'} | relation=${'{'}agreement.replace(/_/g, ' '){'}'}"><span class="dual-glyph">${'{'}agreementGlyph(agreement){'}'}</span><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+          }} else if (layer === 'quadratic_delta') {{
+            const info = quadraticDeltaInfo(week);
+            if (info) {{
+              const title = `week ${'{'}week.week{'}'}: |ΔQ|=${'{'}info.absDelta{'}'} | signed ΔQ linear-quadratic=${'{'}info.signedDelta{'}'} | linear Q=${'{'}info.linearScore{'}'} | quadratic Q=${'{'}info.quadraticScore{'}'} | source=${'{'}info.source{'}'}`;
+              html += `<div class="large-week quadratic-delta-week" style="background:${'{'}deltaColor(info.absDelta, QUADRATIC_DELTA_MAX){'}'}" title="${'{'}title{'}'}"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+            }} else {{
+              html += `<div class="large-week week-unavailable" title="week ${'{'}week.week{'}'}: no quadratic comparison"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+            }}
+          }} else if (layer === 'linear_runtime' || layer === 'quadratic_runtime') {{
+            const runtime = runtimeSecondsForWeek(week, layer);
+            const maxRuntime = layer === 'linear_runtime' ? LINEAR_RUNTIME_MAX : QUADRATIC_RUNTIME_MAX;
+            if (runtime !== null) {{
+              const reused = layer === 'quadratic_runtime' && runtime === 0 ? ' | linear schedule reused; no separate squared run' : '';
+              const title = `week ${'{'}week.week{'}'}: runtime=${'{'}formatRuntime(runtime){'}'} (${'{'}runtime.toFixed(6){'}'}s)${'{'}reused{'}'}`;
+              html += `<div class="large-week runtime-week" style="background:${'{'}gradientColor(runtime, maxRuntime, true){'}'}" title="${'{'}title{'}'}"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+            }} else {{
+              html += `<div class="large-week week-unavailable" title="week ${'{'}week.week{'}'}: no runtime available"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+            }}
+          }} else {{
+            const status = week[statusKey] || 'not_run';
+            html += `<div class="large-week ${'{'}statusClass(status){'}'}" title="week ${'{'}week.week{'}'}: ${'{'}status.replace(/_/g, ' '){'}'}"><span class="large-week-label">${'{'}week.week{'}'}</span></div>`;
+          }}
+        }} else {{
+          html += `<div class="large-week empty week-unavailable"></div>`;
+        }}
+      }}
+      html += `</div>`;
+      return html;
+    }}
+
+    function metricText(value) {{
+      return value == null ? '—' : String(value);
+    }}
+
+    function renderWeekRows(cell, layer) {{
+      const statusKey = LAYER_CONFIG[layer].status_key;
+      return cell.week_results.map(week => {{
+        const rowStatus = week[statusKey] || 'not_run';
+        const seed = week.seed_metrics;
+        const finalMetrics = week.final_metrics;
+        const linearRun = week.linear_run;
+        const squaredRun = week.squared_run;
+        const selectedSquared = week.selected_squared_result;
+        const relation = week.objective_relationship;
+        const squaredRunMetrics = squaredRun ? squaredRun.final_metrics : null;
+        const selectedSquaredMetrics = selectedSquared ? selectedSquared.final_metrics : null;
+        const candidates = (week.mixed_seed_candidates || []).map(candidate =>
+          `${'{'}candidate.family{'}'}:${'{'}candidate.linear_repeat_lower_bound_gap{'}'}`
+        ).join(', ');
+        const search = week.search_telemetry
+          ? (() => {{
+              const scans = week.search_telemetry.neighborhood_scans;
+              const avgScanMs = scans === 0 ? 0 : (week.search_telemetry.total_scan_micros / 1000) / scans;
+              const maxScanMs = week.search_telemetry.max_scan_micros / 1000;
+              return `it=${'{'}week.search_telemetry.iterations_completed{'}'}, best@${'{'}week.search_telemetry.best_iteration{'}'}, scans=${'{'}scans{'}'}, cand=${'{'}week.search_telemetry.candidates_evaluated{'}'}, avg_scan_ms=${'{'}avgScanMs.toFixed(2){'}'}, max_scan_ms=${'{'}maxScanMs.toFixed(2){'}'}`;
+            }})()
+          : '—';
+        return `<tr>
+          <td class="mono">${'{'}week.week{'}'}</td>
+          <td>${'{'}statusPill(rowStatus){'}'}</td>
+          <td>${'{'}week.seed_family || '—'{'}'}</td>
+          <td class="mono">${'{'}seed ? seed.linear_repeat_lower_bound_gap : '—'{'}'}</td>
+          <td class="mono">${'{'}finalMetrics ? finalMetrics.linear_repeat_lower_bound_gap : '—'{'}'}</td>
+          <td class="mono">${'{'}seed ? (seed.squared_instance_lower_bound_gap ?? seed.squared_repeat_lower_bound_gap) : '—'{'}'}</td>
+          <td class="mono">${'{'}finalMetrics ? (finalMetrics.squared_instance_lower_bound_gap ?? finalMetrics.squared_repeat_lower_bound_gap) : '—'{'}'}</td>
+          <td class="mono">${'{'}seed ? (seed.squared_concentration_lower_bound_gap ?? seed.squared_repeat_lower_bound_gap) : '—'{'}'}</td>
+          <td class="mono">${'{'}finalMetrics ? (finalMetrics.squared_concentration_lower_bound_gap ?? finalMetrics.squared_repeat_lower_bound_gap) : '—'{'}'}</td>
+          <td class="mono">${'{'}selectedSquaredMetrics ? selectedSquaredMetrics.squared_instance_lower_bound_gap : '—'{'}'}</td>
+          <td class="mono">${'{'}squaredRunMetrics ? squaredRunMetrics.squared_instance_lower_bound_gap : '—'{'}'}</td>
+          <td class="mono">${'{'}squaredRunMetrics ? squaredRunMetrics.linear_repeat_lower_bound_gap : '—'{'}'}</td>
+          <td>${'{'}selectedSquared ? selectedSquared.source.replace(/_/g, ' ') : '—'{'}'}</td>
+          <td>${'{'}relation ? relation.agreement_status.replace(/_/g, ' ') : '—'{'}'}</td>
+          <td class="mono">${'{'}relation && relation.squared_run_improved_squared_gap_by != null ? relation.squared_run_improved_squared_gap_by : '—'{'}'}</td>
+          <td class="mono">${'{'}relation && relation.squared_run_linear_gap_delta != null ? relation.squared_run_linear_gap_delta : '—'{'}'}</td>
+          <td class="mono">${'{'}week.runtime_seconds == null ? '—' : week.runtime_seconds.toFixed(3){'}'}</td>
+          <td class="mono">${'{'}squaredRun && squaredRun.runtime_seconds != null ? squaredRun.runtime_seconds.toFixed(3) : '—'{'}'}</td>
+          <td class="mono">${'{'}week.stop_reason || '—'{'}'}</td>
+          <td class="contribution-note">${'{'}contributionNarrative(week){'}'}</td>
+          <td class="contribution-note">${'{'}candidates || '—'{'}'}</td>
+          <td class="contribution-note">${'{'}search{'}'}</td>
+        </tr>`;
+      }}).join('');
+    }}
+
+    function showDetail(matrixIndex, g, p) {{
+      const matrix = ARTIFACT.matrices[Number(matrixIndex)];
+      const cell = matrix.cells.find(candidate => candidate.g === Number(g) && candidate.p === Number(p));
+      if (!cell) return;
+      const summary = cell[LAYER_CONFIG[currentLayer].summary_key] || emptySummary();
+      detailTitle.textContent = `${'{'}cell.g{'}'}-${'{'}cell.p{'}'} · ${'{'}LAYER_CONFIG[currentLayer].label{'}'}`;
+      detailSubtitle.textContent = `people=${'{'}cell.num_people{'}'} · frontier=${'{'}summary.contiguous_frontier{'}'} · best observed=${'{'}summary.best_observed_hit{'}'} · first miss=${'{'}summary.first_miss_week ?? '—'{'}'}`;
+      detailBody.innerHTML = `
+        <div class="detail-layout">
+          <div>
+            <div class="detail-card">
+              <h3>Week grid</h3>
+              <p class="meta">Larger view of the inner week matrix for this outer cell.</p>
+              ${'{'}renderLargeGrid(cell, currentLayer){'}'}
+            </div>
+            <div class="detail-card">
+              <h3>Summary</h3>
+              <div class="summary-grid">
+                <div class="summary-card"><span class="label">frontier</span><span class="value">${'{'}summary.contiguous_frontier{'}'}</span></div>
+                <div class="summary-card"><span class="label">best observed</span><span class="value">${'{'}summary.best_observed_hit{'}'}</span></div>
+                <div class="summary-card"><span class="label">exact weeks</span><span class="value">${'{'}summary.exact_week_count{'}'}</span></div>
+                <div class="summary-card"><span class="label">tight weeks</span><span class="value">${'{'}summary.lower_bound_tight_week_count{'}'}</span></div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="detail-card">
+              <h3>Per-week analytics</h3>
+              <p class="meta">The table keeps seed-vs-search contributions explicit: whether the seed was already tight, whether local search closed the gap, and when it failed to move the frontier.</p>
+              <div class="detail-table-wrap">
+                <table class="detail-table">
+                  <thead>
+                    <tr>
+                      <th>week</th>
+                      <th>status</th>
+                      <th>seed family</th>
+                      <th>seed linear gap</th>
+                      <th>final linear gap</th>
+                      <th>seed squared instance gap</th>
+                      <th>final squared instance gap</th>
+                      <th>seed squared concentration gap</th>
+                      <th>linear-run squared concentration gap</th>
+                      <th>selected squared instance gap</th>
+                      <th>squared-run squared instance gap</th>
+                      <th>squared-run linear gap</th>
+                      <th>squared source</th>
+                      <th>relationship</th>
+                      <th>Δ squared gap</th>
+                      <th>Δ linear gap</th>
+                      <th>linear runtime (s)</th>
+                      <th>squared runtime (s)</th>
+                      <th>stop reason</th>
+                      <th>seed vs search</th>
+                      <th>mixed candidates</th>
+                      <th>search summary</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${'{'}renderWeekRows(cell, currentLayer){'}'}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      backdrop.classList.add('is-open');
+    }}
+
+    tabs.forEach(btn => btn.addEventListener('click', () => setLayer(btn.dataset.layerTarget)));
+    document.querySelectorAll('.outer-cell').forEach(btn => {{
+      btn.addEventListener('click', () => showDetail(btn.dataset.matrixIndex, btn.dataset.g, btn.dataset.p));
+    }});
+    document.getElementById('detail-close').addEventListener('click', () => backdrop.classList.remove('is-open'));
+    backdrop.addEventListener('click', (event) => {{
+      if (event.target === backdrop) backdrop.classList.remove('is-open');
+    }});
+    window.addEventListener('keydown', event => {{
+      if (event.key === 'Escape') backdrop.classList.remove('is-open');
+    }});
+    setLayer('overview');
+  </script>
+</body>
+</html>
+"""
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Render the solver6 frontier matrix HTML report")
+    parser.add_argument("artifact_json", type=Path)
+    parser.add_argument("output_html", type=Path)
+    args = parser.parse_args()
+
+    artifact = json.loads(args.artifact_json.read_text())
+    html_text = render_html(artifact)
+    args.output_html.write_text("\n".join(line.rstrip() for line in html_text.splitlines()) + "\n")
+
+
+if __name__ == "__main__":
+    main()

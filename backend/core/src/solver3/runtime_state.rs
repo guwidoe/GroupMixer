@@ -16,12 +16,27 @@
 //! Score aggregates are set once during initialization by the oracle and will be
 //! maintained incrementally by Phase 3 move kernels.
 
-use std::sync::Arc;
-
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::time::Instant;
 
-use crate::models::ApiInput;
-use crate::models::Solver3ConstructionMode;
+use super::compiled_problem::{CompiledProblem, PackedSchedule};
+use super::oracle::maybe_cross_check_runtime_state;
+use super::scoring::recompute::recompute_oracle_score;
+use super::search::SearchEngine as Solver3SearchEngine;
+use super::validation::validate_invariants;
+use crate::models::{
+    ApiInput, Solver3ConstructionMode, Solver3Params, SolverConfiguration, SolverKind,
+    SolverParams, StopConditions,
+};
+use crate::solver_support::construction::constraint_scenario_oracle::{
+    build_constraint_scenario_scaffold_mask, extract_constraint_scenario_signals_from_scaffold,
+    generate_oracle_template_candidates, merge_projected_oracle_template_into_scaffold,
+    project_oracle_schedule_to_template, repeat_pressure_is_relevant,
+    ConstraintScenarioOracleConstructionResult, ConstraintScenarioOracleOutcomeKind,
+    ConstraintScenarioOracleTelemetry, PureStructureOracle, PureStructureOracleRequest,
+    Solver6PureStructureOracle,
+};
 use crate::solver_support::construction::{
     apply_baseline_construction_heuristic, apply_freedom_aware_construction_heuristic,
     BaselineConstructionContext, FreedomAwareConstructionParams,
@@ -30,13 +45,6 @@ use crate::solver_support::validation::{
     validate_schedule_as_incumbent, validate_schedule_input_mode,
 };
 use crate::solver_support::SolverError;
-use rand::seq::SliceRandom;
-use rand::SeedableRng;
-use rand_chacha::ChaCha12Rng;
-
-use super::compiled_problem::{CompiledProblem, PackedSchedule};
-use super::oracle::maybe_cross_check_runtime_state;
-use super::scoring::recompute::recompute_oracle_score;
 
 const DEFAULT_BASELINE_CONSTRUCTION_SEED: u64 = 42;
 
@@ -44,6 +52,17 @@ const DEFAULT_BASELINE_CONSTRUCTION_SEED: u64 = 42;
 enum ConstructionHeuristicSelection {
     BaselineLegacy,
     FreedomAwareRandomized(FreedomAwareConstructionParams),
+    ConstraintScenarioOracleGuided,
+}
+
+impl ConstructionHeuristicSelection {
+    fn label(self) -> &'static str {
+        match self {
+            Self::BaselineLegacy => "baseline legacy",
+            Self::FreedomAwareRandomized(_) => "freedom-aware randomized",
+            Self::ConstraintScenarioOracleGuided => "constraint-scenario oracle-guided",
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -110,7 +129,12 @@ impl RuntimeState {
             return Self::from_compiled_schedule(compiled, validated.schedule);
         }
         let construction = resolve_construction_selection(input)?;
-        Self::from_compiled_with_seed_and_construction(compiled, effective_seed, construction)
+        Self::from_compiled_with_seed_and_construction(
+            compiled,
+            effective_seed,
+            construction,
+            input.solver.stop_conditions.time_limit_seconds,
+        )
     }
 
     /// Builds a `RuntimeState` from a pre-compiled problem.
@@ -119,6 +143,7 @@ impl RuntimeState {
             compiled,
             DEFAULT_BASELINE_CONSTRUCTION_SEED,
             ConstructionHeuristicSelection::BaselineLegacy,
+            None,
         )
     }
 
@@ -130,6 +155,7 @@ impl RuntimeState {
             compiled,
             effective_seed,
             ConstructionHeuristicSelection::BaselineLegacy,
+            None,
         )
     }
 
@@ -137,6 +163,7 @@ impl RuntimeState {
         compiled: Arc<CompiledProblem>,
         effective_seed: u64,
         construction: ConstructionHeuristicSelection,
+        construction_total_time_limit_seconds: Option<u64>,
     ) -> Result<Self, SolverError> {
         let np = compiled.num_people;
         let ng = compiled.num_groups;
@@ -162,7 +189,12 @@ impl RuntimeState {
             total_score: 0.0,
         };
 
-        state.initialize_from_schedule(effective_seed, construction)?;
+        state.initialize_from_schedule(
+            effective_seed,
+            construction,
+            construction_total_time_limit_seconds,
+        )?;
+        validate_invariants(&state)?;
         state.rebuild_pair_contacts();
         state.sync_score_from_oracle()?;
         Ok(state)
@@ -196,6 +228,7 @@ impl RuntimeState {
         };
 
         state.load_exact_schedule(&schedule)?;
+        validate_invariants(&state)?;
         state.rebuild_pair_contacts();
         state.sync_score_from_oracle()?;
         Ok(state)
@@ -265,8 +298,13 @@ impl RuntimeState {
         &mut self,
         effective_seed: u64,
         construction: ConstructionHeuristicSelection,
+        construction_total_time_limit_seconds: Option<u64>,
     ) -> Result<(), SolverError> {
-        let schedule = self.build_constructed_schedule(effective_seed, construction)?;
+        let schedule = self.build_constructed_schedule(
+            effective_seed,
+            construction,
+            construction_total_time_limit_seconds,
+        )?;
 
         self.load_exact_schedule(&schedule)?;
 
@@ -289,7 +327,27 @@ impl RuntimeState {
         &self,
         effective_seed: u64,
         construction: ConstructionHeuristicSelection,
+        construction_total_time_limit_seconds: Option<u64>,
     ) -> Result<PackedSchedule, SolverError> {
+        // Construction owns hard-constraint feasibility. BaselineLegacy and
+        // FreedomAwareRandomized receive immovable, MustStayTogether, and MustStayApart
+        // metadata through `BaselineConstructionContext`; ConstraintScenarioOracleGuided
+        // must preserve those constraints through scaffold selection, projection, and merge.
+        // Runtime validation below is only a fail-fast guardrail, not a repair fallback.
+        if matches!(
+            construction,
+            ConstructionHeuristicSelection::ConstraintScenarioOracleGuided
+        ) {
+            let schedule = self
+                .build_constraint_scenario_oracle_guided_schedule(
+                    effective_seed,
+                    construction_total_time_limit_seconds,
+                )?
+                .schedule;
+            self.validate_constructed_schedule(&schedule, construction.label())?;
+            return Ok(schedule);
+        }
+
         let mut schedule = self
             .compiled
             .compiled_construction_seed_schedule
@@ -332,8 +390,11 @@ impl RuntimeState {
             ConstructionHeuristicSelection::FreedomAwareRandomized(params) => {
                 apply_freedom_aware_construction_heuristic(&mut construction_context, &params)?;
             }
+            ConstructionHeuristicSelection::ConstraintScenarioOracleGuided => unreachable!(
+                "constraint-scenario oracle-guided construction returns before shared constructor context setup"
+            ),
         }
-        self.normalize_invalid_hard_constraint_sessions(&mut schedule, effective_seed)?;
+        self.validate_constructed_schedule(&schedule, construction.label())?;
         Ok(schedule)
     }
 
@@ -357,107 +418,287 @@ impl RuntimeState {
         partners
     }
 
-    fn normalize_invalid_hard_constraint_sessions(
+    fn build_constraint_scenario_oracle_guided_schedule(
         &self,
-        schedule: &mut PackedSchedule,
         effective_seed: u64,
-    ) -> Result<(), SolverError> {
-        for session_idx in 0..self.compiled.num_sessions {
-            if self.session_has_invalid_hard_constraints(schedule, session_idx) {
-                self.rebuild_session_with_hard_constraint_integrity(
-                    schedule,
-                    session_idx,
-                    effective_seed,
-                )?;
-            }
-        }
-        Ok(())
-    }
-
-    fn session_has_invalid_hard_constraints(
-        &self,
-        schedule: &PackedSchedule,
-        session_idx: usize,
-    ) -> bool {
-        let mut person_group = vec![None; self.compiled.num_people];
-        for (group_idx, members) in schedule[session_idx].iter().enumerate() {
-            for &person_idx in members {
-                person_group[person_idx] = Some(group_idx);
-            }
+        construction_total_time_limit_seconds: Option<u64>,
+    ) -> Result<ConstraintScenarioOracleConstructionResult, SolverError> {
+        let started_at = Instant::now();
+        if !repeat_pressure_is_relevant(&self.compiled) {
+            let schedule = self.build_constructed_schedule(
+                effective_seed,
+                ConstructionHeuristicSelection::BaselineLegacy,
+                None,
+            )?;
+            return Ok(ConstraintScenarioOracleConstructionResult {
+                schedule,
+                telemetry: ConstraintScenarioOracleTelemetry {
+                    outcome: ConstraintScenarioOracleOutcomeKind::RepeatIrrelevant,
+                    repeat_relevant: false,
+                    constructor_wall_ms: started_at.elapsed().as_millis(),
+                    ..ConstraintScenarioOracleTelemetry::default()
+                },
+            });
         }
 
-        let split_clique = self.compiled.cliques.iter().any(|clique| {
-            if let Some(sessions) = &clique.sessions {
-                if !sessions.contains(&session_idx) {
-                    return false;
-                }
-            }
-
-            let active_members: Vec<usize> = clique
-                .members
-                .iter()
-                .copied()
-                .filter(|&member| self.compiled.person_participation[member][session_idx])
-                .collect();
-            if active_members.len() < 2 {
-                return false;
-            }
-
-            let mut groups = active_members
-                .iter()
-                .filter_map(|&member| person_group[member])
-                .collect::<Vec<_>>();
-            groups.sort_unstable();
-            groups.dedup();
-            groups.len() > 1
-        });
-
-        if split_clique {
-            return true;
+        let scaffold = self.build_constraint_scenario_warmup_scaffold(
+            effective_seed,
+            construction_total_time_limit_seconds,
+        )?;
+        if scaffold.score <= f64::EPSILON {
+            return Ok(ConstraintScenarioOracleConstructionResult {
+                schedule: scaffold.schedule,
+                telemetry: ConstraintScenarioOracleTelemetry {
+                    outcome: ConstraintScenarioOracleOutcomeKind::ConstraintScenarioOnly,
+                    repeat_relevant: true,
+                    cs_run_count: 1,
+                    cs_best_score: Some(scaffold.score),
+                    cs_diversity: Some(0.0),
+                    constructor_wall_ms: started_at.elapsed().as_millis(),
+                    ..ConstraintScenarioOracleTelemetry::default()
+                },
+            });
         }
-
-        self.compiled.hard_apart_pairs.iter().any(|pair| {
-            if let Some(sessions) = &pair.sessions {
-                if !sessions.contains(&session_idx) {
-                    return false;
-                }
-            }
-            let (left, right) = pair.people;
-            if !self.compiled.person_participation[left][session_idx]
-                || !self.compiled.person_participation[right][session_idx]
-            {
-                return false;
-            }
-            let left_group = person_group[left];
-            left_group.is_some() && left_group == person_group[right]
+        let signals =
+            extract_constraint_scenario_signals_from_scaffold(&self.compiled, &scaffold.schedule);
+        let scaffold_mask =
+            build_constraint_scenario_scaffold_mask(&self.compiled, &scaffold.schedule, &signals);
+        let Some(candidate) = generate_oracle_template_candidates(
+            &self.compiled,
+            &scaffold.schedule,
+            &signals,
+            &scaffold_mask,
+        )
+        .into_iter()
+        .next() else {
+            return Ok(ConstraintScenarioOracleConstructionResult {
+                schedule: scaffold.schedule,
+                telemetry: ConstraintScenarioOracleTelemetry {
+                    outcome: ConstraintScenarioOracleOutcomeKind::ConstraintScenarioOnly,
+                    repeat_relevant: true,
+                    cs_run_count: 1,
+                    cs_best_score: Some(scaffold.score),
+                    cs_diversity: Some(0.0),
+                    rigid_placement_count: scaffold_mask.rigid_placement_count,
+                    flexible_placement_count: scaffold_mask.flexible_placement_count,
+                    constructor_wall_ms: started_at.elapsed().as_millis(),
+                    ..ConstraintScenarioOracleTelemetry::default()
+                },
+            });
+        };
+        let oracle_schedule = Solver6PureStructureOracle.solve(&PureStructureOracleRequest {
+            num_groups: candidate.num_groups,
+            group_size: candidate.group_size,
+            num_sessions: candidate.num_sessions(),
+            seed: effective_seed ^ 0x5eed_600d_u64,
+        })?;
+        let projection = project_oracle_schedule_to_template(
+            &self.compiled,
+            &signals,
+            &scaffold_mask,
+            &candidate,
+            &oracle_schedule,
+        )?;
+        let oracle_projection_score = Some(projection.score);
+        let merge = merge_projected_oracle_template_into_scaffold(
+            &self.compiled,
+            &scaffold.schedule,
+            &signals,
+            &scaffold_mask,
+            &candidate,
+            &oracle_schedule,
+            &projection,
+        )
+        .map_err(|err| {
+            SolverError::ValidationError(format!(
+                "constraint-scenario oracle-guided construction could not merge oracle template while preserving hard constraints: {err}"
+            ))
+        })?;
+        let snapshot = self.score_constructed_schedule(&merge.schedule)?;
+        let selected_schedule = merge.schedule;
+        let merged_score = snapshot.total_score;
+        let merge_improvement_over_cs = Some(scaffold.score - merged_score);
+        let outcome = ConstraintScenarioOracleOutcomeKind::OracleMerged;
+        let oracle_merge_attempted = true;
+        let oracle_merge_accepted = true;
+        let oracle_merge_failed = false;
+        Ok(ConstraintScenarioOracleConstructionResult {
+            schedule: selected_schedule,
+            telemetry: ConstraintScenarioOracleTelemetry {
+                outcome,
+                repeat_relevant: true,
+                cs_run_count: 1,
+                cs_best_score: Some(scaffold.score),
+                cs_diversity: Some(0.0),
+                rigid_placement_count: scaffold_mask.rigid_placement_count,
+                flexible_placement_count: scaffold_mask.flexible_placement_count,
+                oracle_template_mapped_people: projection.mapped_real_people,
+                oracle_template_sessions: candidate.num_sessions(),
+                oracle_template_groups: candidate.num_groups,
+                oracle_projection_score,
+                merge_improvement_over_cs,
+                oracle_merge_attempted,
+                oracle_merge_accepted,
+                oracle_merge_failed,
+                constructor_wall_ms: started_at.elapsed().as_millis(),
+                ..ConstraintScenarioOracleTelemetry::default()
+            },
         })
     }
 
-    fn rebuild_session_with_hard_constraint_integrity(
+    fn build_constraint_scenario_warmup_scaffold(
         &self,
-        schedule: &mut PackedSchedule,
-        session_idx: usize,
         effective_seed: u64,
+        construction_total_time_limit_seconds: Option<u64>,
+    ) -> Result<ConstraintScenarioWarmupScaffold, SolverError> {
+        let budget_seconds =
+            constraint_scenario_warmup_budget_seconds(construction_total_time_limit_seconds);
+        let baseline_schedule = self.build_constructed_schedule(
+            effective_seed ^ 0x0c5c_aff0_1d5c_aff0_u64,
+            ConstructionHeuristicSelection::BaselineLegacy,
+            None,
+        )?;
+        if budget_seconds == 0 {
+            let snapshot = self.score_constructed_schedule(&baseline_schedule)?;
+            return Ok(ConstraintScenarioWarmupScaffold {
+                schedule: baseline_schedule,
+                score: snapshot.total_score,
+            });
+        }
+
+        let mut warmup_state =
+            Self::from_compiled_schedule(Arc::clone(&self.compiled), baseline_schedule)?;
+        let warmup_config = constraint_scenario_warmup_solver_configuration(
+            effective_seed ^ 0x57a9_1e5c_affe_f00d_u64,
+            budget_seconds,
+        );
+        Solver3SearchEngine::new(&warmup_config).solve(&mut warmup_state, None, None)?;
+        let schedule = warmup_state.to_packed_schedule();
+        let snapshot = self.score_constructed_schedule(&schedule)?;
+        Ok(ConstraintScenarioWarmupScaffold {
+            schedule,
+            score: snapshot.total_score,
+        })
+    }
+
+    fn score_constructed_schedule(
+        &self,
+        schedule: &PackedSchedule,
+    ) -> Result<super::scoring::OracleSnapshot, SolverError> {
+        let state = Self::from_compiled_schedule(Arc::clone(&self.compiled), schedule.clone())?;
+        recompute_oracle_score(&state)
+    }
+
+    fn validate_constructed_schedule(
+        &self,
+        schedule: &PackedSchedule,
+        constructor_label: &str,
     ) -> Result<(), SolverError> {
-        let num_people = self.compiled.num_people;
-        let num_groups = self.compiled.num_groups;
-        let preferred_groups = {
-            let mut preferred = vec![None; num_people];
-            for (group_idx, members) in schedule[session_idx].iter().enumerate() {
+        let prefix = || format!("{constructor_label} constructor produced invalid schedule");
+        if schedule.len() != self.compiled.num_sessions {
+            return Err(SolverError::ValidationError(format!(
+                "{}: expected {} sessions, got {}",
+                prefix(),
+                self.compiled.num_sessions,
+                schedule.len()
+            )));
+        }
+
+        for (session_idx, groups) in schedule.iter().enumerate() {
+            if groups.len() != self.compiled.num_groups {
+                return Err(SolverError::ValidationError(format!(
+                    "{}: session {} expected {} groups, got {}",
+                    prefix(),
+                    session_idx,
+                    self.compiled.num_groups,
+                    groups.len()
+                )));
+            }
+
+            let mut person_group = vec![None; self.compiled.num_people];
+            for (group_idx, members) in groups.iter().enumerate() {
+                let capacity = self.compiled.group_capacity(session_idx, group_idx);
+                if members.len() > capacity {
+                    return Err(SolverError::ValidationError(format!(
+                        "{}: group '{}' has {} members but capacity {} in session {}",
+                        prefix(),
+                        self.compiled.display_group(group_idx),
+                        members.len(),
+                        capacity,
+                        session_idx
+                    )));
+                }
                 for &person_idx in members {
-                    preferred[person_idx] = Some(group_idx);
+                    if person_idx >= self.compiled.num_people {
+                        return Err(SolverError::ValidationError(format!(
+                            "{}: group '{}' contains out-of-range person index {} in session {}",
+                            prefix(),
+                            self.compiled.display_group(group_idx),
+                            person_idx,
+                            session_idx
+                        )));
+                    }
+                    if !self.compiled.person_participation[person_idx][session_idx] {
+                        return Err(SolverError::ValidationError(format!(
+                            "{}: non-participating person '{}' is assigned in session {}",
+                            prefix(),
+                            self.compiled.display_person(person_idx),
+                            session_idx
+                        )));
+                    }
+                    if let Some(previous_group_idx) = person_group[person_idx] {
+                        return Err(SolverError::ValidationError(format!(
+                            "{}: person '{}' is assigned to both '{}' and '{}' in session {}",
+                            prefix(),
+                            self.compiled.display_person(person_idx),
+                            self.compiled.display_group(previous_group_idx),
+                            self.compiled.display_group(group_idx),
+                            session_idx
+                        )));
+                    }
+                    person_group[person_idx] = Some(group_idx);
                 }
             }
-            preferred
-        };
 
-        let mut rebuilt_groups = vec![Vec::new(); num_groups];
-        let mut assigned = vec![false; num_people];
-        let mut group_sizes = vec![0usize; num_groups];
-        let mut rng = ChaCha12Rng::seed_from_u64(
-            effective_seed ^ ((session_idx as u64).wrapping_mul(0x9e3779b97f4a7c15)),
-        );
+            for (person_idx, participates_by_session) in
+                self.compiled.person_participation.iter().enumerate()
+            {
+                if participates_by_session[session_idx] != person_group[person_idx].is_some() {
+                    return Err(SolverError::ValidationError(format!(
+                        "{}: person '{}' participation/assignment mismatch in session {}",
+                        prefix(),
+                        self.compiled.display_person(person_idx),
+                        session_idx
+                    )));
+                }
+            }
 
+            self.validate_constructed_schedule_cliques(
+                &person_group,
+                session_idx,
+                constructor_label,
+            )?;
+            self.validate_constructed_schedule_immovable(
+                &person_group,
+                session_idx,
+                constructor_label,
+            )?;
+            self.validate_constructed_schedule_hard_apart(
+                &person_group,
+                session_idx,
+                constructor_label,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn validate_constructed_schedule_cliques(
+        &self,
+        person_group: &[Option<usize>],
+        session_idx: usize,
+        constructor_label: &str,
+    ) -> Result<(), SolverError> {
         for clique in &self.compiled.cliques {
             if let Some(sessions) = &clique.sessions {
                 if !sessions.contains(&session_idx) {
@@ -465,209 +706,89 @@ impl RuntimeState {
                 }
             }
 
-            let active_members: Vec<usize> = clique
+            let active_members = clique
                 .members
                 .iter()
                 .copied()
                 .filter(|&member| self.compiled.person_participation[member][session_idx])
-                .collect();
+                .collect::<Vec<_>>();
             if active_members.len() < 2 {
                 continue;
             }
-
-            let mut required_group = None;
-            for &member in &active_members {
-                if let Some(group_idx) = self.compiled.immovable_group(session_idx, member) {
-                    match required_group {
-                        Some(existing) if existing != group_idx => {
-                            return Err(SolverError::ValidationError(format!(
-                                "conflicting immovable groups for clique in session {}",
-                                session_idx
-                            )));
-                        }
-                        Some(_) => {}
-                        None => required_group = Some(group_idx),
-                    }
-                }
-            }
-
-            let target_group = if let Some(group_idx) = required_group {
-                group_idx
-            } else {
-                let mut preferred_counts = vec![0usize; num_groups];
-                for &member in &active_members {
-                    if let Some(group_idx) = preferred_groups[member] {
-                        preferred_counts[group_idx] += 1;
-                    }
-                }
-                let mut candidates: Vec<usize> = (0..num_groups).collect();
-                candidates.sort_by(|&left, &right| {
-                    preferred_counts[right]
-                        .cmp(&preferred_counts[left])
-                        .then_with(|| left.cmp(&right))
-                });
-                candidates
-                    .into_iter()
-                    .find(|&group_idx| {
-                        group_sizes[group_idx] + active_members.len()
-                            <= self.compiled.group_capacity(session_idx, group_idx)
-                            && !self.group_has_hard_apart_conflict_in_schedule(
-                                session_idx,
-                                &rebuilt_groups[group_idx],
-                                &active_members,
-                            )
-                    })
-                    .ok_or_else(|| {
-                        SolverError::ValidationError(format!(
-                            "no group has room for clique of {} in session {} during solver3 normalization",
-                            active_members.len(),
-                            session_idx
-                        ))
-                    })?
-            };
-
-            if group_sizes[target_group] + active_members.len()
-                > self.compiled.group_capacity(session_idx, target_group)
+            let first_group = person_group[active_members[0]];
+            if active_members
+                .iter()
+                .any(|&member| person_group[member] != first_group)
             {
+                let members = active_members
+                    .iter()
+                    .map(|&member| self.compiled.display_person(member))
+                    .collect::<Vec<_>>();
                 return Err(SolverError::ValidationError(format!(
-                    "required group '{}' lacks capacity for clique of {} in session {} during solver3 normalization",
-                    self.compiled.display_group(target_group),
-                    active_members.len(),
-                    session_idx
+                    "{constructor_label} constructor produced invalid schedule: MustStayTogether clique {:?} is split in session {}",
+                    members, session_idx
                 )));
-            }
-            if self.group_has_hard_apart_conflict_in_schedule(
-                session_idx,
-                &rebuilt_groups[target_group],
-                &active_members,
-            ) {
-                return Err(SolverError::ValidationError(format!(
-                    "required group '{}' violates MustStayApart while placing clique in session {} during solver3 normalization",
-                    self.compiled.display_group(target_group),
-                    session_idx
-                )));
-            }
-
-            for member in active_members {
-                if assigned[member] {
-                    continue;
-                }
-                rebuilt_groups[target_group].push(member);
-                group_sizes[target_group] += 1;
-                assigned[member] = true;
             }
         }
+        Ok(())
+    }
 
+    fn validate_constructed_schedule_immovable(
+        &self,
+        person_group: &[Option<usize>],
+        session_idx: usize,
+        constructor_label: &str,
+    ) -> Result<(), SolverError> {
         for assignment in self
             .compiled
             .immovable_assignments
             .iter()
             .filter(|assignment| assignment.session_idx == session_idx)
         {
-            if !self.compiled.person_participation[assignment.person_idx][session_idx]
-                || assigned[assignment.person_idx]
-            {
+            if !self.compiled.person_participation[assignment.person_idx][session_idx] {
                 continue;
             }
-
-            if group_sizes[assignment.group_idx]
-                >= self
-                    .compiled
-                    .group_capacity(session_idx, assignment.group_idx)
-            {
+            if person_group[assignment.person_idx] != Some(assignment.group_idx) {
                 return Err(SolverError::ValidationError(format!(
-                    "group '{}' is full while placing immovable person '{}' in session {} during solver3 normalization",
-                    self.compiled.display_group(assignment.group_idx),
+                    "{constructor_label} constructor produced invalid schedule: immovable person '{}' is not in group '{}' for session {}",
                     self.compiled.display_person(assignment.person_idx),
+                    self.compiled.display_group(assignment.group_idx),
                     session_idx
                 )));
             }
-            if self.group_has_hard_apart_conflict_in_schedule(
-                session_idx,
-                &rebuilt_groups[assignment.group_idx],
-                &[assignment.person_idx],
-            ) {
-                return Err(SolverError::ValidationError(format!(
-                    "group '{}' violates MustStayApart while placing immovable person '{}' in session {} during solver3 normalization",
-                    self.compiled.display_group(assignment.group_idx),
-                    self.compiled.display_person(assignment.person_idx),
-                    session_idx
-                )));
-            }
-
-            rebuilt_groups[assignment.group_idx].push(assignment.person_idx);
-            group_sizes[assignment.group_idx] += 1;
-            assigned[assignment.person_idx] = true;
         }
-
-        let remaining_people: Vec<usize> = (0..num_people)
-            .filter(|&person_idx| {
-                self.compiled.person_participation[person_idx][session_idx] && !assigned[person_idx]
-            })
-            .collect();
-
-        for person_idx in remaining_people {
-            if let Some(preferred_group) = preferred_groups[person_idx] {
-                if group_sizes[preferred_group]
-                    < self.compiled.group_capacity(session_idx, preferred_group)
-                    && !self.group_has_hard_apart_conflict_in_schedule(
-                        session_idx,
-                        &rebuilt_groups[preferred_group],
-                        &[person_idx],
-                    )
-                {
-                    rebuilt_groups[preferred_group].push(person_idx);
-                    group_sizes[preferred_group] += 1;
-                    assigned[person_idx] = true;
-                    continue;
-                }
-            }
-
-            let mut candidates: Vec<usize> = (0..num_groups).collect();
-            candidates.shuffle(&mut rng);
-            let target_group = candidates
-                .into_iter()
-                .find(|&group_idx| {
-                    group_sizes[group_idx] < self.compiled.group_capacity(session_idx, group_idx)
-                        && !self.group_has_hard_apart_conflict_in_schedule(
-                            session_idx,
-                            &rebuilt_groups[group_idx],
-                            &[person_idx],
-                        )
-                })
-                .ok_or_else(|| {
-                    SolverError::ValidationError(format!(
-                        "could not place person '{}' in session {} during solver3 normalization",
-                        self.compiled.display_person(person_idx),
-                        session_idx
-                    ))
-                })?;
-            rebuilt_groups[target_group].push(person_idx);
-            group_sizes[target_group] += 1;
-            assigned[person_idx] = true;
-        }
-
-        schedule[session_idx] = rebuilt_groups;
         Ok(())
     }
 
-    fn group_has_hard_apart_conflict_in_schedule(
+    fn validate_constructed_schedule_hard_apart(
         &self,
+        person_group: &[Option<usize>],
         session_idx: usize,
-        group_members: &[usize],
-        added_members: &[usize],
-    ) -> bool {
-        added_members.iter().any(|&person_idx| {
-            group_members.iter().any(|&member| {
-                self.compiled
-                    .hard_apart_active(session_idx, person_idx, member)
-            }) || added_members.iter().any(|&other_idx| {
-                other_idx != person_idx
-                    && self
-                        .compiled
-                        .hard_apart_active(session_idx, person_idx, other_idx)
-            })
-        })
+        constructor_label: &str,
+    ) -> Result<(), SolverError> {
+        for pair in &self.compiled.hard_apart_pairs {
+            if let Some(sessions) = &pair.sessions {
+                if !sessions.contains(&session_idx) {
+                    continue;
+                }
+            }
+            let (left, right) = pair.people;
+            if !self.compiled.person_participation[left][session_idx]
+                || !self.compiled.person_participation[right][session_idx]
+            {
+                continue;
+            }
+            if person_group[left].is_some() && person_group[left] == person_group[right] {
+                return Err(SolverError::ValidationError(format!(
+                    "{constructor_label} constructor produced invalid schedule: MustStayApart pair ['{}', '{}'] is together in group '{}' for session {}",
+                    self.compiled.display_person(left),
+                    self.compiled.display_person(right),
+                    self.compiled.display_group(person_group[left].expect("checked above")),
+                    session_idx
+                )));
+            }
+        }
+        Ok(())
     }
 
     // ------------------------------------------------------------------
@@ -762,6 +883,19 @@ impl RuntimeState {
         Ok(())
     }
 
+    /// Converts the flat runtime state back into the internal packed schedule shape.
+    fn to_packed_schedule(&self) -> PackedSchedule {
+        let mut schedule =
+            vec![vec![Vec::new(); self.compiled.num_groups]; self.compiled.num_sessions];
+        for (session_idx, session_groups) in schedule.iter_mut().enumerate() {
+            for (group_idx, members) in session_groups.iter_mut().enumerate() {
+                let slot = self.group_slot(session_idx, group_idx);
+                *members = self.group_members[slot].clone();
+            }
+        }
+        schedule
+    }
+
     /// Converts the flat runtime state back into the API schedule shape.
     pub fn to_api_schedule(&self) -> HashMap<String, HashMap<String, Vec<String>>> {
         let mut schedule = HashMap::new();
@@ -783,6 +917,40 @@ impl RuntimeState {
         }
 
         schedule
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct ConstraintScenarioWarmupScaffold {
+    schedule: PackedSchedule,
+    score: f64,
+}
+
+fn constraint_scenario_warmup_budget_seconds(total_time_limit_seconds: Option<u64>) -> u64 {
+    match total_time_limit_seconds {
+        Some(0) => 0,
+        Some(_) | None => 1,
+    }
+}
+
+fn constraint_scenario_warmup_solver_configuration(
+    effective_seed: u64,
+    budget_seconds: u64,
+) -> SolverConfiguration {
+    SolverConfiguration {
+        solver_type: SolverKind::Solver3.canonical_id().into(),
+        stop_conditions: StopConditions {
+            max_iterations: Some(1_000_000),
+            time_limit_seconds: Some(budget_seconds),
+            no_improvement_iterations: None,
+            stop_on_optimal_score: true,
+        },
+        solver_params: SolverParams::Solver3(Solver3Params::default()),
+        logging: Default::default(),
+        telemetry: Default::default(),
+        seed: Some(effective_seed),
+        move_policy: None,
+        allowed_sessions: None,
     }
 }
 
@@ -808,6 +976,9 @@ fn resolve_construction_selection(
             Ok(ConstructionHeuristicSelection::FreedomAwareRandomized(
                 FreedomAwareConstructionParams { gamma },
             ))
+        }
+        Solver3ConstructionMode::ConstraintScenarioOracleGuided => {
+            Ok(ConstructionHeuristicSelection::ConstraintScenarioOracleGuided)
         }
     }
 }

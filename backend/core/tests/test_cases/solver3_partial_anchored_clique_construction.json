@@ -1,0 +1,80 @@
+{
+  "name": "Solver3 Partial Anchored Clique Construction",
+  "metadata": {
+    "tags": [
+      "solver3",
+      "construction",
+      "clique",
+      "immovable"
+    ],
+    "kind": "correctness",
+    "tier": "default",
+    "solver_families": ["solver3"],
+    "comparison": {
+      "category": "invariant_only"
+    }
+  },
+  "input": {
+    "problem": {
+      "people": [
+        { "id": "p0", "attributes": {} },
+        { "id": "p1", "attributes": {} },
+        { "id": "p2", "attributes": {} },
+        { "id": "p3", "attributes": {} }
+      ],
+      "groups": [
+        { "id": "g0", "size": 2, "session_sizes": null },
+        { "id": "g1", "size": 2, "session_sizes": null }
+      ],
+      "num_sessions": 1
+    },
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "constraints": [
+      {
+        "type": "MustStayTogether",
+        "people": ["p0", "p1"],
+        "sessions": [0]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "p0",
+        "group_id": "g1",
+        "sessions": [0]
+      }
+    ],
+    "solver": {
+      "solver_type": "solver3",
+      "stop_conditions": {
+        "max_iterations": 0,
+        "time_limit_seconds": null,
+        "no_improvement_iterations": null,
+        "stop_on_optimal_score": true
+      },
+      "solver_params": {
+        "solver_type": "solver3",
+        "construction": {
+          "mode": "freedom_aware_randomized",
+          "freedom_aware": {
+            "gamma": 0.0
+          }
+        }
+      },
+      "logging": {},
+      "telemetry": {},
+      "seed": 5,
+      "move_policy": null,
+      "allowed_sessions": null
+    }
+  },
+  "expected": {
+    "must_stay_together_respected": true,
+    "immovable_person_respected": true,
+    "max_constraint_penalty": 0
+  },
+  "test_options": {}
+}

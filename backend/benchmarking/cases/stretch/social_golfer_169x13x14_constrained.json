@@ -1,0 +1,1404 @@
+{
+  "schema_version": 1,
+  "id": "stretch.social-golfer-169x13x14-constrained",
+  "class": "stretch",
+  "case_role": "derived",
+  "canonical_case_id": "stretch.social-golfer-169x13x14",
+  "purpose": "diagnostic_target.stretch.social_golfer_constrained_constructor_169x13x14",
+  "provenance": "derived_from_backend/benchmarking/cases/stretch/social_golfer_169x13x14.json_by_adding_one_representative_constraint_of_each_constraint_family",
+  "declared_budget": {
+    "max_iterations": 40000000,
+    "time_limit_seconds": 300
+  },
+  "tags": [
+    "stretch",
+    "social-golfer",
+    "repeat-encounter",
+    "diagnostic",
+    "13x13x14",
+    "exact-bound",
+    "large-group-size",
+    "very-large",
+    "stress",
+    "constrained",
+    "constructor-heuristic",
+    "attribute-balance",
+    "immovable",
+    "must-stay",
+    "should-stay",
+    "should-not",
+    "pair-meeting",
+    "immovable-people"
+  ],
+  "title": "Social Golfer 169x13x14 constrained (13-13-14)",
+  "description": "Constrained counterpart of the hard Social Golfer 169x13x14 workload. Keeps the pure repeat-minimization structure but adds a small representative mix of repeat, attribute-balance, single-person immovable, multi-person immovable, must-stay, should-stay, should-not, and pair-meeting constraints.",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "golfer_001",
+          "attributes": {
+            "name": "Golfer 001",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_002",
+          "attributes": {
+            "name": "Golfer 002",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_003",
+          "attributes": {
+            "name": "Golfer 003",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_004",
+          "attributes": {
+            "name": "Golfer 004",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_005",
+          "attributes": {
+            "name": "Golfer 005",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_006",
+          "attributes": {
+            "name": "Golfer 006",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_007",
+          "attributes": {
+            "name": "Golfer 007",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_008",
+          "attributes": {
+            "name": "Golfer 008",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_009",
+          "attributes": {
+            "name": "Golfer 009",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_010",
+          "attributes": {
+            "name": "Golfer 010",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_011",
+          "attributes": {
+            "name": "Golfer 011",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_012",
+          "attributes": {
+            "name": "Golfer 012",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_013",
+          "attributes": {
+            "name": "Golfer 013",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_014",
+          "attributes": {
+            "name": "Golfer 014",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_015",
+          "attributes": {
+            "name": "Golfer 015",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_016",
+          "attributes": {
+            "name": "Golfer 016",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_017",
+          "attributes": {
+            "name": "Golfer 017",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_018",
+          "attributes": {
+            "name": "Golfer 018",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_019",
+          "attributes": {
+            "name": "Golfer 019",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_020",
+          "attributes": {
+            "name": "Golfer 020",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_021",
+          "attributes": {
+            "name": "Golfer 021",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_022",
+          "attributes": {
+            "name": "Golfer 022",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_023",
+          "attributes": {
+            "name": "Golfer 023",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_024",
+          "attributes": {
+            "name": "Golfer 024",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_025",
+          "attributes": {
+            "name": "Golfer 025",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_026",
+          "attributes": {
+            "name": "Golfer 026",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_027",
+          "attributes": {
+            "name": "Golfer 027",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_028",
+          "attributes": {
+            "name": "Golfer 028",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_029",
+          "attributes": {
+            "name": "Golfer 029",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_030",
+          "attributes": {
+            "name": "Golfer 030",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_031",
+          "attributes": {
+            "name": "Golfer 031",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_032",
+          "attributes": {
+            "name": "Golfer 032",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_033",
+          "attributes": {
+            "name": "Golfer 033",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_034",
+          "attributes": {
+            "name": "Golfer 034",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_035",
+          "attributes": {
+            "name": "Golfer 035",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_036",
+          "attributes": {
+            "name": "Golfer 036",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_037",
+          "attributes": {
+            "name": "Golfer 037",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_038",
+          "attributes": {
+            "name": "Golfer 038",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_039",
+          "attributes": {
+            "name": "Golfer 039",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_040",
+          "attributes": {
+            "name": "Golfer 040",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_041",
+          "attributes": {
+            "name": "Golfer 041",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_042",
+          "attributes": {
+            "name": "Golfer 042",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_043",
+          "attributes": {
+            "name": "Golfer 043",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_044",
+          "attributes": {
+            "name": "Golfer 044",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_045",
+          "attributes": {
+            "name": "Golfer 045",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_046",
+          "attributes": {
+            "name": "Golfer 046",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_047",
+          "attributes": {
+            "name": "Golfer 047",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_048",
+          "attributes": {
+            "name": "Golfer 048",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_049",
+          "attributes": {
+            "name": "Golfer 049",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_050",
+          "attributes": {
+            "name": "Golfer 050",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_051",
+          "attributes": {
+            "name": "Golfer 051",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_052",
+          "attributes": {
+            "name": "Golfer 052",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_053",
+          "attributes": {
+            "name": "Golfer 053",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_054",
+          "attributes": {
+            "name": "Golfer 054",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_055",
+          "attributes": {
+            "name": "Golfer 055",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_056",
+          "attributes": {
+            "name": "Golfer 056",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_057",
+          "attributes": {
+            "name": "Golfer 057",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_058",
+          "attributes": {
+            "name": "Golfer 058",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_059",
+          "attributes": {
+            "name": "Golfer 059",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_060",
+          "attributes": {
+            "name": "Golfer 060",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_061",
+          "attributes": {
+            "name": "Golfer 061",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_062",
+          "attributes": {
+            "name": "Golfer 062",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_063",
+          "attributes": {
+            "name": "Golfer 063",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_064",
+          "attributes": {
+            "name": "Golfer 064",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_065",
+          "attributes": {
+            "name": "Golfer 065",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_066",
+          "attributes": {
+            "name": "Golfer 066",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_067",
+          "attributes": {
+            "name": "Golfer 067",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_068",
+          "attributes": {
+            "name": "Golfer 068",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_069",
+          "attributes": {
+            "name": "Golfer 069",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_070",
+          "attributes": {
+            "name": "Golfer 070",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_071",
+          "attributes": {
+            "name": "Golfer 071",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_072",
+          "attributes": {
+            "name": "Golfer 072",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_073",
+          "attributes": {
+            "name": "Golfer 073",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_074",
+          "attributes": {
+            "name": "Golfer 074",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_075",
+          "attributes": {
+            "name": "Golfer 075",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_076",
+          "attributes": {
+            "name": "Golfer 076",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_077",
+          "attributes": {
+            "name": "Golfer 077",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_078",
+          "attributes": {
+            "name": "Golfer 078",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_079",
+          "attributes": {
+            "name": "Golfer 079",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_080",
+          "attributes": {
+            "name": "Golfer 080",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_081",
+          "attributes": {
+            "name": "Golfer 081",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_082",
+          "attributes": {
+            "name": "Golfer 082",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_083",
+          "attributes": {
+            "name": "Golfer 083",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_084",
+          "attributes": {
+            "name": "Golfer 084",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_085",
+          "attributes": {
+            "name": "Golfer 085",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_086",
+          "attributes": {
+            "name": "Golfer 086",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_087",
+          "attributes": {
+            "name": "Golfer 087",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_088",
+          "attributes": {
+            "name": "Golfer 088",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_089",
+          "attributes": {
+            "name": "Golfer 089",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_090",
+          "attributes": {
+            "name": "Golfer 090",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_091",
+          "attributes": {
+            "name": "Golfer 091",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_092",
+          "attributes": {
+            "name": "Golfer 092",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_093",
+          "attributes": {
+            "name": "Golfer 093",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_094",
+          "attributes": {
+            "name": "Golfer 094",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_095",
+          "attributes": {
+            "name": "Golfer 095",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_096",
+          "attributes": {
+            "name": "Golfer 096",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_097",
+          "attributes": {
+            "name": "Golfer 097",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_098",
+          "attributes": {
+            "name": "Golfer 098",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_099",
+          "attributes": {
+            "name": "Golfer 099",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_100",
+          "attributes": {
+            "name": "Golfer 100",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_101",
+          "attributes": {
+            "name": "Golfer 101",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_102",
+          "attributes": {
+            "name": "Golfer 102",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_103",
+          "attributes": {
+            "name": "Golfer 103",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_104",
+          "attributes": {
+            "name": "Golfer 104",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_105",
+          "attributes": {
+            "name": "Golfer 105",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_106",
+          "attributes": {
+            "name": "Golfer 106",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_107",
+          "attributes": {
+            "name": "Golfer 107",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_108",
+          "attributes": {
+            "name": "Golfer 108",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_109",
+          "attributes": {
+            "name": "Golfer 109",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_110",
+          "attributes": {
+            "name": "Golfer 110",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_111",
+          "attributes": {
+            "name": "Golfer 111",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_112",
+          "attributes": {
+            "name": "Golfer 112",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_113",
+          "attributes": {
+            "name": "Golfer 113",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_114",
+          "attributes": {
+            "name": "Golfer 114",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_115",
+          "attributes": {
+            "name": "Golfer 115",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_116",
+          "attributes": {
+            "name": "Golfer 116",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_117",
+          "attributes": {
+            "name": "Golfer 117",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_118",
+          "attributes": {
+            "name": "Golfer 118",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_119",
+          "attributes": {
+            "name": "Golfer 119",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_120",
+          "attributes": {
+            "name": "Golfer 120",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_121",
+          "attributes": {
+            "name": "Golfer 121",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_122",
+          "attributes": {
+            "name": "Golfer 122",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_123",
+          "attributes": {
+            "name": "Golfer 123",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_124",
+          "attributes": {
+            "name": "Golfer 124",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_125",
+          "attributes": {
+            "name": "Golfer 125",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_126",
+          "attributes": {
+            "name": "Golfer 126",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_127",
+          "attributes": {
+            "name": "Golfer 127",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_128",
+          "attributes": {
+            "name": "Golfer 128",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_129",
+          "attributes": {
+            "name": "Golfer 129",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_130",
+          "attributes": {
+            "name": "Golfer 130",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_131",
+          "attributes": {
+            "name": "Golfer 131",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_132",
+          "attributes": {
+            "name": "Golfer 132",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_133",
+          "attributes": {
+            "name": "Golfer 133",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_134",
+          "attributes": {
+            "name": "Golfer 134",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_135",
+          "attributes": {
+            "name": "Golfer 135",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_136",
+          "attributes": {
+            "name": "Golfer 136",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_137",
+          "attributes": {
+            "name": "Golfer 137",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_138",
+          "attributes": {
+            "name": "Golfer 138",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_139",
+          "attributes": {
+            "name": "Golfer 139",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_140",
+          "attributes": {
+            "name": "Golfer 140",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_141",
+          "attributes": {
+            "name": "Golfer 141",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_142",
+          "attributes": {
+            "name": "Golfer 142",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_143",
+          "attributes": {
+            "name": "Golfer 143",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_144",
+          "attributes": {
+            "name": "Golfer 144",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_145",
+          "attributes": {
+            "name": "Golfer 145",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_146",
+          "attributes": {
+            "name": "Golfer 146",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_147",
+          "attributes": {
+            "name": "Golfer 147",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_148",
+          "attributes": {
+            "name": "Golfer 148",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_149",
+          "attributes": {
+            "name": "Golfer 149",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_150",
+          "attributes": {
+            "name": "Golfer 150",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_151",
+          "attributes": {
+            "name": "Golfer 151",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_152",
+          "attributes": {
+            "name": "Golfer 152",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_153",
+          "attributes": {
+            "name": "Golfer 153",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_154",
+          "attributes": {
+            "name": "Golfer 154",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_155",
+          "attributes": {
+            "name": "Golfer 155",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_156",
+          "attributes": {
+            "name": "Golfer 156",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_157",
+          "attributes": {
+            "name": "Golfer 157",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_158",
+          "attributes": {
+            "name": "Golfer 158",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_159",
+          "attributes": {
+            "name": "Golfer 159",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_160",
+          "attributes": {
+            "name": "Golfer 160",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_161",
+          "attributes": {
+            "name": "Golfer 161",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_162",
+          "attributes": {
+            "name": "Golfer 162",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_163",
+          "attributes": {
+            "name": "Golfer 163",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_164",
+          "attributes": {
+            "name": "Golfer 164",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_165",
+          "attributes": {
+            "name": "Golfer 165",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_166",
+          "attributes": {
+            "name": "Golfer 166",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_167",
+          "attributes": {
+            "name": "Golfer 167",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_168",
+          "attributes": {
+            "name": "Golfer 168",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_169",
+          "attributes": {
+            "name": "Golfer 169",
+            "constructor_cohort": "A"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "group_01",
+          "size": 13
+        },
+        {
+          "id": "group_02",
+          "size": 13
+        },
+        {
+          "id": "group_03",
+          "size": 13
+        },
+        {
+          "id": "group_04",
+          "size": 13
+        },
+        {
+          "id": "group_05",
+          "size": 13
+        },
+        {
+          "id": "group_06",
+          "size": 13
+        },
+        {
+          "id": "group_07",
+          "size": 13
+        },
+        {
+          "id": "group_08",
+          "size": 13
+        },
+        {
+          "id": "group_09",
+          "size": 13
+        },
+        {
+          "id": "group_10",
+          "size": 13
+        },
+        {
+          "id": "group_11",
+          "size": 13
+        },
+        {
+          "id": "group_12",
+          "size": 13
+        },
+        {
+          "id": "group_13",
+          "size": 13
+        }
+      ],
+      "num_sessions": 14
+    },
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 1,
+        "penalty_function": "squared",
+        "penalty_weight": 3.0
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "group_01",
+        "attribute_key": "constructor_cohort",
+        "desired_values": {
+          "A": 6,
+          "B": 7
+        },
+        "penalty_weight": 4.0,
+        "mode": "exact",
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "golfer_169",
+        "group_id": "group_02",
+        "sessions": [
+          0,
+          7,
+          13
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "golfer_001",
+          "golfer_002"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "golfer_167",
+          "golfer_168"
+        ],
+        "group_id": "group_03",
+        "sessions": [
+          1,
+          13
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "golfer_003",
+          "golfer_004"
+        ],
+        "penalty_weight": 5.0,
+        "sessions": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "golfer_005",
+          "golfer_006"
+        ],
+        "penalty_weight": 6.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "golfer_007",
+          "golfer_008"
+        ],
+        "sessions": [
+          1,
+          2,
+          3
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 5.0
+      }
+    ],
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 2000000,
+        "time_limit_seconds": 300,
+        "no_improvement_iterations": 1000000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 50.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 10000,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      },
+      "seed": 16913141
+    },
+    "initial_schedule": null
+  }
+}

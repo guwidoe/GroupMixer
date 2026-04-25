@@ -203,6 +203,7 @@ fn diagnose_sailing_trip_search_hotpath_breakdown() {
         no_improvement_limit: None,
         time_limit_seconds: None,
         stop_on_optimal_score: false,
+        runtime_scaled_no_improvement_stop: None,
     };
     let family_selector = MoveFamilySelector::new(&run_context.move_policy);
     let sampler = CandidateSampler;

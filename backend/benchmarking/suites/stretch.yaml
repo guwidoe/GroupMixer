@@ -11,3 +11,11 @@ cases:
   - manifest: ../cases/stretch/medium_multi_session.json
   - manifest: ../cases/stretch/sailing_trip_feature_dense.json
     max_iterations: 2500
+  - manifest: ../cases/stretch/google_cp_equivalent.json
+    max_iterations: 5000
+  - manifest: ../cases/stretch/benchmark_very_large.json
+    max_iterations: 5000
+  - manifest: ../cases/stretch/benchmark_very_large_constrained.json
+    max_iterations: 5000
+  - manifest: ../cases/stretch/immovable_person_anchor_12p_6g_10s.json
+    max_iterations: 1000

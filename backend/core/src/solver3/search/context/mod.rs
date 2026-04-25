@@ -3,7 +3,6 @@ mod policy_memory;
 mod progress;
 mod validation;
 
-pub(crate) use config::SearchRunContext;
 #[cfg(feature = "solver3-experimental-memetic")]
 pub(crate) use config::SteadyStateMemeticConfig;
 #[cfg(feature = "solver3-experimental-recombination")]
@@ -11,6 +10,7 @@ pub(crate) use config::{
     AdaptiveRawChildRetentionConfig, DonorSessionTransplantConfig,
     MultiRootBalancedSessionInheritanceConfig, SessionAlignedPathRelinkingConfig,
 };
+pub(crate) use config::{RuntimeScaledNoImprovementStopConfig, SearchRunContext};
 pub(crate) use policy_memory::{IteratedLocalSearchMemory, SearchPolicyMemory};
 pub(crate) use progress::SearchProgressState;
 
@@ -128,6 +128,78 @@ mod tests {
     }
 
     #[test]
+    fn run_context_captures_runtime_scaled_no_improvement_stop() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        let SolverParams::Solver3(params) = &mut config.solver_params else {
+            unreachable!("test config uses solver3 params")
+        };
+        params
+            .search_driver
+            .runtime_scaled_no_improvement_stop
+            .enabled = true;
+        params
+            .search_driver
+            .runtime_scaled_no_improvement_stop
+            .runtime_scale_factor = 1.5;
+        params
+            .search_driver
+            .runtime_scaled_no_improvement_stop
+            .grace_seconds = 0.25;
+
+        let context = SearchRunContext::from_solver(&config, &state, 7).unwrap();
+        let stop_config = context
+            .runtime_scaled_no_improvement_stop
+            .expect("runtime-scaled stop enabled");
+        assert_eq!(stop_config.runtime_scale_factor, 1.5);
+        assert_eq!(stop_config.grace_seconds, 0.25);
+    }
+
+    #[test]
+    fn run_context_rejects_invalid_runtime_scaled_no_improvement_scale_factor() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        let SolverParams::Solver3(params) = &mut config.solver_params else {
+            unreachable!("test config uses solver3 params")
+        };
+        params
+            .search_driver
+            .runtime_scaled_no_improvement_stop
+            .enabled = true;
+        params
+            .search_driver
+            .runtime_scaled_no_improvement_stop
+            .runtime_scale_factor = -0.1;
+
+        let error = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(error.to_string().contains(
+            "runtime_scaled_no_improvement_stop.runtime_scale_factor must be finite and >= 0.0"
+        ));
+    }
+
+    #[test]
+    fn run_context_rejects_invalid_runtime_scaled_no_improvement_stop() {
+        let state = simple_state();
+        let mut config = solver3_config();
+        let SolverParams::Solver3(params) = &mut config.solver_params else {
+            unreachable!("test config uses solver3 params")
+        };
+        params
+            .search_driver
+            .runtime_scaled_no_improvement_stop
+            .enabled = true;
+        params
+            .search_driver
+            .runtime_scaled_no_improvement_stop
+            .grace_seconds = -0.1;
+
+        let error = SearchRunContext::from_solver(&config, &state, 7).unwrap_err();
+        assert!(error.to_string().contains(
+            "runtime_scaled_no_improvement_stop.grace_seconds must be finite and >= 0.0"
+        ));
+    }
+
+    #[test]
     fn run_context_captures_search_limits_and_allowed_sessions() {
         let state = simple_state();
         let context = SearchRunContext::from_solver(&solver3_config(), &state, 7).unwrap();
@@ -143,6 +215,7 @@ mod tests {
         assert_eq!(context.max_iterations, 123);
         assert_eq!(context.no_improvement_limit, Some(17));
         assert_eq!(context.time_limit_seconds, Some(9));
+        assert_eq!(context.runtime_scaled_no_improvement_stop, None);
         assert_eq!(context.allowed_sessions, vec![0, 1]);
         assert!(!context.correctness_lane_enabled);
         assert_eq!(context.correctness_sample_every_accepted_moves, 16);

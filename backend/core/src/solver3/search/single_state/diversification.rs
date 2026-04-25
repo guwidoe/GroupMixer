@@ -49,6 +49,7 @@ pub(super) fn try_diversification_burst(
                 no_improvement_limit: None,
                 time_limit_seconds: Some(diversification_per_donor_polish_seconds()),
                 stop_on_optimal_score: budget.stop_on_optimal_score,
+                runtime_scaled_no_improvement_stop: budget.runtime_scaled_no_improvement_stop,
             },
             LocalImproverHooks {
                 progress_callback: None,

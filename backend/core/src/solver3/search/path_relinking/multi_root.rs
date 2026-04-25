@@ -175,6 +175,7 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
                     remaining.min((limit as f64) / (config.root_count as f64 + 2.0))
                 }),
                 stop_on_optimal_score: run_context.stop_on_optimal_score,
+                runtime_scaled_no_improvement_stop: run_context.runtime_scaled_no_improvement_stop,
             },
         )?;
         merge_local_improver_run(
@@ -316,6 +317,8 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
                                 (limit as f64 - get_elapsed_seconds(total_started_at)).max(0.0)
                             }),
                             stop_on_optimal_score: run_context.stop_on_optimal_score,
+                            runtime_scaled_no_improvement_stop: run_context
+                                .runtime_scaled_no_improvement_stop,
                         },
                     )?;
                     merge_local_improver_run(
@@ -426,6 +429,8 @@ pub(crate) fn run_multi_root_balanced_session_inheritance(
                         (limit as f64 - get_elapsed_seconds(total_started_at)).max(0.0)
                     }),
                     stop_on_optimal_score: run_context.stop_on_optimal_score,
+                    runtime_scaled_no_improvement_stop: run_context
+                        .runtime_scaled_no_improvement_stop,
                 },
             )?;
             merge_local_improver_run(

@@ -29,7 +29,7 @@ use crate::models::{
     SolverConfiguration, SolverParams, StopConditions,
 };
 
-use super::compiled_problem::CompiledProblem;
+use super::compiled_problem::{CompiledProblem, PackedSchedule};
 use super::moves::{
     analyze_clique_swap, analyze_swap, analyze_transfer, apply_clique_swap_runtime_preview,
     apply_swap_runtime_preview, apply_transfer_runtime_preview,
@@ -45,6 +45,14 @@ use super::oracle::check_drift;
 use super::runtime_state::RuntimeState;
 use super::scoring::recompute::recompute_oracle_score;
 use super::validation::invariants::validate_invariants;
+use crate::solver_support::construction::constraint_scenario_oracle::{
+    build_constraint_scenario_ensemble, build_constraint_scenario_scaffold_mask,
+    extract_constraint_scenario_signals, generate_oracle_template_candidates,
+    merge_projected_oracle_template_into_scaffold, project_oracle_schedule_to_template,
+    validate_pure_oracle_schedule, ConstraintScenarioCandidate, ConstraintScenarioCandidateSource,
+    OracleTemplateCandidate, OracleTemplateProjectionResult, PureStructureOracle,
+    PureStructureOracleRequest, PureStructureOracleSchedule, Solver6PureStructureOracle,
+};
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -102,6 +110,58 @@ fn minimal_input() -> ApiInput {
         constraints: vec![],
         solver: solver3_config(),
     }
+}
+
+fn pure_sgp_solver3_input(num_groups: usize, group_size: usize, num_sessions: usize) -> ApiInput {
+    let num_people = num_groups * group_size;
+    ApiInput {
+        problem: ProblemDefinition {
+            people: (0..num_people)
+                .map(|idx| Person {
+                    id: format!("p{idx}"),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                })
+                .collect(),
+            groups: (0..num_groups)
+                .map(|idx| Group {
+                    id: format!("g{idx}"),
+                    size: group_size as u32,
+                    session_sizes: None,
+                })
+                .collect(),
+            num_sessions: num_sessions as u32,
+        },
+        initial_schedule: None,
+        construction_seed_schedule: None,
+        objectives: vec![Objective {
+            r#type: "maximize_unique_contacts".into(),
+            weight: 1.0,
+        }],
+        constraints: vec![Constraint::RepeatEncounter(RepeatEncounterParams {
+            max_allowed_encounters: 1,
+            penalty_function: "squared".into(),
+            penalty_weight: 1000.0,
+        })],
+        solver: solver3_config(),
+    }
+}
+
+fn repeated_partition_schedule(
+    num_groups: usize,
+    group_size: usize,
+    num_sessions: usize,
+) -> PackedSchedule {
+    (0..num_sessions)
+        .map(|_| {
+            (0..num_groups)
+                .map(|group_idx| {
+                    let start = group_idx * group_size;
+                    (start..start + group_size).collect::<Vec<_>>()
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect()
 }
 
 /// 6 people, 2 groups (3 each), 3 sessions with all major constraint types.
@@ -503,6 +563,501 @@ fn runtime_state_initialization_is_deterministic() {
 }
 
 #[test]
+fn constraint_scenario_oracle_constructor_returns_cs_scaffold() {
+    let mut input = minimal_input();
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    }
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&state).unwrap();
+    assert_eq!(state.compiled.num_sessions, 2);
+    assert_eq!(state.compiled.num_people, 4);
+}
+
+#[test]
+fn constraint_scenario_oracle_constructor_returns_scaffold_when_no_oracle_template_exists() {
+    let mut input = representative_input();
+    input.initial_schedule = None;
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    }
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&state).unwrap();
+    assert!(state.total_score.is_finite());
+}
+
+#[test]
+fn constraint_scenario_oracle_constructor_declines_when_repeat_pressure_absent() {
+    let mut input = minimal_input();
+    input.objectives.clear();
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    }
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&state).unwrap();
+    assert_eq!(state.compiled.maximize_unique_contacts_weight, 0.0);
+}
+
+#[test]
+fn constraint_scenario_oracle_constructor_preserves_must_stay_apart() {
+    let mut input = pure_sgp_solver3_input(3, 3, 4);
+    input.constraints.push(Constraint::MustStayApart {
+        people: vec!["p0".into(), "p1".into()],
+        sessions: None,
+    });
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    }
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&state).unwrap();
+    let p0 = state.compiled.person_id_to_idx["p0"];
+    let p1 = state.compiled.person_id_to_idx["p1"];
+    for session_idx in 0..state.compiled.num_sessions {
+        assert_ne!(
+            state.person_location[state.people_slot(session_idx, p0)],
+            state.person_location[state.people_slot(session_idx, p1)],
+            "ConstraintScenarioOracleGuided placed a MustStayApart pair together in session {session_idx}"
+        );
+    }
+}
+
+#[test]
+fn constraint_scenario_signals_capture_pair_pressure_and_rigidity() {
+    let input = minimal_input();
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let schedule_a: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let schedule_b: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
+    let ensemble = build_constraint_scenario_ensemble(vec![
+        ConstraintScenarioCandidate {
+            schedule: schedule_a,
+            source: ConstraintScenarioCandidateSource::BaselineLegacy,
+            seed: 1,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+        ConstraintScenarioCandidate {
+            schedule: schedule_b,
+            source: ConstraintScenarioCandidateSource::FreedomAwareDeterministic,
+            seed: 2,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+    ])
+    .unwrap();
+
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let pair_01 = compiled.pair_idx(0, 1);
+    assert_eq!(signals.pair_pressure(&compiled, 0, pair_01), 1.0);
+    assert_eq!(signals.pair_pressure(&compiled, 1, pair_01), 0.5);
+    assert_eq!(signals.placement_frequency(&compiled, 1, 1, 0), 0.5);
+    assert_eq!(signals.placement_frequency(&compiled, 1, 1, 1), 0.5);
+    assert!(signals.rigidity(&compiled, 0, 1) > 0.99);
+    assert!(signals.rigidity(&compiled, 1, 1) < 0.01);
+}
+
+#[test]
+fn constraint_scenario_scaffold_mask_protects_rigid_and_immovable_placements() {
+    let mut input = minimal_input();
+    input
+        .constraints
+        .push(Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p0".into(),
+            group_id: "g0".into(),
+            sessions: Some(vec![0]),
+        }));
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let schedule_a: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let schedule_b: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]];
+    let ensemble = build_constraint_scenario_ensemble(vec![
+        ConstraintScenarioCandidate {
+            schedule: schedule_a.clone(),
+            source: ConstraintScenarioCandidateSource::BaselineLegacy,
+            seed: 1,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+        ConstraintScenarioCandidate {
+            schedule: schedule_b,
+            source: ConstraintScenarioCandidateSource::FreedomAwareDeterministic,
+            seed: 2,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+    ])
+    .unwrap();
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &schedule_a, &signals);
+
+    assert!(mask.is_frozen(&compiled, 0, 0)); // immovable
+    assert!(!mask.is_frozen(&compiled, 0, 1)); // entropy-only rigidity is a soft prior
+    assert!(!mask.is_frozen(&compiled, 1, 1)); // split evenly across groups
+    assert_eq!(
+        mask.rigid_placement_count + mask.flexible_placement_count,
+        8
+    );
+}
+
+#[test]
+fn oracle_template_generator_finds_flexible_pure_sgp_template() {
+    let input = minimal_input();
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let schedule_a: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let schedule_b: PackedSchedule =
+        vec![vec![vec![2, 3], vec![0, 1]], vec![vec![2, 3], vec![0, 1]]];
+    let ensemble = build_constraint_scenario_ensemble(vec![
+        ConstraintScenarioCandidate {
+            schedule: schedule_a.clone(),
+            source: ConstraintScenarioCandidateSource::BaselineLegacy,
+            seed: 1,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+        ConstraintScenarioCandidate {
+            schedule: schedule_b,
+            source: ConstraintScenarioCandidateSource::FreedomAwareRandomized,
+            seed: 2,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+    ])
+    .unwrap();
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &schedule_a, &signals);
+
+    let template = generate_oracle_template_candidates(&compiled, &schedule_a, &signals, &mask)
+        .into_iter()
+        .next()
+        .expect("expected flexible oracle template");
+    assert_eq!(template.oracle_capacity, 4);
+    assert_eq!(template.num_sessions(), 2);
+    assert_eq!(template.num_groups, 2);
+    assert_eq!(template.group_size, 2);
+}
+
+#[derive(Debug, Clone)]
+struct FakePureStructureOracle {
+    schedule: PackedSchedule,
+}
+
+impl PureStructureOracle for FakePureStructureOracle {
+    fn solve(
+        &self,
+        request: &PureStructureOracleRequest,
+    ) -> Result<PureStructureOracleSchedule, crate::solver_support::SolverError> {
+        validate_pure_oracle_schedule(request, &self.schedule)?;
+        Ok(PureStructureOracleSchedule {
+            schedule: self.schedule.clone(),
+        })
+    }
+}
+
+#[test]
+fn pure_structure_oracle_seam_supports_fake_oracle() {
+    let request = PureStructureOracleRequest {
+        num_groups: 2,
+        group_size: 2,
+        num_sessions: 2,
+        seed: 7,
+    };
+    let fake = FakePureStructureOracle {
+        schedule: vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]],
+    };
+
+    let schedule = fake.solve(&request).unwrap();
+    assert_eq!(schedule.schedule.len(), 2);
+    assert_eq!(schedule.schedule[0].len(), 2);
+}
+
+#[test]
+fn solver6_pure_structure_oracle_services_exact_small_block() {
+    let request = PureStructureOracleRequest {
+        num_groups: 2,
+        group_size: 2,
+        num_sessions: 3,
+        seed: 11,
+    };
+
+    let schedule = Solver6PureStructureOracle.solve(&request).unwrap();
+    validate_pure_oracle_schedule(&request, &schedule.schedule).unwrap();
+}
+
+#[test]
+fn oracle_template_projection_improves_pair_alignment_and_aligns_groups() {
+    let input = minimal_input();
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let scaffold: PackedSchedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let mut signals = crate::solver_support::construction::constraint_scenario_oracle::ConstraintScenarioSignals {
+        pair_pressure_by_session_pair: vec![0.0; compiled.num_sessions * compiled.num_pairs],
+        placement_histogram_by_person_session_group: vec![
+            0.0;
+            compiled.num_sessions
+                * compiled.num_people
+                * compiled.num_groups
+        ],
+        rigidity_by_person_session: vec![0.0; compiled.num_sessions * compiled.num_people],
+        rigid_placement_count: 0,
+        flexible_placement_count: compiled.num_sessions * compiled.num_people,
+    };
+    for session_idx in 0..compiled.num_sessions {
+        let pair_02 = compiled.pair_idx(0, 2);
+        let pair_13 = compiled.pair_idx(1, 3);
+        signals.pair_pressure_by_session_pair[session_idx * compiled.num_pairs + pair_02] = 1.0;
+        signals.pair_pressure_by_session_pair[session_idx * compiled.num_pairs + pair_13] = 1.0;
+        for &person_idx in &[0usize, 2] {
+            signals.placement_histogram_by_person_session_group
+                [(session_idx * compiled.num_people + person_idx) * compiled.num_groups] = 1.0;
+        }
+        for &person_idx in &[1usize, 3] {
+            signals.placement_histogram_by_person_session_group
+                [(session_idx * compiled.num_people + person_idx) * compiled.num_groups + 1] = 1.0;
+        }
+    }
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &scaffold, &signals);
+    let candidate = OracleTemplateCandidate {
+        sessions: vec![0, 1],
+        groups_by_session: vec![vec![0, 1], vec![0, 1]],
+        num_groups: 2,
+        group_size: 2,
+        oracle_capacity: 4,
+        stable_people_count: 4,
+        high_attendance_people_count: 4,
+        dummy_oracle_people: 0,
+        omitted_high_attendance_people: 0,
+        omitted_group_count: 0,
+        scaffold_disruption_risk: 0.0,
+        estimated_score: 1.0,
+    };
+    let oracle_schedule = PureStructureOracleSchedule {
+        schedule: vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]],
+    };
+
+    let projection = project_oracle_schedule_to_template(
+        &compiled,
+        &signals,
+        &mask,
+        &candidate,
+        &oracle_schedule,
+    )
+    .unwrap();
+    assert!(projection.pair_alignment_score >= 4.0);
+    assert!(projection.group_alignment_score > 0.0);
+    assert_eq!(projection.mapped_real_people, 4);
+    let mut assigned_groups = projection.real_group_by_session_oracle_group[0].clone();
+    assigned_groups.sort_unstable();
+    assert_eq!(assigned_groups, vec![0, 1]);
+}
+
+#[test]
+fn oracle_template_merge_injects_projected_contacts_into_flexible_scaffold() {
+    let input = minimal_input();
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let scaffold: PackedSchedule = vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let alternate: PackedSchedule =
+        vec![vec![vec![2, 3], vec![0, 1]], vec![vec![2, 3], vec![0, 1]]];
+    let ensemble = build_constraint_scenario_ensemble(vec![
+        ConstraintScenarioCandidate {
+            schedule: scaffold.clone(),
+            source: ConstraintScenarioCandidateSource::BaselineLegacy,
+            seed: 1,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+        ConstraintScenarioCandidate {
+            schedule: alternate,
+            source: ConstraintScenarioCandidateSource::FreedomAwareRandomized,
+            seed: 2,
+            cs_score: 0.0,
+            real_score: 0.0,
+        },
+    ])
+    .unwrap();
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &scaffold, &signals);
+    let candidate = OracleTemplateCandidate {
+        sessions: vec![0, 1],
+        groups_by_session: vec![vec![0, 1], vec![0, 1]],
+        num_groups: 2,
+        group_size: 2,
+        oracle_capacity: 4,
+        stable_people_count: 4,
+        high_attendance_people_count: 4,
+        dummy_oracle_people: 0,
+        omitted_high_attendance_people: 0,
+        omitted_group_count: 0,
+        scaffold_disruption_risk: 0.0,
+        estimated_score: 1.0,
+    };
+    let oracle_schedule = PureStructureOracleSchedule {
+        schedule: vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]],
+    };
+    let projection = OracleTemplateProjectionResult {
+        real_person_by_oracle_person: vec![Some(0), Some(2), Some(1), Some(3)],
+        real_group_by_session_oracle_group: vec![vec![0, 1], vec![0, 1]],
+        score: 0.0,
+        pair_alignment_score: 0.0,
+        group_alignment_score: 0.0,
+        rigidity_mismatch: 0.0,
+        mapped_real_people: 4,
+        dummy_oracle_people: 0,
+    };
+
+    let merged = merge_projected_oracle_template_into_scaffold(
+        &compiled,
+        &scaffold,
+        &signals,
+        &mask,
+        &candidate,
+        &oracle_schedule,
+        &projection,
+    )
+    .unwrap();
+
+    assert_eq!(merged.schedule[0][0], vec![0, 2]);
+    assert_eq!(merged.schedule[0][1], vec![1, 3]);
+    assert_eq!(merged.changed_placement_count, 8);
+}
+
+#[test]
+fn oracle_template_projection_uses_structurally_frozen_people_as_anchors() {
+    let mut input = minimal_input();
+    input.constraints.extend([
+        Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p0".into(),
+            group_id: "g0".into(),
+            sessions: Some(vec![0, 1]),
+        }),
+        Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p1".into(),
+            group_id: "g0".into(),
+            sessions: Some(vec![0, 1]),
+        }),
+        Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p2".into(),
+            group_id: "g1".into(),
+            sessions: Some(vec![0, 1]),
+        }),
+        Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p3".into(),
+            group_id: "g1".into(),
+            sessions: Some(vec![0, 1]),
+        }),
+    ]);
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let schedule_a: PackedSchedule =
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]];
+    let ensemble = build_constraint_scenario_ensemble(vec![ConstraintScenarioCandidate {
+        schedule: schedule_a.clone(),
+        source: ConstraintScenarioCandidateSource::BaselineLegacy,
+        seed: 1,
+        cs_score: 0.0,
+        real_score: 0.0,
+    }])
+    .unwrap();
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &schedule_a, &signals);
+    let candidate = OracleTemplateCandidate {
+        sessions: vec![0, 1],
+        groups_by_session: vec![vec![0, 1], vec![0, 1]],
+        num_groups: 2,
+        group_size: 2,
+        oracle_capacity: 4,
+        stable_people_count: 0,
+        high_attendance_people_count: 0,
+        dummy_oracle_people: 4,
+        omitted_high_attendance_people: 0,
+        omitted_group_count: 0,
+        scaffold_disruption_risk: 0.0,
+        estimated_score: 0.0,
+    };
+    let oracle_schedule = PureStructureOracleSchedule {
+        schedule: vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 1], vec![2, 3]]],
+    };
+
+    let projection = project_oracle_schedule_to_template(
+        &compiled,
+        &signals,
+        &mask,
+        &candidate,
+        &oracle_schedule,
+    )
+    .unwrap();
+    assert_eq!(projection.mapped_real_people, 4);
+    assert_eq!(projection.dummy_oracle_people, 0);
+    let mut projected_people = projection
+        .real_person_by_oracle_person
+        .iter()
+        .filter_map(|&person_idx| person_idx)
+        .collect::<Vec<_>>();
+    projected_people.sort_unstable();
+    assert_eq!(projected_people, vec![0, 1, 2, 3]);
+
+    let merged = merge_projected_oracle_template_into_scaffold(
+        &compiled,
+        &schedule_a,
+        &signals,
+        &mask,
+        &candidate,
+        &oracle_schedule,
+        &projection,
+    )
+    .unwrap();
+    assert_eq!(merged.schedule, schedule_a);
+    assert_eq!(merged.changed_placement_count, 0);
+}
+
+#[test]
+fn pure_repeat_only_sgp_selects_the_whole_problem_as_oracle_template() {
+    let input = pure_sgp_solver3_input(8, 4, 10);
+    let compiled = CompiledProblem::compile(&input).unwrap();
+    let scaffold = repeated_partition_schedule(8, 4, 10);
+    let ensemble = build_constraint_scenario_ensemble(vec![ConstraintScenarioCandidate {
+        schedule: scaffold.clone(),
+        source: ConstraintScenarioCandidateSource::BaselineLegacy,
+        seed: 1,
+        cs_score: 0.0,
+        real_score: 0.0,
+    }])
+    .unwrap();
+    let signals = extract_constraint_scenario_signals(&compiled, &ensemble);
+    let mask = build_constraint_scenario_scaffold_mask(&compiled, &scaffold, &signals);
+
+    let template = generate_oracle_template_candidates(&compiled, &scaffold, &signals, &mask)
+        .into_iter()
+        .next()
+        .expect("pure SGP should expose the full instance as flexible");
+    assert_eq!(template.oracle_capacity, 32);
+    assert_eq!(template.num_sessions(), 10);
+    assert_eq!(template.num_groups, 8);
+    assert_eq!(template.group_size, 4);
+}
+
+#[test]
+fn oracle_guided_constructor_returns_solver6_perfect_sgp_incumbent() {
+    let mut input = pure_sgp_solver3_input(8, 4, 10);
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+    }
+
+    let state = RuntimeState::from_input(&input).unwrap();
+    validate_invariants(&state).unwrap();
+    assert_eq!(state.repetition_penalty_raw, 0);
+    assert!(
+        state.total_score.abs() <= 1e-9,
+        "expected perfect SGP incumbent, got score {}",
+        state.total_score
+    );
+}
+
+#[test]
 fn runtime_state_rejects_out_of_range_freedom_aware_gamma() {
     let mut input = minimal_input();
     if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
@@ -551,6 +1106,36 @@ fn runtime_state_freedom_aware_mode_respects_seed_and_constraints() {
             assert!(state.group_sizes[slot] <= cp.group_capacity(session_idx, group_idx));
         }
     }
+}
+
+#[test]
+fn runtime_state_constructor_handles_partially_anchored_clique() {
+    let mut input = minimal_input();
+    input.constraints = vec![
+        Constraint::MustStayTogether {
+            people: vec!["p0".into(), "p1".into()],
+            sessions: Some(vec![0]),
+        },
+        Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p0".into(),
+            group_id: "g1".into(),
+            sessions: Some(vec![0]),
+        }),
+    ];
+    input.solver.seed = Some(5);
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::FreedomAwareRandomized;
+        params.construction.freedom_aware.gamma = 0.0;
+    }
+
+    let state = RuntimeState::from_input(&input).expect("solver3 state should initialize");
+    let cp = &state.compiled;
+    let p0 = cp.person_id_to_idx["p0"];
+    let p1 = cp.person_id_to_idx["p1"];
+    let g1 = cp.group_id_to_idx["g1"];
+
+    assert_eq!(state.person_location[state.people_slot(0, p0)], Some(g1));
+    assert_eq!(state.person_location[state.people_slot(0, p1)], Some(g1));
 }
 
 #[test]
@@ -700,7 +1285,7 @@ fn runtime_state_construction_respects_must_stay_apart() {
 }
 
 #[test]
-fn runtime_state_normalizes_invalid_construction_seed_must_stay_apart_violation() {
+fn runtime_state_rejects_invalid_constructor_must_stay_apart_output() {
     let mut input = minimal_input();
     input.constraints = vec![Constraint::MustStayApart {
         people: vec!["p0".into(), "p1".into()],
@@ -714,15 +1299,10 @@ fn runtime_state_normalizes_invalid_construction_seed_must_stay_apart_violation(
         ]),
     )]));
 
-    let state = RuntimeState::from_input(&input).unwrap();
-    let cp = &state.compiled;
-    let p0 = cp.person_id_to_idx["p0"];
-    let p1 = cp.person_id_to_idx["p1"];
-
-    assert_ne!(
-        state.person_location[state.people_slot(0, p0)],
-        state.person_location[state.people_slot(0, p1)],
-        "construction normalization must repair must-stay-apart seed violations"
+    let err = RuntimeState::from_input(&input).unwrap_err().to_string();
+    assert!(
+        err.contains("constructor produced invalid schedule") && err.contains("MustStayApart"),
+        "unexpected error: {err}"
     );
 }
 
@@ -1161,6 +1741,70 @@ fn zero_unique_contacts_when_no_pairs_share_groups() {
     assert!(state.pair_contacts.iter().all(|&c| c == 0));
     validate_invariants(&state).unwrap();
     check_drift(&state).unwrap();
+}
+
+#[test]
+fn immovable_violation_is_diagnostic_not_scored() {
+    let input = ApiInput {
+        problem: ProblemDefinition {
+            people: vec![
+                Person {
+                    id: "p0".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+                Person {
+                    id: "p1".into(),
+                    attributes: HashMap::new(),
+                    sessions: None,
+                },
+            ],
+            groups: vec![
+                Group {
+                    id: "g0".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+                Group {
+                    id: "g1".into(),
+                    size: 2,
+                    session_sizes: None,
+                },
+            ],
+            num_sessions: 1,
+        },
+        initial_schedule: None,
+        construction_seed_schedule: None,
+        objectives: vec![],
+        constraints: vec![Constraint::ImmovablePerson(ImmovablePersonParams {
+            person_id: "p0".into(),
+            group_id: "g0".into(),
+            sessions: None,
+        })],
+        solver: solver3_config(),
+    };
+
+    let mut state = RuntimeState::from_input(&input).unwrap();
+    let person_idx = 0usize;
+    let old_group_idx = state.person_location[state.people_slot(0, person_idx)].unwrap();
+    let old_group_slot = state.group_slot(0, old_group_idx);
+    let old_position = state.group_members[old_group_slot]
+        .iter()
+        .position(|&member| member == person_idx)
+        .unwrap();
+    state.group_members[old_group_slot].swap_remove(old_position);
+    state.group_sizes[old_group_slot] -= 1;
+
+    let new_group_idx = 1usize;
+    let new_group_slot = state.group_slot(0, new_group_idx);
+    state.group_members[new_group_slot].push(person_idx);
+    state.group_sizes[new_group_slot] += 1;
+    let person_slot = state.people_slot(0, person_idx);
+    state.person_location[person_slot] = Some(new_group_idx);
+
+    let snap = recompute_oracle_score(&state).unwrap();
+    assert_eq!(snap.immovable_violations, 1);
+    assert_eq!(snap.constraint_penalty_weighted, 0.0);
 }
 
 #[test]

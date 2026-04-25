@@ -1,0 +1,538 @@
+{
+  "schema_version": 1,
+  "id": "stretch.social-golfer-49x7x8-constrained",
+  "class": "stretch",
+  "case_role": "derived",
+  "canonical_case_id": "stretch.social-golfer-49x7x8",
+  "purpose": "diagnostic_target.stretch.social_golfer_constrained_constructor_49x7x8",
+  "provenance": "derived_from_backend/benchmarking/cases/stretch/social_golfer_49x7x8.json_by_adding_one_representative_constraint_of_each_constraint_family",
+  "declared_budget": {
+    "max_iterations": 20000000,
+    "time_limit_seconds": 180
+  },
+  "tags": [
+    "stretch",
+    "social-golfer",
+    "repeat-encounter",
+    "diagnostic",
+    "7x7x8",
+    "exact-bound",
+    "large-group-size",
+    "constrained",
+    "constructor-heuristic",
+    "attribute-balance",
+    "immovable",
+    "must-stay",
+    "should-stay",
+    "should-not",
+    "pair-meeting",
+    "immovable-people"
+  ],
+  "title": "Social Golfer 49x7x8 constrained (7-7-8)",
+  "description": "Constrained counterpart of the hard Social Golfer 49x7x8 workload. Keeps the pure repeat-minimization structure but adds a small representative mix of repeat, attribute-balance, single-person immovable, multi-person immovable, must-stay, should-stay, should-not, and pair-meeting constraints.",
+  "input": {
+    "problem": {
+      "people": [
+        {
+          "id": "golfer_01",
+          "attributes": {
+            "name": "Golfer 01",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_02",
+          "attributes": {
+            "name": "Golfer 02",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_03",
+          "attributes": {
+            "name": "Golfer 03",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_04",
+          "attributes": {
+            "name": "Golfer 04",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_05",
+          "attributes": {
+            "name": "Golfer 05",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_06",
+          "attributes": {
+            "name": "Golfer 06",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_07",
+          "attributes": {
+            "name": "Golfer 07",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_08",
+          "attributes": {
+            "name": "Golfer 08",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_09",
+          "attributes": {
+            "name": "Golfer 09",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_10",
+          "attributes": {
+            "name": "Golfer 10",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_11",
+          "attributes": {
+            "name": "Golfer 11",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_12",
+          "attributes": {
+            "name": "Golfer 12",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_13",
+          "attributes": {
+            "name": "Golfer 13",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_14",
+          "attributes": {
+            "name": "Golfer 14",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_15",
+          "attributes": {
+            "name": "Golfer 15",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_16",
+          "attributes": {
+            "name": "Golfer 16",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_17",
+          "attributes": {
+            "name": "Golfer 17",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_18",
+          "attributes": {
+            "name": "Golfer 18",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_19",
+          "attributes": {
+            "name": "Golfer 19",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_20",
+          "attributes": {
+            "name": "Golfer 20",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_21",
+          "attributes": {
+            "name": "Golfer 21",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_22",
+          "attributes": {
+            "name": "Golfer 22",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_23",
+          "attributes": {
+            "name": "Golfer 23",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_24",
+          "attributes": {
+            "name": "Golfer 24",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_25",
+          "attributes": {
+            "name": "Golfer 25",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_26",
+          "attributes": {
+            "name": "Golfer 26",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_27",
+          "attributes": {
+            "name": "Golfer 27",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_28",
+          "attributes": {
+            "name": "Golfer 28",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_29",
+          "attributes": {
+            "name": "Golfer 29",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_30",
+          "attributes": {
+            "name": "Golfer 30",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_31",
+          "attributes": {
+            "name": "Golfer 31",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_32",
+          "attributes": {
+            "name": "Golfer 32",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_33",
+          "attributes": {
+            "name": "Golfer 33",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_34",
+          "attributes": {
+            "name": "Golfer 34",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_35",
+          "attributes": {
+            "name": "Golfer 35",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_36",
+          "attributes": {
+            "name": "Golfer 36",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_37",
+          "attributes": {
+            "name": "Golfer 37",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_38",
+          "attributes": {
+            "name": "Golfer 38",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_39",
+          "attributes": {
+            "name": "Golfer 39",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_40",
+          "attributes": {
+            "name": "Golfer 40",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_41",
+          "attributes": {
+            "name": "Golfer 41",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_42",
+          "attributes": {
+            "name": "Golfer 42",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_43",
+          "attributes": {
+            "name": "Golfer 43",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_44",
+          "attributes": {
+            "name": "Golfer 44",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_45",
+          "attributes": {
+            "name": "Golfer 45",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_46",
+          "attributes": {
+            "name": "Golfer 46",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_47",
+          "attributes": {
+            "name": "Golfer 47",
+            "constructor_cohort": "A"
+          }
+        },
+        {
+          "id": "golfer_48",
+          "attributes": {
+            "name": "Golfer 48",
+            "constructor_cohort": "B"
+          }
+        },
+        {
+          "id": "golfer_49",
+          "attributes": {
+            "name": "Golfer 49",
+            "constructor_cohort": "A"
+          }
+        }
+      ],
+      "groups": [
+        {
+          "id": "group_01",
+          "size": 7
+        },
+        {
+          "id": "group_02",
+          "size": 7
+        },
+        {
+          "id": "group_03",
+          "size": 7
+        },
+        {
+          "id": "group_04",
+          "size": 7
+        },
+        {
+          "id": "group_05",
+          "size": 7
+        },
+        {
+          "id": "group_06",
+          "size": 7
+        },
+        {
+          "id": "group_07",
+          "size": 7
+        }
+      ],
+      "num_sessions": 8
+    },
+    "constraints": [
+      {
+        "type": "RepeatEncounter",
+        "max_allowed_encounters": 1,
+        "penalty_function": "squared",
+        "penalty_weight": 3.0
+      },
+      {
+        "type": "AttributeBalance",
+        "group_id": "group_01",
+        "attribute_key": "constructor_cohort",
+        "desired_values": {
+          "A": 3,
+          "B": 4
+        },
+        "penalty_weight": 4.0,
+        "mode": "exact",
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "ImmovablePerson",
+        "person_id": "golfer_49",
+        "group_id": "group_02",
+        "sessions": [
+          0,
+          4,
+          7
+        ]
+      },
+      {
+        "type": "MustStayTogether",
+        "people": [
+          "golfer_01",
+          "golfer_02"
+        ],
+        "sessions": [
+          0,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "ImmovablePeople",
+        "people": [
+          "golfer_47",
+          "golfer_48"
+        ],
+        "group_id": "group_03",
+        "sessions": [
+          1,
+          7
+        ]
+      },
+      {
+        "type": "ShouldStayTogether",
+        "people": [
+          "golfer_03",
+          "golfer_04"
+        ],
+        "penalty_weight": 5.0,
+        "sessions": [
+          3,
+          4,
+          5
+        ]
+      },
+      {
+        "type": "ShouldNotBeTogether",
+        "people": [
+          "golfer_05",
+          "golfer_06"
+        ],
+        "penalty_weight": 6.0
+      },
+      {
+        "type": "PairMeetingCount",
+        "people": [
+          "golfer_07",
+          "golfer_08"
+        ],
+        "sessions": [
+          1,
+          2,
+          3
+        ],
+        "target_meetings": 1,
+        "mode": "exact",
+        "penalty_weight": 5.0
+      }
+    ],
+    "objectives": [
+      {
+        "type": "maximize_unique_contacts",
+        "weight": 1.0
+      }
+    ],
+    "solver": {
+      "solver_type": "SimulatedAnnealing",
+      "stop_conditions": {
+        "max_iterations": 2000000,
+        "time_limit_seconds": 180,
+        "no_improvement_iterations": 1000000
+      },
+      "solver_params": {
+        "solver_type": "SimulatedAnnealing",
+        "initial_temperature": 50.0,
+        "final_temperature": 0.001,
+        "cooling_schedule": "geometric"
+      },
+      "logging": {
+        "log_frequency": 10000,
+        "log_initial_state": false,
+        "log_duration_and_score": false,
+        "display_final_schedule": false,
+        "log_initial_score_breakdown": false,
+        "log_final_score_breakdown": false,
+        "log_stop_condition": false
+      },
+      "seed": 4907081
+    },
+    "initial_schedule": null
+  }
+}

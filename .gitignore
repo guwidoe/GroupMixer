@@ -392,3 +392,7 @@ papers/
 
 docs/market-research
 autoresearch.last_run_report.html
+
+# Autoresearch generated run artifacts
+/autoresearch*.last_run_metrics.json
+/autoresearch*.last_run_report.html

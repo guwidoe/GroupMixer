@@ -17,6 +17,8 @@ pub(crate) struct LocalImproverBudget {
     pub(crate) no_improvement_limit: Option<u64>,
     pub(crate) time_limit_seconds: Option<f64>,
     pub(crate) stop_on_optimal_score: bool,
+    pub(crate) runtime_scaled_no_improvement_stop:
+        Option<super::super::context::RuntimeScaledNoImprovementStopConfig>,
 }
 
 #[derive(Debug, Clone)]
@@ -47,6 +49,7 @@ pub(crate) fn run(
             no_improvement_limit: run_context.no_improvement_limit,
             time_limit_seconds: run_context.time_limit_seconds.map(|limit| limit as f64),
             stop_on_optimal_score: run_context.stop_on_optimal_score,
+            runtime_scaled_no_improvement_stop: run_context.runtime_scaled_no_improvement_stop,
         },
         LocalImproverHooks {
             progress_callback,

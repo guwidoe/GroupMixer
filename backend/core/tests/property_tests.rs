@@ -145,6 +145,36 @@ fn create_test_input_for_solver(
     input
 }
 
+fn default_solver_may_explicitly_reject_generated_problem(
+    solver_kind: SolverKind,
+    error_message: &str,
+) -> bool {
+    match solver_kind {
+        // Solver4/5/6 are intentionally narrower pure-SGP-oriented families. This property
+        // generates generic GroupMixer shapes, so truthful behavior includes explicit rejection
+        // of unsupported generated inputs rather than silent fallback to another solver.
+        SolverKind::Solver4 => {
+            error_message.contains("solver4 requires complete equal partitions each session")
+                || error_message.contains("solver4 requires exactly one RepeatEncounter constraint")
+                || error_message
+                    .contains("solver4 requires zero-repeat meet-at-most-once semantics")
+        }
+        SolverKind::Solver5 => {
+            error_message.contains("solver5 requires complete equal partitions each session")
+                || error_message.contains("solver5 requires exactly one RepeatEncounter constraint")
+                || error_message
+                    .contains("solver5 requires zero-repeat meet-at-most-once semantics")
+        }
+        SolverKind::Solver6 => {
+            error_message.contains("solver6 requires complete equal partitions each session")
+                || error_message.contains("solver6 requires exactly one RepeatEncounter constraint")
+                || error_message
+                    .contains("solver6 requires zero-repeat meet-at-most-once semantics")
+        }
+        SolverKind::Solver1 | SolverKind::Solver3 => false,
+    }
+}
+
 fn create_test_input_with_sessions(
     num_groups: u32,
     group_size: u32,
@@ -451,23 +481,21 @@ proptest! {
                     );
                 }
                 Err(error) => {
-                    let is_solver4_capability_gate = descriptor.kind == SolverKind::Solver4
-                        && (error.to_string().contains("solver4 requires complete equal partitions each session")
-                            || error.to_string().contains("solver4 requires exactly one RepeatEncounter constraint encoding meet-at-most-once semantics")
-                            || error.to_string().contains("solver4 requires zero-repeat meet-at-most-once semantics"));
-                    let is_solver5_capability_gate = descriptor.kind == SolverKind::Solver5
-                        && (error.to_string().contains("solver5 requires complete equal partitions each session")
-                            || error.to_string().contains("solver5 requires exactly one RepeatEncounter constraint encoding meet-at-most-once semantics")
-                            || error.to_string().contains("solver5 requires zero-repeat meet-at-most-once semantics"));
+                    let error_message = error.to_string();
+                    let is_explicit_unsupported_generated_problem =
+                        default_solver_may_explicitly_reject_generated_problem(
+                            descriptor.kind,
+                            &error_message,
+                        );
                     prop_assert!(
-                        is_bootstrap_only || is_solver4_capability_gate || is_solver5_capability_gate,
+                        is_bootstrap_only || is_explicit_unsupported_generated_problem,
                         "runnable solver {} failed with default config: {:?}",
                         descriptor.kind.canonical_id(),
                         error
                     );
                     if is_bootstrap_only {
                         prop_assert!(
-                            error.to_string().contains("not implemented"),
+                            error_message.contains("not implemented"),
                             "bootstrap solver {} should fail with an explicit 'not implemented' error, got: {}",
                             descriptor.kind.canonical_id(),
                             error

@@ -105,42 +105,7 @@ impl RoutingFailure {
 pub(super) fn attempt_construction(
     problem: &PureSgpProblem,
 ) -> Result<RouterDecision, RoutingFailure> {
-    let registrations = families::registered_families();
-    let mut non_candidate_attempts = Vec::new();
-    let mut candidates = Vec::new();
-
-    for (precedence, family) in registrations.iter().enumerate() {
-        match family.evaluate(problem) {
-            FamilyEvaluation::NotApplicable { reason } => {
-                non_candidate_attempts.push(FamilyAttempt {
-                    family: family.id(),
-                    status: FamilyAttemptStatus::NotApplicable { reason },
-                })
-            }
-            FamilyEvaluation::Applicable { .. } => {
-                let Some(result) = family.construct(problem) else {
-                    non_candidate_attempts.push(FamilyAttempt {
-                        family: family.id(),
-                        status: FamilyAttemptStatus::ConstructionFailed {
-                            reason: "evaluation said applicable but construction returned None",
-                        },
-                    });
-                    continue;
-                };
-                candidates.push(CandidateRecord {
-                    family: family.id(),
-                    precedence,
-                    result,
-                });
-            }
-        }
-    }
-
-    let Some(best_idx) = best_candidate_index(&candidates) else {
-        return Err(RoutingFailure {
-            attempts: non_candidate_attempts,
-        });
-    };
+    let (non_candidate_attempts, candidates, best_idx) = ranked_candidates(problem)?;
 
     let selected_family = candidates[best_idx].family;
     let mut attempts = non_candidate_attempts;
@@ -189,11 +154,127 @@ pub(super) fn attempt_construction(
     Err(RoutingFailure { attempts })
 }
 
+pub(super) fn best_available_construction(
+    problem: &PureSgpProblem,
+) -> Result<ConstructionResult, RoutingFailure> {
+    let (_, candidates, best_idx) = ranked_candidates(problem)?;
+    Ok(candidates
+        .into_iter()
+        .nth(best_idx)
+        .expect("best candidate index should refer to an existing candidate")
+        .result)
+}
+
+pub(super) fn closest_supporting_construction(
+    problem: &PureSgpProblem,
+) -> Result<ConstructionResult, RoutingFailure> {
+    let (non_candidate_attempts, candidates, _) = ranked_candidates(problem)?;
+    let Some(best_idx) = closest_supporting_candidate_index(&candidates, problem.num_weeks) else {
+        let mut attempts = non_candidate_attempts;
+        for candidate in candidates {
+            attempts.push(FamilyAttempt {
+                family: candidate.family,
+                status: FamilyAttemptStatus::InsufficientWeeks {
+                    requested_weeks: problem.num_weeks,
+                    max_supported_weeks: candidate.result.max_supported_weeks,
+                    quality: candidate.result.metadata.quality.clone(),
+                },
+            });
+        }
+        return Err(RoutingFailure { attempts });
+    };
+
+    let selected_family = candidates[best_idx].family;
+    let mut attempts = non_candidate_attempts;
+    let mut selected_result = None;
+    for (idx, candidate) in candidates.into_iter().enumerate() {
+        let quality = candidate.result.metadata.quality.clone();
+        if candidate.result.max_supported_weeks < problem.num_weeks {
+            attempts.push(FamilyAttempt {
+                family: candidate.family,
+                status: FamilyAttemptStatus::InsufficientWeeks {
+                    requested_weeks: problem.num_weeks,
+                    max_supported_weeks: candidate.result.max_supported_weeks,
+                    quality,
+                },
+            });
+            continue;
+        }
+
+        if idx == best_idx {
+            let max_supported_weeks = candidate.result.max_supported_weeks;
+            selected_result = candidate.result.truncate_to_requested(problem.num_weeks);
+            attempts.push(FamilyAttempt {
+                family: candidate.family,
+                status: FamilyAttemptStatus::Selected {
+                    max_supported_weeks,
+                    quality,
+                },
+            });
+            continue;
+        }
+
+        attempts.push(FamilyAttempt {
+            family: candidate.family,
+            status: FamilyAttemptStatus::RejectedAsWeaker {
+                max_supported_weeks: candidate.result.max_supported_weeks,
+                quality,
+                selected_family,
+            },
+        });
+    }
+
+    selected_result.ok_or(RoutingFailure { attempts })
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct CandidateRecord {
     family: ConstructionFamilyId,
     precedence: usize,
     result: ConstructionResult,
+}
+
+fn ranked_candidates(
+    problem: &PureSgpProblem,
+) -> Result<(Vec<FamilyAttempt>, Vec<CandidateRecord>, usize), RoutingFailure> {
+    let registrations = families::registered_families();
+    let mut non_candidate_attempts = Vec::new();
+    let mut candidates = Vec::new();
+
+    for (precedence, family) in registrations.iter().enumerate() {
+        match family.evaluate(problem) {
+            FamilyEvaluation::NotApplicable { reason } => {
+                non_candidate_attempts.push(FamilyAttempt {
+                    family: family.id(),
+                    status: FamilyAttemptStatus::NotApplicable { reason },
+                })
+            }
+            FamilyEvaluation::Applicable { .. } => {
+                let Some(result) = family.construct(problem) else {
+                    non_candidate_attempts.push(FamilyAttempt {
+                        family: family.id(),
+                        status: FamilyAttemptStatus::ConstructionFailed {
+                            reason: "evaluation said applicable but construction returned None",
+                        },
+                    });
+                    continue;
+                };
+                candidates.push(CandidateRecord {
+                    family: family.id(),
+                    precedence,
+                    result,
+                });
+            }
+        }
+    }
+
+    let Some(best_idx) = best_candidate_index(&candidates) else {
+        return Err(RoutingFailure {
+            attempts: non_candidate_attempts,
+        });
+    };
+
+    Ok((non_candidate_attempts, candidates, best_idx))
 }
 
 fn best_candidate_index(candidates: &[CandidateRecord]) -> Option<usize> {
@@ -212,12 +293,55 @@ fn best_candidate_index(candidates: &[CandidateRecord]) -> Option<usize> {
     best_idx
 }
 
+fn closest_supporting_candidate_index(
+    candidates: &[CandidateRecord],
+    requested_weeks: usize,
+) -> Option<usize> {
+    let mut best_idx = None;
+    for (idx, candidate) in candidates.iter().enumerate() {
+        if candidate.result.max_supported_weeks < requested_weeks {
+            continue;
+        }
+        match best_idx {
+            None => best_idx = Some(idx),
+            Some(current_best_idx)
+                if supporting_candidate_is_closer(
+                    candidate,
+                    &candidates[current_best_idx],
+                    requested_weeks,
+                ) =>
+            {
+                best_idx = Some(idx)
+            }
+            Some(_) => {}
+        }
+    }
+    best_idx
+}
+
 fn candidate_outranks(left: &CandidateRecord, right: &CandidateRecord) -> bool {
     left.result.max_supported_weeks > right.result.max_supported_weeks
         || (left.result.max_supported_weeks == right.result.max_supported_weeks
             && quality_rank(&left.result.metadata.quality)
                 > quality_rank(&right.result.metadata.quality))
         || (left.result.max_supported_weeks == right.result.max_supported_weeks
+            && quality_rank(&left.result.metadata.quality)
+                == quality_rank(&right.result.metadata.quality)
+            && left.precedence < right.precedence)
+}
+
+fn supporting_candidate_is_closer(
+    left: &CandidateRecord,
+    right: &CandidateRecord,
+    requested_weeks: usize,
+) -> bool {
+    let left_excess = left.result.max_supported_weeks - requested_weeks;
+    let right_excess = right.result.max_supported_weeks - requested_weeks;
+    left_excess < right_excess
+        || (left_excess == right_excess
+            && quality_rank(&left.result.metadata.quality)
+                > quality_rank(&right.result.metadata.quality))
+        || (left_excess == right_excess
             && quality_rank(&left.result.metadata.quality)
                 == quality_rank(&right.result.metadata.quality)
             && left.precedence < right.precedence)

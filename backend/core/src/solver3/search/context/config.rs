@@ -24,6 +24,7 @@ pub(crate) struct SearchRunContext {
     pub(crate) no_improvement_limit: Option<u64>,
     pub(crate) time_limit_seconds: Option<u64>,
     pub(crate) stop_on_optimal_score: bool,
+    pub(crate) runtime_scaled_no_improvement_stop: Option<RuntimeScaledNoImprovementStopConfig>,
     pub(crate) allowed_sessions: Vec<usize>,
     pub(crate) correctness_lane_enabled: bool,
     pub(crate) correctness_sample_every_accepted_moves: u64,
@@ -36,6 +37,12 @@ pub(crate) struct SearchRunContext {
     pub(crate) session_aligned_path_relinking: Option<SessionAlignedPathRelinkingConfig>,
     pub(crate) multi_root_balanced_session_inheritance:
         Option<MultiRootBalancedSessionInheritanceConfig>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct RuntimeScaledNoImprovementStopConfig {
+    pub(crate) runtime_scale_factor: f64,
+    pub(crate) grace_seconds: f64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -126,6 +133,9 @@ impl SearchRunContext {
         let search_driver_mode = solver3_params.search_driver.mode;
         let local_improver_mode = solver3_params.local_improver.mode;
         let sgp_week_pair_tabu = &solver3_params.local_improver.sgp_week_pair_tabu;
+        let runtime_scaled_no_improvement_stop = &solver3_params
+            .search_driver
+            .runtime_scaled_no_improvement_stop;
         let steady_state_memetic = &solver3_params.search_driver.steady_state_memetic;
         let donor_session_transplant = &solver3_params.search_driver.donor_session_transplant;
         let session_aligned_path_relinking =
@@ -171,6 +181,26 @@ impl SearchRunContext {
         if correctness_sample_every_accepted_moves == 0 {
             return Err(SolverError::ValidationError(
                 "solver3 correctness_lane.sample_every_accepted_moves must be >= 1".into(),
+            ));
+        }
+
+        if runtime_scaled_no_improvement_stop.enabled
+            && (!runtime_scaled_no_improvement_stop
+                .runtime_scale_factor
+                .is_finite()
+                || runtime_scaled_no_improvement_stop.runtime_scale_factor < 0.0)
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.runtime_scaled_no_improvement_stop.runtime_scale_factor must be finite and >= 0.0".into(),
+            ));
+        }
+
+        if runtime_scaled_no_improvement_stop.enabled
+            && (!runtime_scaled_no_improvement_stop.grace_seconds.is_finite()
+                || runtime_scaled_no_improvement_stop.grace_seconds < 0.0)
+        {
+            return Err(SolverError::ValidationError(
+                "solver3 search_driver.runtime_scaled_no_improvement_stop.grace_seconds must be finite and >= 0.0".into(),
             ));
         }
 
@@ -709,6 +739,12 @@ impl SearchRunContext {
             no_improvement_limit: configuration.stop_conditions.no_improvement_iterations,
             time_limit_seconds: configuration.stop_conditions.time_limit_seconds,
             stop_on_optimal_score: configuration.stop_conditions.stop_on_optimal_score,
+            runtime_scaled_no_improvement_stop: runtime_scaled_no_improvement_stop
+                .enabled
+                .then_some(RuntimeScaledNoImprovementStopConfig {
+                    runtime_scale_factor: runtime_scaled_no_improvement_stop.runtime_scale_factor,
+                    grace_seconds: runtime_scaled_no_improvement_stop.grace_seconds,
+                }),
             allowed_sessions: state
                 .compiled
                 .allowed_sessions

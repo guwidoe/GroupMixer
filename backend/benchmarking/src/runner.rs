@@ -10,8 +10,8 @@ use crate::benchmark_mode::FULL_SOLVE_BENCHMARK_MODE;
 use crate::hotpath::run_hotpath_case_artifact;
 use crate::machine::{capture_git_identity, capture_machine_identity};
 use crate::manifest::{
-    load_suite_manifest, BenchmarkSearchPolicyOverride, BenchmarkSuiteClass, LoadedBenchmarkCase,
-    LoadedBenchmarkSuite,
+    load_suite_manifest, BenchmarkSearchPolicyOverride, BenchmarkSolverPolicy, BenchmarkSuiteClass,
+    BenchmarkTimeoutPolicy, LoadedBenchmarkCase, LoadedBenchmarkSuite,
 };
 use crate::storage::{machine_identity_label, BenchmarkStorage};
 use crate::validation::{
@@ -19,7 +19,11 @@ use crate::validation::{
 };
 use anyhow::{Context, Result};
 use chrono::Utc;
-use gm_core::models::{MoveFamilyBenchmarkTelemetrySummary, SolverConfiguration, SolverKind};
+use gm_core::models::{
+    MoveFamilyBenchmarkTelemetrySummary, Solver3ConstructionMode, SolverConfiguration, SolverKind,
+    SolverParams,
+};
+use gm_core::solver_support::complexity::evaluate_problem_complexity;
 use gm_core::{default_solver_configuration_for, run_solver, solver_descriptor};
 use std::collections::BTreeMap;
 use std::fs;
@@ -274,7 +278,7 @@ fn run_case(
     machine: crate::artifacts::MachineIdentity,
 ) -> CaseRunArtifact {
     debug_assert_eq!(suite.manifest.benchmark_mode, FULL_SOLVE_BENCHMARK_MODE);
-    let input = match apply_effective_overrides(suite, case) {
+    let mut input = match apply_effective_overrides(suite, case) {
         Ok(input) => input,
         Err(error) => {
             let case_identity = build_case_identity_metadata(case);
@@ -331,6 +335,49 @@ fn run_case(
             };
         }
     };
+
+    if let Some(policy) = suite.manifest.solver_policy {
+        return run_solver_policy_case(
+            run_id,
+            generated_at,
+            suite,
+            case,
+            git,
+            machine,
+            input,
+            policy,
+        );
+    }
+
+    if let Some(policy) = suite.manifest.timeout_policy {
+        let wall_start = Instant::now();
+        match timeout_seconds_for_case(policy, &input, case) {
+            Ok(timeout_seconds) => {
+                input.solver.stop_conditions.time_limit_seconds = Some(timeout_seconds);
+            }
+            Err(error) => {
+                let case_identity = build_case_identity_metadata(case);
+                return build_full_solve_solver_error_artifact(
+                    run_id,
+                    generated_at,
+                    suite,
+                    case,
+                    case_identity,
+                    git,
+                    machine,
+                    canonical_solver_family_for_error(case),
+                    input.solver.solver_type.clone(),
+                    "invalid timeout policy".to_string(),
+                    EffectiveBenchmarkBudget::default(),
+                    error.to_string(),
+                    wall_start.elapsed().as_secs_f64(),
+                    input.solver.move_policy.clone(),
+                    input.solver.seed,
+                );
+            }
+        }
+    }
+
     let case_identity = build_case_identity_metadata(case);
     let effective_budget = EffectiveBenchmarkBudget {
         max_iterations: input.solver.stop_conditions.max_iterations,
@@ -478,6 +525,472 @@ fn run_case(
             hotpath_metrics: None,
             external_validation: None,
         },
+    }
+}
+
+fn timeout_seconds_for_case(
+    policy: BenchmarkTimeoutPolicy,
+    input: &gm_core::models::ApiInput,
+    case: &LoadedBenchmarkCase,
+) -> std::result::Result<u64, gm_core::solver_support::SolverError> {
+    let complexity = evaluate_problem_complexity(input)?;
+    Ok(complexity_timeout_seconds(policy, complexity.score, case))
+}
+
+fn run_solver_policy_case(
+    run_id: &str,
+    generated_at: &str,
+    suite: &LoadedBenchmarkSuite,
+    case: &LoadedBenchmarkCase,
+    git: crate::artifacts::GitIdentity,
+    machine: crate::artifacts::MachineIdentity,
+    input: gm_core::models::ApiInput,
+    policy: BenchmarkSolverPolicy,
+) -> CaseRunArtifact {
+    match policy {
+        BenchmarkSolverPolicy::Solver3ConstructThenSearch => {
+            run_solver3_construct_then_search_case(
+                run_id,
+                generated_at,
+                suite,
+                case,
+                git,
+                machine,
+                input,
+                suite.manifest.timeout_policy.unwrap_or_default(),
+            )
+        }
+    }
+}
+
+fn run_solver3_construct_then_search_case(
+    run_id: &str,
+    generated_at: &str,
+    suite: &LoadedBenchmarkSuite,
+    case: &LoadedBenchmarkCase,
+    git: crate::artifacts::GitIdentity,
+    machine: crate::artifacts::MachineIdentity,
+    input: gm_core::models::ApiInput,
+    timeout_policy: BenchmarkTimeoutPolicy,
+) -> CaseRunArtifact {
+    let case_identity = build_case_identity_metadata(case);
+    let wall_start = Instant::now();
+    let complexity = match evaluate_problem_complexity(&input) {
+        Ok(complexity) => complexity,
+        Err(error) => {
+            return build_full_solve_solver_error_artifact(
+                run_id,
+                generated_at,
+                suite,
+                case,
+                case_identity,
+                git,
+                machine,
+                canonical_solver_family_for_error(case),
+                input.solver.solver_type.clone(),
+                "invalid timeout policy".to_string(),
+                EffectiveBenchmarkBudget::default(),
+                error.to_string(),
+                wall_start.elapsed().as_secs_f64(),
+                input.solver.move_policy.clone(),
+                input.solver.seed,
+            );
+        }
+    };
+    let total_timeout_seconds = complexity_timeout_seconds(timeout_policy, complexity.score, case);
+    let construction_budget_seconds = construction_phase_budget_seconds(total_timeout_seconds);
+    let construction_time_limit_seconds =
+        construction_phase_time_limit_seconds(total_timeout_seconds);
+    let configured_total_budget = EffectiveBenchmarkBudget {
+        max_iterations: Some(SOLVER3_COMPLEXITY_POLICY_MAX_ITERATIONS),
+        time_limit_seconds: Some(total_timeout_seconds),
+        no_improvement_iterations: None,
+    };
+
+    let mut construction_input = solver3_construct_then_search_input(input.clone());
+    construction_input.solver.stop_conditions.max_iterations = Some(0);
+    construction_input.solver.stop_conditions.time_limit_seconds =
+        Some(construction_time_limit_seconds);
+    construction_input
+        .solver
+        .stop_conditions
+        .no_improvement_iterations = None;
+    construction_input
+        .solver
+        .stop_conditions
+        .stop_on_optimal_score = true;
+
+    let construction_started_at = Instant::now();
+    let construction_result = match run_solver(&construction_input) {
+        Ok(result) => result,
+        Err(error) => {
+            let solver_metadata = build_solver_metadata(&construction_input);
+            return build_full_solve_solver_error_artifact(
+                run_id,
+                generated_at,
+                suite,
+                case,
+                case_identity,
+                git,
+                machine,
+                solver_metadata.solver_family,
+                solver_metadata.solver_config_id,
+                solver_metadata.display_name,
+                configured_total_budget,
+                format!("construction phase failed: {error}"),
+                wall_start.elapsed().as_secs_f64(),
+                construction_input.solver.move_policy.clone(),
+                construction_input.solver.seed,
+            );
+        }
+    };
+    let construction_seconds = construction_started_at.elapsed().as_secs_f64();
+    if construction_seconds > construction_budget_seconds {
+        let solver_metadata = build_solver_metadata(&construction_input);
+        return build_full_solve_solver_error_artifact(
+            run_id,
+            generated_at,
+            suite,
+            case,
+            case_identity,
+            git,
+            machine,
+            solver_metadata.solver_family,
+            solver_metadata.solver_config_id,
+            solver_metadata.display_name,
+            configured_total_budget,
+            format!(
+                "construction phase exceeded budget: {:.3}s elapsed > {:.3}s budget",
+                construction_seconds, construction_budget_seconds
+            ),
+            wall_start.elapsed().as_secs_f64(),
+            construction_input.solver.move_policy.clone(),
+            construction_input.solver.seed,
+        );
+    }
+
+    let mut search_input = solver3_construct_then_search_input(input);
+    search_input.initial_schedule = Some(construction_result.schedule.clone());
+    search_input.construction_seed_schedule = None;
+    search_input.solver.stop_conditions.max_iterations =
+        Some(SOLVER3_COMPLEXITY_POLICY_MAX_ITERATIONS);
+    search_input.solver.stop_conditions.time_limit_seconds = Some(search_phase_timeout_seconds(
+        total_timeout_seconds,
+        construction_seconds,
+    ));
+    search_input
+        .solver
+        .stop_conditions
+        .no_improvement_iterations = None;
+    search_input.solver.stop_conditions.stop_on_optimal_score = true;
+
+    let solver_metadata = build_solver_metadata(&search_input);
+    match run_solver(&search_input) {
+        Ok(result) => build_success_case_artifact(
+            run_id,
+            generated_at,
+            suite,
+            case,
+            case_identity,
+            git,
+            machine,
+            search_input,
+            result,
+            solver_metadata,
+            configured_total_budget,
+            wall_start.elapsed().as_secs_f64(),
+            Some(construction_seconds),
+        ),
+        Err(error) => build_full_solve_solver_error_artifact(
+            run_id,
+            generated_at,
+            suite,
+            case,
+            case_identity,
+            git,
+            machine,
+            solver_metadata.solver_family,
+            solver_metadata.solver_config_id,
+            solver_metadata.display_name,
+            configured_total_budget,
+            format!("search phase failed: {error}"),
+            wall_start.elapsed().as_secs_f64(),
+            search_input.solver.move_policy.clone(),
+            search_input.solver.seed,
+        ),
+    }
+}
+
+const SOLVER3_COMPLEXITY_POLICY_MAX_ITERATIONS: u64 = 1_000_000_000;
+const SOLVER3_CONSTRUCT_THEN_SEARCH_CONSTRUCTION_BUDGET_FRACTION: f64 = 0.30;
+
+fn solver3_construct_then_search_input(
+    input: gm_core::models::ApiInput,
+) -> gm_core::models::ApiInput {
+    let mut input = retarget_input_for_solver_kind(&input, SolverKind::Solver3);
+    if let SolverParams::Solver3(params) = &mut input.solver.solver_params {
+        params.construction.mode = Solver3ConstructionMode::ConstraintScenarioOracleGuided;
+        params
+            .search_driver
+            .runtime_scaled_no_improvement_stop
+            .enabled = true;
+        params
+            .search_driver
+            .runtime_scaled_no_improvement_stop
+            .runtime_scale_factor = 1.0;
+        params
+            .search_driver
+            .runtime_scaled_no_improvement_stop
+            .grace_seconds = 0.1;
+    }
+    input
+}
+
+fn complexity_timeout_seconds(
+    policy: BenchmarkTimeoutPolicy,
+    complexity: f64,
+    case: &LoadedBenchmarkCase,
+) -> u64 {
+    match policy {
+        BenchmarkTimeoutPolicy::ComplexityBasedWallTime => {
+            let base = complexity_based_wall_time_base_timeout_seconds(complexity);
+            if is_sgp_family_case(case) {
+                base.div_ceil(2).max(1)
+            } else {
+                base
+            }
+        }
+    }
+}
+
+fn complexity_based_wall_time_base_timeout_seconds(complexity: f64) -> u64 {
+    let complexity = if complexity.is_finite() {
+        complexity.max(0.0)
+    } else {
+        0.0
+    };
+    let raw = 0.75 * complexity.sqrt();
+    let floored = if complexity < 1.0 {
+        1.0
+    } else if complexity < 10.0 {
+        raw.max(2.0)
+    } else if complexity < 50.0 {
+        raw.max(4.0)
+    } else if complexity < 150.0 {
+        raw.max(8.0)
+    } else if complexity < 500.0 {
+        raw.max(12.0)
+    } else {
+        raw.max(15.0)
+    };
+    floored.round().clamp(1.0, 30.0) as u64
+}
+
+fn construction_phase_budget_seconds(total_timeout_seconds: u64) -> f64 {
+    total_timeout_seconds as f64 * SOLVER3_CONSTRUCT_THEN_SEARCH_CONSTRUCTION_BUDGET_FRACTION
+}
+
+fn construction_phase_time_limit_seconds(total_timeout_seconds: u64) -> u64 {
+    construction_phase_budget_seconds(total_timeout_seconds).floor() as u64
+}
+
+fn search_phase_timeout_seconds(total_timeout_seconds: u64, construction_seconds: f64) -> u64 {
+    let remaining_seconds = total_timeout_seconds as f64 - construction_seconds;
+    if remaining_seconds <= 0.0 {
+        0
+    } else {
+        remaining_seconds.ceil() as u64
+    }
+}
+
+fn is_sgp_family_case(case: &LoadedBenchmarkCase) -> bool {
+    case.manifest.tags.iter().any(|tag| {
+        matches!(
+            tag.as_str(),
+            "social-golfer" | "kirkman" | "sgp" | "zero-repeat"
+        )
+    }) || case.manifest.id.contains("social-golfer")
+        || case.manifest.id.contains("kirkman")
+}
+
+fn build_success_case_artifact(
+    run_id: &str,
+    generated_at: &str,
+    suite: &LoadedBenchmarkSuite,
+    case: &LoadedBenchmarkCase,
+    case_identity: CaseIdentityMetadata,
+    git: crate::artifacts::GitIdentity,
+    machine: crate::artifacts::MachineIdentity,
+    input: gm_core::models::ApiInput,
+    result: gm_core::models::SolverResult,
+    solver_metadata: SolverBenchmarkMetadata,
+    effective_budget: EffectiveBenchmarkBudget,
+    wall_seconds: f64,
+    construction_seconds: Option<f64>,
+) -> CaseRunArtifact {
+    let telemetry = result.benchmark_telemetry.clone();
+    let timing = telemetry
+        .as_ref()
+        .map(|telemetry| {
+            let construction_seconds = construction_seconds.unwrap_or(0.0);
+            SolveTimingBreakdown {
+                initialization_seconds: telemetry.initialization_seconds + construction_seconds,
+                search_seconds: telemetry.search_seconds,
+                finalization_seconds: telemetry.finalization_seconds,
+                total_seconds: wall_seconds,
+            }
+        })
+        .unwrap_or_else(|| SolveTimingBreakdown {
+            total_seconds: wall_seconds,
+            ..Default::default()
+        });
+    let moves = telemetry
+        .as_ref()
+        .map(|telemetry| telemetry.moves.clone())
+        .unwrap_or_default();
+    let search_telemetry = telemetry.as_ref().map(|telemetry| SearchTelemetryArtifact {
+        accepted_uphill_moves: telemetry.accepted_uphill_moves,
+        accepted_downhill_moves: telemetry.accepted_downhill_moves,
+        accepted_neutral_moves: telemetry.accepted_neutral_moves,
+        max_no_improvement_streak: telemetry.max_no_improvement_streak,
+        restart_count: telemetry.restart_count,
+        perturbation_count: telemetry.perturbation_count,
+        iterations_per_second: telemetry.iterations_per_second,
+        best_score_timeline: telemetry.best_score_timeline.clone(),
+        repeat_guided_swaps: telemetry.repeat_guided_swaps.clone(),
+        sgp_week_pair_tabu: telemetry.sgp_week_pair_tabu.clone(),
+        memetic: telemetry.memetic.clone(),
+        donor_session_transplant: telemetry.donor_session_transplant.clone(),
+        session_aligned_path_relinking: telemetry.session_aligned_path_relinking.clone(),
+        multi_root_balanced_session_inheritance: telemetry
+            .multi_root_balanced_session_inheritance
+            .clone(),
+        solver4_paper_trace: telemetry.solver4_paper_trace.clone(),
+    });
+    let validation = validate_final_solution(&input, &result);
+    let score_decomposition =
+        build_score_decomposition(&input, &result, validation.recomputed.as_ref());
+    let validation_error = (!validation.validation_passed).then(|| {
+        format!(
+            "external final-solution validation failed: {}",
+            validation_failure_summary(&validation)
+        )
+    });
+
+    CaseRunArtifact {
+        schema_version: CASE_RUN_SCHEMA_VERSION,
+        run_id: run_id.to_string(),
+        generated_at: generated_at.to_string(),
+        suite_id: suite.manifest.suite_id.clone(),
+        benchmark_mode: suite.manifest.benchmark_mode.clone(),
+        suite_class: suite.manifest.class,
+        case_id: case.manifest.id.clone(),
+        case_class: case.manifest.class,
+        case_manifest_path: case.manifest_path.display().to_string(),
+        case_identity: Some(case_identity.clone()),
+        case_title: case.manifest.title.clone(),
+        case_description: case.manifest.description.clone(),
+        tags: case.manifest.tags.clone(),
+        git,
+        machine,
+        solver: solver_metadata.clone(),
+        effective_seed: result.effective_seed.or(input.solver.seed),
+        effective_budget,
+        artifact_kind: BenchmarkArtifactKind::FullSolve,
+        effective_move_policy: result.move_policy.or(input.solver.move_policy.clone()),
+        stop_reason: result.stop_reason,
+        status: if validation_error.is_some() {
+            CaseRunStatus::SolverError
+        } else {
+            CaseRunStatus::Success
+        },
+        error_message: validation_error,
+        runtime_seconds: timing.total_seconds,
+        timing,
+        initial_score: telemetry.as_ref().map(|telemetry| telemetry.initial_score),
+        final_score: Some(result.final_score),
+        best_score: telemetry.as_ref().map(|telemetry| telemetry.best_score),
+        iteration_count: telemetry
+            .as_ref()
+            .map(|telemetry| telemetry.iterations_completed),
+        no_improvement_count: Some(result.no_improvement_count),
+        unique_contacts: Some(result.unique_contacts),
+        weighted_repetition_penalty: Some(result.weighted_repetition_penalty),
+        weighted_constraint_penalty: Some(result.weighted_constraint_penalty),
+        score_decomposition: Some(score_decomposition),
+        search_telemetry,
+        moves,
+        hotpath_metrics: None,
+        external_validation: Some(validation),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_full_solve_solver_error_artifact(
+    run_id: &str,
+    generated_at: &str,
+    suite: &LoadedBenchmarkSuite,
+    case: &LoadedBenchmarkCase,
+    case_identity: CaseIdentityMetadata,
+    git: crate::artifacts::GitIdentity,
+    machine: crate::artifacts::MachineIdentity,
+    solver_family: String,
+    solver_config_id: String,
+    display_name: String,
+    effective_budget: EffectiveBenchmarkBudget,
+    error_message: String,
+    runtime_seconds: f64,
+    effective_move_policy: Option<gm_core::models::MovePolicy>,
+    effective_seed: Option<u64>,
+) -> CaseRunArtifact {
+    CaseRunArtifact {
+        schema_version: CASE_RUN_SCHEMA_VERSION,
+        run_id: run_id.to_string(),
+        generated_at: generated_at.to_string(),
+        suite_id: suite.manifest.suite_id.clone(),
+        benchmark_mode: suite.manifest.benchmark_mode.clone(),
+        suite_class: suite.manifest.class,
+        case_id: case.manifest.id.clone(),
+        case_class: case.manifest.class,
+        case_manifest_path: case.manifest_path.display().to_string(),
+        case_identity: Some(case_identity),
+        case_title: case.manifest.title.clone(),
+        case_description: case.manifest.description.clone(),
+        tags: case.manifest.tags.clone(),
+        git,
+        machine,
+        solver: SolverBenchmarkMetadata {
+            solver_family,
+            solver_config_id,
+            display_name,
+            seed_policy: BenchmarkSeedPolicy::Explicit,
+            capabilities: SolverCapabilitiesSnapshot::default(),
+        },
+        effective_seed,
+        effective_budget,
+        artifact_kind: BenchmarkArtifactKind::FullSolve,
+        effective_move_policy,
+        stop_reason: None,
+        status: CaseRunStatus::SolverError,
+        error_message: Some(error_message),
+        runtime_seconds,
+        timing: SolveTimingBreakdown {
+            total_seconds: runtime_seconds,
+            ..Default::default()
+        },
+        initial_score: None,
+        final_score: None,
+        best_score: None,
+        iteration_count: None,
+        no_improvement_count: None,
+        unique_contacts: None,
+        weighted_repetition_penalty: None,
+        weighted_constraint_penalty: None,
+        score_decomposition: None,
+        search_telemetry: None,
+        moves: MoveFamilyBenchmarkTelemetrySummary::default(),
+        hotpath_metrics: None,
+        external_validation: None,
     }
 }
 
@@ -986,6 +1499,54 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
+    fn complexity_based_wall_time_policy_uses_complexity_and_sgp_discount() {
+        let suite = load_suite_manifest("suites/solver3-constructor-broad.yaml")
+            .expect("solver3 constructor broad suite should load");
+        let policy = BenchmarkTimeoutPolicy::ComplexityBasedWallTime;
+
+        let sailing = suite
+            .cases
+            .iter()
+            .find(|case| case.manifest.id == "stretch.sailing-trip-demo-real")
+            .expect("sailing case present");
+        let sailing_complexity = evaluate_problem_complexity(
+            sailing
+                .manifest
+                .input
+                .as_ref()
+                .expect("sailing has solve input"),
+        )
+        .unwrap();
+        assert_eq!(
+            complexity_timeout_seconds(policy, sailing_complexity.score, sailing),
+            26
+        );
+
+        let large_sgp = suite
+            .cases
+            .iter()
+            .find(|case| case.manifest.id == "stretch.social-golfer-169x13x14")
+            .expect("large SGP case present");
+        let large_sgp_complexity = evaluate_problem_complexity(
+            large_sgp
+                .manifest
+                .input
+                .as_ref()
+                .expect("large SGP has solve input"),
+        )
+        .unwrap();
+        assert_eq!(
+            complexity_timeout_seconds(policy, large_sgp_complexity.score, large_sgp),
+            15
+        );
+
+        assert_eq!(construction_phase_budget_seconds(15), 4.5);
+        assert_eq!(construction_phase_time_limit_seconds(15), 4);
+        assert_eq!(search_phase_timeout_seconds(15, 2.75), 13);
+        assert_eq!(search_phase_timeout_seconds(15, 15.25), 0);
+    }
+
+    #[test]
     fn path_suite_runs_and_persists_artifacts() {
         let temp = TempDir::new().expect("temp dir");
         let options = RunnerOptions {
@@ -1070,6 +1631,106 @@ mod tests {
         let baseline = load_baseline_snapshot(&baseline_path).expect("reload baseline");
         assert_eq!(baseline.baseline_name, "path-baseline");
         assert_eq!(baseline.run_report.run.run_id, report.run.run_id);
+    }
+
+    #[test]
+    fn solver_policy_runs_two_phase_solver3_lane_with_default_timeout_policy() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_dir = temp.path().join("backend/benchmarking/suites");
+        let case_dir = temp.path().join("backend/benchmarking/cases/stretch");
+        fs::create_dir_all(&suite_dir).expect("mk suite dir");
+        fs::create_dir_all(&case_dir).expect("mk case dir");
+
+        let case_path = case_dir.join("tiny_complexity_policy_case.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&json!({
+                "schema_version": 1,
+                "id": "stretch.tiny-complexity-policy-case",
+                "class": "stretch",
+                "title": "Tiny complexity policy case",
+                "description": "Small solve case used to validate the solver3 constructor-development lane.",
+                "tags": [],
+                "input": {
+                    "initial_schedule": null,
+                    "problem": {
+                        "people": [
+                            { "id": "p0", "attributes": {} },
+                            { "id": "p1", "attributes": {} },
+                            { "id": "p2", "attributes": {} },
+                            { "id": "p3", "attributes": {} }
+                        ],
+                        "groups": [
+                            { "id": "g0", "size": 2 },
+                            { "id": "g1", "size": 2 }
+                        ],
+                        "num_sessions": 2
+                    },
+                    "constraints": [],
+                    "objectives": [{ "type": "maximize_unique_contacts", "weight": 1.0 }],
+                    "solver": {
+                        "solver_type": "SimulatedAnnealing",
+                        "stop_conditions": {
+                            "max_iterations": 10,
+                            "time_limit_seconds": null,
+                            "no_improvement_iterations": null,
+                            "stop_on_optimal_score": true
+                        },
+                        "solver_params": {
+                            "solver_type": "SimulatedAnnealing",
+                            "initial_temperature": 1.0,
+                            "final_temperature": 0.01,
+                            "cooling_schedule": "geometric",
+                            "reheat_after_no_improvement": 0,
+                            "reheat_cycles": 0
+                        },
+                        "logging": {},
+                        "telemetry": {},
+                        "seed": 5,
+                        "move_policy": null,
+                        "allowed_sessions": null
+                    }
+                }
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let suite_path = suite_dir.join("suite-with-complexity-timeout-policy.yaml");
+        fs::write(
+            &suite_path,
+            [
+                "schema_version: 1",
+                "suite_id: suite-with-complexity-timeout-policy",
+                "benchmark_mode: full_solve",
+                "comparison_category: score_quality",
+                "case_selection_policy: allow_non_canonical",
+                "class: mixed",
+                "solver_policy: solver3_construct_then_search",
+                "cases:",
+                "  - manifest: ../cases/stretch/tiny_complexity_policy_case.json",
+            ]
+            .join("\n"),
+        )
+        .expect("write suite");
+
+        let options = RunnerOptions {
+            artifacts_dir: temp.path().join("artifacts"),
+            cargo_profile: "test".to_string(),
+        };
+        let report = run_suite_from_manifest(&suite_path, &options)
+            .expect("complexity policy suite should run");
+
+        assert_eq!(report.totals.failed_cases, 0);
+        assert_eq!(report.cases.len(), 1);
+        let case = &report.cases[0];
+        assert_eq!(case.solver.solver_family, "solver3");
+        assert_eq!(case.effective_budget.max_iterations, Some(1_000_000_000));
+        assert_eq!(case.effective_budget.time_limit_seconds, Some(1));
+        assert!(case
+            .external_validation
+            .as_ref()
+            .is_some_and(|validation| validation.validation_passed));
     }
 
     #[test]

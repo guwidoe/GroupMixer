@@ -20,9 +20,9 @@ use super::super::tabu::SgpWeekPairTabuState;
 use super::{
     apply_previewed_move, extend_no_improvement_streak, get_current_time, get_elapsed_seconds,
     get_elapsed_seconds_between, maybe_run_sampled_correctness_check,
-    should_attempt_diversification_burst, should_emit_progress_callback, time_limit_exceeded,
-    try_diversification_burst, LocalImproverBudget, LocalImproverHooks, LocalImproverRunResult,
-    TIME_REFRESH_INTERVAL,
+    runtime_scaled_no_improvement_limit_reached, should_attempt_diversification_burst,
+    should_emit_progress_callback, time_limit_exceeded, try_diversification_burst,
+    LocalImproverBudget, LocalImproverHooks, LocalImproverRunResult, TIME_REFRESH_INTERVAL,
 };
 
 pub(super) fn run_local_improver_general(
@@ -105,6 +105,12 @@ pub(super) fn run_local_improver_general(
                 break;
             }
 
+            if runtime_scaled_no_improvement_limit_reached(&search, cached_elapsed_seconds, budget)
+            {
+                stop_reason = StopReason::NoImprovementTimeLimitReached;
+                break;
+            }
+
             let progress = cooling_progress(
                 iteration,
                 budget.max_iterations,
@@ -171,6 +177,15 @@ pub(super) fn run_local_improver_general(
 
                     if time_limit_exceeded(cached_elapsed_seconds, budget.time_limit_seconds) {
                         stop_reason = StopReason::TimeLimitReached;
+                        break;
+                    }
+
+                    if runtime_scaled_no_improvement_limit_reached(
+                        &search,
+                        cached_elapsed_seconds,
+                        budget,
+                    ) {
+                        stop_reason = StopReason::NoImprovementTimeLimitReached;
                         break;
                     }
 

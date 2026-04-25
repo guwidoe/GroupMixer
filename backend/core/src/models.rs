@@ -614,6 +614,8 @@ pub enum SolverKind {
     /// Construction-first pure-SGP solver family that routes instances through explicit
     /// design-theoretic construction families.
     Solver5,
+    /// Hybrid pure-SGP repeat-minimization family seeded by solver5 constructions.
+    Solver6,
 }
 
 /// Default solver family used by current public callers.
@@ -626,6 +628,7 @@ impl SolverKind {
             Self::Solver3 => "solver3",
             Self::Solver4 => "solver4",
             Self::Solver5 => "solver5",
+            Self::Solver6 => "solver6",
         }
     }
 
@@ -635,6 +638,7 @@ impl SolverKind {
             Self::Solver3 => "Solver 3",
             Self::Solver4 => "Solver 4",
             Self::Solver5 => "Solver 5",
+            Self::Solver6 => "Solver 6",
         }
     }
 
@@ -649,6 +653,7 @@ impl SolverKind {
             Self::Solver3 => &["solver3"],
             Self::Solver4 => &["solver4"],
             Self::Solver5 => &["solver5"],
+            Self::Solver6 => &["solver6"],
         }
     }
 
@@ -661,13 +666,20 @@ impl SolverKind {
             "solver3" => Ok(Self::Solver3),
             "solver4" => Ok(Self::Solver4),
             "solver5" => Ok(Self::Solver5),
+            "solver6" => Ok(Self::Solver6),
             other => Err(format!(
                 "Unknown solver type '{other}'. Supported solver IDs: {}",
-                [Self::Solver1, Self::Solver3, Self::Solver4, Self::Solver5]
-                    .iter()
-                    .map(|kind| kind.canonical_id())
-                    .collect::<Vec<_>>()
-                    .join(", ")
+                [
+                    Self::Solver1,
+                    Self::Solver3,
+                    Self::Solver4,
+                    Self::Solver5,
+                    Self::Solver6,
+                ]
+                .iter()
+                .map(|kind| kind.canonical_id())
+                .collect::<Vec<_>>()
+                .join(", ")
             )),
         }
     }
@@ -986,6 +998,9 @@ pub enum SolverParams {
     /// Parameters for the internal `solver5` family.
     #[serde(rename = "solver5")]
     Solver5(Solver5Params),
+    /// Parameters for the internal `solver6` family.
+    #[serde(rename = "solver6")]
+    Solver6(Solver6Params),
 }
 
 impl SolverParams {
@@ -995,20 +1010,24 @@ impl SolverParams {
             Self::Solver3(_) => SolverKind::Solver3,
             Self::Solver4(_) => SolverKind::Solver4,
             Self::Solver5(_) => SolverKind::Solver5,
+            Self::Solver6(_) => SolverKind::Solver6,
         }
     }
 
     pub fn simulated_annealing_params(&self) -> Option<&SimulatedAnnealingParams> {
         match self {
             Self::SimulatedAnnealing(params) => Some(params),
-            Self::Solver3(_) | Self::Solver4(_) | Self::Solver5(_) => None,
+            Self::Solver3(_) | Self::Solver4(_) | Self::Solver5(_) | Self::Solver6(_) => None,
         }
     }
 
     pub fn solver3_params(&self) -> Option<&Solver3Params> {
         match self {
             Self::Solver3(params) => Some(params),
-            Self::SimulatedAnnealing(_) | Self::Solver4(_) | Self::Solver5(_) => None,
+            Self::SimulatedAnnealing(_)
+            | Self::Solver4(_)
+            | Self::Solver5(_)
+            | Self::Solver6(_) => None,
         }
     }
 }
@@ -1019,6 +1038,126 @@ impl SolverParams {
 /// small and grows by adding explicit construction families plus routing/orchestration logic.
 #[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Default)]
 pub struct Solver5Params {}
+
+/// Seed-family selection for the internal `solver6` family.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver6SeedStrategy {
+    /// Hand exact pure-SGP requests to solver5, then reserve the remaining hybrid pipeline.
+    #[default]
+    Solver5ExactThenReservedHybrid,
+    /// Reserved seed family for composing multiple relabeled exact solver5 blocks.
+    Solver5ExactBlockComposition,
+}
+
+/// Pair-repeat penalty model for `solver6`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver6PairRepeatPenaltyModel {
+    /// Sum `max(0, pair_count - 1)` over all pairs.
+    #[default]
+    LinearRepeatExcess,
+    /// Sum triangular repeat excess so concentrated repeats are penalized harder.
+    TriangularRepeatExcess,
+    /// Sum squared repeat excess so concentrated repeats are penalized hardest.
+    SquaredRepeatExcess,
+}
+
+/// Search-driver selection for the current `solver6` scaffold.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver6SearchStrategy {
+    /// Deterministic best-improving same-week hill climbing.
+    #[default]
+    DeterministicBestImprovingHillClimb,
+    /// Exploratory repeat-aware local search with tabu and breakout.
+    ReservedRepeatAwareLocalSearch,
+}
+
+/// Explicit miss policy for the optional `solver6` progressive incumbent cache.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver6CacheMissPolicy {
+    /// Build a fresh seed and continue solving when no compatible incumbent exists.
+    #[default]
+    BuildFresh,
+    /// Fail explicitly when no compatible incumbent exists.
+    Error,
+}
+
+/// Write policy for the optional `solver6` progressive incumbent cache.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum Solver6CacheWritePolicy {
+    /// Read existing incumbents and write improved incumbents back.
+    #[default]
+    ReadWrite,
+    /// Read existing incumbents but do not write new or improved incumbents.
+    ReadOnly,
+}
+
+/// Optional progressive incumbent cache for `solver6`.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone, PartialEq, Eq)]
+pub struct Solver6CacheParams {
+    /// Directory containing one cache entry per pure-SGP shape.
+    pub root_path: String,
+    /// Explicit miss behavior when a compatible entry is absent.
+    #[serde(default)]
+    pub miss_policy: Solver6CacheMissPolicy,
+    /// Explicit write behavior after a live solve or resumed incumbent improves the cache.
+    #[serde(default)]
+    pub write_policy: Solver6CacheWritePolicy,
+}
+
+/// Parameters for the internal `solver6` family.
+///
+/// `solver6` is intended to become the hybrid pure-SGP repeat-minimization family:
+/// solver5 provides exact construction atoms, and solver6 composes / relabels / polishes them
+/// for larger impossible horizons where repeated pairings are unavoidable. The current scaffold
+/// only performs exact solver5 handoff and then fails honestly for the reserved hybrid phases.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver6Params {
+    /// Whether exact pure-SGP requests should first be handed to solver5.
+    #[serde(default = "default_solver6_exact_construction_handoff_enabled")]
+    pub exact_construction_handoff_enabled: bool,
+    /// Seed-family selection for the reserved hybrid pipeline.
+    #[serde(default)]
+    pub seed_strategy: Solver6SeedStrategy,
+    /// Repeat-penalty model for the reserved hybrid pipeline.
+    #[serde(default)]
+    pub pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel,
+    /// Search-driver selection for the reserved hybrid pipeline.
+    #[serde(default)]
+    pub search_strategy: Solver6SearchStrategy,
+    /// Optional progressive incumbent cache used as an explicit solver6-native cache.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache: Option<Solver6CacheParams>,
+    /// Optional hard deadline for seed construction on cache misses, in seconds.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub seed_time_limit_seconds: Option<u64>,
+    /// Optional local-search deadline, in seconds. Local-search timeout returns the incumbent.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub local_search_time_limit_seconds: Option<u64>,
+}
+
+pub const fn default_solver6_exact_construction_handoff_enabled() -> bool {
+    true
+}
+
+impl Default for Solver6Params {
+    fn default() -> Self {
+        Self {
+            exact_construction_handoff_enabled: default_solver6_exact_construction_handoff_enabled(
+            ),
+            seed_strategy: Solver6SeedStrategy::default(),
+            pair_repeat_penalty_model: Solver6PairRepeatPenaltyModel::default(),
+            search_strategy: Solver6SearchStrategy::default(),
+            cache: None,
+            seed_time_limit_seconds: None,
+            local_search_time_limit_seconds: None,
+        }
+    }
+}
 
 /// Parameters for the internal `solver3` family.
 ///
@@ -1148,6 +1287,8 @@ pub enum Solver3ConstructionMode {
     BaselineLegacy,
     /// Use the SGP-oriented freedom-aware randomized greedy constructor.
     FreedomAwareRandomized,
+    /// Use the automatic repeat-aware constraint-scenario + oracle-guided constructor.
+    ConstraintScenarioOracleGuided,
 }
 
 /// Parameters for the freedom-aware randomized greedy constructor.
@@ -1228,6 +1369,10 @@ pub struct Solver3SearchDriverParams {
     /// Which outer search driver to run.
     #[serde(default)]
     pub mode: Solver3SearchDriverMode,
+    /// Optional solver3 wall-clock stagnation stop: after a best score is found at search time T,
+    /// stop when no further improvement appears within `(T * runtime_scale_factor) + grace_seconds`.
+    #[serde(default)]
+    pub runtime_scaled_no_improvement_stop: Solver3RuntimeScaledNoImprovementStopParams,
     /// Config for the steady-state memetic outer driver.
     #[serde(default)]
     pub steady_state_memetic: Solver3SteadyStateMemeticParams,
@@ -1240,6 +1385,39 @@ pub struct Solver3SearchDriverParams {
     /// Config for the rare multi-root balanced session inheritance outer driver.
     #[serde(default)]
     pub multi_root_balanced_session_inheritance: Solver3MultiRootBalancedSessionInheritanceParams,
+}
+
+/// Solver3 wall-clock stagnation stop that scales with the time of the current incumbent.
+#[derive(Serialize, Deserialize, JsonSchema, Debug, Clone)]
+pub struct Solver3RuntimeScaledNoImprovementStopParams {
+    /// Enables the stop rule.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Multiplier applied to the current incumbent runtime before adding grace seconds.
+    #[serde(default = "default_solver3_runtime_scaled_no_improvement_runtime_scale_factor")]
+    pub runtime_scale_factor: f64,
+    /// Additive grace seconds after the scaled current incumbent runtime.
+    #[serde(default = "default_solver3_runtime_scaled_no_improvement_grace_seconds")]
+    pub grace_seconds: f64,
+}
+
+impl Default for Solver3RuntimeScaledNoImprovementStopParams {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            runtime_scale_factor:
+                default_solver3_runtime_scaled_no_improvement_runtime_scale_factor(),
+            grace_seconds: default_solver3_runtime_scaled_no_improvement_grace_seconds(),
+        }
+    }
+}
+
+fn default_solver3_runtime_scaled_no_improvement_runtime_scale_factor() -> f64 {
+    1.0
+}
+
+fn default_solver3_runtime_scaled_no_improvement_grace_seconds() -> f64 {
+    0.1
 }
 
 /// Config for the rare multi-root balanced session inheritance outer driver.
@@ -2070,6 +2248,7 @@ pub enum StopReason {
     MaxIterationsReached,
     TimeLimitReached,
     NoImprovementLimitReached,
+    NoImprovementTimeLimitReached,
     ProgressCallbackRequestedStop,
     OptimalScoreReached,
 }
