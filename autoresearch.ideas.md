@@ -15,7 +15,7 @@
 
 ## Benchmark/system improvements that are allowed in this lane
 
-- Current primary should stay on direct relabeler/factor quality (`relabeling_anchor_loss`) rather than final constructor success; final `1000000000` sentinel scores are only secondary monitors until projection/merge integration is coherent. Keep legacy `relabeling_factor_loss` as secondary only because it over-penalizes unidentifiable symmetric variables.
+- Direct relabeler/factor quality (`relabeling_anchor_loss`) is now saturated and should remain a zero-loss guard. The active primary can move to final diagnostic construction (`final_relabeling_relative_score`) because projection/merge consumption is now the bottleneck. Keep legacy `relabeling_factor_loss` as secondary only because it over-penalizes unidentifiable symmetric variables.
 - Add telemetry from the diagnostic path for atom counts, factor families, accepted/covered/uncovered constraint keys, mapping completeness, timeout status, and score breakdown. This is benchmark-neutral if it does not alter public defaults.
 - Add microdiagnostic cases/tests that prove a symmetry-breaking capability before expecting full benchmark score gains. If the benchmark target changes materially, re-run `init_experiment` with a new baseline.
 - Keep the diagnostic suite strong; do not reduce case sizes or planted constraint counts just because the current implementation times out or fails.
@@ -27,7 +27,8 @@
 - Blanket lazy immovable binding is stale: deferring every immovable person regressed before the more nuanced rule. The kept rule is to defer isolated/weak repeated immovable people and only promote stronger repetition.
 - Slot-diverse pruning alone was tried and did not improve primary; candidate generation diversity mattered more.
 - Kept useful scaffolds: bounded factor beam, scoped pair penalties, lazy unanchored pair factors, session-diverse beam retention, slot-diverse immovable candidate emission, representative fast-pathing for unanchored weak pair factors, and repeated-clique candidate intersections.
-- Legacy global mapping loss is stale as a primary target: after coverage reached 237/237 it mostly rewarded arbitrary mappings for pair-only or symmetric cases. Use identifiable-anchor mapping loss instead.
+- Legacy global mapping loss is stale as a primary target: after coverage reached 237/237 it mostly rewarded arbitrary mappings for pair-only or symmetric cases. Use identifiable-anchor mapping loss only as a guard now that it is zero.
+- Relabeler-only anchor loss is also saturated; further primary improvements must come from consuming the coherent session/slot/person hints in projection/merge, not from weakening direct relabeler scoring.
 
 ## Things to avoid
 

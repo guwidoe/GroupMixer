@@ -29,9 +29,10 @@ The current scaffold builds typed atoms and a timeout-aware partial bijection, b
 
 ## Metrics
 
-- **Primary**: `relabeling_anchor_loss` (unitless, lower is better) — direct relabeler/factor diagnostic loss computed before projection merge or final solver search, with mapping incompleteness charged only for variables that current typed factors can actually identify without arbitrary label anchoring. This prevents the metric from rewarding made-up person/session/group mappings when constraints are symmetric.
+- **Primary**: `final_relabeling_relative_score` (unitless, lower is better) — final diagnostic construction result for the internal constraint-aware projection suite. This became the active primary only after direct factor/anchor reconciliation reached zero loss; it is now appropriate to measure whether the relabeling plan is consumed coherently by projection/merge.
 - **Secondary relabeler monitors**:
-  - `relabeling_factor_loss` — the previous direct loss that penalized all global unmapped people/sessions/slots; retained as a guard against accidentally losing broad mapping coverage, but no longer primary because it encouraged arbitrary mappings after factor coverage saturated.
+  - `relabeling_anchor_loss` — direct identifiable-anchor factor loss. Keep this at `0`; regressions mean projection/merge work damaged the relabeler.
+  - `relabeling_factor_loss` — previous direct loss that penalized all global unmapped people/sessions/slots; retained as a guard against accidentally losing broad mapping coverage, but no longer primary because it encouraged arbitrary mappings after factor coverage saturated.
   - `relabeling_coverage_rate`
   - `relabeling_total_atoms`
   - `relabeling_atoms_considered`
@@ -52,18 +53,18 @@ Primary-metric details:
 - The relabeler is scored directly on typed constraint/factor reconciliation over the fixed diagnostic cases, before merge/search.
 - The raw relabeled oracle is **not required to be a feasible schedule**. Scenario-hard mismatches contribute finite compatibility costs and uncovered-factor penalties; only internal mapping contradictions are hard rejects.
 - `relabeling_anchor_loss` combines uncovered-factor coverage loss, finite compatibility/soft costs, timeout count, and **identifiable** mapping incompleteness only. Identifiable mapping targets currently include repeated clique members, strongly repeated immovable people, explicit immovable/attribute/capacity session and slot anchors, and other typed factors that genuinely break symmetry.
-- The previous `relabeling_factor_loss` remains printed as a secondary monitor, but it is no longer the primary because once factor coverage reached 237/237 it mostly rewarded arbitrary mappings for pair-only or otherwise symmetric cases.
-- Final constructor failures remain visible as secondary `final_*` metrics, but they no longer flatten the primary gradient to `1000000000`/`1000` sentinels.
+- The previous `relabeling_factor_loss` remains printed as a secondary monitor, but it is no longer a primary because once factor coverage reached 237/237 it mostly rewarded arbitrary mappings for pair-only or otherwise symmetric cases.
+- `final_relabeling_relative_score` is now active because relabeler-only anchor loss is saturated at zero. Final constructor failures are no longer treated as relabeler failures; they are now projection/merge consumption failures to improve honestly.
 - Key symmetry-breaking cases (`cliques`, `hard_apart`, `attribute_balance`, and all mixed cases) still receive higher diagnostic weight.
 
 ## Conceptual Keep Policy
 
 This is a development lane, so do **not** blindly discard elegant symmetry-breaking foundations merely because legacy final benchmark score does not immediately improve. Instead:
 
-1. If the idea changes relabeler/factor behavior and lowers `relabeling_anchor_loss`, keep it normally.
+1. If the idea changes projection/merge consumption and lowers `final_relabeling_relative_score` while keeping `relabeling_anchor_loss` at zero, keep it normally.
 2. If the idea is a conceptually strong scaffold but the current metric cannot observe it yet, add a focused diagnostic/telemetry/test that makes the capability measurable, update this file and `autoresearch.sh` if needed, call `init_experiment` again if the optimization target materially changes, then evaluate it against that explicit metric.
 3. Keep non-behavior-changing instrumentation or representation work when it is internal, tested, benchmark-neutral for public defaults, and clearly unlocks measuring or implementing a symmetry-breaking capability.
-4. Do not use broad-suite score as the first-order target until the relabeling result actually influences projection/merge. Broad remains a later safety check, not the metric for early relabeling intelligence.
+4. Do not use broad-suite score as the first-order target until the projection/merge path is robust on this diagnostic suite. Broad remains a later safety check, not the metric for early relabeling intelligence.
 
 A kept conceptual scaffold should leave durable evidence: tests, telemetry, a microdiagnostic, or an explicit benchmark metric. Do not keep vague complexity with no measurable symmetry-breaking value.
 
@@ -172,7 +173,7 @@ A diagnostic suite run on that commit produced:
   - mixed-full: construction budget exceeded,
 - report: `backend/benchmarking/artifacts/runs/solver3-relabeling-projection-20260425T132244Z-83cba6fd/run-report.json`.
 
-Interpretation: the metric must drive smarter factor reconciliation directly, not final feasibility. The first direct metric (`relabeling_factor_loss`) exposed coverage/compatibility problems and drove them to saturation, then became dominated by arbitrary global mapping completeness. The active primary (`relabeling_anchor_loss`) keeps gradient on identifiable anchors without rewarding mappings that constraints do not actually determine. Final construction failures are secondary until the relabeling result is coherent enough to merge.
+Interpretation: the first direct metric (`relabeling_factor_loss`) exposed coverage/compatibility problems and drove them to saturation, then became dominated by arbitrary global mapping completeness. The follow-up primary (`relabeling_anchor_loss`) kept gradient on identifiable anchors without rewarding mappings that constraints do not actually determine, and reached zero after attendance/capacity slack handling. The active phase is now projection/merge consumption: final construction failures are the target, but direct relabeler anchor loss must stay zero.
 
 ### Preferred next experiments
 
