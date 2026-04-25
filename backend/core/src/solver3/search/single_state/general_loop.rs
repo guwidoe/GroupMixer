@@ -96,7 +96,9 @@ pub(super) fn run_local_improver_general(
 
     if stop_reason != StopReason::OptimalScoreReached {
         while iteration < budget.max_iterations {
-            if iteration % TIME_REFRESH_INTERVAL == 0 {
+            if iteration % TIME_REFRESH_INTERVAL == 0
+                || budget.time_limit_seconds.is_some_and(|limit| limit <= 30.0)
+            {
                 cached_elapsed_seconds = get_elapsed_seconds(search_started_at);
             }
 
