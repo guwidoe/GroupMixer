@@ -89,6 +89,32 @@ describe('ParticipantColumnsInput resize behavior', () => {
     expect(screen.getByRole('textbox', { name: 'Participants' })).toHaveStyle({ height: '82px' });
   });
 
+  it('reserves vertical space when a horizontal scrollbar is present', async () => {
+    render(
+      <ParticipantColumnsInput
+        {...baseProps}
+        columns={[{ id: 'name', name: 'Name', values: '' }]}
+        minHeight={130}
+      />,
+    );
+
+    const scroller = document.querySelector('.landing-participant-columns') as HTMLDivElement | null;
+    if (!scroller) {
+      throw new Error('Expected participant columns scroller to render.');
+    }
+
+    Object.defineProperty(scroller, 'clientWidth', { configurable: true, value: 300 });
+    Object.defineProperty(scroller, 'scrollWidth', { configurable: true, value: 520 });
+    Object.defineProperty(scroller, 'offsetHeight', { configurable: true, value: 130 });
+    Object.defineProperty(scroller, 'clientHeight', { configurable: true, value: 114 });
+
+    fireEvent.resize(window);
+
+    await waitFor(() => {
+      expect(screen.getByRole('textbox', { name: 'Participants' })).toHaveStyle({ height: '66px' });
+    });
+  });
+
   it('allows the final separator to grow the real column beyond the ghost column minimum', () => {
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function getRect() {
       return {

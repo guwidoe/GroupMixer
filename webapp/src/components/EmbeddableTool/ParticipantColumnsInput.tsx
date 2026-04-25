@@ -217,6 +217,7 @@ export function ParticipantColumnsInput({
     initialStoredColumnWidths ?? columns.map((_, index) => (index === 0 ? NAME_COLUMN_WIDTH : ATTRIBUTE_COLUMN_WIDTH))
   ));
   const [ghostColumnWidth, setGhostColumnWidth] = useState(initialStoredLayout?.ghostColumnWidth ?? ATTRIBUTE_COLUMN_WIDTH);
+  const [horizontalScrollbarHeight, setHorizontalScrollbarHeight] = useState(0);
   const [pendingFocusRequest, setPendingFocusRequest] = useState<{ columnId: string; token: number } | null>(null);
   const focusRequestTokenRef = useRef(0);
   const dragStateRef = useRef<{
@@ -314,7 +315,7 @@ export function ParticipantColumnsInput({
   ), [columns]);
 
   const contentHeight = Math.max(
-    height - STRUCTURED_GRID_VERTICAL_CHROME,
+    height - STRUCTURED_GRID_VERTICAL_CHROME - horizontalScrollbarHeight,
     maxLineCount * TEXTAREA_LINE_HEIGHT + TEXTAREA_VERTICAL_PADDING,
   );
 
@@ -325,6 +326,41 @@ export function ParticipantColumnsInput({
   useEffect(() => {
     ghostColumnWidthRef.current = ghostColumnWidth;
   }, [ghostColumnWidth]);
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const node = scrollContainerRef.current;
+      if (!node) {
+        return;
+      }
+
+      const nextHorizontalScrollbarHeight = node.scrollWidth > node.clientWidth
+        ? Math.max(0, node.offsetHeight - node.clientHeight)
+        : 0;
+      setHorizontalScrollbarHeight((previous) => (
+        Math.abs(previous - nextHorizontalScrollbarHeight) < 0.5 ? previous : nextHorizontalScrollbarHeight
+      ));
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => measure());
+      if (scrollContainerRef.current) {
+        observer.observe(scrollContainerRef.current);
+      }
+      if (columnsContainerRef.current) {
+        observer.observe(columnsContainerRef.current);
+      }
+    }
+
+    return () => {
+      window.removeEventListener('resize', measure);
+      observer?.disconnect();
+    };
+  }, [columnWidths, columns.length, ghostColumnWidth, height]);
 
   useLayoutEffect(() => {
     if (hasCustomColumnWidthsRef.current) {
