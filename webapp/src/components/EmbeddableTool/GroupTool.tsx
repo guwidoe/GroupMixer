@@ -997,7 +997,7 @@ export function GroupTool({
             </button>
           ) : null}
 
-          <div ref={advancedOptionsPaneRef} className={canResizeToolColumns ? 'pl-2' : undefined}>
+          <div ref={advancedOptionsPaneRef}>
             <AdvancedOptions
               controller={controller}
               scenarioEditorCtaContent={config.optimizerCta}

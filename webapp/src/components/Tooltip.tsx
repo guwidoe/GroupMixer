@@ -2,15 +2,17 @@ import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState
 import { createPortal } from 'react-dom';
 
 type TooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
+type TooltipContent = React.ReactNode | (() => React.ReactNode);
 
 interface TooltipProps {
-  content: React.ReactNode;
+  content: TooltipContent;
   children: React.ReactNode;
   className?: string;
   placement?: TooltipPlacement;
   disabled?: boolean;
   offset?: number;
   maxWidth?: number;
+  includeScreenReaderContent?: boolean;
 }
 
 interface TooltipPosition {
@@ -51,6 +53,10 @@ function composeEventHandlers<E>(
 
 function mergeDescribedBy(existing: string | undefined, next: string): string {
   return existing ? `${existing} ${next}` : next;
+}
+
+function resolveTooltipContent(content: TooltipContent): React.ReactNode {
+  return typeof content === 'function' ? content() : content;
 }
 
 function getPlacementOrder(preferred: TooltipPlacement): TooltipPlacement[] {
@@ -152,6 +158,7 @@ export function Tooltip({
   disabled = false,
   offset = DEFAULT_OFFSET,
   maxWidth = 320,
+  includeScreenReaderContent = true,
 }: TooltipProps) {
   const tooltipId = useId();
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -244,7 +251,10 @@ export function Tooltip({
   const tooltipMaxWidth = typeof window === 'undefined'
     ? maxWidth
     : Math.min(maxWidth, window.innerWidth - VIEWPORT_PADDING * 2);
-  const describedBy = disabled || content == null ? undefined : tooltipId;
+  const hasContent = content != null;
+  const describedBy = disabled || !hasContent || !includeScreenReaderContent ? undefined : tooltipId;
+  const screenReaderContent = describedBy ? resolveTooltipContent(content) : null;
+  const visibleContent = isVisible && hasContent ? resolveTooltipContent(content) : null;
   const child = React.isValidElement<TooltipTriggerProps>(children)
     ? React.cloneElement(children, {
       onMouseEnter: composeEventHandlers<React.MouseEvent>(children.props.onMouseEnter, showTooltip),
@@ -272,7 +282,7 @@ export function Tooltip({
 
       {describedBy ? (
         <span id={describedBy} className="sr-only">
-          {content}
+          {screenReaderContent}
         </span>
       ) : null}
 
@@ -293,7 +303,7 @@ export function Tooltip({
             visibility: position ? 'visible' : 'hidden',
           }}
         >
-          <div className="whitespace-normal break-words leading-5">{content}</div>
+          <div className="whitespace-normal break-words leading-5">{visibleContent}</div>
         </div>,
         document.body,
       )}

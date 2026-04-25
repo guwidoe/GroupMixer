@@ -77,7 +77,7 @@ export function AdvancedOptions({ controller, scenarioEditorCtaContent, onOpenSc
   const pinnedPeopleLayout = useLayoutAutoResizeSuppression('pinned-people');
 
   return (
-    <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(230px,1fr))]">
+    <div className="landing-advanced-options-grid">
         <div>
           <SectionLabelWithTooltip
             htmlFor="keepTogetherInput"
@@ -154,7 +154,7 @@ export function AdvancedOptions({ controller, scenarioEditorCtaContent, onOpenSc
         )}
 
         {showBalanceSection && (
-          <div style={{ gridColumn: '1 / -1' }}>
+          <div className="landing-balance-section" style={{ gridColumn: '1 / -1' }}>
             <div className="mb-3">
               <SectionLabelWithTooltip
                 label={labels.balanceGroupsByAttributeLabel}
