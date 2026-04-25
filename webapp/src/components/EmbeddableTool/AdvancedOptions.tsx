@@ -77,7 +77,7 @@ export function AdvancedOptions({ controller, scenarioEditorCtaContent, onOpenSc
   const pinnedPeopleLayout = useLayoutAutoResizeSuppression('pinned-people');
 
   return (
-    <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
+    <div className="grid gap-5 [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))]">
         <div>
           <SectionLabelWithTooltip
             htmlFor="keepTogetherInput"
