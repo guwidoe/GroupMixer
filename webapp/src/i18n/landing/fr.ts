@@ -7,13 +7,25 @@ const TRUST_BULLETS = [
 ];
 
 const OPTIMIZER_FEATURES = [
-  'Garder ensemble',
-  'Éviter certains binômes',
-  'Plusieurs tours',
-  'Maximiser le brassage',
-  'Équilibrer les genres',
-  'Équilibrer n’importe quel attribut',
-  'Ajuster les résultats',
+  'Participation partielle',
+  'Capacités par groupe et session',
+  'Règles par session',
+  'Contraintes souples pondérées',
+  'Objectifs de rencontres par paire',
+  'Réglage avancé des contraintes',
+  'Réglages du solveur',
+  'Analyse des résultats',
+];
+
+const OPTIMIZER_FEATURE_EXPLANATIONS = [
+  'Définissez quels participants sont présents à quelles sessions au lieu de supposer que tout le monde participe à chaque tour.',
+  'Donnez une capacité propre à chaque groupe et remplacez-la par session lorsque les salles ou l’encadrement changent.',
+  'Appliquez les règles ensemble, séparés, assignation fixe, répétition et équilibrage uniquement aux sessions concernées.',
+  'Ajoutez des préférences qui peuvent être violées si nécessaire, puis ajustez leur poids face aux autres objectifs.',
+  'Ciblez le nombre de rencontres de certaines paires, avec des objectifs exacts, minimums ou maximums.',
+  'Affinez les limites de répétition, les modes d’équilibrage par attribut, les pénalités et autres détails de contraintes.',
+  'Ajustez les limites de temps, les graines déterministes, la famille de solveur et les autres réglages d’optimisation.',
+  'Inspectez les scores, le respect des contraintes, les pénalités et les résultats enregistrés plus en détail.',
 ];
 
 const CHROME = {
@@ -57,33 +69,6 @@ const USE_CASES_SECTION = {
   ],
 };
 
-const ADVANCED_SECTION = {
-  title: 'Besoin de plus de contrôle ?',
-  description:
-    'GroupMixer est plus qu’un simple mélangeur aléatoire. Quand des groupes simples ne suffisent plus, activez des règles avancées sans changer d’outil.',
-  cards: [
-    {
-      title: 'Garder certaines personnes ensemble',
-      body: 'Assurez-vous que des amis, collègues ou binômes prédéfinis restent dans le même groupe.',
-    },
-    {
-      title: 'Garder certaines personnes séparées',
-      body: 'Évitez que certaines personnes se retrouvent dans le même groupe, utile pour les conflits ou la diversité.',
-    },
-    {
-      title: 'Éviter les répétitions',
-      body: 'Lancez plusieurs tours sans que les mêmes personnes se retrouvent encore ensemble.',
-    },
-    {
-      title: 'Équilibrer les groupes par attribut',
-      body: 'Utilisez un CSV pour équilibrer selon le rôle, le niveau, le genre, le service ou toute autre colonne personnalisée.',
-    },
-  ],
-  buttonLabel: 'Ouvrir l’éditeur de scénarios',
-  supportingText:
-    'L’éditeur de scénarios donne un contrôle complet sur les sessions, les contraintes, la configuration du solveur et l’analyse détaillée.',
-};
-
 const FAQS = {
   free: {
     question: 'GroupMixer est-il gratuit ?',
@@ -108,7 +93,7 @@ const FAQS = {
   workspace: {
     question: 'Qu’est-ce que l’éditeur de scénarios ?',
     answer:
-      'L’éditeur de scénarios offre un contrôle détaillé sur les sessions, les contraintes, la configuration du solveur, la réutilisation de résultats précédents et l’analyse complète. Il utilise le même moteur puissant.',
+      'L’éditeur de scénarios sert aux contrôles que cette page n’expose pas : présence partielle, capacités par groupe et session, contraintes propres à chaque session, contraintes souples pondérées, objectifs de rencontres par paire, réglage avancé des contraintes, réglages du solveur, résultats précédents et analyse des résultats.',
   },
 };
 
@@ -139,16 +124,16 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'Vous voulez mieux qu’un tirage aléatoire ?',
-      title: 'Utilisez l’optimiseur complet de groupes.',
+      eyebrow: 'Besoin d’encore plus de contrôle ?',
+      title: 'Ouvrez l’éditeur complet de scénario.',
       featureBullets: OPTIMIZER_FEATURES,
+      featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'Ouvrir l’éditeur de scénarios',
-      supportingText: 'Les informations saisies sur cette page vous suivent dans l’éditeur de scénarios.',
+      supportingText: 'Utilisez-le pour les options que cette page ne couvre pas. Vos participants, groupes, sessions et règles vous suivent.',
     },
     faqEntries,
     chrome: CHROME,
     useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
   };
 }
 
@@ -172,162 +157,6 @@ export const FR_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
       FAQS.privacy,
       FAQS.constraints,
       FAQS.multiSession,
-      FAQS.workspace,
-    ],
-  }),
-  'random-group-generator': createContent({
-    title: 'Générateur de Groupes Aléatoires — Créez des groupes à partir d’une liste de noms | GroupMixer',
-    description:
-      'Générateur gratuit de groupes aléatoires. Collez une liste de noms, choisissez le nombre de groupes et répartissez-les instantanément. Idéal pour les classes, ateliers et événements.',
-    eyebrow: 'Pour des répartitions rapides et aléatoires',
-    heroTitle: 'Générateur de Groupes Aléatoires',
-    subhead:
-      'Collez une liste de noms, choisissez le nombre de groupes voulu et répartissez-les instantanément. Sans inscription ni serveur : tout se passe dans votre navigateur.',
-    audienceSummary:
-      'Idéal quand vous avez besoin d’un outil rapide et simple pour des activités de classe, des sous-groupes d’atelier ou la logistique d’un événement.',
-    faqEntries: [
-      {
-        question: 'Comment fonctionne le générateur de groupes aléatoires ?',
-        answer:
-          'Collez les noms dans la zone de texte (un par ligne), définissez le nombre de groupes ou la taille de chaque groupe, puis cliquez sur Générer. GroupMixer crée une répartition équilibrée immédiatement.',
-      },
-      {
-        question: 'Puis-je choisir le nombre de groupes ou la taille des groupes ?',
-        answer:
-          'Oui. Vous pouvez fixer un nombre de groupes ou indiquer combien de personnes vous voulez par groupe. GroupMixer s’occupe du reste.',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'random-team-generator': createContent({
-    title: 'Générateur d’Équipes Aléatoires — Créez des équipes équilibrées rapidement | GroupMixer',
-    description:
-      'Générateur gratuit d’équipes aléatoires. Collez des noms et créez des équipes équilibrées instantanément. Ajoutez des règles pour équilibrer les compétences, garder ensemble ou séparer certaines personnes.',
-    eyebrow: 'Pour les coachs, responsables et facilitateurs',
-    heroTitle: 'Générateur d’Équipes Aléatoires',
-    subhead:
-      'Créez des équipes aléatoires en quelques secondes. Collez des noms, choisissez le nombre d’équipes et générez. Ajoutez des règles d’équilibrage quand c’est nécessaire.',
-    audienceSummary:
-      'Pensé pour les activités en équipe où l’équité compte davantage qu’un simple hasard, en particulier lorsqu’il faut répartir des rôles ou des compétences.',
-    faqEntries: [
-      {
-        question: 'Comment créer des équipes aléatoires ?',
-        answer:
-          'Collez les noms des participants, définissez le nombre d’équipes puis cliquez sur Générer. GroupMixer répartit automatiquement les personnes dans des équipes équilibrées.',
-      },
-      {
-        question: 'Puis-je équilibrer les équipes par compétence ou par rôle ?',
-        answer:
-          'Oui. Passez en mode CSV et ajoutez des colonnes comme « rôle » ou « compétence ». Utilisez ensuite l’équilibrage par attribut pour répartir ces valeurs de façon homogène.',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.multiSession,
-    ],
-  }),
-  'breakout-room-generator': createContent({
-    title: 'Générateur de Breakout Rooms — Répartissez les participants en salles | GroupMixer',
-    description:
-      'Générateur gratuit de breakout rooms. Collez des noms et répartissez les participants en salles instantanément. Idéal pour les classes, ateliers et réunions à distance.',
-    eyebrow: 'Pour Zoom, les formations et les ateliers',
-    heroTitle: 'Générateur de Breakout Rooms',
-    subhead:
-      'Répartissez les participants en salles de travail instantanément. Collez des noms, définissez le nombre de salles et générez. Parfait pour les ateliers, cours et sessions à distance.',
-    audienceSummary:
-      'Utile lorsque vous devez attribuer des salles rapidement, tout en gardant la possibilité de faire tourner les participants entre plusieurs tours.',
-    faqEntries: [
-      {
-        question: 'Comment créer des breakout rooms ?',
-        answer:
-          'Collez les noms des participants, choisissez le nombre de salles puis cliquez sur Générer. GroupMixer répartit tout le monde immédiatement.',
-      },
-      {
-        question: 'Puis-je faire tourner les participants sur plusieurs tours ?',
-        answer:
-          'Oui. Définissez plusieurs sessions dans les options avancées et activez « Éviter les répétitions » pour favoriser de nouvelles rencontres à chaque tour.',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'workshop-group-generator': createContent({
-    title: 'Générateur de Groupes pour Ateliers — Créez des petits groupes pour vos sessions | GroupMixer',
-    description:
-      'Générateur gratuit de groupes pour ateliers. Répartissez les participants en petits groupes pour des activités, sous-salles et sessions multi-tours. Ajoutez des contraintes si besoin.',
-    eyebrow: 'Pour les facilitateurs de sessions collaboratives',
-    heroTitle: 'Générateur de Groupes pour Ateliers',
-    subhead:
-      'Créez des groupes d’atelier en quelques secondes. Commencez simplement, puis ajoutez des tours, de l’équilibrage ou des règles selon la complexité de votre animation.',
-    audienceSummary:
-      'Conçu pour les ateliers où la composition des groupes influence la qualité des échanges, l’énergie et les nouvelles rencontres.',
-    faqEntries: [
-      {
-        question: 'Comment créer des groupes pour un atelier ?',
-        answer:
-          'Collez les noms des participants, définissez le nombre de groupes ou le nombre de personnes par groupe, puis cliquez sur Générer. GroupMixer crée des groupes prêts à l’emploi immédiatement.',
-      },
-      {
-        question: 'Puis-je faire tourner les participants entre les tours ?',
-        answer:
-          'Oui. Utilisez plusieurs sessions et l’option d’évitement des répétitions pour que les participants rencontrent de nouvelles personnes tout au long de l’atelier.',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'student-group-generator': createContent({
-    title: 'Générateur de Groupes d’Élèves — Créez des groupes de classe rapidement | GroupMixer',
-    description:
-      'Générateur gratuit de groupes d’élèves. Collez votre liste de classe et créez des groupes équilibrés en quelques secondes. Ajoutez des règles pour garder certains élèves ensemble ou séparés.',
-    eyebrow: 'Pour les enseignants et les activités de classe',
-    heroTitle: 'Générateur de Groupes d’Élèves',
-    subhead:
-      'Collez votre liste de classe et créez des groupes instantanément. Restez simple ou ajoutez des règles comme garder ensemble certains élèves ou équilibrer les équipes.',
-    audienceSummary:
-      'Conçu pour les enseignants qui doivent former des groupes rapidement sans perdre la main sur les binômes, les séparations ou l’équilibrage.',
-    faqEntries: [
-      {
-        question: 'Comment créer des groupes d’élèves ?',
-        answer:
-          'Collez les noms des élèves (un par ligne), choisissez le nombre de groupes puis cliquez sur Générer. GroupMixer s’occupe du reste.',
-      },
-      {
-        question: 'Puis-je garder certains élèves ensemble ou séparés ?',
-        answer:
-          'Oui. Ouvrez les options avancées pour définir des règles de regroupement ou d’évitement. Le solveur les respecte lors de la création des groupes.',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.multiSession,
-    ],
-  }),
-  'speed-networking-generator': createContent({
-    title: 'Générateur de Speed Networking — Plusieurs tours, moins de répétitions | GroupMixer',
-    description:
-      'Générateur gratuit de speed networking. Créez plusieurs tours où les participants rencontrent de nouvelles personnes à chaque fois. Les répétitions sont minimisées automatiquement.',
-    eyebrow: 'Pour les mixers, meetups et sessions de networking',
-    heroTitle: 'Générateur de Speed Networking',
-    subhead:
-      'Générez plusieurs tours de networking où chacun rencontre de nouveaux visages à chaque fois. Collez des noms, définissez les tours et réduisez les répétitions.',
-    audienceSummary:
-      'Parfait pour les formats de networking structurés où l’objectif est de créer de nouvelles connexions plutôt que de répéter les mêmes petits groupes.',
-    faqEntries: [
-      {
-        question: 'Comment fonctionne le générateur de speed networking ?',
-        answer:
-          'Collez les noms des participants, définissez le nombre de tours (sessions) et activez « Éviter les répétitions ». GroupMixer crée des groupes pour chaque tour en limitant les rencontres répétées.',
-      },
-      {
-        question: 'Puis-je contrôler la taille des groupes ?',
-        answer:
-          'Oui. Définissez soit le nombre de groupes par tour, soit le nombre de personnes par groupe. GroupMixer calcule le reste.',
-      },
-      FAQS.free,
-      FAQS.privacy,
       FAQS.workspace,
     ],
   }),

@@ -4,6 +4,7 @@ import type { SolverSettings } from '../../../types';
 import type { SolverSettingFieldSpec, SolverUiSpec } from '../../../services/solverUi';
 import type { SolverFormInputs } from '../../SolverPanel/SettingsPanel/types';
 import { Tooltip } from '../../Tooltip';
+import { NumberField } from '../../ui';
 
 interface SolverSettingsSectionsProps {
   solverSettings: SolverSettings;
@@ -37,6 +38,8 @@ export function SolverSettingsSections({
   handleSettingsChange,
   isRunning,
 }: SolverSettingsSectionsProps) {
+  void solverFormInputs;
+  void setSolverFormInputs;
   if (!solverUiSpec) {
     return (
       <div className="rounded-lg border p-4 text-sm" style={{ borderColor: 'var(--border-secondary)', color: 'var(--text-secondary)' }}>
@@ -47,38 +50,30 @@ export function SolverSettingsSections({
 
   const renderNumberField = (field: Extract<SolverSettingFieldSpec, { type: 'number' }>) => {
     const fallbackValue = field.getValue(solverSettings).toString() || field.defaultValue;
-    const inputValue = solverFormInputs[field.inputKey] ?? fallbackValue;
+    const numericValue = field.parse(fallbackValue);
 
     return (
       <div key={field.id}>
         <div className="mb-1 flex items-center space-x-2">
-          <label className="block text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
-            {field.label}
-          </label>
           <Tooltip content={field.description}>
             <Info className="h-4 w-4" style={{ color: 'var(--text-secondary)' }} />
           </Tooltip>
         </div>
-        <input
-          type="number"
-          className="input"
-          value={inputValue}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-            setSolverFormInputs((prev) => ({ ...prev, [field.inputKey]: event.target.value }))
-          }
-          onBlur={() => {
-            const rawValue = solverFormInputs[field.inputKey] ?? fallbackValue;
-            const parsedValue = field.parse(rawValue);
-            if (field.isValid(parsedValue)) {
-              handleSettingsChange(field.applyValue(solverSettings, parsedValue));
-              setSolverFormInputs((prev) => ({ ...prev, [field.inputKey]: undefined }));
+        <NumberField
+          label={field.label}
+          value={numericValue}
+          onChange={() => {}}
+          onCommit={(value) => {
+            if (value != null && field.isValid(value)) {
+              handleSettingsChange(field.applyValue(solverSettings, value));
             }
           }}
           disabled={isRunning}
-          step={field.step}
           min={field.min}
           max={field.max}
-          placeholder={field.placeholder}
+          softMax={field.max ?? Math.max(field.min ?? 0, numericValue || 0, 10)}
+          step={field.step}
+          kind={field.step && field.step < 1 ? 'float' : 'int'}
         />
       </div>
     );

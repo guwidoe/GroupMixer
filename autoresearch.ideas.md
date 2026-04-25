@@ -1,22 +1,16 @@
-# Solver6 autoresearch ideas backlog
+# Autoresearch ideas: solver3 broad multiseed quality
 
-- Recover runtime inside the new incremental exact-block relabeling path while preserving its improved linear quality profile (`1455` linear hits / `4318` gap), especially by cutting repeated candidate-evaluation work rather than reverting to the older weaker path.
-- Higher-level relabeling summaries or cached atom-copy contributions that remove meaningful candidate-evaluation work. Flat per-source-pair swap-mate summaries already landed and helped; avoid pair-index table caching and other memory-heavy low-level schemes, which regressed badly.
-- Add relabeling-side pruning / symmetry reduction so clearly equivalent or obviously non-competitive copy-permutation swaps are not rescored repeatedly.
-- More selective mixed-seed candidate pruning: dominant-prefix-tail warm-starting landed, but wholesale removal when requested tails exist lost one squared hit, so only benchmark-honest dominance tests remain interesting there.
-- Tail-focused improvement operator for weak sparse-tail cases (`4-3-5`, `4-3-6`, similar small remainder cells).
-- Reporting-side instrumentation split between seed-build time and local-search time, so the benchmark exposes the exact runtime bottleneck directly.
-- Same-week local-search scan-path reuse: reduce repeated per-candidate adjustment allocation/materialization inside `backend/core/src/solver6/search/delta.rs` without changing move ordering.
-- Stronger structural lower bounds beyond the current two-week linear strengthening, but only if they remain mathematically honest and cheap.
+## Active shortlist
+- Inspect family-usage / acceptance telemetry for the remaining weak cases, especially `stretch.large-gender-immovable-110p` and the partial-attendance lanes, before changing chooser policy again.
+- Explore **small record-to-record acceptance-schedule refinements** around the new `2.25` threshold, but keep them generic and portfolio-wide rather than case-specific.
+- Consider lightweight per-family floor allocation / exploration guarantees only if telemetry shows a structurally important family is still being starved under the current rejected-preview-penalty policy.
+- Re-measure whether sampled `swap` should keep `preview_swap_runtime_trusted(...)` or return to checked preview, but only if chooser-policy work stalls; the checked path was close but not better.
+- Investigate whether a small diversification / exploration tweak helps the broad lane without globally lowering exploration too far.
 
-## De-emphasized / recently negative
-
-- Final exact-block seed-packaging micro-optimizations that update pair telemetry inline during schedule materialization: the direct pair-state maintenance experiment regressed runtime.
-- Two-path dominant-prefix-tail preparation (cheap telemetry first, materialize seed only if selected): this still duplicated enough work to lose time overall.
-- Trusted fast write-side pair-state mutation clones of `apply_pair_count_delta`: the big win was in read-only relabeling score-delta accumulation, not in duplicating the whole mutation path.
-- Incumbent-best adjustment-buffer reuse during relabeling scans: the simpler allocate-on-replacement approach still wins after dense scratch accumulation landed.
-- Incremental per-apply relabeling score-delta bookkeeping inside the dense scratch workspace: folding touched pairs after the cheap write-side accumulation is materially faster than updating penalty totals on every scratch mutation.
-- Winner-reevaluation materialization deferral during relabeling scans: skipping interim materializations and reevaluating the final winner once still lost to the current single-pass incumbent capture path.
-- Repeating previously failed lanes: shared prefix `PairFrequencyState` wrappers across mixed-tail candidates, heuristic-tail closed-form increment math substitution, reusing final exact-block packaged pair-state, early-return prune after first optimum-reaching swap, full `PairUniverse` pair-index table caching, simple source-equivalence symmetry pruning, or dropping `dominant_prefix_tail` whenever requested-tail exists.
-- Heuristic-tail candidate-scoring fast paths that perturb timeout/quality behavior without a clear primary-metric win.
-- Additional search-loop validation-elision tweaks beyond the landed same-week fast-path keep; the latest trusted-evaluator refactor regressed the current best line.
+## Pruned / stale for now
+- Do **not** reintroduce a separate no-candidate penalty; candidate-rate/share correction was enough and the extra penalty overcorrected.
+- Do **not** weaken the rejected-preview penalty below the current stronger setting; `0.08` gave back too much quality.
+- Do **not** blend improving-accept rate directly into target-share weighting; that destabilized Sailing and the transfer-heavy adversarial lane.
+- Do **not** add direct chooser productivity bonuses, even gated to near-tie situations; those variants still lost to the simpler/share-deficit-based chooser.
+- Do **not** reduce exploration epsilon globally to `0.03`; that improved runtime but reintroduced the bad Sailing path-dependence failure.
+- Do **not** blanket-lower the diversification-burst stagnation threshold; the `25_000 -> 20_000` change helped some stuck cases but was too expensive and hurt Sailing.

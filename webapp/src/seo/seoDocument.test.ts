@@ -6,23 +6,25 @@ describe('buildSeoDocument locale SEO metadata', () => {
     const documentData = buildSeoDocument({
       title: 'Título',
       description: 'Descripción',
-      canonicalPath: '/es/random-team-generator',
+      canonicalPath: '/es',
       locale: 'es',
       alternates: [
-        { hreflang: 'en', canonicalPath: '/random-team-generator' },
-        { hreflang: 'es', canonicalPath: '/es/random-team-generator' },
-        { hreflang: 'x-default', canonicalPath: '/random-team-generator' },
+        { hreflang: 'en', canonicalPath: '/' },
+        { hreflang: 'es', canonicalPath: '/es' },
+        { hreflang: 'x-default', canonicalPath: '/' },
       ],
       faqEntries: [],
     });
 
     expect(documentData.htmlLang).toBe('es');
-    expect(documentData.canonicalUrl).toBe('https://www.groupmixer.app/es/random-team-generator');
+    expect(documentData.canonicalUrl).toBe('https://www.groupmixer.app/es');
     expect(documentData.alternateLinks).toEqual([
-      { hreflang: 'en', href: 'https://www.groupmixer.app/random-team-generator' },
-      { hreflang: 'es', href: 'https://www.groupmixer.app/es/random-team-generator' },
-      { hreflang: 'x-default', href: 'https://www.groupmixer.app/random-team-generator' },
+      { hreflang: 'en', href: 'https://www.groupmixer.app/' },
+      { hreflang: 'es', href: 'https://www.groupmixer.app/es' },
+      { hreflang: 'x-default', href: 'https://www.groupmixer.app/' },
     ]);
+    expect(documentData.schemaText).toContain('"WebSite"');
+    expect(documentData.schemaText).toContain('"Organization"');
     expect(documentData.schemaText).toContain('"inLanguage":"es"');
   });
 
@@ -30,12 +32,12 @@ describe('buildSeoDocument locale SEO metadata', () => {
     const documentData = buildSeoDocument({
       title: '标题',
       description: '描述',
-      canonicalPath: '/zh/random-team-generator',
+      canonicalPath: '/zh',
       locale: 'zh',
       alternates: [
-        { hreflang: 'en', canonicalPath: '/random-team-generator' },
-        { hreflang: 'zh-Hans', canonicalPath: '/zh/random-team-generator' },
-        { hreflang: 'x-default', canonicalPath: '/random-team-generator' },
+        { hreflang: 'en', canonicalPath: '/' },
+        { hreflang: 'zh-Hans', canonicalPath: '/zh' },
+        { hreflang: 'x-default', canonicalPath: '/' },
       ],
       faqEntries: [],
     });
@@ -43,8 +45,20 @@ describe('buildSeoDocument locale SEO metadata', () => {
     expect(documentData.htmlLang).toBe('zh-Hans');
     expect(documentData.alternateLinks[1]).toEqual({
       hreflang: 'zh-Hans',
-      href: 'https://www.groupmixer.app/zh/random-team-generator',
+      href: 'https://www.groupmixer.app/zh',
     });
     expect(documentData.schemaText).toContain('"inLanguage":"zh-Hans"');
+  });
+
+  it('includes site identity schema for GroupMixer and its owner', () => {
+    const documentData = buildSeoDocument({
+      title: 'GroupMixer',
+      description: 'Browser-based group assignment tool',
+      canonicalPath: '/',
+      faqEntries: [],
+    });
+
+    expect(documentData.schemaText).toContain('"name":"GroupMixer"');
+    expect(documentData.schemaText).toContain('"founder":{"@type":"Person","name":"Guido Witt-Dörring"}');
   });
 });

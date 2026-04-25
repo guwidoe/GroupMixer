@@ -196,7 +196,7 @@ function buildPersonSessionData(
 
   // Initialize all people
   for (const person of scenario.people) {
-    const name = person.attributes.name;
+    const name = person.name;
     peopleMap.set(person.id, {
       personId: person.id,
       name,

@@ -1,0 +1,64 @@
+schema_version: 1
+suite_id: stretch-sailing-trip-demo-time-10s-solver3-canonical-multiseed
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Real Sailing Trip demo 10s benchmark for solver3 canonical policy (4 seeds)
+description: Exact Sailing Trip demo workload under a 10-second wall-clock budget using the canonical solver3 benchmark policy across four explicit seeds.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 10000000
+    time_limit_seconds: 10
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+  logging: {}
+  telemetry: {}
+  seed: 7
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: objective_target.stretch.sailing_trip_demo_real.fixed_time_10s.seed_7
+    provenance: copied_from_the_anonymized_product_demo_scenario_source_without_benchmark_simplification
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 10
+    seed: 7
+    max_iterations: 10000000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: objective_target.stretch.sailing_trip_demo_real.fixed_time_10s.seed_8
+    provenance: copied_from_the_anonymized_product_demo_scenario_source_without_benchmark_simplification
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 10
+    seed: 8
+    max_iterations: 10000000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: objective_target.stretch.sailing_trip_demo_real.fixed_time_10s.seed_9
+    provenance: copied_from_the_anonymized_product_demo_scenario_source_without_benchmark_simplification
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 10
+    seed: 9
+    max_iterations: 10000000
+    time_limit_seconds: 10
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: objective_target.stretch.sailing_trip_demo_real.fixed_time_10s.seed_10
+    provenance: copied_from_the_anonymized_product_demo_scenario_source_without_benchmark_simplification
+    declared_budget:
+      max_iterations: 10000000
+      time_limit_seconds: 10
+    seed: 10
+    max_iterations: 10000000
+    time_limit_seconds: 10
+default_time_limit_seconds: 10

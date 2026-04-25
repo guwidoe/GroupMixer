@@ -71,15 +71,13 @@ export function buildPeopleCsvFromCurrent(
 
   people.forEach((person) => {
     Object.keys(person.attributes || {}).forEach((key) => {
-      if (key !== 'name') {
-        headerSet.add(key);
-      }
+      headerSet.add(key);
     });
   });
 
   attributeDefinitions.forEach((definition) => {
     const name = getAttributeDefinitionName(definition);
-    if (name !== 'name') {
+    if (name.toLowerCase() !== 'name') {
       headerSet.add(name);
     }
   });
@@ -91,7 +89,7 @@ export function buildPeopleCsvFromCurrent(
       if (header === 'id') {
         row[header] = person.id;
       } else if (header === 'name') {
-        row[header] = person.attributes?.name || '';
+        row[header] = person.name;
       } else {
         row[header] = getPersonAttributeValue(person, attributeDefinitions, { name: header }) ?? '';
       }

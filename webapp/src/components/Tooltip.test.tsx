@@ -58,6 +58,17 @@ describe('Tooltip', () => {
     });
   });
 
+  it('keeps tooltip content in the DOM before hover for assistive tech and crawlers', () => {
+    render(
+      <Tooltip content="Full label">
+        <button type="button">Trigger</button>
+      </Tooltip>,
+    );
+
+    expect(screen.getByText('Full label')).toHaveClass('sr-only');
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+  });
+
   it('flips to the left when there is not enough space on the right', async () => {
     const user = userEvent.setup();
     vi.spyOn(window, 'innerWidth', 'get').mockReturnValue(220);

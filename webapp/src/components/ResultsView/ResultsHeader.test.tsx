@@ -1,6 +1,5 @@
 import { createRef } from "react";
-import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ResultsHeader } from "./ResultsHeader";
 import { createSampleSolution } from "../../test/fixtures";
@@ -30,6 +29,8 @@ describe("ResultsHeader", () => {
         solution={createSampleSolution({ final_score: 12.5, iteration_count: 42, elapsed_time_ms: 1234 })}
         summary={summary}
         configDiff={null}
+        showSavedResultsAction={false}
+        onOpenSavedResults={vi.fn()}
         configDetailsOpen={false}
         onToggleConfigDetails={vi.fn()}
         onRestoreConfig={vi.fn()}
@@ -52,10 +53,10 @@ describe("ResultsHeader", () => {
     expect(screen.queryByText(/different config/i)).not.toBeInTheDocument();
   });
 
-  it("exposes config difference and export actions", async () => {
-    const user = userEvent.setup();
+  it("exposes config difference and export actions", () => {
     const onToggleConfigDetails = vi.fn();
     const onRestoreConfig = vi.fn();
+    const onOpenSavedResults = vi.fn();
     const onToggleExportDropdown = vi.fn();
     const onExportAction = vi.fn();
     const onCopyAction = vi.fn();
@@ -68,6 +69,8 @@ describe("ResultsHeader", () => {
         solution={createSampleSolution()}
         summary={summary}
         configDiff={configDiff}
+        showSavedResultsAction={true}
+        onOpenSavedResults={onOpenSavedResults}
         configDetailsOpen={true}
         onToggleConfigDetails={onToggleConfigDetails}
         onRestoreConfig={onRestoreConfig}
@@ -83,15 +86,17 @@ describe("ResultsHeader", () => {
       />
     );
 
-    await user.click(screen.getByRole("button", { name: /different config/i }));
-    await user.click(screen.getByRole("button", { name: /restore this result's configuration as new scenario/i }));
-    await user.click(screen.getByRole("button", { name: /share & export/i }));
-    await user.click(screen.getByRole("button", { name: /copy schedule table/i }));
-    await user.click(screen.getByRole("button", { name: /print current result/i }));
-    await user.click(screen.getByRole("button", { name: /save current view as png/i }));
-    await user.click(screen.getByRole("button", { name: /download participant itineraries/i }));
+    fireEvent.click(screen.getByRole('button', { name: /saved results/i }));
+    fireEvent.click(screen.getByRole("button", { name: /different config/i }));
+    fireEvent.click(screen.getByRole("button", { name: /restore this result's configuration as new scenario/i }));
+    fireEvent.click(screen.getByRole("button", { name: /share & export/i }));
+    fireEvent.click(screen.getByRole("button", { name: /copy schedule table/i }));
+    fireEvent.click(screen.getByRole("button", { name: /print current result/i }));
+    fireEvent.click(screen.getByRole("button", { name: /save current view as png/i }));
+    fireEvent.click(screen.getByRole("button", { name: /download participant itineraries/i }));
 
     expect(screen.getByText(/people configuration changed/i)).toBeInTheDocument();
+    expect(onOpenSavedResults).toHaveBeenCalledTimes(1);
     expect(onToggleConfigDetails).toHaveBeenCalledTimes(1);
     expect(onRestoreConfig).toHaveBeenCalledTimes(1);
     expect(onToggleExportDropdown).toHaveBeenCalledTimes(1);

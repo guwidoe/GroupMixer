@@ -1,0 +1,33 @@
+schema_version: 1
+suite_id: stretch-sailing-trip-demo-iterations-1m-solver3-canonical
+benchmark_mode: full_solve
+comparison_category: score_quality
+case_selection_policy: canonical_only
+class: stretch
+title: Real Sailing Trip demo 1M-iteration benchmark for solver3 canonical policy
+description: Exact Sailing Trip demo workload under a fixed 1,000,000-iteration budget using the canonical solver3 benchmark policy with no early plateau stop.
+default_solver_family: solver3
+default_solver:
+  solver_type: solver3
+  stop_conditions:
+    max_iterations: 1000000
+    time_limit_seconds: null
+    no_improvement_iterations: null
+  solver_params:
+    solver_type: solver3
+  logging: {}
+  telemetry: {}
+  seed: 7
+  move_policy: null
+  allowed_sessions: null
+cases:
+  - manifest: ../cases/stretch/sailing_trip_demo_real.json
+    case_role: canonical
+    purpose: objective_target.stretch.sailing_trip_demo_real.fixed_iteration_1m
+    provenance: copied_from_the_anonymized_product_demo_scenario_source_without_benchmark_simplification
+    declared_budget:
+      max_iterations: 1000000
+    seed: 7
+    max_iterations: 1000000
+    time_limit_seconds: null
+default_max_iterations: 1000000

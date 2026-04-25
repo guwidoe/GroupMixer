@@ -1,9 +1,10 @@
 /* eslint-disable react/no-multi-comp */
 import { Outlet } from "react-router-dom";
 import { screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { renderWithRouter } from "./test/utils";
+import { useAppStore } from "./store";
 
 vi.mock("./pages/ToolLandingPage", () => ({
   default: ({ pageKey, locale }: { pageKey: string; locale: string }) => (
@@ -41,6 +42,11 @@ vi.mock("./components/ManualEditor", () => ({
 }));
 
 describe("App routing", () => {
+  beforeEach(() => {
+    useAppStore.getState().reset();
+    useAppStore.getState().setAdvancedModeEnabled(false);
+  });
+
   it("renders the tool-first landing page on the root route", async () => {
     renderWithRouter(<App />, { route: "/" });
 
@@ -57,51 +63,27 @@ describe("App routing", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders SEO entry routes with the shared tool shell", async () => {
-    renderWithRouter(<App />, { route: "/random-team-generator" });
+  it("registers localized home routes on the shared landing shell", async () => {
+    renderWithRouter(<App />, { route: "/es" });
 
     expect(
-      await screen.findByText("Tool landing test stub: en:random-team-generator")
+      await screen.findByText("Tool landing test stub: es:home")
     ).toBeInTheDocument();
   });
 
-  it("renders additional intent routes with the same shared shell", async () => {
-    renderWithRouter(<App />, { route: "/speed-networking-generator" });
+  it("registers Simplified Chinese home route on the shared landing shell", async () => {
+    renderWithRouter(<App />, { route: "/zh" });
 
     expect(
-      await screen.findByText("Tool landing test stub: en:speed-networking-generator")
+      await screen.findByText("Tool landing test stub: zh:home")
     ).toBeInTheDocument();
   });
 
-  it("registers newly added English rollout routes with the shared landing shell", async () => {
-    renderWithRouter(<App />, { route: "/random-pair-generator" });
+  it("registers German home route on the shared landing shell", async () => {
+    renderWithRouter(<App />, { route: "/de" });
 
     expect(
-      await screen.findByText("Tool landing test stub: en:random-pair-generator")
-    ).toBeInTheDocument();
-  });
-
-  it("registers localized SEO routes on the shared landing shell", async () => {
-    renderWithRouter(<App />, { route: "/es/random-team-generator" });
-
-    expect(
-      await screen.findByText("Tool landing test stub: es:random-team-generator")
-    ).toBeInTheDocument();
-  });
-
-  it("registers newly approved Asian locale routes on the shared landing shell", async () => {
-    renderWithRouter(<App />, { route: "/zh/random-team-generator" });
-
-    expect(
-      await screen.findByText("Tool landing test stub: zh:random-team-generator")
-    ).toBeInTheDocument();
-  });
-
-  it("registers German locale routes on the shared landing shell", async () => {
-    renderWithRouter(<App />, { route: "/de/random-team-generator" });
-
-    expect(
-      await screen.findByText("Tool landing test stub: de:random-team-generator")
+      await screen.findByText("Tool landing test stub: de:home")
     ).toBeInTheDocument();
   });
 
@@ -124,9 +106,18 @@ describe("App routing", () => {
   });
 
   it("redirects /app/solver to the default run workspace", async () => {
+    useAppStore.getState().setAdvancedModeEnabled(true);
+
     renderWithRouter(<App />, { route: "/app/solver" });
 
     expect(await screen.findByText("Main app shell")).toBeInTheDocument();
     expect(await screen.findByText("Solver workspace test stub")).toBeInTheDocument();
+  });
+
+  it('redirects /app/solver back into the basic workflow when advanced mode is disabled', async () => {
+    renderWithRouter(<App />, { route: '/app/solver' });
+
+    expect(await screen.findByText('Main app shell')).toBeInTheDocument();
+    expect(await screen.findByText('Scenario editor test stub')).toBeInTheDocument();
   });
 });

@@ -3,7 +3,8 @@ import type { ProgressUpdate } from '../services/wasm/types';
 // Core data structures matching the Rust gm-core backend exactly
 export interface Person {
   id: string;
-  attributes: Record<string, string>; // Key-value attributes (e.g., {"gender": "female", "department": "engineering"})
+  name: string; // Required user-facing label. IDs remain the stable internal identity.
+  attributes: Record<string, string>; // Key-value grouping attributes (e.g., {"gender": "female", "department": "engineering"})
   attributeValues?: Record<string, string>; // Scenario-local relational attribute assignments keyed by AttributeDefinition.id
   sessions?: number[]; // Optional: specific sessions this person participates in (0-based indices)
 }
@@ -61,6 +62,11 @@ export type Constraint =
       sessions?: number[]; // Optional: if undefined, applies to all sessions
     }
   | {
+      type: "MustStayApart";
+      people: string[];
+      sessions?: number[]; // Optional: if undefined, applies to all sessions
+    }
+  | {
       type: "ShouldStayTogether";
       people: string[];
       penalty_weight: number;
@@ -97,6 +103,18 @@ export interface Scenario {
   objectives?: Objective[];
   constraints: Constraint[];
   settings: SolverSettings;
+}
+
+/**
+ * Frontend editor aggregate for the scenario workspace.
+ *
+ * `Scenario` above is the solver-facing DTO that matches gm-core.
+ * `ScenarioDocument` is the real GUI editing surface and is the
+ * intended source of truth for Scenario Setup state.
+ */
+export interface ScenarioDocument {
+  scenario: Scenario;
+  attributeDefinitions: AttributeDefinition[];
 }
 
 export interface SolverSettings {
@@ -337,6 +355,7 @@ export interface SavedScenario {
   scenario: Scenario;
   attributeDefinitions: AttributeDefinition[];
   results: ScenarioResult[];
+  draftIdentityHash?: string;
   createdAt: number;
   updatedAt: number;
   isTemplate?: boolean; // Mark as template for easy duplication
@@ -356,6 +375,12 @@ export interface ScenarioSummary {
 
 // UI State types
 export interface AppState {
+  /**
+   * Canonical editor document for the active Scenario Setup workspace.
+   * The legacy `scenario` and `attributeDefinitions` fields below are kept
+   * for compatibility while the UI migrates to the explicit document model.
+   */
+  scenarioDocument: ScenarioDocument | null;
   scenario: Scenario | null;
   solution: Solution | null;
   solverState: SolverState;
@@ -372,6 +397,8 @@ export interface AppState {
 
   ui: {
     activeTab: "scenario" | "solver" | "results" | "manage";
+    advancedModeEnabled?: boolean;
+    showWorkflowGuideButton?: boolean;
     isLoading: boolean;
     notifications: Notification[];
     showScenarioManager: boolean;
@@ -392,6 +419,7 @@ export interface Notification {
 // Form types for UI
 export interface PersonFormData {
   id?: string;
+  name: string;
   attributes: Record<string, string>;
   sessions: number[]; // Empty array means all sessions
 }

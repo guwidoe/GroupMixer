@@ -1,18 +1,21 @@
-import { render, screen, waitFor } from '@testing-library/react';
+/* eslint-disable max-lines */
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { useAppStore } from '../store';
 import { solveScenario } from '../services/solver/solveScenario';
 import { createSampleScenario, createSampleSolverSettings } from '../test/fixtures';
+import { buildScenarioFromDraft } from '../utils/quickSetup/buildScenarioFromDraft';
 import ToolLandingPage from './ToolLandingPage';
-import { getToolPageConfig, TOOL_PAGE_CONFIGS } from './toolPageConfigs';
+import { getToolPageConfig } from './toolPageConfigs';
 
 const scrollIntoViewMock = vi.fn();
 
-function LocationProbe() {
+function LocationProbe({ includeSearch = false }: { includeSearch?: boolean }) {
   const location = useLocation();
-  return <div data-testid="location-probe">{location.pathname}</div>;
+  const displayLocation = includeSearch ? `${location.pathname}${location.search}${location.hash}` : location.pathname;
+  return <div data-testid="location-probe">{displayLocation}</div>;
 }
 
 vi.mock('../services/solver/solveScenario', () => ({
@@ -51,35 +54,36 @@ beforeEach(() => {
   useAppStore.getState().reset();
 });
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe('ToolLandingPage SEO wiring', () => {
   it('renders route-specific copy and updates document metadata from config', async () => {
-    const config = TOOL_PAGE_CONFIGS['random-team-generator'];
+    const config = getToolPageConfig('home', 'en');
 
     render(
-      <MemoryRouter initialEntries={['/random-team-generator?exp=seo-hero-test&var=B']}>
-        <ToolLandingPage pageKey="random-team-generator" locale="en" />
+      <MemoryRouter initialEntries={['/?exp=seo-hero-test&var=B']}>
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
     expect(
       await screen.findByRole('heading', {
         level: 1,
-        name: config.hero.title,
+        name: config.seo.title,
       }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
-    if (config.hero.audienceSummary) {
-      expect(screen.getByText(config.hero.audienceSummary)).toBeInTheDocument();
-    }
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(document.title).toBe(config.seo.title);
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(config.seo.description);
     expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('index,follow');
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
-      'https://www.groupmixer.app/random-team-generator',
+      'https://www.groupmixer.app/',
     );
     expect(document.querySelector('meta[property="og:title"]')?.getAttribute('content')).toBe(
-      'Random Team Generator — Create Balanced Teams Fast | GroupMixer',
+      config.seo.title,
     );
 
     const schema = document.getElementById('groupmixer-route-schema');
@@ -91,7 +95,7 @@ describe('ToolLandingPage SEO wiring', () => {
         expect.objectContaining({
           name: 'landing_view',
           payload: expect.objectContaining({
-            landingSlug: 'random-team-generator',
+            landingSlug: 'home',
             experiment: 'seo-hero-test',
             variant: 'B',
           }),
@@ -100,38 +104,37 @@ describe('ToolLandingPage SEO wiring', () => {
     );
     expect(screen.getByRole('link', { name: /scenario editor/i })).toHaveAttribute(
       'href',
-      '/app?lp=random-team-generator&exp=seo-hero-test&var=B',
+      '/app?lp=home&exp=seo-hero-test&var=B',
     );
-  });
+  }, 10000);
 
   it('renders localized Spanish metadata and hreflang wiring on the shared landing engine', async () => {
-    const config = getToolPageConfig('random-team-generator', 'es');
+    const config = getToolPageConfig('home', 'es');
 
     render(
-      <MemoryRouter initialEntries={['/es/random-team-generator?exp=seo-es-test&var=A']}>
-        <ToolLandingPage pageKey="random-team-generator" locale="es" />
+      <MemoryRouter initialEntries={['/es?exp=seo-es-test&var=A']}>
+        <ToolLandingPage pageKey="home" locale="es" />
       </MemoryRouter>,
     );
 
     expect(await screen.findByRole('heading', { level: 1, name: config.hero.title })).toBeInTheDocument();
-    expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
     expect(screen.getByText(config.useCasesSection.title)).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('es');
     expect(document.title).toBe(config.seo.title);
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
-      'https://www.groupmixer.app/es/random-team-generator',
+      'https://www.groupmixer.app/es',
     );
     expect(document.querySelector('link[rel="alternate"][hreflang="fr"]')?.getAttribute('href')).toBe(
-      'https://www.groupmixer.app/fr/random-team-generator',
+      'https://www.groupmixer.app/fr',
     );
     expect(window.__groupmixerLandingEvents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: 'landing_view',
           payload: expect.objectContaining({
-            pageKey: 'random-team-generator',
+            pageKey: 'home',
             locale: 'es',
-            landingSlug: 'random-team-generator',
+            landingSlug: 'home',
           }),
         }),
       ]),
@@ -144,15 +147,15 @@ describe('ToolLandingPage SEO wiring', () => {
     const user = userEvent.setup();
 
     render(
-      <MemoryRouter initialEntries={['/es/random-team-generator']}>
-        <ToolLandingPage pageKey="random-team-generator" locale="es" />
+      <MemoryRouter initialEntries={['/es']}>
+        <ToolLandingPage pageKey="home" locale="es" />
       </MemoryRouter>,
     );
 
     await user.click(screen.getByRole('button', { name: 'Generar grupos' }));
 
     expect(await screen.findByRole('heading', { name: 'Tus grupos' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Tarjetas' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Cuadrícula' })).toBeInTheDocument();
     expect(screen.getByText('Sesión 1')).toBeInTheDocument();
     expect(screen.getByText(/8 personas asignadas/)).toBeInTheDocument();
 
@@ -162,32 +165,31 @@ describe('ToolLandingPage SEO wiring', () => {
   }, 10000);
 
   it('renders Simplified Chinese metadata with zh-Hans language tagging on the shared landing engine', async () => {
-    const config = getToolPageConfig('random-team-generator', 'zh');
+    const config = getToolPageConfig('home', 'zh');
 
     render(
-      <MemoryRouter initialEntries={['/zh/random-team-generator?exp=seo-zh-test&var=C']}>
-        <ToolLandingPage pageKey="random-team-generator" locale="zh" />
+      <MemoryRouter initialEntries={['/zh?exp=seo-zh-test&var=C']}>
+        <ToolLandingPage pageKey="home" locale="zh" />
       </MemoryRouter>,
     );
 
     expect(await screen.findByRole('heading', { level: 1, name: config.hero.title })).toBeInTheDocument();
-    expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('zh-Hans');
     expect(document.title).toBe(config.seo.title);
     expect(document.querySelector('link[rel="canonical"]')?.getAttribute('href')).toBe(
-      'https://www.groupmixer.app/zh/random-team-generator',
+      'https://www.groupmixer.app/zh',
     );
     expect(document.querySelector('link[rel="alternate"][hreflang="zh-Hans"]')?.getAttribute('href')).toBe(
-      'https://www.groupmixer.app/zh/random-team-generator',
+      'https://www.groupmixer.app/zh',
     );
     expect(window.__groupmixerLandingEvents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: 'landing_view',
           payload: expect.objectContaining({
-            pageKey: 'random-team-generator',
+            pageKey: 'home',
             locale: 'zh',
-            landingSlug: 'random-team-generator',
+            landingSlug: 'home',
           }),
         }),
       ]),
@@ -196,8 +198,8 @@ describe('ToolLandingPage SEO wiring', () => {
 
   it('shows a language selector in the title bar for pages with multiple live locales', async () => {
     render(
-      <MemoryRouter initialEntries={['/random-team-generator']}>
-        <ToolLandingPage pageKey="random-team-generator" locale="en" />
+      <MemoryRouter initialEntries={['/']}>
+        <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
@@ -215,6 +217,7 @@ describe('ToolLandingPage SEO wiring', () => {
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
+        <LocationProbe includeSearch />
       </MemoryRouter>,
     );
 
@@ -231,6 +234,7 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(await screen.findByText('Group 1')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: /export csv/i })).toBeInTheDocument();
     expect(await screen.findByText(/results generated below/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('location-probe')).toHaveTextContent('/?view=results'));
     expect(scrollIntoViewMock).toHaveBeenCalled();
 
     // Can transition to scenario editor
@@ -247,6 +251,27 @@ describe('ToolLandingPage SEO wiring', () => {
         expect.objectContaining({ name: 'landing_open_advanced_workspace' }),
       ]),
     );
+  }, 10000);
+
+  it('surfaces landing solver errors without falling back to draft groups', async () => {
+    const user = userEvent.setup();
+    vi.mocked(solveScenario).mockRejectedValueOnce(
+      new Error("Failed to solve scenario: invalid-input: MustStayApart conflicts with MustStayTogether for ['Alex', 'Sam']"),
+    );
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+        <LocationProbe includeSearch />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+
+    expect(await screen.findByText('Solver Error')).toBeInTheDocument();
+    expect(await screen.findByText(/muststayapart conflicts with muststaytogether/i)).toBeInTheDocument();
+    expect(screen.queryByTestId('landing-results-panel')).not.toBeInTheDocument();
+    expect(screen.getByTestId('location-probe')).toHaveTextContent(/^\/$/);
   }, 10000);
 
   it('scrolls to the inline results each time groups are generated', async () => {
@@ -268,7 +293,7 @@ describe('ToolLandingPage SEO wiring', () => {
     await waitFor(() => expect(scrollIntoViewMock).toHaveBeenCalled());
   }, 10000);
 
-  it('syncs a new advanced-editor scenario in the background and carries edits into /app', async () => {
+  it('creates a new advanced-editor scenario on demand and carries edits into /app', async () => {
     const user = userEvent.setup();
 
     render(
@@ -285,8 +310,9 @@ describe('ToolLandingPage SEO wiring', () => {
 
     const state = useAppStore.getState();
     expect(state.currentScenarioId).toBeTruthy();
-    expect(state.scenario?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
-    expect(state.savedScenarios[state.currentScenarioId!]?.scenario.people.map((person) => person.id)).toEqual([
+    expect(state.scenario?.people.map((person) => person.id)).toEqual(['person_1', 'person_2', 'person_3', 'person_4']);
+    expect(state.scenario?.people.map((person) => person.name)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    expect(state.savedScenarios[state.currentScenarioId!]?.scenario.people.map((person) => person.name)).toEqual([
       'Ada',
       'Grace',
       'Linus',
@@ -294,12 +320,12 @@ describe('ToolLandingPage SEO wiring', () => {
     ]);
   }, 10000);
 
-  it('warns before overwriting an existing advanced workspace and can keep the current workspace instead', async () => {
+  it('loads landing-page data into a new scenario instead of overwriting the current workspace', async () => {
     const user = userEvent.setup();
 
-    useAppStore.getState().syncWorkspaceDraft({
+    const existingScenarioId = useAppStore.getState().syncWorkspaceDraft({
       scenario: createSampleScenario({
-        people: [{ id: 'Existing', attributes: { name: 'Existing' } }],
+        people: [{ id: 'Existing', name: 'Existing' , attributes: {} }],
         settings: createSampleSolverSettings(),
       }),
       scenarioName: 'Existing workspace',
@@ -318,31 +344,45 @@ describe('ToolLandingPage SEO wiring', () => {
 
     await user.click(screen.getAllByRole('button', { name: /scenario editor/i })[0]);
 
-    expect(screen.getByRole('heading', { name: /overwrite current workspace/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /keep current workspace/i })).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /keep current workspace/i }));
-
-    expect(screen.queryByRole('heading', { name: /overwrite current workspace/i })).not.toBeInTheDocument();
-    expect(screen.getByTestId('location-probe')).toHaveTextContent('/app/scenario');
-    expect(useAppStore.getState().scenario?.people.map((person) => person.id)).toEqual(['Existing']);
+    const state = useAppStore.getState();
+    expect(screen.getByTestId('location-probe')).toHaveTextContent('/app/scenario/people');
+    expect(state.currentScenarioId).toBeTruthy();
+    expect(state.currentScenarioId).not.toBe(existingScenarioId);
+    expect(state.scenario?.people.map((person) => person.id)).toEqual(['person_1', 'person_2', 'person_3', 'person_4']);
+    expect(state.scenario?.people.map((person) => person.name)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    expect(state.savedScenarios[existingScenarioId]?.scenario.people.map((person) => person.id)).toEqual(['Existing']);
+    expect(state.ui.notifications.at(-1)).toEqual(
+      expect.objectContaining({
+        title: 'Landing Setup Loaded',
+        message: expect.stringMatching(/restored from Scenario Manager/i),
+      }),
+    );
   }, 10000);
 
-  it('can overwrite the existing advanced workspace with landing-page data after confirmation', async () => {
+  it('reuses the current advanced-editor scenario when the setup already matches', async () => {
     const user = userEvent.setup();
+    const matchingScenario = buildScenarioFromDraft({
+      participantInput: 'Ada\nGrace\nLinus\nMargaret',
+      groupingMode: 'groupCount',
+      groupingValue: 4,
+      sessions: 1,
+      preset: getToolPageConfig('home', 'en').defaultPreset,
+      keepTogetherInput: '',
+      avoidPairingsInput: '',
+      inputMode: 'names',
+      balanceAttributeKey: null,
+      advancedOpen: false,
+      workspaceScenarioId: null,
+    }).scenario;
 
-    useAppStore.getState().syncWorkspaceDraft({
-      scenario: createSampleScenario({
-        people: [{ id: 'Existing', attributes: { name: 'Existing' } }],
-        settings: createSampleSolverSettings(),
-      }),
+    const existingScenarioId = useAppStore.getState().syncWorkspaceDraft({
+      scenario: matchingScenario,
       scenarioName: 'Existing workspace',
     });
 
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
-        <LocationProbe />
       </MemoryRouter>,
     );
 
@@ -351,10 +391,91 @@ describe('ToolLandingPage SEO wiring', () => {
     await user.type(textarea, 'Ada\nGrace\nLinus\nMargaret');
 
     await user.click(screen.getAllByRole('button', { name: /scenario editor/i })[0]);
-    await user.click(screen.getByRole('button', { name: /open with landing data/i }));
 
-    expect(screen.getByTestId('location-probe')).toHaveTextContent('/app/scenario/people');
-    expect(useAppStore.getState().scenario?.people.map((person) => person.id)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    const state = useAppStore.getState();
+    expect(state.currentScenarioId).toBe(existingScenarioId);
+    expect(Object.keys(state.savedScenarios)).toHaveLength(1);
+    expect(state.ui.notifications).toEqual([]);
+  }, 10000);
+
+  it('does not silently resync landing data over a diverged editor workspace before the user opens the full editor', async () => {
+    const workspaceScenarioId = useAppStore.getState().syncWorkspaceDraft({
+      scenario: createSampleScenario({
+        people: [
+          { id: 'Ada', name: 'Ada' , attributes: {} },
+          { id: 'Grace', name: 'Grace' , attributes: {} },
+          { id: 'Linus', name: 'Linus' , attributes: {} },
+          { id: 'Margaret', name: 'Margaret' , attributes: {} },
+        ],
+        settings: createSampleSolverSettings(),
+      }),
+      scenarioName: 'Landing draft',
+    });
+
+    window.localStorage.setItem('groupmixer.quick-setup.home.v1', JSON.stringify({
+      participantInput: 'Ada\nGrace\nLinus\nMargaret',
+      groupingMode: 'groupCount',
+      groupingValue: 4,
+      sessions: 1,
+      preset: getToolPageConfig('home', 'en').defaultPreset,
+      keepTogetherInput: '',
+      avoidPairingsInput: '',
+      inputMode: 'names',
+      balanceAttributeKey: null,
+      advancedOpen: false,
+      workspaceScenarioId,
+    }));
+
+    useAppStore.getState().updateScenario({
+      people: [
+        { id: 'Edited', name: 'Edited' , attributes: {} },
+        { id: 'Scenario', name: 'Scenario' , attributes: {} },
+      ],
+      groups: [{ id: 'edited-group', size: 2 }],
+      constraints: [{ type: 'MustStayApart', people: ['Edited', 'Scenario'] }],
+      num_sessions: 2,
+    });
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await new Promise((resolve) => window.setTimeout(resolve, 300));
+
+    expect(useAppStore.getState().scenario?.people.map((person) => person.id)).toEqual(['Edited', 'Scenario']);
+  }, 10000);
+
+  it('creates a fresh scenario when reopening from landing even after the advanced editor diverged', async () => {
+    const user = userEvent.setup();
+
+    const existingScenarioId = useAppStore.getState().syncWorkspaceDraft({
+      scenario: createSampleScenario({
+        people: [{ id: 'Existing', name: 'Existing' , attributes: {} }],
+        settings: createSampleSolverSettings(),
+      }),
+      scenarioName: 'Existing workspace',
+    });
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    const textarea = screen.getByLabelText(/participants/i);
+    await user.clear(textarea);
+    await user.type(textarea, 'Ada\nGrace\nLinus\nMargaret');
+
+    await user.click(screen.getAllByRole('button', { name: /scenario editor/i })[0]);
+
+    const state = useAppStore.getState();
+    expect(state.currentScenarioId).toBeTruthy();
+    expect(state.currentScenarioId).not.toBe(existingScenarioId);
+    expect(state.scenario?.people.map((person) => person.id)).toEqual(['person_1', 'person_2', 'person_3', 'person_4']);
+    expect(state.scenario?.people.map((person) => person.name)).toEqual(['Ada', 'Grace', 'Linus', 'Margaret']);
+    expect(state.savedScenarios[existingScenarioId]?.scenario.people.map((person) => person.id)).toEqual(['Existing']);
   }, 10000);
 
   it('shows the tool form above the fold with participants input and generate button', () => {
@@ -368,31 +489,280 @@ describe('ToolLandingPage SEO wiring', () => {
     expect(screen.getByLabelText(/participants/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /generate groups/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /generate groups/i })).toHaveClass('btn-primary');
-    
-    // Trust signals visible (exact match on the dot-prefixed trust items)
-    expect(screen.getByText('Private (processed in your browser)')).toBeInTheDocument();
-    expect(screen.getByText('No sign-up')).toBeInTheDocument();
-    expect(screen.getByText('Results in seconds')).toBeInTheDocument();
-
-    // Optimizer CTA fills the desktop dead-space under the hero copy
-    expect(screen.getByText(/want to do better than random/i)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /use the full group optimizer/i })).toBeInTheDocument();
-    expect(screen.getByText(/your inputs from this page come with you/i)).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /open scenario editor/i })[0]).toHaveClass('btn-primary');
+    expect(screen.getByRole('textbox', { name: /^participants$/i })).toHaveFocus();
+    expect(screen.queryByRole('button', { name: /switch to csv/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /sample/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^reset$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument();
+    expect(screen.getByText(/^pinned people$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/balance groups by attribute/i).length).toBeGreaterThan(0);
+    // Advanced options are expanded by default and the scenario-editor bridge only describes controls beyond this page.
+    expect(screen.getByLabelText(/keep together/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/keep apart/i)).toBeInTheDocument();
+    expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /go to scenario editor/i })).toBeInTheDocument();
+    expect(screen.queryByText(/use this when you need controls this page does not expose/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/your participants, rules, and configuration come with you/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /explain partial attendance/i })).toBeInTheDocument();
+    expect(screen.getByText(/set which participants attend which sessions/i)).toHaveClass('sr-only');
+    expect(screen.queryByText(/groupmixer is more than a random shuffler/i)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /go to scenario editor/i })).toBeInTheDocument();
   }, 10000);
 
-  it('stacks the generator above the hero content on mobile while preserving desktop order classes', () => {
+  it('keeps the tool divider aligned with the pointer when dragging starts', async () => {
+    const originalGetBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
+    const getBoundingClientRectMock = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function () {
+      const className = typeof this.className === 'string' ? this.className : '';
+      const ariaLabel = this.getAttribute('aria-label');
+
+      if (className.includes('landing-participants-pane')) {
+        return {
+          x: 100,
+          y: 0,
+          left: 100,
+          top: 0,
+          right: 660,
+          bottom: 400,
+          width: 560,
+          height: 400,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+
+      if (className.includes('pl-2')) {
+        return {
+          x: 722,
+          y: 0,
+          left: 722,
+          top: 0,
+          right: 1300,
+          bottom: 400,
+          width: 578,
+          height: 400,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+
+      if (ariaLabel === 'Resize landing tool columns') {
+        return {
+          x: 680,
+          y: 0,
+          left: 680,
+          top: 0,
+          right: 702,
+          bottom: 400,
+          width: 22,
+          height: 400,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+
+      if (className.includes('grid gap-5 lg:gap-5')) {
+        return {
+          x: 100,
+          y: 0,
+          left: 100,
+          top: 0,
+          right: 1300,
+          bottom: 400,
+          width: 1200,
+          height: 400,
+          toJSON: () => ({}),
+        } as DOMRect;
+      }
+
+      return originalGetBoundingClientRect.call(this);
+    });
+
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
-    expect(screen.getByTestId('landing-tool-panel')).toHaveClass('order-1', 'lg:order-2');
-    expect(screen.getByTestId('landing-hero')).toHaveClass('order-2', 'lg:order-1');
+    const divider = await screen.findByRole('button', { name: /resize landing tool columns/i });
+    const toolColumns = divider.parentElement as HTMLDivElement;
+
+    fireEvent.pointerDown(divider, { clientX: 691, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientX: 696, pointerId: 1 });
+
+    await waitFor(() => {
+      expect(toolColumns.style.gridTemplateColumns).toContain('565px');
+    });
+
+    getBoundingClientRectMock.mockRestore();
   });
 
-  it('renders FAQ section for SEO', () => {
+  it('lets users toggle repeat-pairing minimization from the sessions row', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    const checkbox = screen.getByRole('checkbox', { name: /minimize repeat pairings/i });
+    expect(checkbox).toBeChecked();
+    const sessionsLabelRow = screen.getByText('Sessions').closest('div');
+    expect(sessionsLabelRow).not.toBeNull();
+    expect(within(sessionsLabelRow as HTMLElement).getByRole('button', { name: /show section help/i })).toBeInTheDocument();
+
+    await user.click(checkbox);
+
+    expect(checkbox).not.toBeChecked();
+  });
+
+  it('loads guide-aligned example data into the quick setup form', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /example data/i }));
+    await user.click(await screen.findByRole('menuitem', { name: /fair classroom split/i }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/participants/i)).toHaveTextContent('Alice Morgan');
+    });
+    expect(screen.getByLabelText('Attribute column 1')).toHaveTextContent('Gender');
+    expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Alice Morgan, Bruno Keller\nIsaac Ford, Julia Wolf\nYusuf Khan, Zoe Miller');
+    expect(screen.getByRole('textbox', { name: /pinned people: name/i })).toHaveTextContent('Celia Park');
+    expect(screen.getByRole('textbox', { name: /pinned people: group/i })).toHaveTextContent('1');
+  });
+
+  it('confirms before clearing existing landing inputs', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText(/keep apart/i), 'Ada - Grace');
+    await user.click(screen.getByRole('button', { name: /clear all/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Clear all current inputs and results?');
+    expect(screen.getByLabelText(/keep apart/i)).toHaveValue('Ada - Grace');
+
+    confirmSpy.mockClear();
+    confirmSpy.mockReturnValue(true);
+
+    await user.click(screen.getByRole('button', { name: /clear all/i }));
+
+    expect(confirmSpy).toHaveBeenCalledWith('Clear all current inputs and results?');
+    expect(screen.getByLabelText(/keep apart/i)).toHaveValue('');
+
+    confirmSpy.mockClear();
+
+    await user.click(screen.getByRole('button', { name: /clear all/i }));
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+  });
+
+  it('lets users enter pinned people assignments from the landing tool', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    const fixedNames = screen.getByRole('textbox', { name: /pinned people: name/i });
+    const fixedGroups = screen.getByRole('textbox', { name: /pinned people: group/i });
+
+    expect(fixedGroups).toHaveAttribute('data-placeholder', '1\n2');
+
+    await user.click(fixedNames);
+    await user.keyboard('Alex');
+    await user.click(fixedGroups);
+    await user.keyboard('2');
+    await user.click(screen.getByRole('button', { name: /generate groups/i }));
+
+    expect(vi.mocked(solveScenario)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scenario: expect.objectContaining({
+          constraints: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'ImmovablePeople',
+              people: expect.any(Array),
+              group_id: 'Group 2',
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it('removes an empty attribute column without showing a warning', async () => {
+    const user = userEvent.setup();
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Add attribute (e.g. Gender)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add attribute/i })).toHaveTextContent('Female');
+    await user.click(screen.getByRole('button', { name: /add attribute/i }));
+    expect(screen.getByLabelText('Attribute column 1')).toHaveAttribute('data-placeholder', 'Attribute Name');
+    await user.click(screen.getByRole('button', { name: /remove attribute: attribute 1/i }));
+
+    expect(confirmSpy).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  it('focuses the new landing attribute header after activating the add attribute area', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /add attribute/i }));
+
+    expect(screen.getByLabelText('Attribute column 1')).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: /add attribute/i }));
+
+    expect(screen.getByLabelText('Attribute column 2')).toHaveFocus();
+
+    await user.click(screen.getByRole('button', { name: /remove attribute: attribute 2/i }));
+    await user.click(screen.getByRole('button', { name: /add attribute/i }));
+
+    expect(screen.getByLabelText('Attribute column 2')).toHaveFocus();
+  });
+
+  it('renders the page heading above the generator across breakpoints', () => {
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('landing-hero')).toHaveClass('order-1', 'min-w-0');
+    expect(screen.getByRole('heading', { level: 1, name: 'Group Generator - Random, Balanced & Multi-Round' })).toHaveClass('sr-only');
+    expect(screen.getByTestId('landing-home-hero-animation')).toHaveClass(
+      'max-w-full',
+      'whitespace-nowrap',
+    );
+    expect(screen.getByTestId('landing-tool-panel')).toHaveClass('order-2');
+  });
+
+  it('renders FAQ questions collapsed by default', async () => {
+    const user = userEvent.setup();
+
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
@@ -400,7 +770,45 @@ describe('ToolLandingPage SEO wiring', () => {
     );
 
     expect(screen.getByRole('heading', { name: /frequently asked questions/i })).toBeInTheDocument();
-    expect(screen.getByText(/how do i split a list of names into random groups/i)).toBeInTheDocument();
+
+    const question = screen.getByRole('button', { name: /how do i split a list of names into random groups/i });
+    const answerPanel = document.getElementById(question.getAttribute('aria-controls') ?? '');
+
+    expect(answerPanel).not.toBeNull();
+    expect(question).toHaveAttribute('aria-expanded', 'false');
+    expect(answerPanel).toHaveAttribute('aria-hidden', 'true');
+
+    await user.click(question);
+
+    expect(question).toHaveAttribute('aria-expanded', 'true');
+    expect(answerPanel).toHaveAttribute('aria-hidden', 'false');
+    expect(screen.getByText(/paste your names \(one per line\)/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /is groupmixer free/i }));
+
+    expect(screen.getByText(/groupmixer is completely free to use/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /donate on github sponsors/i })).toHaveAttribute(
+      'href',
+      'https://github.com/sponsors/guwidoe',
+    );
+
+    expect(screen.getByRole('button', { name: /does it work offline after first load/i })).toBeInTheDocument();
+  });
+
+  it('replaces the old related-tools block with a guides section', () => {
+    render(
+      <MemoryRouter>
+        <ToolLandingPage pageKey="home" locale="en" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', { level: 2, name: 'Guides' })).toBeInTheDocument();
+    expect(screen.getByText(/practical playbooks for workshops, classrooms, and repeated group assignments/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /how to avoid repeat pairings in workshops/i })).toHaveAttribute(
+      'href',
+      '/guides/avoid-repeat-pairings-in-workshops',
+    );
+    expect(screen.queryByText('More group generator tools')).not.toBeInTheDocument();
   });
 
   it('keeps results above the hero content on mobile once groups are generated', async () => {
@@ -414,28 +822,26 @@ describe('ToolLandingPage SEO wiring', () => {
 
     await user.click(screen.getByRole('button', { name: /generate groups/i }));
 
-    expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-2', 'lg:order-3', 'lg:col-span-2');
-    expect(screen.getByTestId('landing-hero')).toHaveClass('order-3', 'lg:order-1');
+    expect(await screen.findByTestId('landing-results-panel')).toHaveClass('order-4');
+    expect(screen.getByText(/need even more control/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /go to scenario editor/i })).toBeInTheDocument();
+    expect(screen.getByTestId('landing-hero')).toHaveClass('order-1');
   });
 
-  it('uses consistent comma-separated helper text for advanced constraint inputs', async () => {
-    const user = userEvent.setup();
-
+  it('uses consistent comma-separated helper text for advanced constraint inputs', () => {
     render(
       <MemoryRouter>
         <ToolLandingPage pageKey="home" locale="en" />
       </MemoryRouter>,
     );
 
-    await user.click(screen.getByRole('button', { name: /show/i }));
-
     expect(screen.getByLabelText(/keep together/i)).toHaveAttribute(
       'placeholder',
-      'One group per line\nAlex, Sam\nPriya, Jordan, Mina',
+      'One group per line\nAlex, Sam\nElla, Jordan, Mina',
     );
-    expect(screen.getByLabelText(/avoid pairing/i)).toHaveAttribute(
+    expect(screen.getByLabelText(/keep apart/i)).toHaveAttribute(
       'placeholder',
-      'One pair per line\nAlex, Sam\nPriya, Jordan',
+      'One pair per line\nAlex, Ella\nSam, Jordan',
     );
   });
 
@@ -450,13 +856,23 @@ describe('ToolLandingPage SEO wiring', () => {
 
     await user.click(screen.getByRole('button', { name: /generate groups/i }));
 
-    expect(await screen.findByRole('tab', { name: 'cards' })).toBeInTheDocument();
+    expect(await screen.findByRole('tab', { name: 'grid' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'list' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'text' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'lines' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'csv' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'text' }));
     expect((screen.getByRole('textbox', { name: /text results/i }) as HTMLTextAreaElement).value).toContain('Session 1');
+    expect(screen.getByRole('button', { name: /copy text/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'list' }));
+    expect(document.querySelector('.grid-cols-\\[repeat\\(auto-fit\\,minmax\\(min\\(100\\%\\,24rem\\)\\,1fr\\)\\)\\]')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'lines' }));
+    expect((screen.getByRole('textbox', { name: /line-by-line text results/i }) as HTMLTextAreaElement).value).toMatch(
+      /Session 1\n\nGroup 1\n/,
+    );
     expect(screen.getByRole('button', { name: /copy text/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'csv' }));

@@ -12,7 +12,8 @@ function createLargeScenario(peopleCount: number): Scenario {
   return createSampleScenario({
     people: Array.from({ length: peopleCount }, (_, index) => ({
       id: `person-${index + 1}`,
-      attributes: { name: `Person ${String(index + 1).padStart(4, '0')}` },
+      name: `Person ${String(index + 1).padStart(4, '0')}`,
+      attributes: {},
     })),
     settings: createSampleSolverSettings(),
   });
@@ -27,7 +28,7 @@ function createBaseProps(overrides: Partial<React.ComponentProps<typeof PeopleDi
     onEditPerson: vi.fn(),
     onDeletePerson: vi.fn(),
     onApplyGridPeople: vi.fn(),
-    createGridPersonRow: () => ({ id: 'new-person', attributes: { name: '' }, sessions: undefined } satisfies Person),
+    createGridPersonRow: () => ({ id: 'new-person', name: '', attributes: {}, sessions: undefined } satisfies Person),
     ...overrides,
   };
 }
@@ -49,7 +50,7 @@ describe('PeopleDirectory', () => {
       expect(screen.getByText('180')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /add person/i })).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /import & bulk/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+      expect(screen.getByRole('status')).toHaveTextContent(/preparing editable table/i);
 
       fireEvent.click(screen.getByRole('button', { name: /^cards$/i }));
       expect(screen.getByText('Person 0001')).toBeInTheDocument();
@@ -70,19 +71,21 @@ describe('PeopleDirectory', () => {
     const user = userEvent.setup();
     const onEditPerson = vi.fn();
     const onDeletePerson = vi.fn();
+    const onApplyGridPeople = vi.fn();
 
     render(
       <PeopleDirectory
         {...createBaseProps({
           scenario: createSampleScenario({
             people: [
-              { id: 'p1', attributes: { name: 'Alex', role: 'dev' }, sessions: [0, 1] },
+              { id: 'p1', name: 'Alex', attributes: { role: 'dev' }, sessions: [0, 1] },
             ],
             settings: createSampleSolverSettings(),
           }),
           attributeDefinitions: [createAttributeDefinition('role', ['dev'], 'attr-role')],
           onEditPerson,
           onDeletePerson,
+          onApplyGridPeople,
         })}
       />,
     );
@@ -107,7 +110,10 @@ describe('PeopleDirectory', () => {
     expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: /delete alex/i })[0]!);
-    expect(onDeletePerson).toHaveBeenCalledWith('p1');
+    expect(onDeletePerson).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+    expect(onApplyGridPeople).toHaveBeenCalledWith([]);
   });
 
   it('shows list-view attributes even when stored keys differ in casing', async () => {
@@ -118,7 +124,7 @@ describe('PeopleDirectory', () => {
         {...createBaseProps({
           scenario: createSampleScenario({
             people: [
-              { id: 'p1', attributes: { name: 'Alex', Gender: 'female', Department: 'Engineering' }, sessions: [0, 1] },
+              { id: 'p1', name: 'Alex', attributes: { Gender: 'female', Department: 'Engineering' }, sessions: [0, 1] },
             ],
             settings: createSampleSolverSettings(),
           }),
@@ -146,11 +152,11 @@ describe('PeopleDirectory', () => {
       <PeopleDirectory
         {...createBaseProps({
           scenario: createSampleScenario({
-            people: [{ id: 'p1', attributes: { name: 'Alex', role: 'dev' }, sessions: [0, 1] }],
+            people: [{ id: 'p1', name: 'Alex', attributes: { role: 'dev' }, sessions: [0, 1] }],
             settings: createSampleSolverSettings(),
           }),
           attributeDefinitions: [createAttributeDefinition('role', ['dev', 'design'], 'attr-role')],
-          createGridPersonRow: () => ({ id: 'p2', attributes: { name: '' }, sessions: undefined }),
+          createGridPersonRow: () => ({ id: 'p2', name: '', attributes: {}, sessions: undefined }),
           onApplyGridPeople,
         })}
       />,
@@ -162,11 +168,11 @@ describe('PeopleDirectory', () => {
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /people grid csv/i });
     expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/Name,Sessions,role/i);
-    expect(String((csvInput as HTMLTextAreaElement).value)).toMatch(/"\{""mode"":""selected"",""sessions"":\[0,1\]\}"/);
+    expect(String((csvInput as HTMLTextAreaElement).value)).toContain('"[0,1]"');
 
     fireEvent.change(csvInput, {
       target: {
-        value: 'Name,Sessions,role\nAlex,"{""mode"":""selected"",""sessions"":[0,1,2]}",dev',
+        value: 'Name,Sessions,role\nAlex,"[0,1,2]",dev',
       },
     });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));
@@ -187,7 +193,7 @@ describe('PeopleDirectory', () => {
       <PeopleDirectory
         {...createBaseProps({
           scenario: createSampleScenario({
-            people: [{ id: 'p1', attributes: { name: 'Alex' } }],
+            people: [{ id: 'p1', name: 'Alex', attributes: {} }],
             settings: createSampleSolverSettings(),
           }),
           onApplyGridPeople,

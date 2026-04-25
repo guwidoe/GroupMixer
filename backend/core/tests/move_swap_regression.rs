@@ -137,7 +137,7 @@ fn non_participant_swap_returns_infinity_and_apply_is_noop() {
 }
 
 #[test]
-fn forbidden_pair_delta_matches_apply_and_recalculation() {
+fn soft_apart_pair_delta_matches_apply_and_recalculation() {
     let mut state = single_session_swap_state(vec![Constraint::ShouldNotBeTogether {
         people: vec!["p0".to_string(), "p2".to_string()],
         penalty_weight: 25.0,
@@ -150,12 +150,32 @@ fn forbidden_pair_delta_matches_apply_and_recalculation() {
     let delta = state.calculate_swap_cost_delta(0, p1, p2);
     assert!(
         delta > 0.0,
-        "expected forbidden-pair violation cost increase"
+        "expected soft-apart pair violation cost increase"
     );
 
     state.apply_swap(0, p1, p2);
 
     assert_delta_matches_after(&before, &state, delta);
+}
+
+#[test]
+fn hard_apart_pair_swap_is_rejected() {
+    let mut state = single_session_swap_state(vec![Constraint::MustStayApart {
+        people: vec!["p0".to_string(), "p2".to_string()],
+        sessions: None,
+    }]);
+    let before = state.clone();
+
+    let p1 = state.person_id_to_idx["p1"];
+    let p2 = state.person_id_to_idx["p2"];
+    let delta = state.calculate_swap_cost_delta(0, p1, p2);
+    assert!(delta.is_infinite());
+
+    state.apply_swap(0, p1, p2);
+
+    assert_eq!(state.schedule, before.schedule);
+    assert_eq!(state.locations, before.locations);
+    assert_eq!(state.current_cost, before.current_cost);
 }
 
 #[test]

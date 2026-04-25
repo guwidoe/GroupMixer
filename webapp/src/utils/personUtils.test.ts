@@ -2,21 +2,23 @@ import { describe, expect, it } from "vitest";
 import { getPersonDisplayName } from "./personUtils";
 
 describe("getPersonDisplayName", () => {
-  it("prefers the case-insensitive name attribute", () => {
+  it("returns the first-class person name", () => {
     expect(
       getPersonDisplayName({
         id: "p1",
-        attributes: { Name: "Alice" },
+        name: "Alice",
+        attributes: { team: "A" },
       })
     ).toBe("Alice");
   });
 
-  it("falls back to the person id when no name attribute exists", () => {
+  it("falls back to legacy name attributes during migration", () => {
     expect(
       getPersonDisplayName({
         id: "p2",
-        attributes: { team: "A" },
+        name: "",
+        attributes: { Name: "Bob" },
       })
-    ).toBe("p2");
+    ).toBe("Bob");
   });
 });

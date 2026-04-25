@@ -1,4 +1,5 @@
 import { getLocaleHrefLang, type SupportedLocale, type ToolPageAlternateLink, type ToolPageFaqEntry } from '../pages/toolPageConfigs';
+import { SITE_LEGAL_CONFIG } from '../legal/legalConfig';
 
 export const CANONICAL_ORIGIN = 'https://www.groupmixer.app';
 export const DEFAULT_OG_IMAGE = `${CANONICAL_ORIGIN}/og-image.png`;
@@ -64,6 +65,30 @@ export function buildSeoDocument({
   }
 
   const schemaNodes: Array<Record<string, unknown>> = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: SITE_LEGAL_CONFIG.siteName,
+      url: CANONICAL_ORIGIN,
+      inLanguage: htmlLang,
+      publisher: {
+        '@type': 'Organization',
+        name: SITE_LEGAL_CONFIG.siteName,
+        url: CANONICAL_ORIGIN,
+      },
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: SITE_LEGAL_CONFIG.siteName,
+      url: CANONICAL_ORIGIN,
+      logo: DEFAULT_OG_IMAGE,
+      description: 'Personal project behind the GroupMixer website and browser-based group assignment tool.',
+      founder: {
+        '@type': 'Person',
+        name: SITE_LEGAL_CONFIG.ownerName,
+      },
+    },
     {
       '@context': 'https://schema.org',
       '@type': 'WebApplication',

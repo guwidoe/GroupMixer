@@ -953,6 +953,90 @@ describe('ScenarioDataGrid', () => {
     expect(screen.getByRole('textbox', { name: /edit name for row row-b/i })).toBeInTheDocument();
   });
 
+  it('adds draft rows where they are immediately visible on paginated grids', async () => {
+    const user = userEvent.setup();
+    const rows = Array.from({ length: 120 }, (_, index) => ({
+      id: `row-${index + 1}`,
+      name: `Person ${index + 1}`,
+    }));
+
+    render(
+      <ScenarioDataGrid
+        rows={rows}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            kind: 'primitive',
+            id: 'name',
+            header: 'Name',
+            primitive: 'string',
+            getValue: (row) => row.name,
+            setValue: (row, value) => ({ ...row, name: value ?? '' }),
+          },
+        ]}
+        workspace={{
+          mode: 'edit',
+          onModeChange: vi.fn(),
+          browseModeEnabled: false,
+          draft: {
+            onApply: vi.fn(),
+            createRow: (currentRows) => ({ id: `row-${currentRows.length + 1}`, name: '' }),
+          },
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scenario-grid-table-surface')).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole('button', { name: /add row/i }));
+
+    expect(screen.getByRole('textbox', { name: /edit name for row row-121/i })).toBeInTheDocument();
+  });
+
+  it('deletes the exact displayed draft row before applying changes', async () => {
+    const user = userEvent.setup();
+    const onApply = vi.fn();
+
+    render(
+      <ScenarioDataGrid
+        rows={[
+          { id: 'row-a', name: 'Alpha' },
+          { id: 'row-b', name: 'Beta' },
+        ]}
+        rowKey={(row) => row.id}
+        columns={[
+          {
+            kind: 'primitive',
+            id: 'name',
+            header: 'Name',
+            primitive: 'string',
+            getValue: (row) => row.name,
+            setValue: (row, value) => ({ ...row, name: value ?? '' }),
+          },
+        ]}
+        workspace={{
+          mode: 'edit',
+          onModeChange: vi.fn(),
+          draft: {
+            onApply,
+            canDeleteRows: true,
+            deleteRowLabel: (row) => `Delete ${row.name}`,
+          },
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /delete beta/i }));
+
+    expect(screen.queryByRole('textbox', { name: /edit name for row row-b/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: /edit name for row row-a/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(onApply).toHaveBeenCalledWith([{ id: 'row-a', name: 'Alpha' }]);
+  });
+
   it('hides add row when the draft workspace has no createRow handler', () => {
     render(
       <ScenarioDataGrid
@@ -1220,12 +1304,12 @@ describe('ScenarioDataGrid', () => {
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /session scope csv editor/i });
     expect(csvInput).toHaveValue(
-      'Name,Sessions\nAlpha,"{""mode"":""all""}"\nBeta,"{""mode"":""selected"",""sessions"":[0,1,2]}"',
+      'Name,Sessions\nAlpha,all\nBeta,"[0,1,2]"',
     );
 
     fireEvent.change(csvInput, {
       target: {
-        value: 'Name,Sessions\nAlpha,"{""mode"":""selected"",""sessions"":[0,1,2]}"\nBeta,"{""mode"":""all""}"',
+        value: 'Name,Sessions\nAlpha,"[0,1,2]"\nBeta,all',
       },
     });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));

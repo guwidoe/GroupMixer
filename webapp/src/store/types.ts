@@ -5,6 +5,7 @@
 
 import type {
   Scenario,
+  ScenarioDocument,
   ScenarioResult,
   Solution,
   SolverState,
@@ -18,6 +19,7 @@ import type { RuntimeSolverDescriptor } from "../services/runtime";
 // === Slice State Types ===
 
 export interface ScenarioState {
+  scenarioDocument: ScenarioDocument | null;
   scenario: Scenario | null;
 }
 
@@ -32,6 +34,8 @@ export interface SolverSliceState {
 export interface UIState {
   ui: {
     activeTab: "scenario" | "solver" | "results" | "manage";
+    advancedModeEnabled: boolean;
+    showWorkflowGuideButton: boolean;
     isLoading: boolean;
     notifications: Notification[];
     showScenarioManager: boolean;
@@ -72,6 +76,11 @@ export interface EditorState {
 // === Slice Action Types ===
 
 export interface ScenarioActions {
+  setScenarioDocument: (document: ScenarioDocument, options?: { persist?: boolean }) => void;
+  updateScenarioDocument: (
+    updater: (document: ScenarioDocument) => ScenarioDocument,
+    options?: { persist?: boolean },
+  ) => void;
   setScenario: (scenario: Scenario) => void;
   updateScenario: (updates: Partial<Scenario>) => void;
   updateCurrentScenario: (scenarioId: string, scenario: Scenario) => void;
@@ -94,6 +103,8 @@ export interface SolverActions {
 
 export interface UIActions {
   setActiveTab: (tab: "scenario" | "solver" | "results" | "manage") => void;
+  setAdvancedModeEnabled: (enabled: boolean) => void;
+  setShowWorkflowGuideButton: (show: boolean) => void;
   setLoading: (loading: boolean) => void;
   setLastScenarioSetupSection: (section: string | null) => void;
   addNotification: (notification: Omit<Notification, "id">) => void;
@@ -173,6 +184,16 @@ export interface WorkspaceDraftSyncInput extends WorkspaceBridgeInput {
 export interface WorkspaceActions {
   replaceWorkspace: (input: WorkspaceBridgeInput) => void;
   syncWorkspaceDraft: (input: WorkspaceDraftSyncInput) => string;
+  loadWorkspaceAsNewScenario: (input: WorkspaceDraftSyncInput) => string | null;
+  applySessionReductionScenario: (scenario: Scenario) => void;
+}
+
+export interface ScenarioHistoryActions {
+  undoScenarioDocument: () => void;
+  redoScenarioDocument: () => void;
+  clearScenarioDocumentHistory: () => void;
+  canUndoScenarioDocument: () => boolean;
+  canRedoScenarioDocument: () => boolean;
 }
 
 export interface UtilityActions {
@@ -202,6 +223,7 @@ export interface AppStore
     DemoDataActions,
     EditorActions,
     WorkspaceActions,
+    ScenarioHistoryActions,
     UtilityActions {}
 
 // Type for slice creators

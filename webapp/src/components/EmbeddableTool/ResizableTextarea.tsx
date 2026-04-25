@@ -1,0 +1,117 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+
+interface ResizableTextareaProps {
+  id?: string;
+  ariaLabel?: string;
+  value: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  readOnly?: boolean;
+  minHeight: number;
+  className?: string;
+  style?: React.CSSProperties;
+  textareaClassName?: string;
+  horizontalScroll?: boolean;
+  clipFieldBorder?: boolean;
+  interactiveSurface?: boolean;
+  onManualLayoutAdjustment?: () => void;
+}
+
+export function ResizableTextarea({
+  id,
+  ariaLabel,
+  value,
+  onChange,
+  placeholder,
+  readOnly = false,
+  minHeight,
+  className,
+  style,
+  textareaClassName,
+  horizontalScroll = false,
+  clipFieldBorder = false,
+  interactiveSurface = false,
+  onManualLayoutAdjustment,
+}: ResizableTextareaProps) {
+  const [height, setHeight] = useState(minHeight);
+  const dragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
+  const stopResizeRef = useRef<() => void>(() => {});
+
+  const handlePointerMove = useCallback((event: PointerEvent) => {
+    const dragState = dragStateRef.current;
+    if (!dragState) {
+      return;
+    }
+
+    const nextHeight = Math.max(minHeight, dragState.startHeight + (event.clientY - dragState.startY));
+    setHeight(nextHeight);
+  }, [minHeight]);
+
+  const stopResize = useCallback(() => {
+    dragStateRef.current = null;
+    window.removeEventListener('pointermove', handlePointerMove);
+    window.removeEventListener('pointerup', stopResizeRef.current);
+    window.removeEventListener('pointercancel', stopResizeRef.current);
+  }, [handlePointerMove]);
+
+  useEffect(() => {
+    stopResizeRef.current = stopResize;
+    return stopResize;
+  }, [stopResize]);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    onManualLayoutAdjustment?.();
+    dragStateRef.current = {
+      startY: event.clientY,
+      startHeight: height,
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', stopResize);
+    window.addEventListener('pointercancel', stopResize);
+  }, [handlePointerMove, height, onManualLayoutAdjustment, stopResize]);
+
+  return (
+    <div
+      className={[
+        'landing-resizable-textarea',
+        interactiveSurface ? 'landing-resizable-textarea--interactive' : null,
+        className,
+      ].filter(Boolean).join(' ')}
+      style={style}
+    >
+      <textarea
+        id={id}
+        aria-label={ariaLabel}
+        value={value}
+        onChange={onChange ? (event) => onChange(event.target.value) : undefined}
+        placeholder={placeholder}
+        readOnly={readOnly}
+        wrap={horizontalScroll ? 'off' : undefined}
+        className={['theme-scrollbar landing-resizable-textarea__field', textareaClassName].filter(Boolean).join(' ')}
+        style={clipFieldBorder
+          ? {
+            width: 'calc(100% + 2px)',
+            height: `calc(${height}px + 2px)`,
+            margin: '-1px -1px -1px',
+            overflowX: horizontalScroll ? 'auto' : undefined,
+            whiteSpace: horizontalScroll ? 'pre' : undefined,
+          }
+          : {
+            height: `${height}px`,
+            overflowX: horizontalScroll ? 'auto' : undefined,
+            whiteSpace: horizontalScroll ? 'pre' : undefined,
+          }}
+      />
+      <div
+        className="landing-resizable-textarea__resize-handle"
+        onPointerDown={handlePointerDown}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Resize text area"
+      />
+    </div>
+  );
+}

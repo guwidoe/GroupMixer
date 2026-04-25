@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createAttributeDefinition } from '../../../services/scenarioAttributes';
@@ -9,14 +9,15 @@ import { HardConstraintFamilySection, SoftConstraintFamilySection } from './Cons
 function createScenario(): Scenario {
   return {
     people: [
-      { id: 'p1', attributes: { name: 'Alex' } },
-      { id: 'p2', attributes: { name: 'Blair' } },
-      { id: 'p3', attributes: { name: 'Casey' } },
+      { id: 'p1', name: 'Alex', attributes: {} },
+      { id: 'p2', name: 'Blair', attributes: {} },
+      { id: 'p3', name: 'Casey', attributes: {} },
     ],
     groups: [{ id: 'g1', size: 4 }],
     num_sessions: 3,
     constraints: [
       { type: 'ImmovablePeople', people: ['p1'], group_id: 'g1', sessions: [0] },
+      { type: 'MustStayApart', people: ['p1', 'p3'], sessions: [1] },
       { type: 'ShouldStayTogether', people: ['p2', 'p3'], penalty_weight: 20, sessions: [0, 1] },
       {
         type: 'AttributeBalance',
@@ -85,7 +86,30 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: /^csv$/i })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    const csvInput = screen.getByRole('textbox', { name: /fixed placements csv/i });
+    expect((csvInput as HTMLTextAreaElement).value).toContain('Alex');
+    expect((csvInput as HTMLTextAreaElement).value).not.toContain('p1');
   }, 10000);
+
+  it('offers symmetric hard-to-soft conversion for keep-apart constraints', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <HardConstraintFamilySection family="MustStayApart" onAdd={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    expect(screen.getByRole('heading', { name: /keep apart/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /people/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    await user.click(screen.getByRole('button', { name: /select cards/i }));
+    await user.click(screen.getByRole('button', { name: /select keep apart item/i }));
+    await user.click(screen.getByRole('button', { name: /^actions$/i }));
+
+    expect(screen.getByRole('button', { name: /convert selected to prefer apart/i })).toBeInTheDocument();
+  });
 
   it('uses the shared session scope editor for fixed placements in list edit mode', async () => {
     const user = userEvent.setup();
@@ -191,6 +215,56 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('checkbox', { name: '3' })).toBeInTheDocument();
   });
 
+  it('round-trips constraint people as names in csv mode', async () => {
+    const user = userEvent.setup();
+    const setScenario = vi.fn();
+
+    useAppStore.setState((state) => ({
+      ...state,
+      setScenario,
+      resolveScenario: () => ({
+        ...createScenario(),
+        constraints: [
+          {
+            type: 'PairMeetingCount',
+            people: ['p1', 'p2'],
+            target_meetings: 1,
+            mode: 'exact',
+            penalty_weight: 10,
+          },
+        ],
+      }),
+    }));
+
+    render(
+      <SoftConstraintFamilySection family="PairMeetingCount" onAdd={vi.fn()} onEdit={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^csv$/i }));
+    const csvInput = screen.getByRole('textbox', { name: /pair encounters csv/i });
+
+    expect((csvInput as HTMLTextAreaElement).value).toContain('Alex');
+    expect((csvInput as HTMLTextAreaElement).value).toContain('Blair');
+    expect((csvInput as HTMLTextAreaElement).value).not.toContain('p1');
+    expect((csvInput as HTMLTextAreaElement).value).not.toContain('p2');
+
+    fireEvent.change(csvInput, {
+      target: {
+        value: 'Pair,Target meetings,Mode,Weight,Sessions\n"[""Alex"",""Casey""]",1,exact,10,all',
+      },
+    });
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+
+    expect(setScenario).toHaveBeenCalledWith(expect.objectContaining({
+      constraints: expect.arrayContaining([
+        expect.objectContaining({
+          type: 'PairMeetingCount',
+          people: ['p1', 'p3'],
+        }),
+      ]),
+    }));
+  });
+
   it('uses attribute names plus a single targets column for attribute balance list editing and csv', async () => {
     const user = userEvent.setup();
     const onApplyAttributeBalanceRows = vi.fn();
@@ -222,18 +296,21 @@ describe('ConstraintFamilySections', () => {
     expect(screen.getByRole('columnheader', { name: /targets/i })).toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /female/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('columnheader', { name: /^male /i })).not.toBeInTheDocument();
-    expect(screen.getByRole('spinbutton', { name: /target for female/i })).toHaveValue(2);
-    expect(screen.getByRole('spinbutton', { name: /target for male/i })).toHaveValue(1);
+    expect(screen.getByLabelText('female count')).toHaveValue('2');
+    expect(screen.getByLabelText('male count')).toHaveValue('1');
+    expect(screen.getByRole('button', { name: /disable target for female/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /disable target for male/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /adjust boundary between female and male/i })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /balance attributes csv/i });
     expect(csvInput).toHaveValue(
-      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"',
+      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"[0,1]"',
     );
 
     fireEvent.change(csvInput, {
       target: {
-        value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1,2]}"',
+        value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""male"":1}",exact,30,"[0,1,2]"',
       },
     });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));
@@ -245,6 +322,84 @@ describe('ConstraintFamilySections', () => {
         }),
       }),
     ]);
+  });
+
+  it('shows the attribute-balance mode on cards', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <SoftConstraintFamilySection
+        family="AttributeBalance"
+        onAdd={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+
+    expect(screen.getByText('Mode')).toBeInTheDocument();
+    expect(screen.getByText('exact')).toBeInTheDocument();
+    expect(screen.getByLabelText('female count')).toHaveValue('2');
+  });
+
+  it('allows inline attribute-balance editing on cards', async () => {
+    const user = userEvent.setup();
+    const setScenario = vi.fn();
+
+    useAppStore.setState({
+      ...useAppStore.getState(),
+      setScenario,
+    });
+
+    render(
+      <SoftConstraintFamilySection
+        family="AttributeBalance"
+        onAdd={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+
+    const femaleInput = screen.getByLabelText('female count');
+    fireEvent.change(femaleInput, { target: { value: '3' } });
+
+    await waitFor(() => {
+      expect(setScenario).toHaveBeenCalledWith(
+        expect.objectContaining({
+          constraints: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'AttributeBalance',
+              desired_values: { female: 3, male: 1 },
+            }),
+          ]),
+        }),
+      );
+    });
+  });
+
+  it('keeps background card clicks opening the attribute-balance modal', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+
+    render(
+      <SoftConstraintFamilySection
+        family="AttributeBalance"
+        onAdd={vi.fn()}
+        onEdit={onEdit}
+        onDelete={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: /^cards$/i }));
+    await user.click(screen.getByRole('button', { name: /edit balance attributes constraint/i }));
+
+    expect(onEdit).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'AttributeBalance' }),
+      expect.any(Number),
+    );
   });
 
   it('validates attribute-balance target JSON keys against the selected attribute options', async () => {
@@ -297,11 +452,11 @@ describe('ConstraintFamilySections', () => {
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     const csvInput = screen.getByRole('textbox', { name: /balance attributes csv/i });
     expect(csvInput).toHaveValue(
-      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""asdf | asdf:"":1}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"',
+      'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":2,""asdf | asdf:"":1}",exact,30,"[0,1]"',
     );
 
     fireEvent.change(csvInput, {
-      target: { value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":3,""unknown"":2}",exact,30,"{""mode"":""selected"",""sessions"":[0,1]}"' },
+      target: { value: 'Group,Attribute,Targets,Mode,Weight,Sessions\ng1,gender,"{""female"":3,""unknown"":2}",exact,30,"[0,1]"' },
     });
     await user.click(screen.getByRole('button', { name: /apply changes/i }));
 

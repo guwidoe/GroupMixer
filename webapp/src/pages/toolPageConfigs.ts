@@ -15,15 +15,17 @@ import {
   type ToolPageCardContent,
   type ToolPageDefinition,
   type ToolPageFaqEntry,
-  type ToolPageAdvancedSectionContent,
   type ToolPageHeroContent,
   type ToolPageInventoryConfig,
   type ToolPageKey,
   type ToolPageLocalizedContent,
+  type ToolPageMode,
   type ToolPageOptimizerCtaContent,
   type ToolPagePreset,
+  type ToolPageQuickSetupDefaults,
   type ToolPageRouteEntry,
   type ToolPageSectionContent,
+  type ToolPageSectionSet,
   type ToolPageSeoContent,
 } from './toolPageTypes';
 import { TOOL_PAGE_DEFINITIONS_DATA } from './toolPageConfigs.data.mjs';
@@ -50,9 +52,9 @@ function assertString(value: unknown, path: string): string {
   return value;
 }
 
-function assertStringArray(value: unknown, path: string): string[] {
-  if (!Array.isArray(value) || value.length === 0) {
-    failConfig(`${path} must be a non-empty string array.`);
+function assertStringArray(value: unknown, path: string, options: { allowEmpty?: boolean } = {}): string[] {
+  if (!Array.isArray(value) || (!options.allowEmpty && value.length === 0)) {
+    failConfig(`${path} must be a ${options.allowEmpty ? '' : 'non-empty '}string array.`);
   }
 
   return value.map((entry, index) => assertNonEmptyString(entry, `${path}[${index}]`));
@@ -68,9 +70,24 @@ function assertFaqEntries(value: unknown, path: string): ToolPageFaqEntry[] {
       failConfig(`${path}[${index}] must be an object.`);
     }
 
+    const record = entry as { question?: unknown; answer?: unknown; link?: unknown };
+    const link = record.link;
+
+    if (link !== undefined && (typeof link !== 'object' || link === null)) {
+      failConfig(`${path}[${index}].link must be an object when provided.`);
+    }
+
     return {
-      question: assertNonEmptyString((entry as { question?: unknown }).question, `${path}[${index}].question`),
-      answer: assertNonEmptyString((entry as { answer?: unknown }).answer, `${path}[${index}].answer`),
+      question: assertNonEmptyString(record.question, `${path}[${index}].question`),
+      answer: assertNonEmptyString(record.answer, `${path}[${index}].answer`),
+      ...(link
+        ? {
+            link: {
+              label: assertNonEmptyString((link as { label?: unknown }).label, `${path}[${index}].link.label`),
+              href: assertNonEmptyString((link as { href?: unknown }).href, `${path}[${index}].link.href`),
+            },
+          }
+        : {}),
     };
   });
 }
@@ -81,6 +98,66 @@ function assertPreset(value: unknown, path: string): ToolPagePreset {
   }
 
   failConfig(`${path} must be one of random, balanced, or networking.`);
+}
+
+function assertMode(value: unknown, path: string): ToolPageMode {
+  if (value === 'quick-randomizer' || value === 'constraint-optimizer' || value === 'multi-round' || value === 'social-golfer') {
+    return value;
+  }
+
+  failConfig(`${path} must be one of quick-randomizer, constraint-optimizer, multi-round, or social-golfer.`);
+}
+
+function assertSectionSet(value: unknown, path: string): ToolPageSectionSet {
+  if (value === 'standard' || value === 'technical') {
+    return value;
+  }
+
+  failConfig(`${path} must be "standard" or "technical".`);
+}
+
+function assertQuickSetupDefaults(value: unknown, path: string): ToolPageQuickSetupDefaults {
+  if (typeof value !== 'object' || value === null) {
+    failConfig(`${path} must be an object.`);
+  }
+
+  const record = value as Record<string, unknown>;
+  const inputMode = record.inputMode;
+  const groupingMode = record.groupingMode;
+  const groupingValue = record.groupingValue;
+  const sessions = record.sessions;
+  const advancedOpen = record.advancedOpen;
+  const balanceAttributeKey = record.balanceAttributeKey;
+
+  if (inputMode !== 'names' && inputMode !== 'csv') {
+    failConfig(`${path}.inputMode must be "names" or "csv".`);
+  }
+  if (groupingMode !== 'groupCount' && groupingMode !== 'groupSize') {
+    failConfig(`${path}.groupingMode must be "groupCount" or "groupSize".`);
+  }
+  if (typeof groupingValue !== 'number' || !Number.isInteger(groupingValue) || groupingValue < 1) {
+    failConfig(`${path}.groupingValue must be a positive integer.`);
+  }
+  if (typeof sessions !== 'number' || !Number.isInteger(sessions) || sessions < 1) {
+    failConfig(`${path}.sessions must be a positive integer.`);
+  }
+  if (typeof advancedOpen !== 'boolean') {
+    failConfig(`${path}.advancedOpen must be a boolean.`);
+  }
+  if (balanceAttributeKey !== null && typeof balanceAttributeKey !== 'string') {
+    failConfig(`${path}.balanceAttributeKey must be a string or null.`);
+  }
+
+  return {
+    inputMode,
+    groupingMode,
+    groupingValue,
+    sessions,
+    advancedOpen,
+    balanceAttributeKey,
+    keepTogetherInput: assertString(record.keepTogetherInput, `${path}.keepTogetherInput`),
+    avoidPairingsInput: assertString(record.avoidPairingsInput, `${path}.avoidPairingsInput`),
+  };
 }
 
 function assertPriority(value: unknown, path: string): ToolPageInventoryConfig['priority'] {
@@ -163,7 +240,7 @@ function assertHeroContent(value: unknown, path: string): ToolPageHeroContent {
     title: assertNonEmptyString((value as { title?: unknown }).title, `${path}.title`),
     subhead: assertNonEmptyString((value as { subhead?: unknown }).subhead, `${path}.subhead`),
     audienceSummary: assertString((value as { audienceSummary?: unknown }).audienceSummary, `${path}.audienceSummary`),
-    trustBullets: assertStringArray((value as { trustBullets?: unknown }).trustBullets, `${path}.trustBullets`),
+    trustBullets: assertStringArray((value as { trustBullets?: unknown }).trustBullets, `${path}.trustBullets`, { allowEmpty: true }),
   };
 }
 
@@ -172,10 +249,17 @@ function assertOptimizerCtaContent(value: unknown, path: string): ToolPageOptimi
     failConfig(`${path} must be an object.`);
   }
 
+  const featureBullets = assertStringArray((value as { featureBullets?: unknown }).featureBullets, `${path}.featureBullets`);
+  const featureExplanations = assertStringArray((value as { featureExplanations?: unknown }).featureExplanations, `${path}.featureExplanations`);
+  if (featureBullets.length !== featureExplanations.length) {
+    failConfig(`${path}.featureExplanations must have the same length as ${path}.featureBullets.`);
+  }
+
   return {
     eyebrow: assertNonEmptyString((value as { eyebrow?: unknown }).eyebrow, `${path}.eyebrow`),
     title: assertNonEmptyString((value as { title?: unknown }).title, `${path}.title`),
-    featureBullets: assertStringArray((value as { featureBullets?: unknown }).featureBullets, `${path}.featureBullets`),
+    featureBullets,
+    featureExplanations,
     buttonLabel: assertNonEmptyString((value as { buttonLabel?: unknown }).buttonLabel, `${path}.buttonLabel`),
     supportingText: assertNonEmptyString((value as { supportingText?: unknown }).supportingText, `${path}.supportingText`),
   };
@@ -224,16 +308,6 @@ function assertSectionContent(value: unknown, path: string): ToolPageSectionCont
   };
 }
 
-function assertAdvancedSectionContent(value: unknown, path: string): ToolPageAdvancedSectionContent {
-  const section = assertSectionContent(value, path);
-
-  return {
-    ...section,
-    buttonLabel: assertNonEmptyString((value as { buttonLabel?: unknown }).buttonLabel, `${path}.buttonLabel`),
-    supportingText: assertNonEmptyString((value as { supportingText?: unknown }).supportingText, `${path}.supportingText`),
-  };
-}
-
 function validateLocalizedContent(path: string, value: unknown): ToolPageLocalizedContent {
   if (typeof value !== 'object' || value === null) {
     failConfig(`${path} must be an object.`);
@@ -247,7 +321,6 @@ function validateLocalizedContent(path: string, value: unknown): ToolPageLocaliz
     faqEntries: assertFaqEntries(record.faqEntries, `${path}.faqEntries`),
     chrome: assertChromeContent(record.chrome, `${path}.chrome`),
     useCasesSection: assertSectionContent(record.useCasesSection, `${path}.useCasesSection`),
-    advancedSection: assertAdvancedSectionContent(record.advancedSection, `${path}.advancedSection`),
   };
 }
 
@@ -271,7 +344,10 @@ function validateDefinition(key: ToolPageKey, value: unknown): ToolPageDefinitio
   const definition: ToolPageDefinition = {
     key,
     slug: key === 'home' ? '' : assertNonEmptyString(record.slug, `${key}.slug`),
+    mode: assertMode(record.mode, `${key}.mode`),
+    sectionSet: assertSectionSet(record.sectionSet, `${key}.sectionSet`),
     defaultPreset: assertPreset(record.defaultPreset, `${key}.defaultPreset`),
+    quickSetupDefaults: assertQuickSetupDefaults(record.quickSetupDefaults, `${key}.quickSetupDefaults`),
     liveLocales: assertLocaleList(record.liveLocales, `${key}.liveLocales`),
     experiment: {
       label: assertNonEmptyString((experiment as { label?: unknown }).label, `${key}.experiment.label`),
@@ -396,9 +472,11 @@ for (const route of TOOL_PAGE_ROUTES) {
   seenCanonicalPaths.add(route.path);
 }
 
-export const TOOL_PAGE_INVENTORY = Object.values(TOOL_PAGE_DEFINITIONS).map(({ key, slug, inventory, experiment, liveLocales }) => ({
+export const TOOL_PAGE_INVENTORY = Object.values(TOOL_PAGE_DEFINITIONS).map(({ key, slug, mode, sectionSet, inventory, experiment, liveLocales }) => ({
   key,
   slug,
+  mode,
+  sectionSet,
   liveLocales,
   ...inventory,
   experimentLabel: experiment.label,

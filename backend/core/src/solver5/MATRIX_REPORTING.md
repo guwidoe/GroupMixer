@@ -6,14 +6,10 @@ It complements the main architecture docs by describing how constructive
 coverage, implemented-family roadmap targets, literature-backed reference
 values, method attribution, and visual gap reporting are represented.
 
-## Global cell universe and matrix views
+## Core matrices
 
-Solver5 reporting is built around **one global `(g,p)` cell universe** plus a
-set of matrix views that window over different `(g,p)` ranges.
-
-There is no semantic distinction between a "main" matrix and any other matrix
-view. Every matrix in the report is a peer view over the same resolved cell
-schema.
+Solver5 matrix reporting is built around three primary named matrices, plus
+auxiliary literature-backed reference matrices.
 
 ### `W_g,p`
 The **current achieved matrix**.
@@ -43,8 +39,7 @@ The canonical target definition also carries literature-backed companion data:
   encoded for reporting/debugging
 - `proven_optimal_rows` — exact optima where the project has encoded them
 - `solver5_optimality_lower_bounds.v1.json` — literature-backed constructive
-  lower bounds carried into the JSON/report details so the dashboard stays
-  honest about known constructive coverage beyond the current roadmap target
+  lower bounds used for the optimality badge
 
 These reference matrices exist to keep the dashboard honest about what the
 literature already supports even when the implemented-family roadmap target is
@@ -90,9 +85,9 @@ The matrix report can be richer than the optimization objective.
 
 ### Scored benchmark regions
 The current objective-counting regions are:
-- `2 <= g <= 10`, `2 <= p <= 10`
-- `11 <= g <= 20`, `2 <= p <= 10`
-- `11 <= g <= 20`, `11 <= p <= 20`
+- canonical matrix: `2 <= g <= 10`, `2 <= p <= 10`
+- additional matrix: `11 <= g <= 20`, `2 <= p <= 10`
+- additional matrix: `11 <= g <= 20`, `11 <= p <= 20`
 
 Only those cells contribute to:
 - `total_constructed_weeks`
@@ -136,95 +131,30 @@ When adding a new family or operator:
 2. add/update the abbreviation convention in the target definition
 3. make sure the report output stays concise and readable
 
-## Universal cell grammar
+## Gap semantics
 
-Every rendered matrix cell now uses the **same glyph semantics**.
+Gap is defined as:
 
-- center = current achieved weeks `W`
-- top-left = exact optimum `O` when known
-- top-right = primary comparison target `T`
-- bottom-left = upper bound `U`
-- bottom-right = current achieving method `M`; when the current construction is
-  still more special-case than an **explicitly policy-approved** preferred
-  family, show `M→D` where `D` is that preferred family target
+- `gap_g,p = max(0, TW_g,p - W_g,p)`
 
-This grammar does **not** change between matrix views.
+Interpretation:
+- `gap = 0` means the current implemented-family roadmap target is reached
+- `gap = 1` means the cell is close and should appear yellow-ish
+- larger gaps move toward orange/red
 
-What may vary by matrix view is only the **data source** behind `T`, `O`, or
-the attached references:
+## Color gradient semantics
 
-- some views contain cells whose `T` comes from the roadmap target matrix
-  `TW_g,p`
-- some views contain cells whose `T` comes from curated literature-backed
-  targets when available
-- all matrices: `U` is the counting upper bound shown explicitly in the same
-  bottom-left slot
-- all matrices: `O` is shown only when an exact optimum is actually encoded
+The matrix report uses computed gradient logic, not a tiny hardcoded bucket
+lookup table.
 
-The reporting layer may also mark some exact optima from global impossibility
-logic, not only from table rows. In particular, when `p > g`, the pigeonhole
-argument forbids any non-repeating second week, so `W=1` is exact and the `1W`
-method badge should be treated as accepted rather than unresolved.
+Current rendering policy:
+- `gap = 0` => green
+- `gap = 1` => yellow
+- larger gaps interpolate continuously toward red based on the observed maximum
+  scored-cell gap in the rendered report
 
-The report must not switch corner meanings by matrix type.
-
-## Method-arrow trust policy
-
-Method arrows are intentionally strict.
-
-The report may show `M→D` only when all of the following are true:
-
-- `M` is the currently achieving method
-- `D` is an explicitly encoded preferred family target
-- the upgrade from `M` to `D` is approved by a stable policy rule
-- the cell carries an explicit reason code / reason text for that upgrade
-
-The report must **not** create arrows just because a literature basis string
-mentions another family name.
-
-If the current method is acceptable, equivalent in presentation, or there is no
-explicit upgrade policy yet, the chip must show only `M`.
-
-Chip colors are also strict:
-
-- green = the current method is accepted for that cell
-- orange = an explicit policy-approved upgrade exists, so the cell shows `M→D`
-- blue = the current method is shown, but method-policy judgment is still unresolved
-
-Neutral/white method chips should be avoided for cells that already have a
-current method, because that silently hides whether the method is accepted or
-pending an approved upgrade.
-
-This means an orange border with a blue chip is valid and meaningful:
-
-- the result is known to be below exact optimum
-- but the project has not yet explicitly decided whether the current method is
-  acceptable or whether a preferred replacement family should be targeted
-
-## Fill and border semantics
-
-The renderer uses one coherent visual policy everywhere.
-
-### Fill
-
-Fill grades progress against:
-
-- `T` when `T` is present
-- otherwise `U` when `U` is present
-- otherwise a neutral / hatched visual-only style
-
-The gradient is computed continuously from current progress toward that basis.
-
-### Border
-
-Border shows exact-optimality status only:
-
-- green = exact optimum known and reached
-- amber = exact optimum known and not yet reached
-- dashed = exact optimum unknown
-
-Visual-only cells remain hatched/dashed so they are not mistaken for scored
-benchmark cells.
+Visual-only cells are styled distinctly so they are not mistaken for scored
+benchmark results.
 
 ## Relationship to the primary autoresearch metric
 
@@ -240,9 +170,7 @@ Why:
 
 The matrices are a **complement**, not a replacement:
 - `total_constructed_weeks` is the keep/discard gate
-- `W`, `T`, `U`, `O`, and `M` explain where progress happened, and `M→D`
-  highlights where a current result is real but still needs method
-  generalization
+- `W`, `TW`, and `M` explain where progress happened and what still needs work
 - the auxiliary literature-backed rows keep conservative roadmap targets from
   being mistaken for the current best-known constructive frontier
 
@@ -255,42 +183,43 @@ The solver5 coverage benchmark now emits:
   - `autoresearch.last_run_report.html`
 
 The JSON artifact contains the structured matrix data.
-The HTML report renders the same universal glyph grammar for every matrix view.
+The HTML report renders a single combined dashboard glyph per cell for the
+canonical target matrix, and also includes the additional benchmark matrices for
+the `11..20` regions.
 
-Current HTML cell semantics for **every** matrix:
-
+Current HTML cell semantics for the canonical target matrix:
 - center = current implemented guarantee `W_g,p`
-- top-left = exact optimum `O_g,p` when encoded
-- top-right = primary target `T_g,p`
-- bottom-left = counting upper bound `U_g,p`
-- bottom-right = current method badge `M_g,p`; when a desired roadmap family
-  differs under an explicit policy-approved method upgrade, the report shows
-  `M_g,p → D_g,p`
+- top-right = roadmap target `TW_g,p`; when a curated literature source is
+  attached, the HTML keeps the `T` visible and adds a tiny superscript link into
+  the report's literature-reference table even if the target is already reached
+- bottom-left = literature-backed constructive lower bound when it adds
+  information beyond the roadmap target
+- top-left = known optimum when useful, or a checkmark when the cell is already
+  solved at a known exact optimum
+- bottom-right = current method badge; when the encoded reference method differs,
+  the HTML shows separate current/reference badges with an arrow between them
 
-Tiny superscript reference indices may be attached to `T` labels when a curated
-literature source is available for that target.
+Current HTML cell semantics for the additional benchmark matrices:
+- center = current implemented guarantee `W_g,p`
+- top-right = conservative literature-backed target `T_g,p` when curated from
+  the 2026 Miller–Valkov–Abel survey or a narrowly-scoped theorem fallback
+- bottom-left = counting upper bound `U_g,p` when a curated target is present
+- top-left = exact-frontier checkmark when `W_g,p = U_g,p`
+- bottom-right = current method badge
+- fill grades against `T_g,p` when present, otherwise against `U_g,p`
+- tiny superscript reference indices on additional-region `T` labels link into the
+  report's literature-reference table
+- blank `T` means no clean paper-derived target has been curated yet for that
+  cell, typically because the appendix tables stop at `v <= 150` and the case
+  lies in the `p > g` high-player regime
 
-The JSON artifact now carries fully resolved glyph fields so the Python HTML
-renderer can stay thin and truthful instead of reinterpreting cell semantics.
+Visual channels are intentionally separated:
+- cell fill = progress against the roadmap target only
+- border = optimality status only
+- gray hatched styling = visual-only cells outside the scored objective
 
-The artifact is range-view based:
-
-- top-level `matrices[]`
-- each entry has only presentation metadata plus bounds
-- each cell in each matrix is resolved from the same global cell universe
-
-The reporting pipeline must not reintroduce legacy concepts like a dedicated
-canonical matrix path or a special supplementary matrix path.
-
-The HTML also includes:
-
-- a method-reference table mapping each abbreviation to its expanded name and
-  covered family/cell patterns
-- a literature-reference table for superscripted target citations
-- tooltip/detail text carrying target basis, upper-bound basis, and known
-  constructive lower-bound context when available
-- tooltip/detail text carrying explicit method-upgrade reasons when an arrow is
-  shown
+The HTML also includes a method-reference table mapping each abbreviation to its
+expanded name and the family/cell patterns it covers.
 
 ## Editing workflow
 
@@ -300,8 +229,7 @@ When changing targets or abbreviations:
    lower-bound/reference story changes
 3. rerun the solver5 coverage benchmark
 4. inspect the generated HTML report
-5. verify that the universal glyph grammar still holds across all matrices and
-   that scored-vs-visual-only boundaries still match the intended
+5. verify that scored-vs-visual-only boundaries still match the intended
    optimization question
 6. document any important target-policy change in autoresearch notes/docs
 
@@ -310,5 +238,4 @@ When changing targets or abbreviations:
 - using visual-only cells to inflate `total_constructed_weeks`
 - hardcoding report colors per discrete bucket list
 - divorcing the report from the canonical target file
-- letting different matrices reuse the same visual corner for different meanings
 - replacing the primary benchmark objective with a purely visual dashboard

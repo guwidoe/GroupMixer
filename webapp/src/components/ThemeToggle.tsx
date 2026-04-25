@@ -117,14 +117,24 @@ export function ThemeToggle({
         style={{
           backgroundColor: isHeaderVariant
             ? dropdownOpen || toggleHovered
-              ? 'var(--bg-primary)'
+              ? 'color-mix(in srgb, var(--color-accent) 12%, var(--bg-primary))'
               : 'transparent'
             : dropdownOpen || toggleHovered
               ? 'var(--bg-tertiary)'
               : 'var(--bg-primary)',
-          color: isHeaderVariant ? 'var(--text-secondary)' : 'var(--text-primary)',
-          borderColor: isHeaderVariant ? 'transparent' : 'var(--border-primary)',
-          boxShadow: !isHeaderVariant && dropdownOpen ? 'var(--shadow)' : 'none',
+          color: isHeaderVariant && (dropdownOpen || toggleHovered) ? 'var(--text-primary)' : isHeaderVariant ? 'var(--text-secondary)' : 'var(--text-primary)',
+          borderColor: isHeaderVariant
+            ? dropdownOpen || toggleHovered
+              ? 'color-mix(in srgb, var(--color-accent) 28%, var(--border-primary))'
+              : 'transparent'
+            : 'var(--border-primary)',
+          boxShadow: isHeaderVariant
+            ? dropdownOpen || toggleHovered
+              ? '0 0 0 1px color-mix(in srgb, var(--color-accent) 14%, transparent)'
+              : 'none'
+            : dropdownOpen
+              ? 'var(--shadow)'
+              : 'none',
         }}
         title={`Current: ${currentTheme.label} mode. Click to change theme.`}
         aria-label={`Theme: ${currentTheme.label}. Click to change theme.`}

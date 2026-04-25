@@ -1,3 +1,4 @@
+/* eslint-disable react/no-multi-comp */
 import { useCallback, useRef, useState } from 'react';
 import { Bug, Menu, Save, Upload } from 'lucide-react';
 import { useAppStore } from '../store';
@@ -23,6 +24,72 @@ interface WorkspaceActionHandlers {
   onLoadScenario: () => void;
   onSaveScenario: () => void;
   onDemoCaseClick: (demoCaseId: string, demoCaseName: string) => void;
+  advancedModeEnabled: boolean;
+  onSetAdvancedModeEnabled: (enabled: boolean) => void;
+  showWorkflowGuideButton: boolean;
+  onSetShowWorkflowGuideButton: (show: boolean) => void;
+}
+
+function PreferenceToggleMenuItem({
+  checked,
+  label,
+  description,
+  ariaLabel,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  description: string;
+  ariaLabel: string;
+  onChange: (enabled: boolean) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={ariaLabel}
+      onClick={() => onChange(!checked)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-all duration-150"
+      title={description}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      style={{
+        color: 'var(--text-primary)',
+        backgroundColor: hovered
+          ? 'var(--bg-secondary)'
+          : 'transparent',
+      }}
+    >
+      <span className="min-w-0 text-sm font-medium">{label}</span>
+
+      <span
+        className="mt-0.5 inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full p-0.5 transition-all duration-150"
+        style={{
+          backgroundColor: checked
+            ? 'var(--color-accent)'
+            : 'color-mix(in srgb, var(--border-primary) 72%, var(--bg-secondary))',
+          boxShadow: hovered
+            ? '0 0 0 1px color-mix(in srgb, var(--color-accent) 18%, var(--border-primary))'
+            : 'none',
+        }}
+        aria-hidden="true"
+      >
+        <span
+          className="h-5 w-5 rounded-full transition-all duration-150"
+          style={{
+            backgroundColor: 'var(--bg-primary)',
+            boxShadow: '0 1px 3px color-mix(in srgb, black 20%, transparent)',
+            transform: checked ? 'translateX(20px)' : 'translateX(0)',
+          }}
+        />
+      </span>
+    </button>
+  );
 }
 
 function WorkspaceInlineActions({
@@ -74,6 +141,35 @@ function WorkspaceInlineActions({
           variant="header"
           triggerLabel={closeMobileMenu ? 'Demo Data' : 'Demo'}
         />
+      </div>
+
+      <div
+        className="mt-2 rounded-2xl border px-3 py-3"
+        style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
+      >
+        <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
+          Preferences
+        </div>
+        <div className="mt-2 space-y-1.5">
+          <PreferenceToggleMenuItem
+            checked={handlers.advancedModeEnabled}
+            label="Advanced mode"
+            description="Show the dedicated solver page and full workflow steps."
+            ariaLabel="Enable advanced mode"
+            onChange={(enabled) => {
+              handlers.onSetAdvancedModeEnabled(enabled);
+            }}
+          />
+          <PreferenceToggleMenuItem
+            checked={handlers.showWorkflowGuideButton}
+            label="Show workflow guide button"
+            description="Show the floating next-step button in the bottom-right corner."
+            ariaLabel="Show workflow guide button"
+            onChange={(show) => {
+              handlers.onSetShowWorkflowGuideButton(show);
+            }}
+          />
+        </div>
       </div>
     </div>
   );
@@ -187,10 +283,35 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
 
           <div className="border-t px-4 py-3" style={{ borderColor: 'var(--border-primary)' }}>
             <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
-              Appearance
+              Preferences
             </div>
-            <div className="mt-3">
-              <ThemeToggle showLabel size="sm" />
+            <div className="mt-2 space-y-1.5">
+              <PreferenceToggleMenuItem
+                checked={handlers.advancedModeEnabled}
+                label="Advanced mode"
+                description="Show the dedicated solver page and full workflow steps."
+                ariaLabel="Enable advanced mode"
+                onChange={(enabled) => {
+                  handlers.onSetAdvancedModeEnabled(enabled);
+                }}
+              />
+              <PreferenceToggleMenuItem
+                checked={handlers.showWorkflowGuideButton}
+                label="Show workflow guide button"
+                description="Show the floating next-step button in the bottom-right corner."
+                ariaLabel="Show workflow guide button"
+                onChange={(show) => {
+                  handlers.onSetShowWorkflowGuideButton(show);
+                }}
+              />
+            </div>
+            <div className="mt-3 border-t pt-3" style={{ borderColor: 'var(--border-primary)' }}>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--text-tertiary)' }}>
+                Appearance
+              </div>
+              <div className="mt-3">
+                <ThemeToggle showLabel size="sm" />
+              </div>
             </div>
           </div>
 
@@ -229,15 +350,19 @@ function WorkspaceDesktopMenu({ handlers }: { handlers: WorkspaceActionHandlers 
 interface HeaderProps {
   renderDesktopCenterContent?: () => React.ReactNode;
   renderMobileCenterContent?: (helpers: { closeMobileMenu: () => void }) => React.ReactNode;
+  renderMobileBelowHeaderContent?: () => React.ReactNode;
 }
 
-export function Header({ renderDesktopCenterContent, renderMobileCenterContent }: HeaderProps = {}) {
+export function Header({ renderDesktopCenterContent, renderMobileCenterContent, renderMobileBelowHeaderContent }: HeaderProps = {}) {
   const {
     scenario,
     currentScenarioId,
     savedScenarios,
     setShowScenarioManager,
     saveScenario,
+    ui,
+    setAdvancedModeEnabled,
+    setShowWorkflowGuideButton,
     loadDemoCase,
     loadDemoCaseOverwrite,
     loadDemoCaseNewScenario,
@@ -280,6 +405,14 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
 
       loadDemoCase(demoCaseId);
     },
+    advancedModeEnabled: ui.advancedModeEnabled ?? false,
+    onSetAdvancedModeEnabled: (enabled) => {
+      setAdvancedModeEnabled(enabled);
+    },
+    showWorkflowGuideButton: ui.showWorkflowGuideButton ?? true,
+    onSetShowWorkflowGuideButton: (show) => {
+      setShowWorkflowGuideButton(show);
+    },
   };
 
   return (
@@ -287,6 +420,7 @@ export function Header({ renderDesktopCenterContent, renderMobileCenterContent }
       <AppHeader
         renderDesktopCenterContent={renderDesktopCenterContent}
         renderMobileCenterContent={renderMobileCenterContent}
+        renderMobileBelowHeaderContent={renderMobileBelowHeaderContent}
         renderDesktopActions={() => <WorkspaceDesktopMenu handlers={handlers} />}
         renderMobileActions={({ closeMobileMenu }) => (
           <WorkspaceInlineActions closeMobileMenu={closeMobileMenu} handlers={handlers} />

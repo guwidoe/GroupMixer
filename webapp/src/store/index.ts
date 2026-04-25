@@ -2,7 +2,7 @@
  * Main application store using Zustand slices pattern.
  *
  * The store is composed of multiple slices, each managing a specific domain:
- * - scenarioSlice: Current scenario state and CRUD operations
+ * - scenarioSlice: Current scenario-document state and CRUD operations
  * - solutionSlice: Current solution state
  * - solverSlice: Solver execution state and progress
  * - uiSlice: UI state, notifications, modal visibility
@@ -12,12 +12,14 @@
  * - editorSlice: Manual editor state
  */
 
-import { create } from 'zustand';
+import { create, useStore } from 'zustand';
+import type { StoreApi } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { temporal, type TemporalState } from 'zundo';
 import type { AppStore } from './types';
 import type { AttributeDefinition, Scenario, Solution } from '../types';
-import { resolveScenarioWorkspaceState } from '../services/scenarioAttributes';
-import { scenarioStorage } from '../services/scenarioStorage';
+import { buildScenarioContentHash, buildScenarioDraftIdentityHash, scenarioStorage } from '../services/scenarioStorage';
+import { createDefaultSolverSettings } from '../services/solverUi';
 
 import {
   createScenarioSlice,
@@ -34,10 +36,12 @@ import {
   initialRuntimeCatalogState,
   DEFAULT_ATTRIBUTE_DEFINITIONS,
 } from './slices';
+import { createScenarioDocument, getSavedScenarioDocument, getScenarioDocumentState } from './scenarioDocument';
 
 export type {
   AppState,
   Scenario,
+  ScenarioDocument,
   Solution,
   SolverState,
   Notification,
@@ -48,7 +52,24 @@ export type {
 
 export type { AppStore } from './types';
 
+type ScenarioDocumentHistorySnapshot = Pick<AppStore, 'scenarioDocument' | 'scenario' | 'attributeDefinitions'>;
+
+let scenarioDocumentTemporalStore: StoreApi<TemporalState<ScenarioDocumentHistorySnapshot>> | null = null;
+
+function getScenarioDocumentHistorySnapshot(state: AppStore): ScenarioDocumentHistorySnapshot {
+  return {
+    scenarioDocument: state.scenarioDocument,
+    scenario: state.scenario,
+    attributeDefinitions: state.attributeDefinitions,
+  };
+}
+
+function serializeScenarioDocumentHistorySnapshot(snapshot: ScenarioDocumentHistorySnapshot): string {
+  return JSON.stringify(snapshot.scenarioDocument);
+}
+
 const getInitialState = () => ({
+  scenarioDocument: null,
   scenario: null,
   solution: null,
   solverState: initialSolverState,
@@ -83,9 +104,44 @@ function solverStateFromWorkspaceSolution(solution: Solution | null) {
   };
 }
 
+function hasScenarioSetupContent(scenario: Scenario | null) {
+  if (!scenario) {
+    return false;
+  }
+
+  const emptyScenario: Scenario = {
+    people: [],
+    groups: [],
+    num_sessions: 3,
+    constraints: [],
+    settings: createDefaultSolverSettings(),
+  };
+
+  return JSON.stringify({
+    people: scenario.people,
+    groups: scenario.groups,
+    num_sessions: scenario.num_sessions,
+    objectives: scenario.objectives ?? [],
+    constraints: scenario.constraints,
+    settings: scenario.settings,
+  }) !== JSON.stringify({
+    people: emptyScenario.people,
+    groups: emptyScenario.groups,
+    num_sessions: emptyScenario.num_sessions,
+    objectives: emptyScenario.objectives ?? [],
+    constraints: emptyScenario.constraints,
+    settings: emptyScenario.settings,
+  });
+}
+
+function createRecoveredWorkspaceName() {
+  return `Recovered workspace ${new Date().toLocaleString()}`;
+}
+
 export const useAppStore = create<AppStore>()(
-  devtools(
-    (set, get) => ({
+  temporal(
+    devtools(
+      (set, get) => ({
       ...createScenarioSlice(set, get),
       ...createSolutionSlice(set, get),
       ...createSolverSlice(set, get),
@@ -96,7 +152,22 @@ export const useAppStore = create<AppStore>()(
       ...createDemoDataSlice(set, get),
       ...createEditorSlice(set, get),
 
-      reset: () => set(getInitialState()),
+      undoScenarioDocument: () => {
+        scenarioDocumentTemporalStore?.getState().undo();
+      },
+      redoScenarioDocument: () => {
+        scenarioDocumentTemporalStore?.getState().redo();
+      },
+      clearScenarioDocumentHistory: () => {
+        scenarioDocumentTemporalStore?.getState().clear();
+      },
+      canUndoScenarioDocument: () => Boolean(scenarioDocumentTemporalStore?.getState().pastStates.length),
+      canRedoScenarioDocument: () => Boolean(scenarioDocumentTemporalStore?.getState().futureStates.length),
+
+      reset: () => {
+        set(getInitialState());
+        get().clearScenarioDocumentHistory();
+      },
 
       replaceWorkspace: ({
         scenario,
@@ -108,17 +179,16 @@ export const useAppStore = create<AppStore>()(
         solution?: Solution | null;
         attributeDefinitions?: AttributeDefinition[];
         currentScenarioId?: string | null;
-      }) =>
+      }) => {
         set((state) => {
-          const nextWorkspace = resolveScenarioWorkspaceState(scenario, attributeDefinitions ?? state.attributeDefinitions);
+          const nextDocument = createScenarioDocument(scenario, attributeDefinitions ?? state.attributeDefinitions);
           return {
-            scenario: nextWorkspace.scenario,
+            ...getScenarioDocumentState(nextDocument, state.attributeDefinitions),
             solution,
             currentScenarioId,
             currentResultId: null,
             selectedResultIds: [],
             solverState: solverStateFromWorkspaceSolution(solution),
-            attributeDefinitions: nextWorkspace.attributeDefinitions,
             ui: {
               ...state.ui,
               activeTab: solution ? 'results' : 'scenario',
@@ -132,7 +202,9 @@ export const useAppStore = create<AppStore>()(
             setupGridUnsaved: false,
             setupGridLeaveHook: null,
           };
-        }),
+        });
+        get().clearScenarioDocumentHistory();
+      },
 
       syncWorkspaceDraft: ({
         scenario,
@@ -147,26 +219,27 @@ export const useAppStore = create<AppStore>()(
         if (matchingScenario) {
           savedScenario = matchingScenario;
         } else if (savedScenario) {
-          const nextWorkspace = resolveScenarioWorkspaceState(
+          const nextDocument = createScenarioDocument(
             scenario,
             attributeDefinitions ?? savedScenario.attributeDefinitions,
           );
           savedScenario = {
             ...savedScenario,
             name: scenarioName,
-            scenario: nextWorkspace.scenario,
-            attributeDefinitions: nextWorkspace.attributeDefinitions,
+            scenario: nextDocument.scenario,
+            attributeDefinitions: nextDocument.attributeDefinitions,
+            draftIdentityHash: buildScenarioDraftIdentityHash(scenarioName, nextDocument.scenario),
           };
           scenarioStorage.saveScenario(savedScenario);
         } else {
-          const nextWorkspace = resolveScenarioWorkspaceState(
+          const nextDocument = createScenarioDocument(
             scenario,
             attributeDefinitions ?? DEFAULT_ATTRIBUTE_DEFINITIONS,
           );
           savedScenario = scenarioStorage.createScenario(
             scenarioName,
-            nextWorkspace.scenario,
-            nextWorkspace.attributeDefinitions,
+            nextDocument.scenario,
+            nextDocument.attributeDefinitions,
           );
           currentScenarioId = savedScenario.id;
         }
@@ -174,7 +247,7 @@ export const useAppStore = create<AppStore>()(
         scenarioStorage.setCurrentScenarioId(savedScenario.id);
 
         set((state) => ({
-          scenario: savedScenario.scenario,
+          ...getScenarioDocumentState(getSavedScenarioDocument(savedScenario), state.attributeDefinitions),
           solution,
           currentScenarioId: savedScenario.id,
           currentResultId: null,
@@ -184,7 +257,6 @@ export const useAppStore = create<AppStore>()(
           },
           selectedResultIds: [],
           solverState: solverStateFromWorkspaceSolution(solution),
-          attributeDefinitions: savedScenario.attributeDefinitions,
           ui: {
             ...state.ui,
             activeTab: solution ? 'results' : 'scenario',
@@ -198,8 +270,151 @@ export const useAppStore = create<AppStore>()(
           setupGridUnsaved: false,
           setupGridLeaveHook: null,
         }));
+        get().clearScenarioDocumentHistory();
 
         return savedScenario.id;
+      },
+
+      loadWorkspaceAsNewScenario: ({
+        scenario,
+        solution = null,
+        attributeDefinitions,
+        scenarioName,
+      }) => {
+        const state = get();
+        const hadPreviousWorkspace = hasScenarioSetupContent(state.scenario);
+        const previousWorkspaceWasPreserved = Boolean(state.currentScenarioId) || hadPreviousWorkspace;
+        const nextDocument = createScenarioDocument(scenario, attributeDefinitions ?? state.attributeDefinitions);
+
+        if (state.scenario && buildScenarioContentHash(state.scenario) === buildScenarioContentHash(nextDocument.scenario)) {
+          set((current) => ({
+            ...getScenarioDocumentState(nextDocument, current.attributeDefinitions),
+            solution,
+            currentResultId: null,
+            selectedResultIds: [],
+            solverState: solverStateFromWorkspaceSolution(solution),
+            ui: {
+              ...current.ui,
+              activeTab: solution ? 'results' : 'scenario',
+              warmStartResultId: null,
+              showResultComparison: false,
+              showScenarioManager: false,
+              isLoading: false,
+            },
+            manualEditorUnsaved: false,
+            manualEditorLeaveHook: null,
+            setupGridUnsaved: false,
+            setupGridLeaveHook: null,
+          }));
+          get().clearScenarioDocumentHistory();
+
+          return state.currentScenarioId ?? null;
+        }
+
+        if (!state.currentScenarioId && hadPreviousWorkspace) {
+          const recoveredDocument = createScenarioDocument(
+            state.scenario!,
+            state.attributeDefinitions,
+          );
+          const recoveredScenario = scenarioStorage.createScenario(
+            createRecoveredWorkspaceName(),
+            recoveredDocument.scenario,
+            recoveredDocument.attributeDefinitions,
+          );
+
+          set((current) => ({
+            savedScenarios: {
+              ...current.savedScenarios,
+              [recoveredScenario.id]: recoveredScenario,
+            },
+          }));
+        }
+
+        const savedScenario = scenarioStorage.createScenario(
+          scenarioName,
+          nextDocument.scenario,
+          nextDocument.attributeDefinitions,
+        );
+
+        scenarioStorage.setCurrentScenarioId(savedScenario.id);
+
+        set((current) => ({
+          ...getScenarioDocumentState(getSavedScenarioDocument(savedScenario), current.attributeDefinitions),
+          solution,
+          currentScenarioId: savedScenario.id,
+          currentResultId: null,
+          savedScenarios: {
+            ...current.savedScenarios,
+            [savedScenario.id]: savedScenario,
+          },
+          selectedResultIds: [],
+          solverState: solverStateFromWorkspaceSolution(solution),
+          ui: {
+            ...current.ui,
+            activeTab: solution ? 'results' : 'scenario',
+            warmStartResultId: null,
+            showResultComparison: false,
+            showScenarioManager: false,
+            isLoading: false,
+          },
+          manualEditorUnsaved: false,
+          manualEditorLeaveHook: null,
+          setupGridUnsaved: false,
+          setupGridLeaveHook: null,
+        }));
+        get().clearScenarioDocumentHistory();
+
+        get().addNotification({
+          type: 'success',
+          title: 'Landing Setup Loaded',
+          message: previousWorkspaceWasPreserved
+            ? 'Loaded the landing-page setup into a new scenario. Your previous settings were preserved and can be restored from Scenario Manager.'
+            : 'Loaded the landing-page setup into a new scenario.',
+        });
+
+        return savedScenario.id;
+      },
+
+      applySessionReductionScenario: (scenario) => {
+        const state = get();
+        const nextDocument = createScenarioDocument(scenario, state.attributeDefinitions);
+
+        if (state.currentScenarioId) {
+          scenarioStorage.updateScenario(
+            state.currentScenarioId,
+            nextDocument.scenario,
+            nextDocument.attributeDefinitions,
+          );
+        }
+
+        set((current) => ({
+          ...getScenarioDocumentState(nextDocument, current.attributeDefinitions),
+          solution: null,
+          currentResultId: null,
+          selectedResultIds: [],
+          solverState: initialSolverState,
+          savedScenarios:
+            current.currentScenarioId && current.savedScenarios[current.currentScenarioId]
+              ? {
+                  ...current.savedScenarios,
+                  [current.currentScenarioId]: {
+                    ...current.savedScenarios[current.currentScenarioId],
+                    scenario: nextDocument.scenario,
+                    attributeDefinitions: nextDocument.attributeDefinitions,
+                    updatedAt: Date.now(),
+                  },
+                }
+              : current.savedScenarios,
+          ui: {
+            ...current.ui,
+            activeTab: 'scenario',
+            warmStartResultId: null,
+            showResultComparison: false,
+          },
+          manualEditorUnsaved: false,
+          manualEditorLeaveHook: null,
+        }));
+        get().clearScenarioDocumentHistory();
       },
 
       initializeApp: () => {
@@ -207,9 +422,24 @@ export const useAppStore = create<AppStore>()(
           get().loadSavedScenarios();
         }, 0);
       },
-    }),
+      }),
+      {
+        name: 'people-distributor-store',
+      },
+    ),
     {
-      name: 'people-distributor-store',
+      partialize: getScenarioDocumentHistorySnapshot,
+      equality: (left, right) => (
+        serializeScenarioDocumentHistorySnapshot(left) === serializeScenarioDocumentHistorySnapshot(right)
+      ),
     },
   ),
 );
+
+scenarioDocumentTemporalStore = useAppStore.temporal;
+
+export function useScenarioDocumentHistory<T>(
+  selector: (state: TemporalState<ScenarioDocumentHistorySnapshot>) => T,
+) {
+  return useStore(useAppStore.temporal, selector);
+}

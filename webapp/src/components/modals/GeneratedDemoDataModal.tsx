@@ -2,6 +2,7 @@ import { X, Zap } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useMemo, useState } from 'react';
 import type { GeneratedDemoScenarioOptions } from '../../services/demoScenarioGenerator';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../ui';
 
 interface GeneratedDemoDataModalProps {
   isOpen: boolean;
@@ -9,36 +10,27 @@ interface GeneratedDemoDataModalProps {
   onGenerate: (options: GeneratedDemoScenarioOptions) => void;
 }
 
-const DEFAULT_GROUP_COUNT = '6';
-const DEFAULT_PEOPLE_PER_GROUP = '4';
-const DEFAULT_SESSION_COUNT = '4';
-
-function parsePositiveInteger(value: string, fallback: number): number {
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed < 1) {
-    return fallback;
-  }
-
-  return parsed;
-}
+const DEFAULT_GROUP_COUNT = 6;
+const DEFAULT_PEOPLE_PER_GROUP = 4;
+const DEFAULT_SESSION_COUNT = 4;
 
 export function GeneratedDemoDataModal({ isOpen, onClose, onGenerate }: GeneratedDemoDataModalProps) {
-  const [groupCountInput, setGroupCountInput] = useState(DEFAULT_GROUP_COUNT);
-  const [peoplePerGroupInput, setPeoplePerGroupInput] = useState(DEFAULT_PEOPLE_PER_GROUP);
-  const [sessionCountInput, setSessionCountInput] = useState(DEFAULT_SESSION_COUNT);
+  const [groupCount, setGroupCount] = useState<number | null>(DEFAULT_GROUP_COUNT);
+  const [peoplePerGroup, setPeoplePerGroup] = useState<number | null>(DEFAULT_PEOPLE_PER_GROUP);
+  const [sessionCount, setSessionCount] = useState<number | null>(DEFAULT_SESSION_COUNT);
 
   const preview = useMemo(() => {
-    const groupCount = parsePositiveInteger(groupCountInput, 1);
-    const peoplePerGroup = parsePositiveInteger(peoplePerGroupInput, 1);
-    const sessionCount = parsePositiveInteger(sessionCountInput, 1);
+    const safeGroupCount = Math.max(1, Math.round(groupCount ?? 1));
+    const safePeoplePerGroup = Math.max(1, Math.round(peoplePerGroup ?? 1));
+    const safeSessionCount = Math.max(1, Math.round(sessionCount ?? 1));
 
     return {
-      groupCount,
-      peoplePerGroup,
-      sessionCount,
-      totalPeople: groupCount * peoplePerGroup,
+      groupCount: safeGroupCount,
+      peoplePerGroup: safePeoplePerGroup,
+      sessionCount: safeSessionCount,
+      totalPeople: safeGroupCount * safePeoplePerGroup,
     };
-  }, [groupCountInput, peoplePerGroupInput, sessionCountInput]);
+  }, [groupCount, peoplePerGroup, sessionCount]);
 
   if (!isOpen || typeof document === 'undefined') {
     return null;
@@ -91,56 +83,11 @@ export function GeneratedDemoDataModal({ isOpen, onClose, onGenerate }: Generate
             }}
           >
             <div className="grid gap-4 sm:grid-cols-3">
-              <label className="space-y-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                <span>Groups (g)</span>
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={groupCountInput}
-                  onChange={(event) => setGroupCountInput(event.target.value)}
-                  className="w-full rounded-md border px-3 py-2"
-                  style={{
-                    backgroundColor: 'var(--bg-primary)',
-                    borderColor: 'var(--border-primary)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-              </label>
+              <NumberField label="Groups (g)" value={groupCount} onChange={setGroupCount} {...NUMBER_FIELD_PRESETS.groupCount} />
 
-              <label className="space-y-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                <span>People per group (p)</span>
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={peoplePerGroupInput}
-                  onChange={(event) => setPeoplePerGroupInput(event.target.value)}
-                  className="w-full rounded-md border px-3 py-2"
-                  style={{
-                    backgroundColor: 'var(--bg-primary)',
-                    borderColor: 'var(--border-primary)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-              </label>
+              <NumberField label="People per group (p)" value={peoplePerGroup} onChange={setPeoplePerGroup} {...NUMBER_FIELD_PRESETS.groupSize} />
 
-              <label className="space-y-2 text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                <span>Sessions (w)</span>
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={sessionCountInput}
-                  onChange={(event) => setSessionCountInput(event.target.value)}
-                  className="w-full rounded-md border px-3 py-2"
-                  style={{
-                    backgroundColor: 'var(--bg-primary)',
-                    borderColor: 'var(--border-primary)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-              </label>
+              <NumberField label="Sessions (w)" value={sessionCount} onChange={setSessionCount} {...NUMBER_FIELD_PRESETS.sessionCount} />
             </div>
 
             <div

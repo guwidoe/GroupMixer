@@ -3,23 +3,18 @@ export const SUPPORTED_LOCALES = ['en', 'de', 'es', 'fr', 'ja', 'hi', 'zh'] as c
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 export type ToolPagePreset = 'random' | 'balanced' | 'networking';
+export type ToolPageMode = 'quick-randomizer' | 'constraint-optimizer' | 'multi-round' | 'social-golfer';
+export type ToolPageSectionSet = 'standard' | 'technical';
 
-export type ToolPageKey =
-  | 'home'
-  | 'random-group-generator'
-  | 'random-team-generator'
-  | 'random-pair-generator'
-  | 'team-shuffle-generator'
-  | 'breakout-room-generator'
-  | 'workshop-group-generator'
-  | 'student-group-generator'
-  | 'icebreaker-group-generator'
-  | 'speed-networking-generator'
-  | 'group-generator-with-constraints';
+export type ToolPageKey = 'home';
 
 export interface ToolPageFaqEntry {
   question: string;
   answer: string;
+  link?: {
+    label: string;
+    href: string;
+  };
 }
 
 export interface ToolPageSeoContent {
@@ -39,6 +34,7 @@ export interface ToolPageOptimizerCtaContent {
   eyebrow: string;
   title: string;
   featureBullets: string[];
+  featureExplanations: string[];
   buttonLabel: string;
   supportingText: string;
 }
@@ -63,17 +59,23 @@ export interface ToolPageSectionContent {
   cards: ToolPageCardContent[];
 }
 
-export interface ToolPageAdvancedSectionContent extends ToolPageSectionContent {
-  buttonLabel: string;
-  supportingText: string;
-}
-
 export interface ToolPageQuickSetupUiContent {
   participantsLabel: string;
+  participantsHelp: string;
+  nameColumnLabel: string;
+  addAttributeLabel: string;
+  ghostAttributeDisplayLabel: string;
+  attributeNamePlaceholder: string;
+  ghostAttributeValuesPreview: string;
+  removeAttributeLabel: string;
+  removeAttributeConfirmMessage: string;
+  attributeColumnDefaultLabel: string;
   switchToCsvLabel: string;
   switchToNamesLabel: string;
   sampleLabel: string;
   resetLabel: string;
+  clearAllLabel: string;
+  clearAllConfirmMessage: string;
   namesPlaceholder: string;
   csvPlaceholder: string;
   groupingValueGroupCountLabel: string;
@@ -95,15 +97,28 @@ export interface ToolPageAdvancedOptionsUiContent {
   showLabel: string;
   hideLabel: string;
   sessionsLabel: string;
+  sessionsHelp: string;
   avoidRepeatPairingsLabel: string;
   avoidRepeatPairingsDescription: string;
   keepTogetherLabel: string;
+  keepTogetherHelp: string;
   keepTogetherPlaceholder: string;
   avoidPairingLabel: string;
+  avoidPairingHelp: string;
   avoidPairingPlaceholder: string;
-  fullEditorPrompt: string;
-  fullEditorButtonLabel: string;
   balanceGroupsByAttributeLabel: string;
+  balanceGroupsByAttributeHelp: string;
+  balanceGroupsEmptyState: string;
+  autoDistributeAttributeLabel: string;
+  fixedPeopleLabel: string;
+  fixedPeopleHelp: string;
+  fixedPeopleDescription: string;
+  addFixedPersonLabel: string;
+  fixedPersonNameLabel: string;
+  fixedPersonGroupLabel: string;
+  fixedPersonSelectPlaceholder: string;
+  fixedGroupSelectPlaceholder: string;
+  removeFixedPersonLabel: string;
   noBalancingLabel: string;
   ignoredNamesPrefix: string;
 }
@@ -116,6 +131,7 @@ export interface ToolPageResultsUiContent {
   cardsFormatLabel: string;
   listFormatLabel: string;
   textFormatLabel: string;
+  linesFormatLabel: string;
   csvFormatLabel: string;
   copiedLabel: string;
   copyTextLabel: string;
@@ -125,8 +141,10 @@ export interface ToolPageResultsUiContent {
   groupPeopleCountTemplate: string;
   noAssignmentsLabel: string;
   plainTextDescription: string;
+  lineTextDescription: string;
   csvDescription: string;
   textResultsAriaLabel: string;
+  lineTextResultsAriaLabel: string;
   csvResultsAriaLabel: string;
   csvHeaderSession: string;
   csvHeaderGroup: string;
@@ -147,7 +165,6 @@ export interface ToolPageLocalizedContent {
   faqEntries: ToolPageFaqEntry[];
   chrome: ToolPageChromeContent;
   useCasesSection: ToolPageSectionContent;
-  advancedSection: ToolPageAdvancedSectionContent;
 }
 
 export interface ToolPageExperimentConfig {
@@ -162,10 +179,24 @@ export interface ToolPageInventoryConfig {
   rolloutStage: 'live' | 'next' | 'backlog';
 }
 
+export interface ToolPageQuickSetupDefaults {
+  inputMode: 'names' | 'csv';
+  groupingMode: 'groupCount' | 'groupSize';
+  groupingValue: number;
+  sessions: number;
+  advancedOpen: boolean;
+  balanceAttributeKey: string | null;
+  keepTogetherInput: string;
+  avoidPairingsInput: string;
+}
+
 export interface ToolPageDefinition {
   key: ToolPageKey;
   slug: string;
+  mode: ToolPageMode;
+  sectionSet: ToolPageSectionSet;
   defaultPreset: ToolPagePreset;
+  quickSetupDefaults: ToolPageQuickSetupDefaults;
   liveLocales: SupportedLocale[];
   experiment: ToolPageExperimentConfig;
   inventory: ToolPageInventoryConfig;

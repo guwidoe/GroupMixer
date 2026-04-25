@@ -1,0 +1,112 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createAttributeDefinition } from '../../services/scenarioAttributes';
+import { useAppStore } from '../../store';
+import { AttributeBalanceModal } from './AttributeBalanceModal';
+
+describe('AttributeBalanceModal', () => {
+  const originalState = useAppStore.getState();
+
+  beforeEach(() => {
+    useAppStore.setState({
+      ...originalState,
+      ui: { ...originalState.ui, isLoading: false },
+      resolveScenario: () => ({
+        people: [
+          { id: 'p1', name: 'Alex', attributes: { gender: 'female' }, sessions: [0] },
+          { id: 'p2', name: 'Blair', attributes: { gender: 'female' }, sessions: [0] },
+          { id: 'p3', name: 'Casey', attributes: { gender: 'female' }, sessions: [0] },
+          { id: 'p4', name: 'Drew', attributes: { gender: 'male' }, sessions: [1] },
+          { id: 'p5', name: 'Elliot' , attributes: {}, sessions: [1] },
+        ],
+        groups: [{ id: 'g1', size: 4, session_sizes: [4, 2] }],
+        num_sessions: 2,
+        constraints: [],
+        settings: {
+          solver_type: 'simulated_annealing',
+          stop_conditions: {},
+          solver_params: {},
+        },
+      }),
+      attributeDefinitions: [createAttributeDefinition('gender', ['female', 'male'], 'attr-gender')],
+    });
+  });
+
+  afterEach(() => {
+    useAppStore.setState(originalState);
+  });
+
+  it('seeds create-mode defaults from the selected-session mix and minimum capacity', async () => {
+    const user = userEvent.setup();
+
+    render(<AttributeBalanceModal onCancel={vi.fn()} onSave={vi.fn()} />);
+
+    expect(screen.getByText(/using the smallest selected-session group capacity \(2\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('female count')).toHaveValue('1');
+    expect(screen.getByLabelText('male count')).toHaveValue('1');
+    expect(screen.getAllByText(/not allocated/i).length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole('radio', { name: /only selected sessions/i }));
+    await user.click(screen.getByRole('checkbox', { name: '2' }));
+
+    await waitFor(() => expect(screen.getByLabelText('female count')).toHaveValue('4'));
+    expect(screen.getByRole('button', { name: /^enable target for male$/i })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('preserves edit-mode values instead of reseeding them', () => {
+    render(
+      <AttributeBalanceModal
+        initial={{
+          type: 'AttributeBalance',
+          group_id: 'g1',
+          attribute_id: 'attr-gender',
+          attribute_key: 'gender',
+          desired_values: { female: 2 },
+          penalty_weight: 10,
+          mode: 'exact',
+          sessions: undefined,
+        }}
+        onCancel={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('female count')).toHaveValue('2');
+    expect(screen.getByRole('button', { name: /^enable target for male$/i })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('preserves explicit zero targets when saving exact-mode constraints', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+
+    render(
+      <AttributeBalanceModal
+        initial={{
+          type: 'AttributeBalance',
+          group_id: 'g1',
+          attribute_id: 'attr-gender',
+          attribute_key: 'gender',
+          desired_values: { female: 2, male: 1 },
+          penalty_weight: 10,
+          mode: 'exact',
+          sessions: undefined,
+        }}
+        onCancel={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    const maleInput = screen.getByLabelText('male count');
+    await user.clear(maleInput);
+    await user.tab();
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        desired_values: { female: 2, male: 0 },
+        mode: 'exact',
+      }),
+    );
+  });
+});

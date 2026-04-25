@@ -73,6 +73,14 @@ pub(crate) struct CompiledPairConstraint {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct CompiledHardApartPairConstraint {
+    /// Canonical `(lo, hi)` ordering with `lo < hi`.
+    pub people: (usize, usize),
+    /// Active sessions. `None` means all sessions.
+    pub sessions: Option<Vec<usize>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct CompiledImmovableAssignment {
     pub person_idx: usize,
     pub session_idx: usize,
@@ -181,6 +189,10 @@ pub struct CompiledProblem {
     // ------------------------------------------------------------------
     // Constraint adjacency metadata
     // ------------------------------------------------------------------
+    pub(crate) hard_apart_pairs: Vec<CompiledHardApartPairConstraint>,
+    /// `[person_idx] -> Vec<constraint_idx>`.
+    pub hard_apart_pairs_by_person: Vec<Vec<usize>>,
+
     pub(crate) soft_apart_pairs: Vec<CompiledPairConstraint>,
     /// `[person_idx] -> Vec<constraint_idx>`.
     pub soft_apart_pairs_by_person: Vec<Vec<usize>>,
@@ -311,6 +323,16 @@ impl CompiledProblem {
         )?;
         validate_cliques_against_immovable(&cliques, &person_participation, &immovable_lookup)?;
 
+        let hard_apart_pairs = compile_hard_apart_pairs(
+            input,
+            &person_id_to_idx,
+            &person_to_clique_id,
+            &cliques,
+            num_sessions,
+        )?;
+        let hard_apart_pairs_by_person =
+            build_pair_adjacency(num_people, &hard_apart_pairs, |c| c.people);
+
         let soft_apart_pairs = compile_soft_apart_pairs(
             input,
             &person_id_to_idx,
@@ -324,6 +346,7 @@ impl CompiledProblem {
         let should_together_pairs = compile_should_together_pairs(
             input,
             &person_id_to_idx,
+            &hard_apart_pairs,
             &soft_apart_pairs,
             num_sessions,
         )?;
@@ -396,6 +419,8 @@ impl CompiledProblem {
             compiled_construction_seed_schedule,
             cliques,
             person_to_clique_id,
+            hard_apart_pairs,
+            hard_apart_pairs_by_person,
             soft_apart_pairs,
             soft_apart_pairs_by_person,
             should_together_pairs,
@@ -472,6 +497,29 @@ impl CompiledProblem {
     #[inline]
     pub fn immovable_group(&self, session_idx: usize, person_idx: usize) -> Option<usize> {
         self.immovable_group_by_person_session[self.person_session_slot(session_idx, person_idx)]
+    }
+
+    #[inline]
+    pub fn hard_apart_active(&self, session_idx: usize, left: usize, right: usize) -> bool {
+        if left == right {
+            return false;
+        }
+        let (person_idx, other_idx) = if self.hard_apart_pairs_by_person[left].len()
+            <= self.hard_apart_pairs_by_person[right].len()
+        {
+            (left, right)
+        } else {
+            (right, left)
+        };
+
+        self.hard_apart_pairs_by_person[person_idx]
+            .iter()
+            .copied()
+            .any(|constraint_idx| {
+                let constraint = &self.hard_apart_pairs[constraint_idx];
+                constraint.people == canonical_pair(person_idx, other_idx)
+                    && session_is_active(constraint.sessions.as_deref(), session_idx)
+            })
     }
 
     // ------------------------------------------------------------------
@@ -1001,9 +1049,72 @@ fn compile_soft_apart_pairs(
     Ok(pairs)
 }
 
+fn compile_hard_apart_pairs(
+    input: &ApiInput,
+    person_id_to_idx: &HashMap<String, usize>,
+    person_to_clique_id: &[Vec<Option<usize>>],
+    cliques: &[CompiledClique],
+    num_sessions: usize,
+) -> Result<Vec<CompiledHardApartPairConstraint>, SolverError> {
+    let mut pairs = Vec::new();
+    let mut seen = HashSet::new();
+
+    for constraint in &input.constraints {
+        if let Constraint::MustStayApart { people, sessions } = constraint {
+            let compiled_sessions = normalize_session_list(sessions, num_sessions)?;
+            for left_idx in 0..people.len() {
+                for right_idx in (left_idx + 1)..people.len() {
+                    let &lp = person_id_to_idx.get(&people[left_idx]).ok_or_else(|| {
+                        SolverError::ValidationError(format!(
+                            "MustStayApart: unknown person '{}'",
+                            people[left_idx]
+                        ))
+                    })?;
+                    let &rp = person_id_to_idx.get(&people[right_idx]).ok_or_else(|| {
+                        SolverError::ValidationError(format!(
+                            "MustStayApart: unknown person '{}'",
+                            people[right_idx]
+                        ))
+                    })?;
+
+                    for sidx in active_sessions(compiled_sessions.as_deref(), num_sessions) {
+                        if let (Some(lc), Some(rc)) =
+                            (person_to_clique_id[sidx][lp], person_to_clique_id[sidx][rp])
+                        {
+                            if lc == rc {
+                                let members = cliques[lc]
+                                    .members
+                                    .iter()
+                                    .map(|&m| input.problem.people[m].id.clone())
+                                    .collect::<Vec<_>>();
+                                return Err(SolverError::ValidationError(format!(
+                                    "MustStayApart conflicts with MustStayTogether in session {}: people {:?} share clique {:?}",
+                                    sidx, people, members
+                                )));
+                            }
+                        }
+                    }
+
+                    let people = canonical_pair(lp, rp);
+                    let key = (people, compiled_sessions.clone());
+                    if seen.insert(key) {
+                        pairs.push(CompiledHardApartPairConstraint {
+                            people,
+                            sessions: compiled_sessions.clone(),
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(pairs)
+}
+
 fn compile_should_together_pairs(
     input: &ApiInput,
     person_id_to_idx: &HashMap<String, usize>,
+    hard_apart_pairs: &[CompiledHardApartPairConstraint],
     soft_apart_pairs: &[CompiledPairConstraint],
     num_sessions: usize,
 ) -> Result<Vec<CompiledPairConstraint>, SolverError> {
@@ -1032,7 +1143,19 @@ fn compile_should_together_pairs(
                     })?;
 
                     let compiled_sessions = normalize_session_list(sessions, num_sessions)?;
-                    let (lo, hi) = if lp < rp { (lp, rp) } else { (rp, lp) };
+                    let (lo, hi) = canonical_pair(lp, rp);
+
+                    if hard_apart_pairs.iter().any(|pair| {
+                        pair.people == (lo, hi)
+                            && sessions_overlap(
+                                pair.sessions.as_deref(),
+                                compiled_sessions.as_deref(),
+                            )
+                    }) {
+                        return Err(SolverError::ValidationError(
+                            "ShouldStayTogether conflicts with MustStayApart for the same pair in overlapping sessions".into(),
+                        ));
+                    }
 
                     if soft_apart_pairs.iter().any(|fp| {
                         fp.people == (lo, hi)
@@ -1379,6 +1502,31 @@ fn normalize_session_list(
         }
     }
     Ok(Some(normalized))
+}
+
+#[inline]
+fn active_sessions(sessions: Option<&[usize]>, num_sessions: usize) -> Vec<usize> {
+    match sessions {
+        Some(sessions) => sessions.to_vec(),
+        None => (0..num_sessions).collect(),
+    }
+}
+
+#[inline]
+fn session_is_active(sessions: Option<&[usize]>, session_idx: usize) -> bool {
+    match sessions {
+        Some(sessions) => sessions.contains(&session_idx),
+        None => true,
+    }
+}
+
+#[inline]
+fn canonical_pair(left: usize, right: usize) -> (usize, usize) {
+    if left < right {
+        (left, right)
+    } else {
+        (right, left)
+    }
 }
 
 fn sessions_overlap(left: Option<&[usize]>, right: Option<&[usize]>) -> bool {

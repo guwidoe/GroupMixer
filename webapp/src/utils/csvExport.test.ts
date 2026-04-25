@@ -12,8 +12,8 @@ describe("generateAssignmentsCsv", () => {
   it("exports metadata, headers, rows, and escaped values", () => {
     const scenario = createSampleScenario({
       people: [
-        { id: "p1", attributes: { name: 'Alice, "A"', team: "A" } },
-        { id: "p2", attributes: { team: "B" } },
+        { id: "p1", name: 'Alice, "A"', attributes: { team: "A" } },
+        { id: "p2", name: "p2", attributes: { team: "B" } },
       ],
       groups: [{ id: "g1", size: 2 }],
       num_sessions: 1,
@@ -44,7 +44,7 @@ describe("generateAssignmentsCsv", () => {
     expect(csv).toContain('Iterations,"1,200"');
     expect(csv).toContain('"Alice, ""A"""');
     expect(csv).toContain("Person ID,Group ID,Session,Person Name,team");
-    expect(csv).toContain("p2,g1,1,,B");
+    expect(csv).toContain("p2,g1,1,p2,B");
   });
 
   it("exports session rosters and participant itineraries for audience-specific downloads", () => {

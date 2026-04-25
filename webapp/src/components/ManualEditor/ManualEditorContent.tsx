@@ -24,7 +24,7 @@ import { canDrop } from './moveUtils';
 import { buildManualDraftSolution } from './draftSolution';
 import { discardAndContinue, saveAndContinue } from './leaveActions';
 import { buildMoveReportData, findAssignedGroup, stagePersonMove } from './dropPipeline';
-import { getEffectiveGroupCapacity } from '../../utils/groupCapacities';
+import { countManualEditorHardViolations } from './hardViolationSummary';
 
 export function ManualEditorContent() {
   const navigate = useNavigate();
@@ -119,24 +119,7 @@ export function ManualEditorContent() {
   });
 
   const hardViolationsCount = useMemo(() => {
-    let count = 0;
-    compliance.forEach((c) => {
-      if (c.type === 'MustStayTogether' || c.type === 'ImmovablePerson' || c.type === 'ImmovablePeople') {
-        count += c.violationsCount;
-      }
-    });
-    if (effectiveScenario) {
-      const sessions = Array.from({ length: effectiveScenario.num_sessions }, (_, i) => i);
-      sessions.forEach((s) => {
-        const groups = draftSchedule[s] || {};
-        effectiveScenario.groups.forEach((g) => {
-          const ct = (groups[g.id] || []).length;
-          const capacity = getEffectiveGroupCapacity(g, s);
-          if (ct > capacity) count += ct - capacity;
-        });
-      });
-    }
-    return count;
+    return countManualEditorHardViolations(compliance, draftSchedule, effectiveScenario);
   }, [compliance, draftSchedule, effectiveScenario]);
 
   const notReady = !effectiveScenario || !solution || !draft;
@@ -349,6 +332,7 @@ export function ManualEditorContent() {
         <>
           <ManualEditorTopBar
             mode={mode}
+            onBackToResults={() => navigate('/app/results')}
             onModeChange={setMode}
             onPullNewPeople={handlePullNewPeople}
             onPullNewConstraints={handlePullNewConstraints}

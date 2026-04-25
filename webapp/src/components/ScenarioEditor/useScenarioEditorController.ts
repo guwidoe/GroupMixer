@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAppStore } from '../../store';
 import type { Scenario } from '../../types';
@@ -15,6 +15,11 @@ import {
   GENERATED_DEMO_CASE_ID,
   type GeneratedDemoScenarioOptions,
 } from '../../services/demoScenarioGenerator';
+import {
+  buildSessionReductionInvalidations,
+  planSessionCountReduction,
+  type SessionCountReductionPlan,
+} from '../../services/sessionCountMigration';
 
 export type ScenarioEditorSection = ScenarioSetupSectionId;
 
@@ -22,6 +27,7 @@ export function useScenarioEditorController() {
   const {
     scenario,
     setScenario,
+    setScenarioDocument,
     resolveScenario,
     addNotification,
     loadDemoCase,
@@ -33,13 +39,16 @@ export function useScenarioEditorController() {
     attributeDefinitions,
     addAttributeDefinition,
     removeAttributeDefinition,
-    setAttributeDefinitions,
     setShowScenarioManager,
     currentScenarioId,
     saveScenario,
     updateCurrentScenario,
     updateScenario,
+    applySessionReductionScenario,
     ui,
+    solution,
+    currentResultId,
+    manualEditorUnsaved,
   } = useAppStore();
 
   const { section } = useParams<{ section: string }>();
@@ -47,18 +56,29 @@ export function useScenarioEditorController() {
   const navigationSection = activeSection;
   const navigate = useNavigate();
 
-  const [sessionsCount, setSessionsCount] = useState(scenario?.num_sessions || 3);
+  const scenarioSessionsCount = scenario?.num_sessions || 3;
+  const [sessionsCountDraft, setSessionsCountDraft] = useState(() => ({
+    scenarioSessionsCount,
+    value: scenarioSessionsCount,
+  }));
+  const sessionsCount = sessionsCountDraft.scenarioSessionsCount === scenarioSessionsCount
+    ? sessionsCountDraft.value
+    : scenarioSessionsCount;
+  const setSessionsCount = useCallback((value: number) => {
+    setSessionsCountDraft({ scenarioSessionsCount, value });
+  }, [scenarioSessionsCount]);
   const [showDemoWarningModal, setShowDemoWarningModal] = useState(false);
   const [showGeneratedDemoModal, setShowGeneratedDemoModal] = useState(false);
   const [pendingDemoCaseId, setPendingDemoCaseId] = useState<string | null>(null);
   const [pendingDemoCaseName, setPendingDemoCaseName] = useState<string | null>(null);
   const [pendingGeneratedScenario, setPendingGeneratedScenario] = useState<Scenario | null>(null);
+  const [sessionReductionPlan, setSessionReductionPlan] = useState<SessionCountReductionPlan | null>(null);
 
   const entities = useScenarioEditorEntities({
     scenario,
     attributeDefinitions,
     addAttributeDefinition,
-    setAttributeDefinitions,
+    setScenarioDocument,
     addNotification,
     setScenario,
   });
@@ -76,8 +96,7 @@ export function useScenarioEditorController() {
       scenario,
       attributeDefinitions,
       addNotification,
-      setAttributeDefinitions,
-      setScenario,
+      setScenarioDocument,
     }),
   };
 
@@ -101,20 +120,6 @@ export function useScenarioEditorController() {
     }
     return 1;
   })();
-
-  useEffect(() => {
-    if (scenario && currentScenarioId) {
-      try {
-        updateCurrentScenario(currentScenarioId, scenario);
-      } catch (error) {
-        addNotification({
-          type: 'error',
-          title: 'Auto-save Failed',
-          message: error instanceof Error ? error.message : 'Failed to persist scenario changes.',
-        });
-      }
-    }
-  }, [scenario, currentScenarioId, updateCurrentScenario, addNotification]);
 
   const handleSaveScenario = () => {
     if (!scenario) return;
@@ -227,24 +232,82 @@ export function useScenarioEditorController() {
   };
 
   const handleSessionsCountChange = (count: number | null) => {
-    if (count !== null) {
+    if (count === null) {
+      return;
+    }
+
+    const currentScenario = scenario;
+    const previousSessionCount = currentScenario?.num_sessions ?? sessionsCount;
+
+    if (!currentScenario || count >= previousSessionCount) {
       setSessionsCount(count);
 
       const updatedScenario: Scenario = {
-        people: scenario?.people || [],
-        groups: scenario?.groups || [],
+        people: currentScenario?.people || [],
+        groups: currentScenario?.groups || [],
         num_sessions: count,
-        constraints: scenario?.constraints || [],
-        settings: scenario?.settings || getDefaultSolverSettings(),
+        constraints: currentScenario?.constraints || [],
+        settings: currentScenario?.settings || getDefaultSolverSettings(),
       };
 
       setScenario(updatedScenario);
+      return;
     }
+
+    setSessionReductionPlan(planSessionCountReduction({
+      scenario: currentScenario,
+      nextSessionCount: count,
+    }));
+  };
+
+  const handleCancelSessionReduction = () => {
+    setSessionReductionPlan(null);
+  };
+
+  const handleConfirmSessionReduction = () => {
+    if (!sessionReductionPlan?.canApply || !sessionReductionPlan.nextScenario) {
+      return;
+    }
+
+    const summaryParts = [
+      sessionReductionPlan.summary.peopleTrimmed > 0
+        ? `${sessionReductionPlan.summary.peopleTrimmed} people trimmed`
+        : null,
+      sessionReductionPlan.summary.groupsTrimmed > 0
+        ? `${sessionReductionPlan.summary.groupsTrimmed} groups truncated`
+        : null,
+      sessionReductionPlan.summary.constraintsTrimmed > 0
+        ? `${sessionReductionPlan.summary.constraintsTrimmed} constraints trimmed`
+        : null,
+      sessionReductionPlan.summary.constraintsRemoved > 0
+        ? `${sessionReductionPlan.summary.constraintsRemoved} constraints removed`
+        : null,
+    ].filter(Boolean).join(', ');
+
+    setSessionsCount(sessionReductionPlan.nextSessionCount);
+    applySessionReductionScenario(sessionReductionPlan.nextScenario);
+    setSessionReductionPlan(null);
+
+    addNotification({
+      type: 'success',
+      title: 'Sessions Updated',
+      message: summaryParts.length > 0
+        ? `Reduced the scenario from ${sessionReductionPlan.previousSessionCount} sessions to ${sessionReductionPlan.nextSessionCount}; ${summaryParts}.`
+        : `Reduced the scenario from ${sessionReductionPlan.previousSessionCount} sessions to ${sessionReductionPlan.nextSessionCount}.`,
+    });
   };
 
   const navigateToSection = (sectionId: ScenarioSetupSectionId) => {
     navigate(`/app/scenario/${sectionId}`);
   };
+
+  const sessionReductionInvalidations = sessionReductionPlan
+    ? buildSessionReductionInvalidations({
+        hasActiveSolution: Boolean(solution || currentResultId),
+        hasWarmStartSelection: Boolean(ui.warmStartResultId),
+        hasManualEditorState: manualEditorUnsaved,
+      })
+    : [];
 
   return {
     scenario,
@@ -275,6 +338,11 @@ export function useScenarioEditorController() {
     handleDemoCancel,
     handleGeneratedDemoSubmit,
     handleSessionsCountChange,
+    sessionReductionPlan,
+    sessionReductionInvalidations,
+    showSessionReductionReviewModal: sessionReductionPlan !== null,
+    handleCancelSessionReduction,
+    handleConfirmSessionReduction,
     navigateToSection,
   };
 }

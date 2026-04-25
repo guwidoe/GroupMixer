@@ -63,9 +63,20 @@ export function ScenarioDataGrid<T>({
   pageSizeOptions = [50, 100, 250, 500],
 }: ScenarioDataGridProps<T>) {
   const browseModeEnabled = workspace?.browseModeEnabled ?? true;
+  const requestedWorkspaceMode = workspace?.mode ?? 'browse';
+  const normalizedRequestedWorkspaceMode = browseModeEnabled
+    ? requestedWorkspaceMode
+    : (requestedWorkspaceMode === 'csv' ? 'csv' : 'edit');
+  const shouldDeferColdGridMount = Boolean(workspace?.draft)
+    && normalizedRequestedWorkspaceMode === 'edit'
+    && rows.length >= 50;
+  const [hasMountedGridSurface, setHasMountedGridSurface] = React.useState(() => !shouldDeferColdGridMount);
+  const isColdGridDeferred = shouldDeferColdGridMount && !hasMountedGridSurface;
+  const tableRows = isColdGridDeferred ? [] : rows;
+  const activeWorkspace = isColdGridDeferred ? undefined : workspace;
   const materializedColumns = React.useMemo(
-    () => materializeColumns(columns, rows),
-    [columns, rows],
+    () => isColdGridDeferred ? [] : materializeColumns(columns, rows),
+    [columns, isColdGridDeferred, rows],
   );
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [openFilterId, setOpenFilterId] = React.useState<string | null>(null);
@@ -102,14 +113,12 @@ export function ScenarioDataGrid<T>({
     handleApplyDraftChanges,
   } = useGridWorkspaceDraft({
     browseModeEnabled,
-    rows,
-    workspace,
+    rows: tableRows,
+    workspace: activeWorkspace,
     draftEditableColumns,
   });
   const normalizedWorkspaceMode = browseModeEnabled ? workspaceMode : (workspaceMode === 'csv' ? 'csv' : 'edit');
   const effectiveEditMode = workspace ? normalizedWorkspaceMode === 'edit' : isEditMode;
-  const shouldDeferColdGridMount = hasDraftEditing && effectiveEditMode && activeRows.length >= 50;
-  const [hasMountedGridSurface, setHasMountedGridSurface] = React.useState(() => !shouldDeferColdGridMount);
 
   const {
     columnFilters,
@@ -152,14 +161,19 @@ export function ScenarioDataGrid<T>({
       ? workspace.toolbarActions(workspaceMode)
       : workspace.toolbarActions;
   }, [workspace, workspaceMode]);
+  const handleDeleteDraftRow = React.useCallback((targetRow: T) => {
+    setDraftRows((current) => current.filter((candidate) => candidate !== targetRow));
+  }, [setDraftRows]);
   const { activeColumnFilters, csvColumns, exportRows, filteredCount, table, totalCount } = useScenarioDataTable({
     activeRows,
     columnFilters,
     columnSizing,
     columnVisibility,
+    deleteDraftRowLabel: draftConfig?.deleteRowLabel,
     effectiveEditMode,
     globalFilter: mergedQuery,
     materializedColumns,
+    onDeleteDraftRow: draftConfig?.canDeleteRows ? handleDeleteDraftRow : undefined,
     pageSize,
     rowKey,
     setColumnFilters,

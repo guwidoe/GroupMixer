@@ -4,6 +4,7 @@ import type { AppStore } from "../types";
 import { createSampleScenario, createSavedScenario } from '../../test/fixtures';
 import { DEFAULT_ATTRIBUTE_DEFINITIONS } from './attributeSlice';
 import { scenarioStorage } from "../../services/scenarioStorage";
+import { createScenarioDocument } from '../scenarioDocument';
 
 vi.mock("../../services/scenarioStorage", () => ({
   scenarioStorage: {
@@ -15,6 +16,7 @@ vi.mock("../../services/scenarioStorage", () => ({
 
 function createHarness(overrides: Partial<AppStore> = {}) {
   let state = {
+    scenarioDocument: null,
     scenario: null,
     currentScenarioId: null,
     savedScenarios: {},
@@ -44,8 +46,11 @@ function createHarness(overrides: Partial<AppStore> = {}) {
   };
   const get = () => state;
 
+  const slice = createScenarioSlice(set, get);
+  state = { ...state, ...slice, ...overrides } as AppStore;
+
   return {
-    slice: createScenarioSlice(set, get),
+    slice,
     getState: () => state,
   };
 }
@@ -71,7 +76,7 @@ describe("createScenarioSlice", () => {
     const scenario = createSampleScenario({
       people: [
         { id: 'p1', attributes: { team: 'A' } },
-        { id: 'p2', attributes: { name: '', team: 'B' } },
+        { id: 'p2', name: '', attributes: { team: 'B' } },
         { id: 'p3', attributes: { Name: 'Cara', team: 'C' } },
       ],
     });
@@ -79,10 +84,11 @@ describe("createScenarioSlice", () => {
     harness.slice.setScenario(scenario);
 
     expect(harness.getState().scenario?.people).toEqual([
-      expect.objectContaining({ id: 'p1', attributes: expect.objectContaining({ name: 'p1', team: 'A' }) }),
-      expect.objectContaining({ id: 'p2', attributes: expect.objectContaining({ name: 'p2', team: 'B' }) }),
-      expect.objectContaining({ id: 'p3', attributes: expect.objectContaining({ name: 'Cara', team: 'C' }) }),
+      expect.objectContaining({ id: 'p1', name: 'p1', attributes: expect.objectContaining({ team: 'A' }) }),
+      expect.objectContaining({ id: 'p2', name: 'p2', attributes: expect.objectContaining({ team: 'B' }) }),
+      expect.objectContaining({ id: 'p3', name: 'Cara', attributes: expect.objectContaining({ team: 'C' }) }),
     ]);
+    expect(harness.getState().scenario?.people.map((person) => person.attributes.name)).toEqual([undefined, undefined, undefined]);
   });
 
   it("returns a temporary empty scenario while the UI is loading", () => {
@@ -135,7 +141,7 @@ describe("createScenarioSlice", () => {
 
     const scenario = harness.slice.resolveScenario();
 
-    expect(scenario).toEqual(saved.scenario);
+    expect(scenario).toEqual(createScenarioDocument(saved.scenario, saved.attributeDefinitions).scenario);
     expect(scenarioStorage.setCurrentScenarioId).toHaveBeenCalledWith(saved.id);
     expect(harness.getState().currentScenarioId).toBe(saved.id);
   });

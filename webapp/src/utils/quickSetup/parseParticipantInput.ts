@@ -1,5 +1,6 @@
 import type { Person } from '../../types';
-import type { QuickSetupDraft } from '../../components/LandingTool/types';
+import type { QuickSetupDraft } from '../../components/EmbeddableTool/types';
+import { normalizeParticipantColumns, splitParticipantColumnValues } from './participantColumns';
 
 export interface ParsedParticipantInput {
   people: Person[];
@@ -7,11 +8,16 @@ export interface ParsedParticipantInput {
   nameColumn: string | null;
 }
 
-function dedupeId(raw: string, seen: Map<string, number>): string {
+function dedupeName(raw: string, seen: Map<string, number>): string {
   const base = raw.trim() || 'Person';
-  const count = (seen.get(base) ?? 0) + 1;
-  seen.set(base, count);
+  const normalizedBase = base.toLowerCase();
+  const count = (seen.get(normalizedBase) ?? 0) + 1;
+  seen.set(normalizedBase, count);
   return count === 1 ? base : `${base} (${count})`;
+}
+
+function createPersonId(rowIndex: number): string {
+  return `person_${rowIndex + 1}`;
 }
 
 function parseCsv(text: string) {
@@ -35,8 +41,39 @@ function parseCsv(text: string) {
   return { headers, rows };
 }
 
-export function parseParticipantInput(draft: Pick<QuickSetupDraft, 'participantInput' | 'inputMode'>): ParsedParticipantInput {
-  const seenIds = new Map<string, number>();
+export function parseParticipantInput(draft: Pick<QuickSetupDraft, 'participantInput' | 'inputMode' | 'participantColumns'>): ParsedParticipantInput {
+  const seenNames = new Map<string, number>();
+
+  if (draft.participantColumns && draft.participantColumns.length > 0) {
+    const columns = normalizeParticipantColumns(draft);
+    const [nameColumn, ...attributeColumns] = columns;
+    const nameValues = splitParticipantColumnValues(nameColumn.values);
+    const attributeKeys = attributeColumns
+      .map((column) => column.name.trim())
+      .filter(Boolean);
+    const attributeValueRows = attributeColumns.map((column) => splitParticipantColumnValues(column.values));
+    const rowCount = Math.max(nameValues.length, ...attributeValueRows.map((values) => values.length), 0);
+
+    const people = Array.from({ length: rowCount }, (_, rowIndex) => {
+      const name = nameValues[rowIndex]?.trim();
+      if (!name) {
+        return null;
+      }
+
+      const displayName = dedupeName(name, seenNames);
+      const attributes = attributeKeys.reduce<Record<string, string>>((acc, key, keyIndex) => {
+        const value = attributeValueRows[keyIndex][rowIndex]?.trim();
+        if (value) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+
+      return { id: createPersonId(rowIndex), name: displayName, attributes } satisfies Person;
+    }).filter((person): person is Person => Boolean(person));
+
+    return { people, attributeKeys, nameColumn: nameColumn.name };
+  }
 
   if (draft.inputMode === 'csv') {
     const { headers, rows } = parseCsv(draft.participantInput);
@@ -47,12 +84,12 @@ export function parseParticipantInput(draft: Pick<QuickSetupDraft, 'participantI
     const nameColumn = headers.find((header) => header.trim().toLowerCase() === 'name') ?? headers[0];
     const attributeKeys = headers.filter((header) => header !== nameColumn);
     const people = rows
-      .map((row) => {
+      .map((row, rowIndex) => {
         const name = row[nameColumn]?.trim();
         if (!name) {
           return null;
         }
-        const id = dedupeId(name, seenIds);
+        const displayName = dedupeName(name, seenNames);
         const attributes = attributeKeys.reduce<Record<string, string>>((acc, key) => {
           const value = row[key]?.trim();
           if (value) {
@@ -60,7 +97,7 @@ export function parseParticipantInput(draft: Pick<QuickSetupDraft, 'participantI
           }
           return acc;
         }, {});
-        return { id, attributes } satisfies Person;
+        return { id: createPersonId(rowIndex), name: displayName, attributes } satisfies Person;
       })
       .filter((person): person is Person => Boolean(person));
 
@@ -71,8 +108,9 @@ export function parseParticipantInput(draft: Pick<QuickSetupDraft, 'participantI
     .split(/[\n,;]+/)
     .map((value) => value.trim())
     .filter(Boolean)
-    .map((name) => ({
-      id: dedupeId(name, seenIds),
+    .map((name, index) => ({
+      id: createPersonId(index),
+      name: dedupeName(name, seenNames),
       attributes: {},
     }) satisfies Person);
 

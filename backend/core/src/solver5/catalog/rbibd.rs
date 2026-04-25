@@ -38,10 +38,7 @@ pub(crate) fn source() -> &'static CatalogSource {
     &RBIBD_SOURCE
 }
 
-pub(crate) fn exact_case(
-    num_groups: usize,
-    group_size: usize,
-) -> Option<&'static RbibdCatalogEntry> {
+pub(crate) fn exact_case(num_groups: usize, group_size: usize) -> Option<&'static RbibdCatalogEntry> {
     CASES
         .iter()
         .find(|entry| entry.num_groups == num_groups && entry.group_size == group_size)

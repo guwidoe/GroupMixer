@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+/* eslint-disable react/no-multi-comp */
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -37,6 +38,8 @@ describe('Header', () => {
     const user = userEvent.setup();
     const setShowScenarioManager = vi.fn();
     const saveScenario = vi.fn();
+    const setAdvancedModeEnabled = vi.fn();
+    const setShowWorkflowGuideButton = vi.fn();
     const loadDemoCaseOverwrite = vi.fn();
 
     const savedScenario = createSavedScenario({
@@ -51,6 +54,8 @@ describe('Header', () => {
       savedScenarios: { [savedScenario.id]: savedScenario },
       setShowScenarioManager,
       saveScenario,
+      setAdvancedModeEnabled,
+      setShowWorkflowGuideButton,
       loadDemoCase: vi.fn(),
       loadDemoCaseOverwrite,
       loadDemoCaseNewScenario: vi.fn(),
@@ -69,11 +74,15 @@ describe('Header', () => {
 
     await user.click(screen.getAllByRole('button', { name: /load/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /save/i })[0]);
+    await user.click(screen.getAllByRole('switch', { name: /enable advanced mode/i })[0]);
+    await user.click(screen.getAllByRole('switch', { name: /show workflow guide button/i })[0]);
     await user.click(screen.getAllByRole('button', { name: /demo data/i })[0]);
     await user.click(screen.getByRole('button', { name: /overwrite/i }));
 
     expect(setShowScenarioManager).toHaveBeenCalledTimes(1);
     expect(saveScenario).toHaveBeenCalledWith('Workshop Plan');
+    expect(setAdvancedModeEnabled).toHaveBeenCalledWith(true);
+    expect(setShowWorkflowGuideButton).toHaveBeenCalledWith(false);
     expect(loadDemoCaseOverwrite).toHaveBeenCalledWith('demo-1');
   });
 
@@ -125,12 +134,9 @@ describe('Header', () => {
     );
 
     await user.click(screen.getByRole('button', { name: /random demo/i }));
-    await user.clear(screen.getByRole('spinbutton', { name: /groups \(g\)/i }));
-    await user.type(screen.getByRole('spinbutton', { name: /groups \(g\)/i }), '5');
-    await user.clear(screen.getByRole('spinbutton', { name: /people per group \(p\)/i }));
-    await user.type(screen.getByRole('spinbutton', { name: /people per group \(p\)/i }), '3');
-    await user.clear(screen.getByRole('spinbutton', { name: /sessions \(w\)/i }));
-    await user.type(screen.getByRole('spinbutton', { name: /sessions \(w\)/i }), '4');
+    fireEvent.change(screen.getByRole('slider', { name: /groups \(g\) slider/i }), { target: { value: '5' } });
+    fireEvent.change(screen.getByRole('slider', { name: /people per group \(p\) slider/i }), { target: { value: '3' } });
+    fireEvent.change(screen.getByRole('slider', { name: /sessions \(w\) slider/i }), { target: { value: '4' } });
     await user.click(screen.getByRole('button', { name: /generate scenario/i }));
     await user.click(screen.getByRole('button', { name: /overwrite/i }));
 

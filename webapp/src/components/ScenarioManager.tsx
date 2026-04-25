@@ -4,8 +4,6 @@ import {
   Copy,
   FolderPlus,
   Upload,
-  Search,
-  Filter,
   X,
   Save,
   ChevronDown,
@@ -15,6 +13,8 @@ import { createDefaultSolverSettings } from '../services/solverUi';
 import { ScenarioList } from './ScenarioManager/ScenarioList';
 import { CreateScenarioDialog } from './ScenarioManager/CreateScenarioDialog';
 import { DeleteConfirmDialog } from './ScenarioManager/DeleteConfirmDialog';
+import { ScenarioBulkActions } from './ScenarioManager/ScenarioBulkActions';
+import { ScenarioManagerFilters } from './ScenarioManager/ScenarioManagerFilters';
 
 interface ScenarioManagerProps {
   isOpen: boolean;
@@ -47,6 +47,8 @@ export function ScenarioManager({ isOpen, onClose }: ScenarioManagerProps) {
   const [newScenarioName, setNewScenarioName] = useState('');
   const [newScenarioIsTemplate, setNewScenarioIsTemplate] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+  const [selectedScenarioIds, setSelectedScenarioIds] = useState<Set<string>>(() => new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const newDropdownRef = useRef<HTMLDivElement>(null);
   const [newDropdownOpen, setNewDropdownOpen] = useState(false);
@@ -56,23 +58,13 @@ export function ScenarioManager({ isOpen, onClose }: ScenarioManagerProps) {
   React.useEffect(() => {
     if (isOpen) {
       loadSavedScenarios();
-      // Force update of selected scenario ID when modal opens
       setSelectedScenarioId(currentScenarioId);
     }
   }, [isOpen, loadSavedScenarios, currentScenarioId]);
 
-  // Update selected scenario ID when currentScenarioId changes
   React.useEffect(() => {
     setSelectedScenarioId(currentScenarioId);
   }, [currentScenarioId]);
-
-  // Force reload when savedScenarios changes (in case new scenarios were added)
-  React.useEffect(() => {
-    if (isOpen) {
-      // This ensures the component updates when savedScenarios changes
-      // This is needed when new scenarios are created while the modal is open
-    }
-  }, [savedScenarios, isOpen]);
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -86,7 +78,7 @@ export function ScenarioManager({ isOpen, onClose }: ScenarioManagerProps) {
     }
   }, [newDropdownOpen]);
 
-  const scenarioSummaries: ScenarioSummary[] = Object.values(savedScenarios).map(p => ({
+  const scenarioSummaries: ScenarioSummary[] = React.useMemo(() => Object.values(savedScenarios).map(p => ({
     id: p.id,
     name: p.name,
     peopleCount: p.scenario?.people?.length || 0,
@@ -96,9 +88,9 @@ export function ScenarioManager({ isOpen, onClose }: ScenarioManagerProps) {
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
     isTemplate: p.isTemplate,
-  }));
+  })), [savedScenarios]);
 
-  const filteredScenarios = scenarioSummaries.filter(scenario => {
+  const filteredScenarios = React.useMemo(() => scenarioSummaries.filter(scenario => {
     const matchesSearch = scenario.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = 
       filterTemplate === 'all' ||
@@ -111,7 +103,66 @@ export function ScenarioManager({ isOpen, onClose }: ScenarioManagerProps) {
     if (a.isTemplate && !b.isTemplate) return -1;
     if (!a.isTemplate && b.isTemplate) return 1;
     return b.updatedAt - a.updatedAt;
-  });
+  }), [filterTemplate, scenarioSummaries, searchTerm]);
+  const filteredScenarioIds = React.useMemo(() => filteredScenarios.map((scenario) => scenario.id), [filteredScenarios]);
+  const selectedCount = selectedScenarioIds.size;
+  const filteredSelectedCount = filteredScenarioIds.filter((id) => selectedScenarioIds.has(id)).length;
+  const allScenarioIds = React.useMemo(() => scenarioSummaries.map((scenario) => scenario.id), [scenarioSummaries]);
+
+  React.useEffect(() => {
+    const validIds = new Set(allScenarioIds);
+    setSelectedScenarioIds((current) => {
+      const next = new Set([...current].filter((id) => validIds.has(id)));
+      return next.size === current.size ? current : next;
+    });
+  }, [allScenarioIds]);
+
+  const toggleSelectedScenario = (id: string) => {
+    setSelectedScenarioIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const selectAllScenarios = () => setSelectedScenarioIds(new Set(allScenarioIds));
+  const selectFilteredScenarios = () => setSelectedScenarioIds(new Set(filteredScenarioIds));
+  const clearScenarioSelection = () => setSelectedScenarioIds(new Set());
+
+  const handleBulkExport = () => {
+    const selectedScenarios = [...selectedScenarioIds]
+      .map((id) => savedScenarios[id])
+      .filter(Boolean);
+
+    if (selectedScenarios.length === 0) {
+      return;
+    }
+
+    const exportedAt = Date.now();
+    const blob = new Blob([
+      JSON.stringify({
+        version: '1.0.0',
+        exportedAt,
+        scenarios: selectedScenarios.map((scenario) => ({
+          version: '1.0.0',
+          scenario,
+          exportedAt,
+        })),
+      }, null, 2),
+    ], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `groupmixer_scenarios_${selectedScenarios.length}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  };
 
   const handleCreateScenario = () => {
     if (!newScenarioName.trim()) return;
@@ -182,6 +233,13 @@ export function ScenarioManager({ isOpen, onClose }: ScenarioManagerProps) {
       deleteScenario(showDeleteConfirm);
       setShowDeleteConfirm(null);
     }
+  };
+
+  const confirmBulkDelete = () => {
+    const idsToDelete = [...selectedScenarioIds];
+    idsToDelete.forEach((id) => deleteScenario(id));
+    setSelectedScenarioIds(new Set());
+    setShowBulkDeleteConfirm(false);
   };
 
   const handleImport = () => {
@@ -355,33 +413,25 @@ export function ScenarioManager({ isOpen, onClose }: ScenarioManagerProps) {
           <div className="sm:hidden border-b" style={{ borderColor: 'var(--border-secondary)' }}></div>
         </div>
 
-        {/* Search and Filter */}
-        <div className="p-4 sm:p-6 border-b" style={{ backgroundColor: 'var(--bg-tertiary)', borderColor: 'var(--border-primary)' }}>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2" style={{ color: 'var(--text-tertiary)' }} />
-              <input
-                type="text"
-                placeholder="Search scenarios..."
-                className="input pl-10 w-full text-base py-3"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter style={{ color: 'var(--text-tertiary)' }} className="h-4 w-4" />
-              <select
-                className="input text-base py-3"
-                value={filterTemplate}
-                onChange={(e) => setFilterTemplate(e.target.value as 'all' | 'scenarios' | 'templates')}
-              >
-                <option value="all">All</option>
-                <option value="scenarios">Scenarios</option>
-                <option value="templates">Templates</option>
-              </select>
-            </div>
-          </div>
-        </div>
+        <ScenarioManagerFilters
+          filterTemplate={filterTemplate}
+          searchTerm={searchTerm}
+          onFilterTemplateChange={setFilterTemplate}
+          onSearchTermChange={setSearchTerm}
+        >
+          <ScenarioBulkActions
+            allCount={allScenarioIds.length}
+            filteredCount={filteredScenarios.length}
+            filteredSelectedCount={filteredSelectedCount}
+            hasActiveFilter={Boolean(searchTerm || filterTemplate !== 'all')}
+            selectedCount={selectedCount}
+            onClearSelection={clearScenarioSelection}
+            onDeleteSelected={() => setShowBulkDeleteConfirm(true)}
+            onExportSelected={handleBulkExport}
+            onSelectAll={selectAllScenarios}
+            onSelectFiltered={selectFilteredScenarios}
+          />
+        </ScenarioManagerFilters>
 
         {/* Scenario List */}
         <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -389,9 +439,11 @@ export function ScenarioManager({ isOpen, onClose }: ScenarioManagerProps) {
             scenarios={filteredScenarios}
             searchTerm={searchTerm}
             selectedScenarioId={selectedScenarioId}
+            selectedScenarioIds={selectedScenarioIds}
             editingId={editingId}
             editingName={editingName}
             setEditingName={setEditingName}
+            onToggleSelected={toggleSelectedScenario}
             onSaveRename={handleSaveRename}
             onCancelRename={handleCancelRename}
             onRenameStart={handleRename}
@@ -432,6 +484,14 @@ export function ScenarioManager({ isOpen, onClose }: ScenarioManagerProps) {
         open={!!showDeleteConfirm}
         onConfirm={confirmDelete}
         onCancel={() => setShowDeleteConfirm(null)}
+      />
+      <DeleteConfirmDialog
+        open={showBulkDeleteConfirm}
+        title="Delete Selected Scenarios"
+        message={`Are you sure you want to delete ${selectedCount} selected scenario${selectedCount === 1 ? '' : 's'}? This action cannot be undone.`}
+        confirmLabel={`Delete ${selectedCount}`}
+        onConfirm={confirmBulkDelete}
+        onCancel={() => setShowBulkDeleteConfirm(false)}
       />
     </div>
   );

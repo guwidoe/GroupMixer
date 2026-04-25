@@ -357,6 +357,8 @@ impl RuntimeState {
             .iter()
             .map(|clique| clique.sessions.clone())
             .collect::<Vec<_>>();
+        let hard_apart_partners_by_person_session =
+            self.build_hard_apart_partners_by_person_session();
         let mut construction_context = BaselineConstructionContext {
             effective_seed,
             group_idx_to_id: &self.compiled.group_idx_to_id,
@@ -366,6 +368,7 @@ impl RuntimeState {
             immovable_people: &self.compiled.immovable_lookup,
             cliques: &cliques,
             clique_sessions: &clique_sessions,
+            hard_apart_partners_by_person_session: &hard_apart_partners_by_person_session,
             schedule: &mut schedule,
         };
 
@@ -382,6 +385,26 @@ impl RuntimeState {
         }
         self.repair_hard_constraints_in_schedule(&mut schedule, effective_seed)?;
         Ok(schedule)
+    }
+
+    fn build_hard_apart_partners_by_person_session(&self) -> Vec<Vec<usize>> {
+        let mut partners = vec![Vec::new(); self.compiled.num_sessions * self.compiled.num_people];
+        for constraint in &self.compiled.hard_apart_pairs {
+            let (left, right) = constraint.people;
+            let sessions = constraint
+                .sessions
+                .clone()
+                .unwrap_or_else(|| (0..self.compiled.num_sessions).collect());
+            for session_idx in sessions {
+                partners[self.compiled.person_session_slot(session_idx, left)].push(right);
+                partners[self.compiled.person_session_slot(session_idx, right)].push(left);
+            }
+        }
+        for partner_list in &mut partners {
+            partner_list.sort_unstable();
+            partner_list.dedup();
+        }
+        partners
     }
 
     fn build_constraint_scenario_oracle_guided_schedule(
@@ -568,7 +591,7 @@ impl RuntimeState {
                 if !locally_repaired
                     || self.session_has_hard_constraint_violation(schedule, session_idx)
                 {
-                    self.rebuild_session_with_clique_integrity(
+                    self.rebuild_session_with_hard_constraint_integrity(
                         schedule,
                         session_idx,
                         effective_seed,
@@ -881,6 +904,36 @@ impl RuntimeState {
     ) -> bool {
         self.session_has_split_active_clique(schedule, session_idx)
             || self.session_has_immovable_violation(schedule, session_idx)
+            || self.session_has_hard_apart_violation(schedule, session_idx)
+    }
+
+    fn session_has_hard_apart_violation(
+        &self,
+        schedule: &PackedSchedule,
+        session_idx: usize,
+    ) -> bool {
+        let mut person_group = vec![None; self.compiled.num_people];
+        for (group_idx, members) in schedule[session_idx].iter().enumerate() {
+            for &person_idx in members {
+                person_group[person_idx] = Some(group_idx);
+            }
+        }
+
+        self.compiled.hard_apart_pairs.iter().any(|pair| {
+            if let Some(sessions) = &pair.sessions {
+                if !sessions.contains(&session_idx) {
+                    return false;
+                }
+            }
+            let (left, right) = pair.people;
+            if !self.compiled.person_participation[left][session_idx]
+                || !self.compiled.person_participation[right][session_idx]
+            {
+                return false;
+            }
+            let left_group = person_group[left];
+            left_group.is_some() && left_group == person_group[right]
+        })
     }
 
     fn session_has_immovable_violation(
@@ -944,7 +997,7 @@ impl RuntimeState {
         })
     }
 
-    fn rebuild_session_with_clique_integrity(
+    fn rebuild_session_with_hard_constraint_integrity(
         &self,
         schedule: &mut PackedSchedule,
         session_idx: usize,
@@ -1022,6 +1075,11 @@ impl RuntimeState {
                     .find(|&group_idx| {
                         group_sizes[group_idx] + active_members.len()
                             <= self.compiled.group_capacity(session_idx, group_idx)
+                            && !self.group_has_hard_apart_conflict_in_schedule(
+                                session_idx,
+                                &rebuilt_groups[group_idx],
+                                &active_members,
+                            )
                     })
                     .ok_or_else(|| {
                         SolverError::ValidationError(format!(
@@ -1039,6 +1097,17 @@ impl RuntimeState {
                     "required group '{}' lacks capacity for clique of {} in session {} during solver3 normalization",
                     self.compiled.display_group(target_group),
                     active_members.len(),
+                    session_idx
+                )));
+            }
+            if self.group_has_hard_apart_conflict_in_schedule(
+                session_idx,
+                &rebuilt_groups[target_group],
+                &active_members,
+            ) {
+                return Err(SolverError::ValidationError(format!(
+                    "required group '{}' violates MustStayApart while placing clique in session {} during solver3 normalization",
+                    self.compiled.display_group(target_group),
                     session_idx
                 )));
             }
@@ -1077,6 +1146,18 @@ impl RuntimeState {
                     session_idx
                 )));
             }
+            if self.group_has_hard_apart_conflict_in_schedule(
+                session_idx,
+                &rebuilt_groups[assignment.group_idx],
+                &[assignment.person_idx],
+            ) {
+                return Err(SolverError::ValidationError(format!(
+                    "group '{}' violates MustStayApart while placing immovable person '{}' in session {} during solver3 normalization",
+                    self.compiled.display_group(assignment.group_idx),
+                    self.compiled.display_person(assignment.person_idx),
+                    session_idx
+                )));
+            }
 
             rebuilt_groups[assignment.group_idx].push(assignment.person_idx);
             group_sizes[assignment.group_idx] += 1;
@@ -1093,6 +1174,11 @@ impl RuntimeState {
             if let Some(preferred_group) = preferred_groups[person_idx] {
                 if group_sizes[preferred_group]
                     < self.compiled.group_capacity(session_idx, preferred_group)
+                    && !self.group_has_hard_apart_conflict_in_schedule(
+                        session_idx,
+                        &rebuilt_groups[preferred_group],
+                        &[person_idx],
+                    )
                 {
                     rebuilt_groups[preferred_group].push(person_idx);
                     group_sizes[preferred_group] += 1;
@@ -1107,6 +1193,11 @@ impl RuntimeState {
                 .into_iter()
                 .find(|&group_idx| {
                     group_sizes[group_idx] < self.compiled.group_capacity(session_idx, group_idx)
+                        && !self.group_has_hard_apart_conflict_in_schedule(
+                            session_idx,
+                            &rebuilt_groups[group_idx],
+                            &[person_idx],
+                        )
                 })
                 .ok_or_else(|| {
                     SolverError::ValidationError(format!(
@@ -1122,6 +1213,25 @@ impl RuntimeState {
 
         schedule[session_idx] = rebuilt_groups;
         Ok(())
+    }
+
+    fn group_has_hard_apart_conflict_in_schedule(
+        &self,
+        session_idx: usize,
+        group_members: &[usize],
+        added_members: &[usize],
+    ) -> bool {
+        added_members.iter().any(|&person_idx| {
+            group_members.iter().any(|&member| {
+                self.compiled
+                    .hard_apart_active(session_idx, person_idx, member)
+            }) || added_members.iter().any(|&other_idx| {
+                other_idx != person_idx
+                    && self
+                        .compiled
+                        .hard_apart_active(session_idx, person_idx, other_idx)
+            })
+        })
     }
 
     // ------------------------------------------------------------------

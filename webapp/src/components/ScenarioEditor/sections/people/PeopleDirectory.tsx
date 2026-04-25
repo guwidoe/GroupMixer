@@ -58,7 +58,7 @@ export function PeopleDirectory({
   createGridPersonRow,
 }: PeopleDirectoryProps) {
   const [peopleSearch, setPeopleSearch] = useState('');
-  const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('cards');
+  const [viewMode, setViewMode] = useState<SetupCollectionViewMode>('list');
   const [gridWorkspaceMode, setGridWorkspaceMode] = useState<'browse' | 'edit' | 'csv'>('edit');
 
   const searchValue = peopleSearch.trim().toLowerCase();
@@ -67,7 +67,7 @@ export function PeopleDirectory({
   const sortedPeople = useMemo(() => {
     const filteredPeople = viewMode === 'cards' && searchValue
       ? basePeople.filter((person) => {
-          const name = (person.attributes?.name || '').toString().toLowerCase();
+          const name = person.name.toLowerCase();
           const id = person.id.toLowerCase();
           return name.includes(searchValue) || id.includes(searchValue);
         })
@@ -220,7 +220,7 @@ export function PeopleDirectory({
             rowKey={(person) => person.id}
             emptyState={<div className="text-sm" style={{ color: 'var(--text-secondary)' }}>No matching people.</div>}
             onRowOpen={onEditPerson}
-            rowOpenLabel={(person) => `Edit ${person.attributes.name}`}
+            rowOpenLabel={(person) => `Edit ${person.name}`}
             showCsvExport={false}
             searchSummary={({ filteredCount, totalCount }) => (
               <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -234,14 +234,11 @@ export function PeopleDirectory({
               draft: {
                 onApply: onApplyGridPeople,
                 createRow: createGridPersonRow,
+                canDeleteRows: true,
+                deleteRowLabel: (person) => `Delete ${person.name || person.id || 'row'}`,
                 csv: {
                   ariaLabel: 'People grid CSV',
                   placeholder: 'Name,Weight,Sessions,...',
-                  helperText: (
-                    <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                      <strong>Sessions</strong> use JSON session-scope objects such as <code>{'{"mode":"all"}'}</code> or <code>{'{"mode":"selected","sessions":[0,1]}'}</code>. Blank attribute cells clear that value; blank names normalize to the person ID on apply.
-                    </div>
-                  ),
                 },
               },
             }}
@@ -251,13 +248,10 @@ export function PeopleDirectory({
                 id: 'name',
                 header: 'Name',
                 primitive: 'string' as const,
-                getValue: (person: Person) => String(person.attributes?.name ?? ''),
+                getValue: (person: Person) => person.name,
                 setValue: (person: Person, value) => ({
                   ...person,
-                  attributes: {
-                    ...(person.attributes ?? {}),
-                    name: value ?? '',
-                  },
+                  name: value ?? '',
                 }),
                 renderValue: (value) => (
                   <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -313,22 +307,22 @@ export function PeopleDirectory({
                   width: 180,
                 };
               }),
-              {
+              ...(gridWorkspaceMode === 'edit' ? [] : [{
                 kind: 'display' as const,
                 id: 'actions',
                 header: 'Actions',
                 cell: (person: Person) => (
                   <div className="flex justify-end">
                     <SetupItemActions
-                      deleteLabel={`Delete ${person.attributes.name}`}
+                      deleteLabel={`Delete ${person.name}`}
                       onDelete={() => onDeletePerson(person.id)}
                     />
                   </div>
                 ),
-                align: 'right',
+                align: 'right' as const,
                 hideable: false,
                 width: 180,
-              },
+              }]),
             ]}
           />
         )

@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Bug, Menu, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ThemeToggle } from './ThemeToggle';
@@ -13,14 +13,18 @@ import { getButtonClassName } from './ui';
 interface AppHeaderProps {
   homeTo?: string;
   title?: string;
+  titleAs?: 'h1' | 'div';
   logoAlt?: string;
+  desktopBreakpoint?: 'sm' | 'md' | 'lg' | 'landing';
   hideDesktopUtilityRail?: boolean;
   renderDesktopCenterContent?: () => ReactNode;
   renderMobileCenterContent?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
+  renderMobileBelowHeaderContent?: () => ReactNode;
   renderDesktopActions?: () => ReactNode;
   renderMobileActions?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
   renderDesktopUtilityActions?: () => ReactNode;
   renderMobileUtilityActions?: (helpers: { closeMobileMenu: () => void }) => ReactNode;
+  utilityRailFramed?: boolean;
   issueHref?: string;
   issueLabel?: string;
 }
@@ -28,14 +32,18 @@ interface AppHeaderProps {
 export function AppHeader({
   homeTo = '/',
   title = 'GroupMixer',
+  titleAs = 'h1',
   logoAlt = 'GroupMixer Logo',
+  desktopBreakpoint = 'sm',
   hideDesktopUtilityRail = false,
   renderDesktopCenterContent,
   renderMobileCenterContent,
+  renderMobileBelowHeaderContent,
   renderDesktopActions,
   renderMobileActions,
   renderDesktopUtilityActions,
   renderMobileUtilityActions,
+  utilityRailFramed = true,
   issueHref = 'https://github.com/guwidoe/GroupMixer/issues',
   issueLabel = 'Report an issue or suggest a feature',
 }: AppHeaderProps) {
@@ -45,10 +53,75 @@ export function AppHeader({
   const closeMobileMenu = () => setMobileMenuOpen(false);
   const desktopCenterContent = renderDesktopCenterContent?.();
   const mobileCenterContent = renderMobileCenterContent?.({ closeMobileMenu });
+  const mobileBelowHeaderContent = renderMobileBelowHeaderContent?.();
   const desktopActions = renderDesktopActions?.();
   const mobileActions = renderMobileActions?.({ closeMobileMenu });
   const desktopUtilityActions = renderDesktopUtilityActions?.();
   const mobileUtilityActions = renderMobileUtilityActions?.({ closeMobileMenu });
+  const utilityToolbarClassName = utilityRailFramed
+    ? HEADER_ACTION_TOOLBAR_CLASS
+    : 'flex w-full flex-wrap items-center gap-1 sm:w-auto';
+  const utilityToolbarStyle = utilityRailFramed
+    ? { backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }
+    : undefined;
+  const BrandTitle = titleAs;
+  const desktopBreakpointMinWidth = {
+    sm: 640,
+    md: 768,
+    lg: 1024,
+    landing: 700,
+  }[desktopBreakpoint];
+  const [showMobileBelowHeaderContent, setShowMobileBelowHeaderContent] = useState(() => (
+    typeof window !== 'undefined' ? window.innerWidth < desktopBreakpointMinWidth : false
+  ));
+
+  useEffect(() => {
+    const updateShowMobileBelowHeaderContent = () => {
+      setShowMobileBelowHeaderContent(window.innerWidth < desktopBreakpointMinWidth);
+    };
+
+    updateShowMobileBelowHeaderContent();
+    window.addEventListener('resize', updateShowMobileBelowHeaderContent);
+
+    return () => {
+      window.removeEventListener('resize', updateShowMobileBelowHeaderContent);
+    };
+  }, [desktopBreakpointMinWidth]);
+
+  const responsiveClasses = {
+    sm: {
+      headerLayout: 'flex flex-col gap-3 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-4',
+      menuButton: 'sm:hidden',
+      desktopCenter: 'hidden min-w-0 sm:block',
+      desktopActions: 'hidden sm:flex items-center justify-end gap-2 sm:gap-3',
+      mobileMenu: 'sm:hidden mt-3 pt-3 border-t',
+      mobileDivider: 'my-1 h-px w-full sm:hidden',
+    },
+    md: {
+      headerLayout: 'flex flex-col gap-3 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-4',
+      menuButton: 'md:hidden',
+      desktopCenter: 'hidden min-w-0 md:block',
+      desktopActions: 'hidden md:flex items-center justify-end gap-2 md:gap-3',
+      mobileMenu: 'md:hidden mt-3 pt-3 border-t',
+      mobileDivider: 'my-1 h-px w-full md:hidden',
+    },
+    lg: {
+      headerLayout: 'flex flex-col gap-3 lg:grid lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center lg:gap-4',
+      menuButton: 'lg:hidden',
+      desktopCenter: 'hidden min-w-0 lg:block',
+      desktopActions: 'hidden lg:flex items-center justify-end gap-2 lg:gap-3',
+      mobileMenu: 'lg:hidden mt-3 pt-3 border-t',
+      mobileDivider: 'my-1 h-px w-full lg:hidden',
+    },
+    landing: {
+      headerLayout: 'flex flex-col gap-3 min-[700px]:grid min-[700px]:grid-cols-[auto_minmax(0,1fr)_auto] min-[700px]:items-center min-[700px]:gap-4',
+      menuButton: 'min-[700px]:hidden',
+      desktopCenter: 'hidden min-w-0 min-[700px]:block',
+      desktopActions: 'hidden min-[700px]:flex items-center justify-end gap-2 min-[700px]:gap-3',
+      mobileMenu: 'min-[700px]:hidden mt-3 pt-3 border-t',
+      mobileDivider: 'my-1 h-px w-full min-[700px]:hidden',
+    },
+  }[desktopBreakpoint];
 
   return (
     <header
@@ -56,20 +129,20 @@ export function AppHeader({
       style={{ backgroundColor: 'var(--header-surface)', borderColor: 'var(--border-primary)' }}
     >
       <div className="w-full px-4 py-3 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-3 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:gap-4">
+        <div className={responsiveClasses.headerLayout}>
           <div className="flex items-center justify-between">
             <Link to={homeTo} className="flex items-center space-x-3 group min-w-0">
               <div className="flex items-center space-x-2 min-w-0">
                 <img src={assetBaseUrl + 'logo.svg'} alt={logoAlt} className="h-8 w-8" />
-                <h1 className="truncate text-[1.85rem] font-semibold tracking-[-0.03em] transition-colors" style={{ color: 'var(--text-primary)' }}>
+                <BrandTitle className="truncate text-[1.85rem] font-semibold tracking-[-0.03em] transition-colors" style={{ color: 'var(--text-primary)' }}>
                   {title}
-                </h1>
+                </BrandTitle>
               </div>
             </Link>
 
             <button
               onClick={() => setMobileMenuOpen((current) => !current)}
-              className="sm:hidden p-2 rounded-md transition-colors"
+              className={`${responsiveClasses.menuButton} p-2 rounded-md transition-colors`}
               style={{ color: 'var(--text-secondary)' }}
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
               onMouseEnter={(e) => {
@@ -83,19 +156,16 @@ export function AppHeader({
             </button>
           </div>
 
-          <div className="hidden min-w-0 sm:block">
+          <div className={responsiveClasses.desktopCenter}>
             {desktopCenterContent}
           </div>
 
-          <div className="hidden sm:flex items-center justify-end gap-2 sm:gap-3">
+          <div className={responsiveClasses.desktopActions}>
             {desktopActions}
 
             {!hideDesktopUtilityRail ? (
               <div className={HEADER_ACTION_GROUP_CLASS}>
-                <div
-                  className={HEADER_ACTION_TOOLBAR_CLASS}
-                  style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
-                >
+                <div className={utilityToolbarClassName} style={utilityToolbarStyle}>
                   {desktopUtilityActions}
                   {desktopUtilityActions ? (
                     <div
@@ -126,21 +196,24 @@ export function AppHeader({
           </div>
         </div>
 
+        {showMobileBelowHeaderContent && mobileBelowHeaderContent ? (
+          <div className="mt-3">
+            {mobileBelowHeaderContent}
+          </div>
+        ) : null}
+
         {mobileMenuOpen && (
-          <div className="sm:hidden mt-3 pt-3 border-t" style={{ borderColor: 'var(--border-primary)' }}>
+          <div className={responsiveClasses.mobileMenu} style={{ borderColor: 'var(--border-primary)' }}>
             <div className="flex flex-col gap-2">
               {mobileCenterContent}
               {mobileActions}
 
               <div className={HEADER_ACTION_GROUP_CLASS}>
-                <div
-                  className={HEADER_ACTION_TOOLBAR_CLASS}
-                  style={{ backgroundColor: 'var(--header-rail-surface)', borderColor: 'var(--border-primary)' }}
-                >
+                <div className={utilityToolbarClassName} style={utilityToolbarStyle}>
                   {mobileUtilityActions}
                   {mobileUtilityActions ? (
                     <div
-                      className="my-1 h-px w-full sm:hidden"
+                      className={responsiveClasses.mobileDivider}
                       style={{ backgroundColor: 'var(--border-primary)' }}
                       aria-hidden="true"
                     />

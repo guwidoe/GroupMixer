@@ -52,8 +52,8 @@ describe('buildResultsViewModel', () => {
       groups: [{ id: 'g1', size: 3 }],
       num_sessions: 1,
       people: [
-        { id: 'p1', attributes: { name: 'Alice' } },
-        { id: 'p2', attributes: { name: 'Bob' } },
+        { id: 'p1', name: 'Alice' , attributes: {} },
+        { id: 'p2', name: 'Bob' , attributes: {} },
       ],
     });
     const solution = createSampleSolution({

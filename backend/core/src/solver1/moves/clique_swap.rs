@@ -169,6 +169,18 @@ impl State {
         (source_remaining, target_remaining, new_from, new_to)
     }
 
+    fn clique_swap_has_hard_apart_conflict(
+        &self,
+        day: usize,
+        active_members: &[usize],
+        target_people: &[usize],
+        source_remaining: &[usize],
+        target_remaining: &[usize],
+    ) -> bool {
+        self.block_has_hard_apart_conflict(day, active_members, target_remaining)
+            || self.block_has_hard_apart_conflict(day, target_people, source_remaining)
+    }
+
     fn contact_delta_for_clique_swap_pair(
         &self,
         person_a: usize,
@@ -273,6 +285,16 @@ impl State {
         let (source_remaining, target_remaining, new_from, new_to) =
             Self::clique_swap_group_members_after(old_from, old_to, &active_members, target_people);
 
+        if self.clique_swap_has_hard_apart_conflict(
+            day,
+            &active_members,
+            target_people,
+            &source_remaining,
+            &target_remaining,
+        ) {
+            return f64::INFINITY;
+        }
+
         let mut delta_cost = 0.0;
 
         for &member in &active_members {
@@ -311,8 +333,8 @@ impl State {
             }
         };
 
-        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+        for (pair_idx, &(person_a, person_b)) in self.soft_apart_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.soft_apart_pair_sessions[pair_idx] {
                 if !sessions.contains(&day) {
                     continue;
                 }
@@ -337,9 +359,9 @@ impl State {
                 moved_person_group_after(person_a) == moved_person_group_after(person_b);
 
             if were_together && !are_together {
-                delta_cost -= self.forbidden_pair_weights[pair_idx];
+                delta_cost -= self.soft_apart_pair_weights[pair_idx];
             } else if !were_together && are_together {
-                delta_cost += self.forbidden_pair_weights[pair_idx];
+                delta_cost += self.soft_apart_pair_weights[pair_idx];
             }
         }
 
@@ -493,6 +515,16 @@ impl State {
                 target_people,
             );
 
+        if self.clique_swap_has_hard_apart_conflict(
+            day,
+            &active_members,
+            target_people,
+            &source_remaining,
+            &target_remaining,
+        ) {
+            return;
+        }
+
         let current_groups: Vec<usize> = self.locations[day]
             .iter()
             .map(|&(group_idx, _)| group_idx)
@@ -533,8 +565,8 @@ impl State {
             }
         }
 
-        for (pair_idx, &(person_a, person_b)) in self.forbidden_pairs.iter().enumerate() {
-            if let Some(ref sessions) = self.forbidden_pair_sessions[pair_idx] {
+        for (pair_idx, &(person_a, person_b)) in self.soft_apart_pairs.iter().enumerate() {
+            if let Some(ref sessions) = self.soft_apart_pair_sessions[pair_idx] {
                 if !sessions.contains(&day) {
                     continue;
                 }
@@ -559,9 +591,9 @@ impl State {
                 moved_person_group_after(person_a) == moved_person_group_after(person_b);
 
             if were_together && !are_together {
-                self.forbidden_pair_violations[pair_idx] -= 1;
+                self.soft_apart_pair_violations[pair_idx] -= 1;
             } else if !were_together && are_together {
-                self.forbidden_pair_violations[pair_idx] += 1;
+                self.soft_apart_pair_violations[pair_idx] += 1;
             }
         }
 
@@ -731,6 +763,8 @@ impl State {
             }
         }
 
+        #[cfg(feature = "debug-invariant-checks")]
+        self.debug_validate_hard_constraints_if_enabled("apply_clique_swap");
         #[cfg(feature = "cache-drift-assertions")]
         self.debug_assert_no_cache_drift_if_enabled("apply_clique_swap");
     }

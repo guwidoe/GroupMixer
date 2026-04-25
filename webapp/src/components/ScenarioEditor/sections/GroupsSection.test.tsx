@@ -24,6 +24,7 @@ describe('GroupsSection', () => {
     const onAddGroup = vi.fn();
     const onEditGroup = vi.fn();
     const onDeleteGroup = vi.fn();
+    const onApplyGridGroups = vi.fn();
 
     render(
       <GroupsSection
@@ -31,7 +32,7 @@ describe('GroupsSection', () => {
         onAddGroup={onAddGroup}
         onEditGroup={onEditGroup}
         onDeleteGroup={onDeleteGroup}
-        onApplyGridGroups={vi.fn()}
+        onApplyGridGroups={onApplyGridGroups}
         createGridGroupRow={() => ({ id: 'g2', size: 4, session_sizes: undefined })}
       />,
     );
@@ -57,12 +58,17 @@ describe('GroupsSection', () => {
     expect(screen.getByRole('button', { name: /edit table/i })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.queryByRole('button', { name: /^view$/i })).not.toBeInTheDocument();
 
-    await user.click(screen.getAllByRole('button', { name: /delete g1/i })[0]!);
-    expect(onDeleteGroup).toHaveBeenCalledWith('g1');
-
     await user.click(screen.getByRole('button', { name: /^csv$/i }));
     expect(screen.getByRole('textbox', { name: /groups grid csv/i })).toHaveValue(
       'Group,Default capacity,Session capacities\ng1,4,"[4,4,4]"',
     );
+
+    await user.click(screen.getByRole('button', { name: /edit table/i }));
+    await user.click(screen.getAllByRole('button', { name: /delete g1/i })[0]!);
+    expect(onDeleteGroup).not.toHaveBeenCalled();
+    expect(screen.queryByRole('textbox', { name: /edit group for row g1/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /apply changes/i }));
+    expect(onApplyGridGroups).toHaveBeenCalledWith([]);
   }, 10000);
 });

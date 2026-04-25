@@ -22,7 +22,7 @@ describe('demoScenarioGenerator', () => {
       },
     ]);
 
-    const personNames = scenario.people.map((person) => person.attributes.name);
+    const personNames = scenario.people.map((person) => person.name);
     expect(new Set(personNames).size).toBe(personNames.length);
 
     const groupNames = scenario.groups.map((group) => group.id);
@@ -36,7 +36,7 @@ describe('demoScenarioGenerator', () => {
       sessionCount: 6,
     });
 
-    const personNames = scenario.people.map((person) => person.attributes.name);
+    const personNames = scenario.people.map((person) => person.name);
     const groupNames = scenario.groups.map((group) => group.id);
 
     expect(personNames).toHaveLength(480);

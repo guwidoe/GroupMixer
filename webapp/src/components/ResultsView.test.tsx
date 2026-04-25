@@ -1,6 +1,7 @@
 /* eslint-disable react/no-multi-comp */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResultsView } from './ResultsView';
 import { useAppStore } from '../store';
@@ -21,11 +22,22 @@ vi.mock('./ConstraintComplianceCards', () => ({
 }));
 
 vi.mock('./ResultsView/ResultsHeader', () => ({
-  ResultsHeader: ({ resultName, onRestoreConfig, summary }: { resultName?: string; onRestoreConfig: () => void; summary: { totalSessions: number } | null }) => (
+  ResultsHeader: ({
+    resultName,
+    onRestoreConfig,
+    onOpenManualEditor,
+    summary,
+  }: {
+    resultName?: string;
+    onRestoreConfig: () => void;
+    onOpenManualEditor?: () => void;
+    summary: { totalSessions: number } | null;
+  }) => (
     <div>
       <div>{`header:${resultName ?? 'none'}`}</div>
       <div>{`summary:${summary?.totalSessions ?? 0}`}</div>
       <button onClick={onRestoreConfig}>restore</button>
+      {onOpenManualEditor ? <button onClick={onOpenManualEditor}>open manual editor</button> : null}
     </div>
   ),
 }));
@@ -46,6 +58,11 @@ vi.mock('./ResultsView/ResultsSchedule', () => ({
   }) => <div>{`schedule:${resultsModel?.sessions.length ?? 0}:${effectiveScenario.groups[0]?.id ?? 'none'}:${vizPluginId}`}</div>,
 }));
 
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
+}
+
 describe('ResultsView', () => {
   beforeEach(() => {
     useAppStore.getState().reset();
@@ -56,14 +73,24 @@ describe('ResultsView', () => {
   });
 
   it('shows the empty results state when no solution is selected', () => {
+    const savedScenario = createSavedScenario({ name: 'Workshop' });
+
     useAppStore.setState({
-      scenario: createSampleScenario(),
+      scenario: savedScenario.scenario,
       solution: null,
+      currentScenarioId: savedScenario.id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
     });
 
-    render(<ResultsView />);
+    render(
+      <MemoryRouter>
+        <ResultsView />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('heading', { name: /no results yet/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /saved results/i })).toBeInTheDocument();
   });
 
   it('shows the missing-scenario empty state when a solution exists without a recoverable scenario', () => {
@@ -74,7 +101,11 @@ describe('ResultsView', () => {
       savedScenarios: {},
     });
 
-    render(<ResultsView />);
+    render(
+      <MemoryRouter>
+        <ResultsView />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole('heading', { name: /no results available/i })).toBeInTheDocument();
   });
@@ -110,7 +141,11 @@ describe('ResultsView', () => {
       restoreResultAsNewScenario: restoreResultAsNewScenario as never,
     });
 
-    render(<ResultsView />);
+    render(
+      <MemoryRouter>
+        <ResultsView />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByText('header:Snapshot Result')).toBeInTheDocument();
     expect(screen.getByText('summary:2')).toBeInTheDocument();
@@ -124,5 +159,33 @@ describe('ResultsView', () => {
       savedScenario.results[0].id,
       'Workshop – Snapshot Result (restored)',
     );
+  });
+
+  it('opens the manual editor from the results header action', async () => {
+    const user = userEvent.setup();
+    const savedScenario = createSavedScenario({
+      name: 'Workshop',
+      scenario: createSampleScenario(),
+    });
+
+    useAppStore.setState({
+      scenario: savedScenario.scenario,
+      solution: savedScenario.results[0].solution,
+      solverState: useAppStore.getState().solverState,
+      currentScenarioId: savedScenario.id,
+      currentResultId: savedScenario.results[0].id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
+    });
+
+    render(
+      <MemoryRouter>
+        <ResultsView />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole('button', { name: /open manual editor/i }));
+
+    expect(screen.getByTestId('location')).toHaveTextContent('/app/editor');
   });
 });

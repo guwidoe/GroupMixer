@@ -8,11 +8,19 @@ interface WorkspaceSidebarGroupProps {
   group: WorkspaceNavGroup;
   activeItemId: string | null;
   isRailCollapsed: boolean;
+  isExpanded: boolean;
+  onToggleExpanded: (groupId: string) => void;
   onNavigate: (itemId: string) => void;
 }
 
-export function WorkspaceSidebarGroup({ group, activeItemId, isRailCollapsed, onNavigate }: WorkspaceSidebarGroupProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+export function WorkspaceSidebarGroup({
+  group,
+  activeItemId,
+  isRailCollapsed,
+  isExpanded,
+  onToggleExpanded,
+  onNavigate,
+}: WorkspaceSidebarGroupProps) {
   const [isHeaderHovered, setIsHeaderHovered] = useState(false);
 
   if (isRailCollapsed) {
@@ -37,7 +45,7 @@ export function WorkspaceSidebarGroup({ group, activeItemId, isRailCollapsed, on
       <Tooltip content={group.description ?? group.label} className="block w-full" placement="right">
         <button
           type="button"
-          onClick={() => setIsExpanded((value) => !value)}
+          onClick={() => onToggleExpanded(group.id)}
           onMouseEnter={() => setIsHeaderHovered(true)}
           onMouseLeave={() => setIsHeaderHovered(false)}
           className="flex w-full items-center justify-between rounded-md px-[1.375rem] py-1 text-left transition-colors duration-150"

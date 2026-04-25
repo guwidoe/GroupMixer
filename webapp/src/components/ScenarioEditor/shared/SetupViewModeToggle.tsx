@@ -18,15 +18,32 @@ function ToggleButton({
   icon: React.ReactNode;
   onClick: () => void;
 }) {
+  const [hovered, setHovered] = React.useState(false);
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      className="inline-flex cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-all duration-150"
       style={{
-        backgroundColor: active ? 'var(--bg-tertiary)' : 'transparent',
+        backgroundColor: active
+          ? 'color-mix(in srgb, var(--color-accent) 10%, var(--bg-tertiary) 90%)'
+          : hovered
+            ? 'var(--bg-primary)'
+            : 'transparent',
         color: active ? 'var(--color-accent)' : 'var(--text-secondary)',
-        border: active ? '1px solid var(--color-accent)' : '1px solid transparent',
+        border: active
+          ? '1px solid color-mix(in srgb, var(--color-accent) 72%, white 28%)'
+          : hovered
+            ? '1px solid var(--border-primary)'
+            : '1px solid transparent',
+        boxShadow: hovered
+          ? '0 1px 2px color-mix(in srgb, black 8%, transparent)'
+          : 'none',
       }}
       aria-pressed={active}
     >

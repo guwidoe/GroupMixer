@@ -5,11 +5,11 @@ import {
   formatSessionScopeDraftCompact,
   formatSessionScopeDraft,
   optionalSessionsToDraft,
+  parseSessionScopeDraftRaw,
   sessionScopeDraftToOptionalSessions,
-  validateSessionScopeDraft,
+  formatSessionScopeDraftRaw,
   type SessionScopeDraft,
 } from '../sessionScope';
-import { createJsonRawCodec } from './model/rawCodec';
 import { InlineSessionScopeEditor } from './components/editors/InlineSessionScopeEditor';
 
 interface CreateOptionalSessionScopeColumnArgs<T> {
@@ -64,10 +64,10 @@ export function createOptionalSessionScopeColumn<T>({
       ariaLabel: `Filter ${header}`,
       getValue: (row) => formatSessionScopeDraft(optionalSessionsToDraft(getSessions(row), totalSessions), totalSessions),
     },
-    rawCodec: createJsonRawCodec<SessionScopeDraft, T>({
-      header,
-      validate: (rawValue) => validateSessionScopeDraft(rawValue, totalSessions),
-    }),
+    rawCodec: {
+      format: (value) => formatSessionScopeDraftRaw(value ?? createAllSessionScopeDraft(), totalSessions),
+      parse: (text) => parseSessionScopeDraftRaw(text, totalSessions),
+    },
     renderEditor: ({ value, onCommit, disabled: isDisabled }) => (
       <InlineSessionScopeEditor
         ariaLabel={`Edit ${header}`}

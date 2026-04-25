@@ -156,14 +156,20 @@ fn default_solver_may_explicitly_reject_generated_problem(
         SolverKind::Solver4 => {
             error_message.contains("solver4 requires complete equal partitions each session")
                 || error_message.contains("solver4 requires exactly one RepeatEncounter constraint")
+                || error_message
+                    .contains("solver4 requires zero-repeat meet-at-most-once semantics")
         }
         SolverKind::Solver5 => {
             error_message.contains("solver5 requires complete equal partitions each session")
                 || error_message.contains("solver5 requires exactly one RepeatEncounter constraint")
+                || error_message
+                    .contains("solver5 requires zero-repeat meet-at-most-once semantics")
         }
         SolverKind::Solver6 => {
             error_message.contains("solver6 requires complete equal partitions each session")
                 || error_message.contains("solver6 requires exactly one RepeatEncounter constraint")
+                || error_message
+                    .contains("solver6 requires zero-repeat meet-at-most-once semantics")
         }
         SolverKind::Solver1 | SolverKind::Solver3 => false,
     }

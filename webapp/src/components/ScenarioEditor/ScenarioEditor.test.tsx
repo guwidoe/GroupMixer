@@ -1,5 +1,5 @@
-import { act, render, screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import { ScenarioEditor } from './ScenarioEditor';
 import type { ScenarioEditorController } from './useScenarioEditorController';
@@ -54,6 +54,10 @@ vi.mock('../modals/GeneratedDemoDataModal', () => ({
   GeneratedDemoDataModal: () => <div>Generated demo modal</div>,
 }));
 
+vi.mock('../modals/ReduceSessionsReviewModal', () => ({
+  ReduceSessionsReviewModal: ({ people }: { people: Array<{ id: string }> }) => <div>Session reduction review modal ({people.length})</div>,
+}));
+
 function createController(overrides: Partial<ScenarioEditorController> = {}): ScenarioEditorController {
   return {
     activeSection: 'people',
@@ -76,6 +80,11 @@ function createController(overrides: Partial<ScenarioEditorController> = {}): Sc
     handleDemoLoadNew: vi.fn(),
     handleGeneratedDemoSubmit: vi.fn(),
     handleSessionsCountChange: vi.fn(),
+    sessionReductionPlan: null,
+    sessionReductionInvalidations: [],
+    showSessionReductionReviewModal: false,
+    handleCancelSessionReduction: vi.fn(),
+    handleConfirmSessionReduction: vi.fn(),
     navigateToSection: vi.fn(),
     showDemoWarningModal: false,
     showGeneratedDemoModal: false,
@@ -91,7 +100,7 @@ function createController(overrides: Partial<ScenarioEditorController> = {}): Sc
     entities: {
       showPersonForm: false,
       editingPerson: null,
-      personForm: { attributes: {}, sessions: [] },
+      personForm: { name: '', attributes: {}, sessions: [] },
       setPersonForm: vi.fn(),
       handleAddPerson: vi.fn(),
       handleUpdatePerson: vi.fn(),
@@ -145,6 +154,8 @@ function createController(overrides: Partial<ScenarioEditorController> = {}): Sc
       setShowShouldStayTogetherModal: vi.fn(),
       showMustStayTogetherModal: false,
       setShowMustStayTogetherModal: vi.fn(),
+      showMustStayApartModal: false,
+      setShowMustStayApartModal: vi.fn(),
       showPairMeetingCountModal: false,
       setShowPairMeetingCountModal: vi.fn(),
       editingConstraintIndex: null,
@@ -205,6 +216,54 @@ describe('ScenarioEditor', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/loading people/i);
     expect(mockUseScenarioEditorController).not.toHaveBeenCalled();
     expect(screen.queryByText('Forms')).not.toBeInTheDocument();
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    expect(mockUseScenarioEditorController).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it('shows the loading shell immediately when navigating between setup sections', async () => {
+    vi.useFakeTimers();
+    mockUseScenarioEditorController.mockReturnValue(createController({ ui: { activeTab: 'scenario', isLoading: false, notifications: [], showScenarioManager: false, showResultComparison: false, warmStartResultId: null } }));
+    mockUseDeferredScenarioSectionContent.mockReturnValue({
+      isContentReady: true,
+      isContentLoading: false,
+      deferredSectionLabel: 'people directory',
+    });
+    mockUseDeferredScenarioSetupSummary.mockReturnValue({
+      areSummaryCountsReady: true,
+      summaryScenario: null,
+      summaryAttributeDefinitions: [],
+      summaryObjectiveCount: 0,
+    });
+
+    function NavigateToGroupsButton() {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate('/app/scenario/groups')}>Go groups</button>;
+    }
+
+    render(
+      <MemoryRouter initialEntries={['/app/scenario/people']}>
+        <NavigateToGroupsButton />
+        <Routes>
+          <Route path="/app/scenario/:section" element={<ScenarioEditor />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    act(() => {
+      vi.runAllTimers();
+    });
+
+    mockUseScenarioEditorController.mockClear();
+
+    fireEvent.click(screen.getByRole('button', { name: /go groups/i }));
+
+    expect(screen.getByRole('status')).toHaveTextContent(/loading groups/i);
+    expect(mockUseScenarioEditorController).not.toHaveBeenCalled();
 
     act(() => {
       vi.runAllTimers();

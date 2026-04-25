@@ -89,6 +89,7 @@ describe('scenarioContract', () => {
     expect(Object.hasOwn(normalized.settings, 'telemetry')).toBe(false);
     expect(Object.hasOwn(normalized.people[0], 'sessions')).toBe(false);
     expect(Object.hasOwn(normalized.people[0], 'attributeValues')).toBe(false);
+    expect(Object.hasOwn(normalized.people[0], 'name')).toBe(false);
     expect(Object.hasOwn(normalized.groups[0], 'session_sizes')).toBe(false);
     expect(Object.hasOwn(normalized.constraints[2], 'attribute_id')).toBe(false);
 

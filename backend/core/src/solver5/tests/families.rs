@@ -539,12 +539,7 @@ fn ownsg_family_constructs_120_player_case() {
 
     assert_eq!(result.family.label(), "ownsg");
     assert_eq!(result.schedule.len(), 13);
-    assert_eq!(
-        result.metadata.quality,
-        ConstructionQuality::LowerBound {
-            gap_to_counting_bound: 10
-        }
-    );
+    assert_eq!(result.metadata.quality, ConstructionQuality::LowerBound { gap_to_counting_bound: 10 });
 }
 
 #[test]

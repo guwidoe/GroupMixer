@@ -1,6 +1,7 @@
 use crate::artifacts::BenchmarkComparisonCategory;
 use crate::benchmark_mode::{
     default_benchmark_mode, is_hotpath_benchmark_mode, is_supported_benchmark_mode,
+    SEARCH_ITERATION_BENCHMARK_MODE,
 };
 use anyhow::{bail, Context, Result};
 use gm_core::models::{ApiInput, MovePolicy, SolverConfiguration, SolverKind};
@@ -11,6 +12,7 @@ use std::path::{Component, Path, PathBuf};
 
 pub const SUITE_SCHEMA_VERSION: u32 = 1;
 pub const CASE_SCHEMA_VERSION: u32 = 1;
+const MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS: u64 = 10_000;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Ord, PartialOrd)]
 #[serde(rename_all = "snake_case")]
@@ -535,6 +537,7 @@ fn validate_suite_manifest(path: &Path, manifest: &BenchmarkSuiteManifest) -> Re
             default_search_policy,
         )?;
     }
+    validate_search_iteration_iteration_floor(path, manifest)?;
     for case in &manifest.cases {
         validate_case_identity_fields(
             &format!("benchmark suite manifest {} case override", path.display()),
@@ -744,6 +747,53 @@ fn validate_search_policy_override(
             "{} is empty; set no_improvement_iterations and/or simulated_annealing fields",
             context
         );
+    }
+
+    Ok(())
+}
+
+fn validate_search_iteration_iteration_floor(
+    path: &Path,
+    manifest: &BenchmarkSuiteManifest,
+) -> Result<()> {
+    if manifest.benchmark_mode != SEARCH_ITERATION_BENCHMARK_MODE {
+        return Ok(());
+    }
+
+    if let Some(default_iterations) = manifest.default_iterations {
+        if default_iterations < MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS {
+            bail!(
+                "benchmark suite manifest {} uses search_iteration but default_iterations={} is below the required minimum {}; search-iteration regression suites must measure at least {} iterations",
+                path.display(),
+                default_iterations,
+                MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS,
+                MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS,
+            );
+        }
+    }
+
+    for case in manifest.cases.iter().filter(|case| case.enabled) {
+        let effective_iterations = case.iterations.or(manifest.default_iterations);
+        match effective_iterations {
+            Some(iterations) if iterations >= MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS => {}
+            Some(iterations) => {
+                bail!(
+                    "benchmark suite manifest {} case override for {} uses search_iteration with only {} measured iterations; search-iteration regression suites must measure at least {} iterations",
+                    path.display(),
+                    case.manifest,
+                    iterations,
+                    MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS,
+                );
+            }
+            None => {
+                bail!(
+                    "benchmark suite manifest {} case override for {} uses search_iteration without explicit iterations or default_iterations; search-iteration regression suites must declare at least {} measured iterations",
+                    path.display(),
+                    case.manifest,
+                    MIN_SEARCH_ITERATION_REGRESSION_ITERATIONS,
+                );
+            }
+        }
     }
 
     Ok(())
@@ -1344,6 +1394,157 @@ mod tests {
     }
 
     #[test]
+    fn synthetic_partial_attendance_keep_apart_case_adds_hard_apart_pressure() {
+        let case = load_case_manifest(Path::new(
+            "cases/stretch/synthetic_partial_attendance_keep_apart_capacity_pressure_152p.json",
+        ))
+        .expect("synthetic partial-attendance keep-apart stretch case should load");
+
+        assert_eq!(
+            case.id,
+            "stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p"
+        );
+        assert_eq!(case.class, BenchmarkSuiteClass::Stretch);
+        assert_eq!(case.case_role, BenchmarkCaseRole::Canonical);
+
+        let input = case
+            .input
+            .as_ref()
+            .expect("synthetic keep-apart stretch case should embed full solve input");
+        assert_eq!(input.problem.people.len(), 152);
+        assert_eq!(input.problem.num_sessions, 6);
+        assert_eq!(input.problem.groups.len(), 12);
+
+        let hard_apart_count = input
+            .constraints
+            .iter()
+            .filter(|constraint| {
+                matches!(
+                    constraint,
+                    gm_core::models::Constraint::MustStayApart { .. }
+                )
+            })
+            .count();
+        let hard_apart_session_windows = input
+            .constraints
+            .iter()
+            .filter_map(|constraint| match constraint {
+                gm_core::models::Constraint::MustStayApart { sessions, .. } => {
+                    Some(sessions.as_ref().map_or(6, |sessions| sessions.len()))
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(hard_apart_count, 24);
+        assert!(
+            hard_apart_session_windows
+                .iter()
+                .all(|window_len| *window_len >= 2),
+            "all MustStayApart windows should cover at least two sessions"
+        );
+    }
+
+    #[test]
+    fn synthetic_partial_attendance_keep_apart_solver3_suites_declare_explicit_seed_and_budget() {
+        let fixed_time = load_suite_manifest(Path::new(
+            "suites/stretch-partial-attendance-keep-apart-capacity-pressure-time-10s-solver3.yaml",
+        ))
+        .expect("synthetic partial-attendance keep-apart 10s suite should load");
+        assert_eq!(fixed_time.cases.len(), 1);
+        assert_eq!(
+            fixed_time.cases[0].manifest.id,
+            "stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p"
+        );
+        assert_eq!(fixed_time.cases[0].overrides.seed, Some(152705));
+        assert_eq!(
+            fixed_time.cases[0].overrides.max_iterations,
+            Some(10_000_000)
+        );
+        assert_eq!(fixed_time.cases[0].overrides.time_limit_seconds, Some(10));
+
+        let fixed_iteration = load_suite_manifest(Path::new(
+            "suites/stretch-partial-attendance-keep-apart-capacity-pressure-iterations-1m-solver3.yaml",
+        ))
+        .expect("synthetic partial-attendance keep-apart 1M suite should load");
+        assert_eq!(fixed_iteration.cases.len(), 1);
+        assert_eq!(
+            fixed_iteration.cases[0].manifest.id,
+            "stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p"
+        );
+        assert_eq!(fixed_iteration.cases[0].overrides.seed, Some(152705));
+        assert_eq!(
+            fixed_iteration.cases[0].overrides.max_iterations,
+            Some(1_000_000)
+        );
+        assert_eq!(
+            fixed_iteration.cases[0].overrides.time_limit_seconds,
+            Some(120)
+        );
+    }
+
+    #[test]
+    fn search_iteration_suites_require_at_least_ten_thousand_measured_iterations() {
+        let temp = TempDir::new().expect("temp dir");
+        let suite_dir = temp.path().join("suites");
+        let case_dir = temp.path().join("cases/hotpath");
+        fs::create_dir_all(&suite_dir).expect("mk suite dir");
+        fs::create_dir_all(&case_dir).expect("mk case dir");
+
+        let case_path = case_dir.join("search_iteration_case.json");
+        fs::write(
+            &case_path,
+            serde_json::to_string_pretty(&serde_json::json!({
+                "schema_version": 1,
+                "id": "hotpath.search-iteration.min-iterations-check",
+                "class": "representative",
+                "solver_family": "solver3",
+                "title": "Hotpath search iteration minimum iteration check",
+                "description": "Validation fixture for search_iteration minimum measured iterations.",
+                "tags": ["hotpath", "search", "solver3"],
+                "hotpath_preset": "search_sailing_trip_demo_real_solver3"
+            }))
+            .expect("serialize case"),
+        )
+        .expect("write case");
+
+        let suite_path = suite_dir.join("hotpath-search-iteration-too-small.yaml");
+        fs::write(
+            &suite_path,
+            [
+                "schema_version: 1",
+                "suite_id: hotpath-search-iteration-too-small",
+                "benchmark_mode: search_iteration",
+                "class: representative",
+                "default_iterations: 9999",
+                "default_warmup_iterations: 1",
+                "cases:",
+                "  - manifest: ../cases/hotpath/search_iteration_case.json",
+            ]
+            .join("\n"),
+        )
+        .expect("write suite");
+
+        let error = load_suite_manifest(&suite_path).unwrap_err();
+        assert!(
+            error.to_string().contains("at least 10000 iterations"),
+            "unexpected error: {error}"
+        );
+    }
+
+    #[test]
+    fn built_in_search_iteration_suites_declare_honest_iteration_counts() {
+        let representative = load_suite_manifest(Path::new("suites/hotpath-search-iteration.yaml"))
+            .expect("representative search-iteration suite should load");
+        assert_eq!(representative.manifest.default_iterations, Some(10_000));
+
+        let sailing_trip = load_suite_manifest(Path::new(
+            "suites/hotpath-search-iteration-sailing-trip-demo-solver3.yaml",
+        ))
+        .expect("sailing-trip solver3 search-iteration suite should load");
+        assert_eq!(sailing_trip.manifest.default_iterations, Some(10_000));
+    }
+
+    #[test]
     fn kirkman_schoolgirls_case_and_suite_load_with_explicit_budget() {
         let case = load_case_manifest(Path::new("cases/stretch/kirkman_schoolgirls_15x5x7.json"))
             .expect("kirkman schoolgirls case should load");
@@ -1426,6 +1627,62 @@ mod tests {
             correctness.manifest.comparison_category,
             BenchmarkComparisonCategory::InvariantOnly
         );
+        assert!(correctness.cases.iter().any(|case| {
+            case.manifest.id == "adversarial.correctness-partial-attendance-keep-apart-stress"
+        }));
+    }
+
+    #[test]
+    fn solver3_broad_multiseed_autoresearch_suites_pin_solver3_and_cover_broad_portfolio() {
+        let representative = load_suite_manifest(Path::new(
+            "suites/objective-canonical-representative-solver3-broad-multiseed-v1.yaml",
+        ))
+        .expect("solver3 broad multiseed representative suite should load");
+        assert_eq!(
+            representative.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
+        assert_eq!(representative.cases.len(), 8);
+        assert!(representative.cases.iter().all(|case| {
+            case.overrides.seed.is_some()
+                && matches!(case.manifest.class, BenchmarkSuiteClass::Representative)
+        }));
+
+        let adversarial = load_suite_manifest(Path::new(
+            "suites/objective-canonical-adversarial-solver3-broad-multiseed-v1.yaml",
+        ))
+        .expect("solver3 broad multiseed adversarial suite should load");
+        assert_eq!(
+            adversarial.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
+        assert_eq!(adversarial.cases.len(), 8);
+        assert!(adversarial.cases.iter().all(|case| {
+            case.overrides.seed.is_some()
+                && matches!(case.manifest.class, BenchmarkSuiteClass::Adversarial)
+        }));
+
+        let stretch = load_suite_manifest(Path::new(
+            "suites/objective-canonical-stretch-solver3-broad-multiseed-v1.yaml",
+        ))
+        .expect("solver3 broad multiseed stretch suite should load");
+        assert_eq!(
+            stretch.manifest.default_solver_family.as_deref(),
+            Some("solver3")
+        );
+        assert_eq!(stretch.cases.len(), 24);
+        assert!(stretch
+            .cases
+            .iter()
+            .any(|case| { case.manifest.id == "stretch.kirkman-schoolgirls-15x5x7" }));
+        assert!(stretch.cases.iter().any(|case| {
+            case.manifest.id
+                == "stretch.synthetic-partial-attendance-keep-apart-capacity-pressure-152p"
+        }));
+        assert!(stretch.cases.iter().all(|case| {
+            case.overrides.seed.is_some()
+                && matches!(case.manifest.class, BenchmarkSuiteClass::Stretch)
+        }));
     }
 
     #[test]

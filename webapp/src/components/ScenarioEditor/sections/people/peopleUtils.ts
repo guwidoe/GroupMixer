@@ -12,8 +12,8 @@ export function sortPeople(
   const sortedPeople = [...people];
   sortedPeople.sort((a, b) => {
     if (sortBy === 'name') {
-      const nameA = a.attributes.name.toLowerCase();
-      const nameB = b.attributes.name.toLowerCase();
+      const nameA = a.name.toLowerCase();
+      const nameB = b.name.toLowerCase();
       return sortOrder === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
     }
     const sessionsA = a.sessions?.length || sessionsCount || 0;

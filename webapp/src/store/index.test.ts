@@ -166,6 +166,226 @@ describe('useAppStore initialization', () => {
     expect(scenarioStorage.getScenario(staleDraft.id)?.scenario.num_sessions).toBe(4);
   });
 
+  it('reuses the current workspace when landing data matches the existing scenario content', () => {
+    const existing = scenarioStorage.createScenario(
+      'Random Group Generator draft',
+      createSampleScenario(),
+    );
+
+    useAppStore.setState({
+      scenario: existing.scenario,
+      attributeDefinitions: existing.attributeDefinitions,
+      currentScenarioId: existing.id,
+      savedScenarios: { [existing.id]: existing },
+    });
+
+    const returnedId = useAppStore.getState().loadWorkspaceAsNewScenario({
+      scenario: createSampleScenario(),
+      solution: null,
+      scenarioName: 'Random Group Generator draft',
+    });
+
+    const state = useAppStore.getState();
+    expect(returnedId).toBe(existing.id);
+    expect(state.currentScenarioId).toBe(existing.id);
+    expect(Object.keys(scenarioStorage.getAllScenarios())).toHaveLength(1);
+    expect(state.ui.notifications).toEqual([]);
+  });
+
+  it('creates a new scenario for landing data and preserves the previous workspace', () => {
+    const existing = scenarioStorage.createScenario(
+      'Existing workspace',
+      createSampleScenario({ num_sessions: 3 }),
+    );
+
+    useAppStore.setState({
+      scenario: existing.scenario,
+      attributeDefinitions: existing.attributeDefinitions,
+      currentScenarioId: existing.id,
+      savedScenarios: { [existing.id]: existing },
+    });
+
+    const returnedId = useAppStore.getState().loadWorkspaceAsNewScenario({
+      scenario: createSampleScenario({ num_sessions: 1 }),
+      solution: null,
+      scenarioName: 'Random Group Generator draft',
+    });
+
+    const state = useAppStore.getState();
+    expect(returnedId).toBeTruthy();
+    expect(returnedId).not.toBe(existing.id);
+    expect(state.currentScenarioId).toBe(returnedId);
+    expect(scenarioStorage.getScenario(existing.id)?.scenario.num_sessions).toBe(3);
+    expect(state.ui.notifications.at(-1)).toEqual(
+      expect.objectContaining({
+        title: 'Landing Setup Loaded',
+      }),
+    );
+  });
+
+  it('tracks document history for document-level updates and supports undo/redo', () => {
+    const initialScenario = createSampleScenario({ num_sessions: 2 });
+    useAppStore.getState().replaceWorkspace({
+      scenario: initialScenario,
+      attributeDefinitions: [createAttributeDefinition('team', ['A', 'B'], 'attr-team')],
+    });
+
+    expect(useAppStore.temporal.getState().pastStates).toHaveLength(0);
+
+    useAppStore.getState().updateScenarioDocument((document) => ({
+      ...document,
+      scenario: {
+        ...document.scenario,
+        num_sessions: 4,
+      },
+    }));
+
+    expect(useAppStore.temporal.getState().pastStates).toHaveLength(1);
+    expect(useAppStore.getState().scenario?.num_sessions).toBe(4);
+
+    useAppStore.getState().undoScenarioDocument();
+    expect(useAppStore.getState().scenario?.num_sessions).toBe(2);
+    expect(useAppStore.getState().attributeDefinitions).toEqual(
+      useAppStore.getState().scenarioDocument?.attributeDefinitions,
+    );
+
+    useAppStore.getState().redoScenarioDocument();
+    expect(useAppStore.getState().scenario?.num_sessions).toBe(4);
+  });
+
+  it('normalizes scenario-document attribute updates and keeps constraint references in sync', () => {
+    useAppStore.getState().replaceWorkspace({
+      scenario: {
+        people: [
+          { id: 'p1', name: 'Alice', attributes: { Team: 'Blue' } },
+        ],
+        groups: [{ id: 'g1', size: 1 }],
+        num_sessions: 1,
+        constraints: [
+          {
+            type: 'AttributeBalance',
+            group_id: 'g1',
+            attribute_key: 'Team',
+            desired_values: { Blue: 1 },
+            penalty_weight: 1,
+          },
+        ],
+        settings: createSampleScenario().settings,
+      },
+      attributeDefinitions: [createAttributeDefinition('Team', ['Blue'], 'attr-team')],
+    });
+
+    useAppStore.getState().setAttributeDefinitions([
+      createAttributeDefinition('Team', ['Blue', 'Green'], 'attr-team'),
+    ]);
+
+    const state = useAppStore.getState();
+    const balanceConstraint = state.scenario?.constraints[0];
+    expect(state.scenarioDocument?.attributeDefinitions).toEqual(state.attributeDefinitions);
+    expect(balanceConstraint).toMatchObject({
+      type: 'AttributeBalance',
+      attribute_id: 'attr-team',
+      attribute_key: 'Team',
+    });
+    expect(useAppStore.temporal.getState().pastStates).toHaveLength(1);
+  });
+
+  it('clears document history when loading a different saved scenario', () => {
+    const existing = scenarioStorage.createScenario('Existing', createSampleScenario({ num_sessions: 2 }));
+    const incoming = scenarioStorage.createScenario('Incoming', createSampleScenario({ num_sessions: 5 }));
+
+    useAppStore.setState({
+      scenario: existing.scenario,
+      scenarioDocument: {
+        scenario: existing.scenario,
+        attributeDefinitions: existing.attributeDefinitions,
+      },
+      attributeDefinitions: existing.attributeDefinitions,
+      currentScenarioId: existing.id,
+      savedScenarios: { [existing.id]: existing, [incoming.id]: incoming },
+    });
+    useAppStore.getState().clearScenarioDocumentHistory();
+
+    useAppStore.getState().updateScenarioDocument((document) => ({
+      ...document,
+      scenario: {
+        ...document.scenario,
+        num_sessions: 3,
+      },
+    }));
+    expect(useAppStore.temporal.getState().pastStates).toHaveLength(1);
+
+    useAppStore.getState().loadScenario(incoming.id);
+
+    expect(useAppStore.getState().scenario?.num_sessions).toBe(5);
+    expect(useAppStore.temporal.getState().pastStates).toHaveLength(0);
+    expect(useAppStore.temporal.getState().futureStates).toHaveLength(0);
+  });
+
+  it('applies a reduced-session scenario while clearing active runtime state', () => {
+    vi.useFakeTimers();
+    const savedScenario = createSavedScenario({
+      id: 'scenario-with-result',
+      scenario: createSampleScenario({ num_sessions: 4 }),
+    });
+    scenarioStorage.saveScenario(savedScenario);
+
+    useAppStore.setState({
+      scenario: savedScenario.scenario,
+      scenarioDocument: {
+        scenario: savedScenario.scenario,
+        attributeDefinitions: savedScenario.attributeDefinitions,
+      },
+      attributeDefinitions: savedScenario.attributeDefinitions,
+      currentScenarioId: savedScenario.id,
+      currentResultId: savedScenario.results[0].id,
+      savedScenarios: { [savedScenario.id]: savedScenario },
+      solution: createSampleSolution(),
+      selectedResultIds: [savedScenario.results[0].id],
+      solverState: {
+        ...useAppStore.getState().solverState,
+        isComplete: true,
+      },
+      ui: {
+        ...useAppStore.getState().ui,
+        activeTab: 'results',
+        warmStartResultId: savedScenario.results[0].id,
+        showResultComparison: true,
+      },
+      manualEditorUnsaved: true,
+      manualEditorLeaveHook: vi.fn(),
+    });
+    useAppStore.getState().clearScenarioDocumentHistory();
+
+    useAppStore.getState().updateScenarioDocument((document) => ({
+      ...document,
+      scenario: {
+        ...document.scenario,
+        num_sessions: 5,
+      },
+    }));
+    expect(useAppStore.temporal.getState().pastStates).toHaveLength(1);
+
+    const reducedScenario = createSampleScenario({ num_sessions: 2 });
+    useAppStore.getState().applySessionReductionScenario(reducedScenario);
+    vi.runAllTimers();
+
+    const state = useAppStore.getState();
+    expect(state.scenario).toMatchObject(reducedScenario);
+    expect(state.solution).toBeNull();
+    expect(state.currentResultId).toBeNull();
+    expect(state.selectedResultIds).toEqual([]);
+    expect(state.ui.activeTab).toBe('scenario');
+    expect(state.ui.warmStartResultId).toBeNull();
+    expect(state.ui.showResultComparison).toBe(false);
+    expect(state.manualEditorUnsaved).toBe(false);
+    expect(state.manualEditorLeaveHook).toBeNull();
+    expect(state.solverState.isComplete).toBe(false);
+    expect(useAppStore.temporal.getState().pastStates).toHaveLength(0);
+    expect(scenarioStorage.getScenario(savedScenario.id)?.scenario.num_sessions).toBe(2);
+    vi.useRealTimers();
+  });
+
   it('selects a saved result as the active result blob within the current scenario', () => {
     const savedScenario = createSavedScenario();
 

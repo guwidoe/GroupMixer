@@ -27,9 +27,9 @@ export default meta;
 type Story = StoryObj<typeof ConstraintPersonChip>;
 
 const samplePeople: Person[] = [
-  { id: 'alice-001', attributes: { name: 'Alice Johnson' } },
-  { id: 'bob-002', attributes: { name: 'Bob Smith' } },
-  { id: 'charlie-003', attributes: { name: 'Charlie Brown' } },
+  { id: 'alice-001', name: 'Alice Johnson', attributes: {} },
+  { id: 'bob-002', name: 'Bob Smith', attributes: {} },
+  { id: 'charlie-003', name: 'Charlie Brown', attributes: {} },
 ];
 
 export const ExistingPerson: Story = {
@@ -80,14 +80,14 @@ export const PersonWithoutName: Story = {
   args: {
     personId: 'bob-002',
     people: [
-      { id: 'bob-002', attributes: {} }, // No name attribute
+      { id: 'bob-002', name: '', attributes: {} },
     ],
     onRemove: fn(),
   },
   parameters: {
     docs: {
       description: {
-        story: 'When person has no name attribute, falls back to showing the ID.',
+        story: 'Legacy incomplete data falls back to showing the ID.',
       },
     },
   },
@@ -97,7 +97,7 @@ export const LongPersonName: Story = {
   args: {
     personId: 'long-name-person',
     people: [
-      { id: 'long-name-person', attributes: { name: 'Dr. Maximilian Bartholomew Fitzgerald-Worthington Jr.' } },
+      { id: 'long-name-person', name: 'Dr. Maximilian Bartholomew Fitzgerald-Worthington Jr.', attributes: {} },
     ],
     onRemove: fn(),
   },

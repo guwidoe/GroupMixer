@@ -196,6 +196,7 @@ export function ResultsHistory() {
         currentScenarioName={currentScenario.name}
         selectedCount={selectedResultIds.length}
         totalCount={allResultIds.length}
+        onBackToResults={() => navigate('/app/results')}
         onSelectAll={handleSelectAll}
         onCompareSelected={handleCompareSelected}
         onBulkDelete={handleBulkDelete}

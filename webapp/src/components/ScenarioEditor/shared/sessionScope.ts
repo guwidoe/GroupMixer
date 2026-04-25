@@ -102,6 +102,17 @@ export function formatSessionScopeDraftCompact(
   return selected.join(', ');
 }
 
+export function formatSessionScopeDraftRaw(
+  draft: SessionScopeDraft,
+  totalSessions?: number,
+): string {
+  if (draft.mode === 'all') {
+    return 'all';
+  }
+
+  return JSON.stringify(normalizeSessionSelection(draft.sessions, totalSessions));
+}
+
 export function describeSessionScopeDraft(
   draft: SessionScopeDraft,
   totalSessions: number,
@@ -161,4 +172,52 @@ export function validateSessionScopeDraft(
       sessions: normalized,
     },
   };
+}
+
+function validateSelectedSessionArray(
+  value: unknown,
+  totalSessions?: number,
+): SessionScopeDraftParseResult {
+  if (!Array.isArray(value)) {
+    return { ok: false, error: 'Expected Sessions to be "all", a JSON session index array, or a legacy JSON session object.' };
+  }
+
+  const normalized = normalizeSessionSelection(value as number[], totalSessions);
+  if (normalized.length !== value.length) {
+    return {
+      ok: false,
+      error: totalSessions === undefined
+        ? 'Expected Sessions to contain unique non-negative integers.'
+        : `Expected Sessions to contain unique integers between 0 and ${Math.max(0, totalSessions - 1)}.`,
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      mode: 'selected',
+      sessions: normalized,
+    },
+  };
+}
+
+export function parseSessionScopeDraftRaw(
+  text: string,
+  totalSessions?: number,
+): SessionScopeDraftParseResult {
+  const trimmed = text.trim();
+  if (!trimmed || trimmed.toLowerCase() === 'all') {
+    return { ok: true, value: { mode: 'all' } };
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed) as unknown;
+    if (Array.isArray(parsed)) {
+      return validateSelectedSessionArray(parsed, totalSessions);
+    }
+
+    return validateSessionScopeDraft(parsed, totalSessions);
+  } catch {
+    return { ok: false, error: 'Expected Sessions to be "all", a JSON session index array, or a legacy JSON session object.' };
+  }
 }

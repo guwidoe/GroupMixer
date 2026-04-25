@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { clickAndWaitForUrl, closeTransientUi, openApp } from './helpers';
+import { clickAndWaitForUrl, closeTransientUi, openApp, openAppRoute } from './helpers';
 
 test.describe('Solver', () => {
   test.beforeEach(async ({ page }) => {
@@ -28,20 +28,21 @@ test.describe('Solver', () => {
   });
 
   test('saved results tab is accessible', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /saved results/i }), /\/app\/history/);
+    await openAppRoute(page, '/app/history', /\/app\/history/);
 
     await expect(page.locator('main')).toBeVisible();
   });
 
   test('current result tab is accessible', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /current/i }), /\/app\/results/);
+    await openAppRoute(page, '/app/results', /\/app\/results/);
 
     await expect(page.locator('main')).toBeVisible();
   });
 
-  test('manual editor tab is accessible', async ({ page }) => {
-    await clickAndWaitForUrl(page, page.getByRole('link', { name: /editor|manual editor/i }), /\/app\/editor/);
+  test('manual editor route is accessible', async ({ page }) => {
+    await openAppRoute(page, '/app/editor', /\/app\/editor/);
 
     await expect(page.locator('main')).toBeVisible();
+    await expect(page.getByText(/select a result first/i)).toBeVisible();
   });
 });

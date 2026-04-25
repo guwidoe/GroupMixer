@@ -1,5 +1,5 @@
 import type { Group } from '../../types';
-import type { QuickSetupDraft } from '../../components/LandingTool/types';
+import type { QuickSetupDraft } from '../../components/EmbeddableTool/types';
 
 export function buildGroups(
   participantCount: number,

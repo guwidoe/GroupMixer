@@ -6,6 +6,7 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { buildSeoDocument, CANONICAL_ORIGIN, DEFAULT_OG_IMAGE } from '../src/seo/seoDocument.ts';
+import { getGuidePageConfig, GUIDE_PAGE_ROUTES } from '../src/pages/guidePageConfigs.ts';
 import { getToolPageConfig, TOOL_PAGE_ROUTES } from '../src/pages/toolPageConfigs.ts';
 import { getAppSeo } from '../src/seo/appRouteSeo.ts';
 
@@ -138,7 +139,7 @@ function applySeoDocument(templateHtml: string, rootMarkup: string, seo: ReturnT
 }
 
 function buildSitemapXml(): string {
-  const urls = TOOL_PAGE_ROUTES.map(({ key, locale, path: routePath }) => {
+  const landingUrls = TOOL_PAGE_ROUTES.map(({ key, locale, path: routePath }) => {
     const config = getToolPageConfig(key, locale);
     const suffix = routePath === '/' ? '/' : routePath;
     const alternateLinks = config.alternates
@@ -149,7 +150,15 @@ function buildSitemapXml(): string {
       .join('\n');
 
     return `  <url>\n    <loc>${CANONICAL_ORIGIN}${suffix}</loc>\n${alternateLinks}\n  </url>`;
-  }).join('\n');
+  });
+
+  const guideUrls = GUIDE_PAGE_ROUTES.map(({ path: routePath }) => {
+    const suffix = routePath === '/' ? '/' : routePath;
+
+    return `  <url>\n    <loc>${CANONICAL_ORIGIN}${suffix}</loc>\n  </url>`;
+  });
+
+  const urls = [...landingUrls, ...guideUrls].join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls}\n</urlset>\n`;
 }
@@ -195,7 +204,8 @@ async function collectDistAssetUrls(rootDir: string): Promise<string[]> {
 
 function buildOfflineRouteUrls(): string[] {
   const landingRoutes = TOOL_PAGE_ROUTES.map(({ path: routePath }) => (routePath === '/' ? '/' : routePath));
-  return Array.from(new Set(['/', '/app', ...landingRoutes]));
+  const guideRoutes = GUIDE_PAGE_ROUTES.map(({ path: routePath }) => (routePath === '/' ? '/' : routePath));
+  return Array.from(new Set(['/', '/app', ...landingRoutes, ...guideRoutes]));
 }
 
 function buildServiceWorkerScript({
@@ -349,6 +359,24 @@ async function renderLandingPages(templateHtml: string) {
   }
 }
 
+async function renderGuidePages(templateHtml: string) {
+  for (const route of GUIDE_PAGE_ROUTES) {
+    const config = getGuidePageConfig(route.key);
+    const seo = buildSeoDocument({
+      title: config.seo.title,
+      description: config.seo.description,
+      canonicalPath: config.canonicalPath,
+      includeStructuredData: false,
+    });
+    const markup = await renderRouteMarkup(config.canonicalPath);
+    const html = applySeoDocument(templateHtml, markup, seo);
+    const outputPath = path.join(distDir, config.canonicalPath.replace(/^\//, ''), 'index.html');
+
+    await fs.mkdir(path.dirname(outputPath), { recursive: true });
+    await fs.writeFile(outputPath, html, 'utf8');
+  }
+}
+
 async function renderAppShell(templateHtml: string) {
   const appSeo = getAppSeo('/app');
   const seo = buildSeoDocument({
@@ -375,6 +403,7 @@ async function prerenderDistArtifacts() {
   const templateHtml = await fs.readFile(distIndexPath, 'utf8');
   await writeSitemap(distDir);
   await renderLandingPages(templateHtml);
+  await renderGuidePages(templateHtml);
   await renderAppShell(templateHtml);
   await writeServiceWorker();
 }

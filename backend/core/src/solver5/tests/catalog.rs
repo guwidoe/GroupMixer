@@ -1,6 +1,4 @@
-use crate::solver5::catalog::{
-    kts, molr, mols, nkts, ownsg, p4, prime_powers, published, qdm, rbibd, ritd,
-};
+use crate::solver5::catalog::{kts, molr, mols, nkts, ownsg, p4, prime_powers, published, qdm, rbibd, ritd};
 
 #[test]
 fn prime_power_catalog_exposes_supported_field_orders() {

@@ -7,13 +7,25 @@ const TRUST_BULLETS = [
 ];
 
 const OPTIMIZER_FEATURES = [
-  'साथ रखें',
-  'कुछ जोड़ों से बचें',
-  'कई राउंड',
-  'अधिकतम मिक्सिंग',
-  'जेंडर बैलेंस',
-  'किसी भी एट्रिब्यूट से संतुलन',
-  'परिणाम समायोजित करें',
+  'Partial attendance',
+  'Custom group capacities',
+  'Session-specific rules',
+  'Weighted soft constraints',
+  'Pair encounter targets',
+  'Advanced constraint tuning',
+  'Solver settings',
+  'Result analysis',
+];
+
+const OPTIMIZER_FEATURE_EXPLANATIONS = [
+  'Choose which participants attend which sessions instead of assuming everyone is present in every round.',
+  'Set capacities per group and override them per session when room sizes or staffing changes.',
+  'Apply together, apart, pinned, repeat, and balance rules only to the sessions where they matter.',
+  'Add preferences that may be broken when needed, then tune their weights against other goals.',
+  'Target how often specific pairs should meet, including exact, minimum, or maximum encounter counts.',
+  'Fine-tune repeat limits, attribute-balance modes, penalties, and other constraint details.',
+  'Adjust runtime limits, deterministic seeds, solver family, and other optimization settings.',
+  'Inspect score breakdowns, constraint compliance, penalties, and saved results in more detail.',
 ];
 
 const CHROME = {
@@ -57,33 +69,6 @@ const USE_CASES_SECTION = {
   ],
 };
 
-const ADVANCED_SECTION = {
-  title: 'और ज़्यादा नियंत्रण चाहिए?',
-  description:
-    'GroupMixer सिर्फ़ एक रैंडम शफ़लर नहीं है। जब साधारण ग्रुपिंग काफ़ी न हो, तो बिना टूल बदले एडवांस्ड नियम इस्तेमाल करें।',
-  cards: [
-    {
-      title: 'कुछ लोगों को साथ रखें',
-      body: 'दोस्तों, सहकर्मियों या पहले से तय जोड़ों को हमेशा एक ही ग्रुप में रखें।',
-    },
-    {
-      title: 'कुछ लोगों को अलग रखें',
-      body: 'कुछ खास लोगों को एक ही ग्रुप में आने से रोकें।',
-    },
-    {
-      title: 'दोहराए गए जोड़ों से बचें',
-      body: 'कई राउंड चलाएँ ताकि वही दो लोग बार-बार साथ न आएँ।',
-    },
-    {
-      title: 'एट्रिब्यूट के आधार पर ग्रुप संतुलित करें',
-      body: 'CSV मोड से रोल, स्किल, विभाग या किसी भी कस्टम कॉलम के आधार पर समूह संतुलित करें।',
-    },
-  ],
-  buttonLabel: 'Scenario Editor खोलें',
-  supportingText:
-    'Scenario Editor में सेशंस, constraints, solver settings और detailed analysis पर पूरा नियंत्रण मिलता है।',
-};
-
 const FAQS = {
   free: {
     question: 'क्या GroupMixer मुफ़्त है?',
@@ -108,7 +93,7 @@ const FAQS = {
   workspace: {
     question: 'Scenario Editor क्या है?',
     answer:
-      'Scenario Editor में sessions, constraints, solver settings, previous results का reuse और detailed result analysis मिलता है। यह वही शक्तिशाली solver engine इस्तेमाल करता है।',
+      'Scenario Editor उन controls के लिए है जो इस page पर नहीं हैं: partial attendance, custom capacities by group and session, session-specific constraints, weighted soft constraints, pair encounter targets, advanced constraint tuning, solver settings, previous results और result analysis।',
   },
 };
 
@@ -139,16 +124,16 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'सिर्फ़ रैंडम से बेहतर चाहिए?',
-      title: 'पूरा ग्रुप ऑप्टिमाइज़र इस्तेमाल करें।',
+      eyebrow: 'और भी ज़्यादा control चाहिए?',
+      title: 'पूरा Scenario Editor खोलें।',
       featureBullets: OPTIMIZER_FEATURES,
+      featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'Scenario Editor खोलें',
-      supportingText: 'इस पेज पर आपकी भरी हुई जानकारी साथ लेकर जाती है।',
+      supportingText: 'जब इस पेज से ज़्यादा control चाहिए तब इस्तेमाल करें। Participants, groups, sessions और rules साथ चले जाते हैं।',
     },
     faqEntries,
     chrome: CHROME,
     useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
   };
 }
 
@@ -171,162 +156,6 @@ export const HI_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
       FAQS.privacy,
       FAQS.constraints,
       FAQS.multiSession,
-      FAQS.workspace,
-    ],
-  }),
-  'random-group-generator': createContent({
-    title: 'रैंडम ग्रुप जनरेटर — नामों की सूची से ग्रुप बनाएँ | GroupMixer',
-    description:
-      'मुफ़्त रैंडम ग्रुप जनरेटर। नामों की सूची पेस्ट करें, कितने ग्रुप चाहिए चुनें और तुरंत बाँटें। क्लासरूम, वर्कशॉप और इवेंट्स के लिए उपयोगी।',
-    eyebrow: 'तेज़ रैंडम स्प्लिट के लिए',
-    heroTitle: 'रैंडम ग्रुप जनरेटर',
-    subhead:
-      'नामों की सूची पेस्ट करें, जितने ग्रुप चाहिए चुनें और तुरंत बाँटें। बिना साइन-अप, बिना सर्वर—सब कुछ आपके ब्राउज़र में।',
-    audienceSummary:
-      'जब आपको कक्षा गतिविधियों, वर्कशॉप ब्रेकआउट्स या सरल इवेंट लॉजिस्टिक्स के लिए तेज़ और आसान ग्रुपिंग चाहिए हो।',
-    faqEntries: [
-      {
-        question: 'रैंडम ग्रुप जनरेटर कैसे काम करता है?',
-        answer:
-          'नामों को टेक्स्ट बॉक्स में पेस्ट करें, ग्रुप्स की संख्या या ग्रुप साइज चुनें और Generate दबाएँ। GroupMixer तुरंत संतुलित रैंडम विभाजन करता है।',
-      },
-      {
-        question: 'क्या मैं ग्रुप्स की संख्या या ग्रुप साइज नियंत्रित कर सकता हूँ?',
-        answer:
-          'हाँ। आप तय कर सकते हैं कि कुल कितने ग्रुप हों या हर ग्रुप में कितने लोग हों।',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'random-team-generator': createContent({
-    title: 'रैंडम टीम जनरेटर — जल्दी संतुलित टीमें बनाएँ | GroupMixer',
-    description:
-      'मुफ़्त रैंडम टीम जनरेटर। नाम पेस्ट करें और तुरंत संतुलित टीमें बनाएँ। ज़रूरत पड़ने पर स्किल balancing, साथ रखने या अलग रखने वाले नियम जोड़ें।',
-    eyebrow: 'कोच, लीड्स और फैसिलिटेटर्स के लिए',
-    heroTitle: 'रैंडम टीम जनरेटर',
-    subhead:
-      'कुछ ही सेकंड में रैंडम टीमें बनाएँ। नाम पेस्ट करें, टीमों की संख्या चुनें और जनरेट करें। ज़रूरत हो तो fairness rules भी जोड़ें।',
-    audienceSummary:
-      'ऐसी टीम गतिविधियों के लिए बनाया गया है जहाँ सिर्फ़ randomness नहीं, बल्कि fairness और roles/skills का सही वितरण भी ज़रूरी हो।',
-    faqEntries: [
-      {
-        question: 'मैं रैंडम टीमें कैसे बनाऊँ?',
-        answer:
-          'प्रतिभागियों के नाम पेस्ट करें, टीमों की संख्या तय करें और Generate दबाएँ। GroupMixer तुरंत संतुलित टीमें बना देता है।',
-      },
-      {
-        question: 'क्या मैं स्किल या रोल के आधार पर टीम संतुलित कर सकता हूँ?',
-        answer:
-          'हाँ। CSV मोड पर जाएँ, "role" या "skill" जैसे कॉलम जोड़ें और फिर balance-by-attribute विकल्प का उपयोग करें।',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.multiSession,
-    ],
-  }),
-  'breakout-room-generator': createContent({
-    title: 'ब्रेकआउट रूम जनरेटर — प्रतिभागियों को रूम्स में बाँटें | GroupMixer',
-    description:
-      'मुफ़्त ब्रेकआउट रूम जनरेटर। नाम पेस्ट करें और प्रतिभागियों को तुरंत breakout rooms में बाँटें। क्लास, वर्कशॉप और रिमोट मीटिंग्स के लिए उपयुक्त।',
-    eyebrow: 'Zoom, ट्रेनिंग और वर्कशॉप्स के लिए',
-    heroTitle: 'ब्रेकआउट रूम जनरेटर',
-    subhead:
-      'प्रतिभागियों को तुरंत ब्रेकआउट रूम्स में बाँटें। नाम पेस्ट करें, रूम्स की संख्या तय करें और जनरेट करें।',
-    audienceSummary:
-      'जब आपको तेज़ रूम assignment चाहिए हो लेकिन साथ ही multiple rounds और कम repetition भी ज़रूरी हों।',
-    faqEntries: [
-      {
-        question: 'मैं ब्रेकआउट रूम्स कैसे बनाऊँ?',
-        answer:
-          'प्रतिभागियों के नाम पेस्ट करें, रूम्स की संख्या चुनें और Generate दबाएँ। GroupMixer सबको तुरंत rooms में बाँट देता है।',
-      },
-      {
-        question: 'क्या मैं कई राउंड में लोगों को घुमा सकता हूँ?',
-        answer:
-          'हाँ। Advanced options में sessions सेट करें और repeat pairings से बचने वाला विकल्प चालू करें।',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'workshop-group-generator': createContent({
-    title: 'वर्कशॉप ग्रुप जनरेटर — सेशंस के लिए छोटे ग्रुप बनाएँ | GroupMixer',
-    description:
-      'मुफ़्त वर्कशॉप ग्रुप जनरेटर। गतिविधियों, ब्रेकआउट्स और multi-round sessions के लिए प्रतिभागियों को छोटे ग्रुप्स में बाँटें। ज़रूरत हो तो constraints जोड़ें।',
-    eyebrow: 'सहयोगी सेशंस चलाने वाले फैसिलिटेटर्स के लिए',
-    heroTitle: 'वर्कशॉप ग्रुप जनरेटर',
-    subhead:
-      'वर्कशॉप ग्रुप्स कुछ ही सेकंड में बनाएँ। पहले आसान तरीके से शुरू करें, फिर राउंड्स, balancing या pairing rules जोड़ें।',
-    audienceSummary:
-      'उन वर्कशॉप्स के लिए उपयोगी जहाँ ग्रुप composition चर्चा की गुणवत्ता, ऊर्जा और नए लोगों से मिलने पर असर डालती है।',
-    faqEntries: [
-      {
-        question: 'मैं वर्कशॉप ग्रुप्स कैसे बनाऊँ?',
-        answer:
-          'प्रतिभागियों के नाम पेस्ट करें, ग्रुप्स की संख्या या प्रति ग्रुप लोगों की संख्या सेट करें और Generate दबाएँ।',
-      },
-      {
-        question: 'क्या मैं वर्कशॉप राउंड्स के बीच लोगों को घुमा सकता हूँ?',
-        answer:
-          'हाँ। Multiple sessions और avoid-repeat options का उपयोग करें ताकि प्रतिभागी नई-नई लोगों से मिलें।',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'student-group-generator': createContent({
-    title: 'स्टूडेंट ग्रुप जनरेटर — क्लासरूम ग्रुप्स जल्दी बनाएँ | GroupMixer',
-    description:
-      'मुफ़्त स्टूडेंट ग्रुप जनरेटर। क्लास लिस्ट पेस्ट करें और कुछ ही सेकंड में संतुलित छात्र समूह बनाएँ। कुछ छात्रों को साथ या अलग रखने के नियम भी जोड़ें।',
-    eyebrow: 'शिक्षकों और क्लास गतिविधियों के लिए',
-    heroTitle: 'स्टूडेंट ग्रुप जनरेटर',
-    subhead:
-      'अपनी क्लास लिस्ट पेस्ट करें और तुरंत स्टूडेंट ग्रुप्स बनाएँ। ज़रूरत होने पर साथ रखने या अलग रखने वाले नियम भी जोड़ें।',
-    audienceSummary:
-      'उन शिक्षकों के लिए जो जल्दी समूह बनाना चाहते हैं लेकिन pairings और fairness पर नियंत्रण भी बनाए रखना चाहते हैं।',
-    faqEntries: [
-      {
-        question: 'मैं स्टूडेंट ग्रुप्स कैसे बनाऊँ?',
-        answer:
-          'छात्रों के नाम एक-एक लाइन में पेस्ट करें, ग्रुप्स की संख्या चुनें और Generate दबाएँ। GroupMixer बाकी काम कर देता है।',
-      },
-      {
-        question: 'क्या मैं कुछ छात्रों को साथ या अलग रख सकता हूँ?',
-        answer:
-          'हाँ। Advanced options में keep-together और avoid-pairing rules सेट करें।',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.multiSession,
-    ],
-  }),
-  'speed-networking-generator': createContent({
-    title: 'स्पीड नेटवर्किंग जनरेटर — कई राउंड, कम दोहराव | GroupMixer',
-    description:
-      'मुफ़्त स्पीड नेटवर्किंग जनरेटर। कई राउंड बनाएँ जहाँ प्रतिभागी हर बार नए लोगों से मिलें। दोहराए गए pairings अपने-आप कम करें।',
-    eyebrow: 'मिक्सर्स, मीटअप्स और नेटवर्किंग सेशंस के लिए',
-    heroTitle: 'स्पीड नेटवर्किंग जनरेटर',
-    subhead:
-      'कई नेटवर्किंग राउंड बनाएँ जहाँ लोग हर बार नए चेहरों से मिलें। नाम पेस्ट करें, राउंड्स सेट करें और repetition कम करें।',
-    audienceSummary:
-      'उन structured networking formats के लिए सबसे बेहतर जहाँ लक्ष्य नए connections बनाना हो, न कि बार-बार वही छोटे ग्रुप।',
-    faqEntries: [
-      {
-        question: 'स्पीड नेटवर्किंग जनरेटर कैसे काम करता है?',
-        answer:
-          'प्रतिभागियों के नाम पेस्ट करें, rounds की संख्या सेट करें और repeat pairings से बचने वाला विकल्प चालू करें। GroupMixer हर राउंड के लिए नए ग्रुप्स बनाने की कोशिश करता है।',
-      },
-      {
-        question: 'क्या मैं नेटवर्किंग ग्रुप साइज नियंत्रित कर सकता हूँ?',
-        answer:
-          'हाँ। आप प्रति राउंड ग्रुप्स की संख्या या प्रति ग्रुप लोगों की संख्या तय कर सकते हैं।',
-      },
-      FAQS.free,
-      FAQS.privacy,
       FAQS.workspace,
     ],
   }),

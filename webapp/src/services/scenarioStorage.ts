@@ -8,7 +8,7 @@ import type {
   SolverSettings,
   Solution,
 } from "../types";
-import { migrateSavedScenario, resolveScenarioWorkspaceState } from './scenarioAttributes';
+import { migrateSavedScenario, resolveScenarioWorkspaceState, savedScenarioNeedsAttributeMigration } from './scenarioAttributes';
 
 export { compareScenarioConfigurations, type ScenarioConfigDifference } from "./scenarioStorage/compare";
 
@@ -56,6 +56,10 @@ function normalizeScenarioForDraftIdentity(scenario: Scenario): Scenario {
   };
 }
 
+export function buildScenarioContentHash(scenario: Scenario): string {
+  return hashString(stableSerialize(normalizeScenarioForDraftIdentity(scenario)));
+}
+
 export function buildScenarioDraftIdentityHash(name: string, scenario: Scenario): string {
   return hashString(stableSerialize({ name, scenario: normalizeScenarioForDraftIdentity(scenario) }));
 }
@@ -81,8 +85,11 @@ export class ScenarioStorageService {
       let mutated = false;
       const migrated = Object.fromEntries(
         Object.entries(parsed).map(([id, scenario]) => {
-          const nextScenario = migrateSavedScenario(scenario);
-          if (JSON.stringify(nextScenario) !== JSON.stringify(scenario)) {
+          const nextScenario = savedScenarioNeedsAttributeMigration(scenario)
+            ? migrateSavedScenario(scenario)
+            : scenario;
+
+          if (nextScenario !== scenario) {
             mutated = true;
           }
           return [id, nextScenario];
@@ -130,7 +137,7 @@ export class ScenarioStorageService {
 
     return (
       allScenarios.find(
-        (savedScenario) => buildScenarioDraftIdentityHash(savedScenario.name, savedScenario.scenario) === targetHash
+        (savedScenario) => (savedScenario.draftIdentityHash ?? buildScenarioDraftIdentityHash(savedScenario.name, savedScenario.scenario)) === targetHash
       ) ?? null
     );
   }
@@ -140,6 +147,7 @@ export class ScenarioStorageService {
     const scenarios = this.getAllScenarios();
     scenarios[scenario.id] = {
       ...scenario,
+      draftIdentityHash: buildScenarioDraftIdentityHash(scenario.name, scenario.scenario),
       updatedAt: Date.now(),
     };
 
@@ -180,6 +188,7 @@ export class ScenarioStorageService {
       scenario: resolvedWorkspace.scenario,
       attributeDefinitions: resolvedWorkspace.attributeDefinitions,
       results: [],
+      draftIdentityHash: buildScenarioDraftIdentityHash(name, resolvedWorkspace.scenario),
       createdAt: now,
       updatedAt: now,
       isTemplate: templateFlag,
@@ -202,6 +211,7 @@ export class ScenarioStorageService {
     );
     savedScenario.attributeDefinitions = resolvedWorkspace.attributeDefinitions;
     savedScenario.scenario = resolvedWorkspace.scenario;
+    savedScenario.draftIdentityHash = buildScenarioDraftIdentityHash(savedScenario.name, resolvedWorkspace.scenario);
     this.scheduleAutoSave(savedScenario);
   }
 

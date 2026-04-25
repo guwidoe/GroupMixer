@@ -16,23 +16,22 @@ describe('landingInstrumentation attribution helpers', () => {
 
   it('derives a stable landing slug from canonical paths', () => {
     expect(canonicalPathToLandingSlug('/')).toBe('home');
-    expect(canonicalPathToLandingSlug('/random-team-generator')).toBe('random-team-generator');
-    expect(canonicalPathToLandingSlug('/es/random-team-generator')).toBe('random-team-generator');
-    expect(canonicalPathToLandingSlug('/de/random-team-generator')).toBe('random-team-generator');
+    expect(canonicalPathToLandingSlug('/es')).toBe('home');
+    expect(canonicalPathToLandingSlug('/de')).toBe('home');
     expect(canonicalPathToLandingSlug('/fr')).toBe('home');
-    expect(canonicalPathToLandingSlug('/ja/random-team-generator')).toBe('random-team-generator');
-    expect(canonicalPathToLandingSlug('/hi/random-team-generator')).toBe('random-team-generator');
-    expect(canonicalPathToLandingSlug('/zh/random-team-generator')).toBe('random-team-generator');
+    expect(canonicalPathToLandingSlug('/ja')).toBe('home');
+    expect(canonicalPathToLandingSlug('/hi')).toBe('home');
+    expect(canonicalPathToLandingSlug('/zh')).toBe('home');
   });
 
   it('reads experiment and variant from search while falling back to the landing slug', () => {
     expect(
       readTelemetryAttributionFromSearch({
         search: '?exp=seo-hero-test&var=B',
-        fallbackLandingSlug: 'random-team-generator',
+        fallbackLandingSlug: 'home',
       }),
     ).toEqual({
-      landingSlug: 'random-team-generator',
+      landingSlug: 'home',
       experiment: 'seo-hero-test',
       variant: 'B',
     });
@@ -41,25 +40,25 @@ describe('landingInstrumentation attribution helpers', () => {
   it('builds tracked app paths without cookies', () => {
     expect(
       buildTrackedAppPath('/app/results', {
-        landingSlug: 'random-team-generator',
+        landingSlug: 'home',
         experiment: 'seo-hero-test',
         variant: 'B',
       }),
-    ).toBe('/app/results?lp=random-team-generator&exp=seo-hero-test&var=B');
+    ).toBe('/app/results?lp=home&exp=seo-hero-test&var=B');
   });
 
   it('persists URL attribution for later app events in the same tab', () => {
     captureTelemetryAttributionFromSearch({
-      search: '?lp=random-team-generator&exp=seo-hero-test&var=B',
+      search: '?lp=home&exp=seo-hero-test&var=B',
     });
 
     expect(getPersistedTelemetryAttribution()).toEqual({
-      landingSlug: 'random-team-generator',
+      landingSlug: 'home',
       experiment: 'seo-hero-test',
       variant: 'B',
     });
     expect(getActiveTelemetryAttribution('')).toEqual({
-      landingSlug: 'random-team-generator',
+      landingSlug: 'home',
       experiment: 'seo-hero-test',
       variant: 'B',
     });

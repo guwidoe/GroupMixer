@@ -80,7 +80,8 @@ function createBlankPerson(people: Person[]): Person {
 
   return {
     id: nextId,
-    attributes: { name: '' },
+    name: '',
+    attributes: {},
     sessions: undefined,
   } satisfies Person;
 }
@@ -118,6 +119,7 @@ export function PeopleGridPerformanceHarness() {
 
       const normalizedPeople = people.map((person) => ({
         ...person,
+        name: person.name || person.id,
         sessions: Array.isArray(person.sessions) && person.sessions.length > 0
           ? Array.from(new Set(person.sessions)).sort((left, right) => left - right)
           : undefined,

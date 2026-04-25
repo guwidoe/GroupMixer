@@ -7,13 +7,25 @@ const TRUST_BULLETS = [
 ];
 
 const OPTIMIZER_FEATURES = [
-  'Zusammen halten',
-  'Bestimmte Paare vermeiden',
-  'Mehrere Runden',
-  'Durchmischung maximieren',
-  'Geschlechter balancieren',
-  'Beliebige Attribute balancieren',
-  'Ergebnisse anpassen',
+  'Teilweise Anwesenheit',
+  'Kapazitäten nach Gruppe und Session',
+  'Session-spezifische Regeln',
+  'Gewichtete weiche Constraints',
+  'Zielwerte für Paar-Begegnungen',
+  'Erweiterte Constraint-Feinsteuerung',
+  'Solver-Einstellungen',
+  'Ergebnisanalyse',
+];
+
+const OPTIMIZER_FEATURE_EXPLANATIONS = [
+  'Lege fest, welche Personen in welchen Sessions teilnehmen, statt alle in jeder Runde einzuplanen.',
+  'Gib jeder Gruppe eine eigene Kapazität und überschreibe sie pro Session, wenn Raumgrößen oder Betreuung wechseln.',
+  'Wende Zusammenhalten-, Trennen-, Pinning-, Wiederholungs- und Balance-Regeln nur auf relevante Sessions an.',
+  'Füge Präferenzen hinzu, die bei Bedarf verletzt werden dürfen, und gewichte sie gegenüber anderen Zielen.',
+  'Steuere, wie oft bestimmte Paare sich im Plan begegnen sollen, inklusive exakter, minimaler oder maximaler Zielwerte.',
+  'Feinsteuere Wiederholungslimits, Attribut-Balance-Modi, Penalties und weitere Constraint-Details.',
+  'Passe Laufzeitlimits, deterministische Seeds, Solver-Familie und weitere Optimierungseinstellungen an.',
+  'Prüfe Score-Aufschlüsselungen, Constraint-Erfüllung, Penalties und gespeicherte Ergebnisse genauer.',
 ];
 
 const CHROME = {
@@ -57,33 +69,6 @@ const USE_CASES_SECTION = {
   ],
 };
 
-const ADVANCED_SECTION = {
-  title: 'Mehr Kontrolle nötig?',
-  description:
-    'GroupMixer ist mehr als ein einfacher Zufallsgenerator. Wenn einfache Gruppen nicht reichen, kannst du direkt erweiterte Regeln nutzen.',
-  cards: [
-    {
-      title: 'Bestimmte Personen zusammen halten',
-      body: 'Sorge dafür, dass Freunde, Kolleg:innen oder vorab definierte Paare immer in derselben Gruppe landen.',
-    },
-    {
-      title: 'Bestimmte Personen trennen',
-      body: 'Verhindere, dass bestimmte Personen gemeinsam in einer Gruppe landen.',
-    },
-    {
-      title: 'Wiederholungen vermeiden',
-      body: 'Plane mehrere Runden, ohne dass dieselben Personen immer wieder zusammenkommen.',
-    },
-    {
-      title: 'Gruppen nach Attributen balancieren',
-      body: 'Nutze CSV-Eingaben, um Gruppen nach Rolle, Skill, Abteilung oder beliebigen Spalten auszugleichen.',
-    },
-  ],
-  buttonLabel: 'Szenario-Editor öffnen',
-  supportingText:
-    'Im Szenario-Editor steuerst du Sessions, Regeln, Solver-Einstellungen und die Detailanalyse vollständig selbst.',
-};
-
 const FAQS = {
   free: {
     question: 'Ist GroupMixer kostenlos?',
@@ -108,7 +93,7 @@ const FAQS = {
   workspace: {
     question: 'Was ist der Szenario-Editor?',
     answer:
-      'Der Szenario-Editor bietet detaillierte Kontrolle über Sessions, Regeln, Solver-Einstellungen, das Weiterarbeiten mit früheren Ergebnissen und die vollständige Ergebnisanalyse.',
+      'Der Szenario-Editor ist für Funktionen gedacht, die diese Seite nicht abdeckt: Teilanwesenheit, Kapazitäten nach Gruppe und Session, session-spezifische Regeln, gewichtete weiche Constraints, Zielwerte für Paar-Begegnungen, erweiterte Constraint-Feinsteuerung, Solver-Einstellungen, frühere Ergebnisse und Ergebnisanalyse.',
   },
 };
 
@@ -139,16 +124,16 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: 'Mehr als nur Zufall gesucht?',
-      title: 'Nutze den vollständigen Gruppen-Optimierer.',
+      eyebrow: 'Brauchst du noch mehr Kontrolle?',
+      title: 'Öffne den vollständigen Szenario-Editor.',
       featureBullets: OPTIMIZER_FEATURES,
+      featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: 'Szenario-Editor öffnen',
-      supportingText: 'Deine Eingaben von dieser Seite werden direkt übernommen.',
+      supportingText: 'Nutze ihn für Möglichkeiten, die diese Seite nicht abdeckt. Deine Eingaben werden direkt übernommen.',
     },
     faqEntries,
     chrome: CHROME,
     useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
   };
 }
 
@@ -172,162 +157,6 @@ export const DE_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
       FAQS.privacy,
       FAQS.constraints,
       FAQS.multiSession,
-      FAQS.workspace,
-    ],
-  }),
-  'random-group-generator': createContent({
-    title: 'Zufalls-Gruppengenerator — Gruppen aus einer Namensliste erstellen | GroupMixer',
-    description:
-      'Kostenloser Zufalls-Gruppengenerator. Namensliste einfügen, Gruppenzahl wählen und sofort aufteilen. Ideal für Klassen, Workshops und Veranstaltungen.',
-    eyebrow: 'Für schnelle Zufallsaufteilungen',
-    heroTitle: 'Zufalls-Gruppengenerator',
-    subhead:
-      'Füge eine Namensliste ein, wähle die gewünschte Gruppenzahl und teile sofort auf. Keine Anmeldung, kein Server — alles läuft im Browser.',
-    audienceSummary:
-      'Ideal, wenn du schnell und ohne Aufwand Gruppen für Unterricht, Workshops oder Event-Logistik erstellen willst.',
-    faqEntries: [
-      {
-        question: 'Wie funktioniert der Zufalls-Gruppengenerator?',
-        answer:
-          'Füge die Namen zeilenweise ein, stelle Gruppenzahl oder Gruppengröße ein und klicke auf Generieren. GroupMixer erstellt sofort eine ausgewogene Zufallsaufteilung.',
-      },
-      {
-        question: 'Kann ich die Anzahl der Gruppen oder die Gruppengröße festlegen?',
-        answer:
-          'Ja. Du kannst entweder eine feste Gruppenzahl oder eine feste Gruppengröße vorgeben. GroupMixer übernimmt den Rest.',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'random-team-generator': createContent({
-    title: 'Zufalls-Teamgenerator — Faire Teams schnell erstellen | GroupMixer',
-    description:
-      'Kostenloser Zufalls-Teamgenerator. Namen einfügen und sofort ausgewogene Teams erstellen. Bei Bedarf kannst du Skills, Rollen oder Regeln berücksichtigen.',
-    eyebrow: 'Für Coaches, Leads und Facilitator:innen',
-    heroTitle: 'Zufalls-Teamgenerator',
-    subhead:
-      'Erstelle in Sekunden zufällige Teams. Namen einfügen, Teamanzahl wählen und generieren. Für mehr Fairness kannst du Regeln ergänzen.',
-    audienceSummary:
-      'Ideal für teamorientierte Aktivitäten, bei denen Fairness wichtiger ist als reine Zufälligkeit — besonders wenn Rollen oder Fähigkeiten verteilt werden sollen.',
-    faqEntries: [
-      {
-        question: 'Wie erstelle ich zufällige Teams?',
-        answer:
-          'Füge die Namen der Teilnehmenden ein, wähle die Anzahl der Teams und klicke auf Generieren. GroupMixer teilt sofort fair auf.',
-      },
-      {
-        question: 'Kann ich Teams nach Skill oder Rolle balancieren?',
-        answer:
-          'Ja. Wechsle in den CSV-Modus, ergänze Spalten wie „Rolle“ oder „Skill“ und nutze dann die Balancierung nach Attribut.',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.multiSession,
-    ],
-  }),
-  'breakout-room-generator': createContent({
-    title: 'Breakout-Room-Generator — Teilnehmende auf Räume verteilen | GroupMixer',
-    description:
-      'Kostenloser Breakout-Room-Generator. Namen einfügen und Teilnehmende sofort auf Räume verteilen. Ideal für Unterricht, Workshops und Remote-Meetings.',
-    eyebrow: 'Für Zoom, Trainings und Workshops',
-    heroTitle: 'Breakout-Room-Generator',
-    subhead:
-      'Verteile Teilnehmende sofort auf Breakout-Räume. Namen einfügen, Raumanzahl festlegen und generieren.',
-    audienceSummary:
-      'Praktisch, wenn du Räume schnell zuweisen willst, aber trotzdem Rundenrotationen und weniger Wiederholungen brauchst.',
-    faqEntries: [
-      {
-        question: 'Wie erstelle ich Breakout-Rooms?',
-        answer:
-          'Füge die Teilnehmenden ein, wähle die Anzahl der Räume und klicke auf Generieren. GroupMixer verteilt alle sofort auf die Räume.',
-      },
-      {
-        question: 'Kann ich Personen über mehrere Runden rotieren lassen?',
-        answer:
-          'Ja. Lege mehrere Sessions fest und aktiviere „Wiederholungen vermeiden“, damit Menschen möglichst neue Kontakte treffen.',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'workshop-group-generator': createContent({
-    title: 'Workshop-Gruppengenerator — Kleine Gruppen für Sessions erstellen | GroupMixer',
-    description:
-      'Kostenloser Workshop-Gruppengenerator. Teile Teilnehmende für Aktivitäten, Breakouts und mehrstufige Sessions in kleine Gruppen ein. Regeln lassen sich bei Bedarf ergänzen.',
-    eyebrow: 'Für Facilitator:innen kollaborativer Sessions',
-    heroTitle: 'Workshop-Gruppengenerator',
-    subhead:
-      'Erstelle Workshop-Gruppen in Sekunden. Starte einfach und ergänze bei Bedarf Runden, Balance oder Pairing-Regeln.',
-    audienceSummary:
-      'Besonders nützlich für Workshops, bei denen die Gruppenzusammensetzung die Qualität der Gespräche und Begegnungen beeinflusst.',
-    faqEntries: [
-      {
-        question: 'Wie erstelle ich Workshop-Gruppen?',
-        answer:
-          'Füge die Namen der Teilnehmenden ein, stelle Gruppenzahl oder Gruppengröße ein und klicke auf Generieren. Die Gruppen sind sofort einsatzbereit.',
-      },
-      {
-        question: 'Kann ich Personen zwischen Workshop-Runden durchmischen?',
-        answer:
-          'Ja. Mit mehreren Sessions und der Vermeidung von Wiederholungen triffst du über die Agenda hinweg häufiger neue Kombinationen.',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'student-group-generator': createContent({
-    title: 'Schülergruppen-Generator — Klassen schnell in Gruppen einteilen | GroupMixer',
-    description:
-      'Kostenloser Schülergruppen-Generator. Klassenliste einfügen und in Sekunden ausgewogene Gruppen bilden. Bei Bedarf kannst du festlegen, wer zusammen oder getrennt bleiben soll.',
-    eyebrow: 'Für Lehrkräfte und Unterrichtssituationen',
-    heroTitle: 'Schülergruppen-Generator',
-    subhead:
-      'Füge deine Klassenliste ein und erstelle sofort Gruppen. Bei Bedarf ergänzt du Regeln wie „zusammen halten“ oder „trennen“.',
-    audienceSummary:
-      'Gemacht für Lehrkräfte, die Gruppen schnell erstellen möchten, ohne Kontrolle über Fairness und sensible Kombinationen zu verlieren.',
-    faqEntries: [
-      {
-        question: 'Wie erstelle ich Schülergruppen?',
-        answer:
-          'Füge die Schülernamen zeilenweise ein, wähle die Anzahl der Gruppen und klicke auf Generieren. GroupMixer übernimmt den Rest.',
-      },
-      {
-        question: 'Kann ich bestimmte Schüler:innen zusammen oder getrennt halten?',
-        answer:
-          'Ja. In den erweiterten Optionen kannst du „zusammen halten“ und „nicht zusammen“ festlegen.',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.multiSession,
-    ],
-  }),
-  'speed-networking-generator': createContent({
-    title: 'Speed-Networking-Generator — Mehrere Runden, weniger Wiederholungen | GroupMixer',
-    description:
-      'Kostenloser Speed-Networking-Generator. Erstelle mehrere Runden, in denen Teilnehmende möglichst oft neue Menschen treffen. Wiederholungen werden automatisch reduziert.',
-    eyebrow: 'Für Mixer, Meetups und Networking-Formate',
-    heroTitle: 'Speed-Networking-Generator',
-    subhead:
-      'Erzeuge mehrere Networking-Runden, damit Menschen jedes Mal neue Kontakte treffen. Namen einfügen, Runden festlegen und Wiederholungen minimieren.',
-    audienceSummary:
-      'Optimal für strukturierte Networking-Formate, bei denen neue Verbindungen wichtiger sind als dieselben kleinen Gruppen.',
-    faqEntries: [
-      {
-        question: 'Wie funktioniert der Speed-Networking-Generator?',
-        answer:
-          'Füge die Namen der Teilnehmenden ein, stelle die Anzahl der Runden ein und aktiviere „Wiederholungen vermeiden“. GroupMixer erstellt dann passende Gruppen für jede Runde.',
-      },
-      {
-        question: 'Kann ich die Gruppengröße steuern?',
-        answer:
-          'Ja. Du kannst entweder die Anzahl der Gruppen pro Runde oder die Personen pro Gruppe festlegen.',
-      },
-      FAQS.free,
-      FAQS.privacy,
       FAQS.workspace,
     ],
   }),

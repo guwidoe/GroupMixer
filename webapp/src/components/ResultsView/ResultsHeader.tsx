@@ -1,9 +1,10 @@
 import React from 'react';
-import { Info } from 'lucide-react';
+import { History, Info, PenSquare } from 'lucide-react';
 import type { Solution } from '../../types';
 import type { ScenarioConfigDifference } from '../../services/scenarioStorage';
 import type { ResultsSummaryData } from '../../services/results/buildResultsModel';
 import { Tooltip } from '../Tooltip';
+import { Button } from '../ui';
 import { ConfigDiffBadge } from './ConfigDiffBadge';
 import { ResultsExportDropdown } from './ResultsExportDropdown';
 import type { ResultClipboardAction, ResultExportAction } from '../../utils/csvExport';
@@ -13,6 +14,9 @@ interface ResultsHeaderProps {
   solution: Solution;
   summary: ResultsSummaryData | null;
   configDiff: ScenarioConfigDifference | null;
+  showSavedResultsAction?: boolean;
+  onOpenSavedResults?: () => void;
+  onOpenManualEditor?: () => void;
   configDetailsOpen: boolean;
   onToggleConfigDetails: () => void;
   onRestoreConfig: () => void;
@@ -32,6 +36,9 @@ export function ResultsHeader({
   solution,
   summary,
   configDiff,
+  showSavedResultsAction = false,
+  onOpenSavedResults,
+  onOpenManualEditor,
   configDetailsOpen,
   onToggleConfigDetails,
   onRestoreConfig,
@@ -82,6 +89,24 @@ export function ResultsHeader({
         </div>
 
         <div className="results-print-hide flex flex-col gap-2 sm:flex-row sm:gap-2 sm:self-start">
+          {onOpenManualEditor ? (
+            <Button
+              variant="secondary"
+              leadingIcon={<PenSquare className="h-4 w-4" />}
+              onClick={onOpenManualEditor}
+            >
+              Open Manual Editor
+            </Button>
+          ) : null}
+          {showSavedResultsAction && onOpenSavedResults ? (
+            <Button
+              variant="secondary"
+              leadingIcon={<History className="h-4 w-4" />}
+              onClick={onOpenSavedResults}
+            >
+              Saved Results
+            </Button>
+          ) : null}
           <ResultsExportDropdown
             isOpen={exportDropdownOpen}
             onToggle={onToggleExportDropdown}

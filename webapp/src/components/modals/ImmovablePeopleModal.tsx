@@ -147,7 +147,7 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
                   .filter(p => {
                     const q = personSearch.trim().toLowerCase();
                     if (!q) return true;
-                    const name = (p.attributes?.name || '').toString().toLowerCase();
+                    const name = p.name.toLowerCase();
                     const id = p.id.toLowerCase();
                     return name.includes(q) || id.includes(q);
                   })
@@ -160,7 +160,7 @@ export function ImmovablePeopleModal({ sessionsCount, initial, onCancel, onSave 
                       className="w-4 h-4"
                       style={{ accentColor: 'var(--color-accent)' }}
                     />
-                    <span className="text-sm">{p.attributes.name}</span>
+                    <span className="text-sm">{p.name}</span>
                   </label>
                 ))
               ) : (

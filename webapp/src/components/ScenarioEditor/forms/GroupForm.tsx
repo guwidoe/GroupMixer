@@ -5,6 +5,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import type { Group, GroupFormData } from '../../../types';
+import { NumberField, NUMBER_FIELD_PRESETS } from '../../ui';
 
 type GroupFormInputs = {
   size?: string;
@@ -106,29 +107,26 @@ const GroupForm: React.FC<GroupFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-              Default capacity *
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="20"
-              value={baseSizeValue}
-              onChange={(e) => {
-                const value = e.target.value;
+            <NumberField
+              label="Default capacity *"
+              value={Number.isNaN(Number.parseInt(baseSizeValue, 10)) ? groupForm.size : Number.parseInt(baseSizeValue, 10)}
+              onChange={(value) => {
+                const next = String(Math.max(1, Math.round(value ?? groupForm.size)));
                 setGroupFormInputs((prev) => ({
                   ...prev,
-                  size: value,
+                  size: next,
                   sessionSizes:
                     Array.isArray(prev.sessionSizes) && prev.sessionSizes.length > 0
                       ? prev.sessionSizes.map((sessionValue) => {
                           const previousBase = prev.size ?? groupForm.size.toString();
-                          return sessionValue === '' || sessionValue === previousBase ? value : sessionValue;
+                          return sessionValue === '' || sessionValue === previousBase ? next : sessionValue;
                         })
                       : prev.sessionSizes,
                 }));
               }}
-              className={`input ${isSizeInvalid ? 'border-red-500 focus:border-red-500' : ''}`}
+              error={isSizeInvalid ? 'Enter 1 or greater.' : undefined}
+              {...NUMBER_FIELD_PRESETS.groupCapacity}
+              min={1}
             />
             <p className="text-xs mt-1" style={{ color: 'var(--text-tertiary)' }}>
               Used for every session unless you set custom session capacities below
@@ -159,28 +157,25 @@ const GroupForm: React.FC<GroupFormProps> = ({
                   const value = sessionSizeInputs[sessionIndex] ?? baseSizeValue;
                   return (
                     <div key={sessionIndex}>
-                      <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                        Session {sessionIndex + 1}
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="20"
-                        value={value}
-                        onChange={(e) => {
-                          const nextValue = e.target.value;
+                      <NumberField
+                        label={`Session ${sessionIndex + 1}`}
+                        value={Number.isNaN(Number.parseInt(value, 10)) ? 0 : Number.parseInt(value, 10)}
+                        onChange={(nextValue) => {
+                          const nextText = String(Math.max(0, Math.round(nextValue ?? 0)));
                           setGroupFormInputs((prev) => {
                             const nextSessionSizes = prev.sessionSizes
                               ? [...prev.sessionSizes]
                               : Array.from({ length: sessionsCount }, () => baseSizeValue || groupForm.size.toString());
-                            nextSessionSizes[sessionIndex] = nextValue;
+                            nextSessionSizes[sessionIndex] = nextText;
                             return {
                               ...prev,
                               sessionSizes: nextSessionSizes,
                             };
                           });
                         }}
-                        className={`input ${hasInvalidSessionSize ? 'border-red-500 focus:border-red-500' : ''}`}
+                        error={hasInvalidSessionSize ? 'Enter 0 or greater.' : undefined}
+                        {...NUMBER_FIELD_PRESETS.groupCapacity}
+                        className="w-full"
                       />
                     </div>
                   );

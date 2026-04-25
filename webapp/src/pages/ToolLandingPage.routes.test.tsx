@@ -11,6 +11,14 @@ const ROUTE_CASES = TOOL_PAGE_ROUTES.map((route) => ({
   config: getToolPageConfig(route.key, route.locale),
 }));
 
+function getExpectedHeadingName(routeKey: string, locale: string, fallback: string) {
+  if (routeKey === 'home' && locale === 'en') {
+    return 'Group Generator - Random, Balanced & Multi-Round';
+  }
+
+  return fallback;
+}
+
 describe('ToolLandingPage route inventory', () => {
   beforeEach(() => {
     window.localStorage.clear();
@@ -40,15 +48,13 @@ describe('ToolLandingPage route inventory', () => {
     expect(
       await screen.findByRole('heading', {
         level: 1,
-        name: config.hero.title,
+        name: getExpectedHeadingName(route.key, route.locale, config.hero.title),
       }),
     ).toBeInTheDocument();
 
-    expect(screen.getByText(config.hero.eyebrow)).toBeInTheDocument();
-    if (config.hero.audienceSummary) {
-      expect(screen.getByText(config.hero.audienceSummary)).toBeInTheDocument();
-    }
-    expect(screen.getByRole('heading', { level: 2, name: config.optimizerCta.title })).toBeInTheDocument();
+    expect(screen.getByText(config.optimizerCta.eyebrow)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: config.optimizerCta.title })).toBeInTheDocument();
+    expect(screen.getByText(config.optimizerCta.supportingText)).toBeInTheDocument();
     expect(document.title).toBe(config.seo.title);
     expect(document.documentElement.lang).toBe(getLocaleHrefLang(route.locale));
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(config.seo.description);

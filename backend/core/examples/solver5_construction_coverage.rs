@@ -12,7 +12,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs;
 
-const EXTENDED_LITERATURE_TARGETS_JSON: &str =
+const SUPPLEMENTARY_LITERATURE_TARGETS_JSON: &str =
     include_str!("../src/solver5/targets/solver5_supplementary_literature_targets.v1.json");
 
 #[derive(Debug, Clone, Serialize)]
@@ -20,29 +20,20 @@ struct CellSummary {
     g: usize,
     p: usize,
     scored: bool,
-    visual_only: bool,
+    upper_bound: Option<usize>,
     constructed_weeks: Option<usize>,
     target_weeks: Option<usize>,
-    upper_bound_weeks: Option<usize>,
-    proven_optimal_weeks: Option<usize>,
-    glyph_center_text: String,
-    glyph_top_left_text: Option<String>,
-    glyph_top_right_text: Option<String>,
-    glyph_bottom_left_text: Option<String>,
-    glyph_bottom_right_text: Option<String>,
-    fill_basis_weeks: Option<usize>,
-    fill_basis_kind: Option<String>,
-    border_kind: String,
-    target_kind: Option<String>,
+    gap_to_target: usize,
+    current_display: String,
+    target_display: String,
     method_abbreviation: Option<String>,
-    desired_method_abbreviation: Option<String>,
-    method_policy_status: String,
-    method_preference_reason_code: Option<String>,
-    method_preference_reason: Option<String>,
+    target_method_abbreviation: Option<String>,
     target_basis: Option<String>,
     target_reference_keys: Vec<String>,
-    upper_bound_basis: Option<String>,
     heuristic_target_weeks: Option<usize>,
+    heuristic_gap_to_target: Option<usize>,
+    proven_optimal_weeks: Option<usize>,
+    proven_optimal_gap: Option<usize>,
     optimality_lower_bound_weeks: Option<usize>,
     family_label: Option<String>,
     operator_labels: Vec<String>,
@@ -54,8 +45,11 @@ struct CellSummary {
 struct MatrixArtifact<'a> {
     matrix_name: &'a str,
     matrix_version: u32,
+    visual_bounds: BoundsArtifact,
+    scored_bounds: BoundsArtifact,
     benchmark_regions: Vec<BenchmarkRegionArtifact>,
-    matrices: Vec<MatrixViewArtifact>,
+    cells: Vec<CellSummary>,
+    supplementary_matrices: Vec<SupplementaryMatrixArtifact>,
     literature_references: Vec<LiteratureReferenceArtifact>,
 }
 
@@ -74,11 +68,30 @@ struct BenchmarkRegionArtifact {
 }
 
 #[derive(Debug, Serialize)]
-struct MatrixViewArtifact {
+struct SupplementaryMatrixArtifact {
     title: String,
     subtitle: String,
     bounds: BoundsArtifact,
-    cells: Vec<CellSummary>,
+    cells: Vec<SupplementaryCellSummary>,
+}
+
+#[derive(Debug, Serialize)]
+struct SupplementaryCellSummary {
+    g: usize,
+    p: usize,
+    upper_bound: Option<usize>,
+    constructed_weeks: Option<usize>,
+    literature_target_weeks: Option<usize>,
+    current_display: String,
+    upper_display: String,
+    literature_target_display: Option<String>,
+    method_abbreviation: Option<String>,
+    family_label: Option<String>,
+    operator_labels: Vec<String>,
+    quality_label: Option<String>,
+    literature_target_basis: Option<String>,
+    literature_reference_keys: Vec<String>,
+    visual_note: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -91,7 +104,7 @@ struct LiteratureReferenceArtifact {
 }
 
 #[derive(Debug, Deserialize)]
-struct ExtendedLiteratureTargetFile {
+struct SupplementaryLiteratureTargetFile {
     version: u32,
     name: String,
     bounds: MatrixBounds,
@@ -100,13 +113,13 @@ struct ExtendedLiteratureTargetFile {
 }
 
 #[derive(Debug)]
-struct ExtendedLiteratureTargets {
+struct SupplementaryLiteratureTargets {
     bounds: MatrixBounds,
     target_rows: Vec<Vec<Option<usize>>>,
     basis_rows: Vec<Vec<String>>,
 }
 
-impl ExtendedLiteratureTargets {
+impl SupplementaryLiteratureTargets {
     fn target_for(&self, g: usize, p: usize) -> Option<usize> {
         let (row_idx, col_idx) = self.cell_indices(g, p)?;
         *self.target_rows.get(row_idx)?.get(col_idx)?
@@ -141,8 +154,8 @@ fn main() {
     }
 
     let target_matrix = load_default_target_matrix().expect("default target matrix should load");
-    let extended_targets =
-        load_extended_literature_targets().expect("extended literature targets should load");
+    let supplementary_targets = load_supplementary_literature_targets()
+        .expect("supplementary literature targets should load");
     let literature_references = supplementary_literature_references();
     let benchmark_regions = vec![
         BenchmarkRegionArtifact {
@@ -173,6 +186,7 @@ fn main() {
             },
         },
     ];
+    let mut cells = Vec::new();
     let mut total_constructed_weeks = 0usize;
     let mut frontier_gap_sum = 0usize;
     let mut solved_cells = 0usize;
@@ -180,48 +194,71 @@ fn main() {
     let mut benchmark_cell_count = 0usize;
     let mut per_p_totals: BTreeMap<usize, usize> = BTreeMap::new();
 
-    let knowledge = CellKnowledgeLayer {
-        target_matrix: &target_matrix,
-        extended_targets: &extended_targets,
-    };
-    let resolver = CellResolver {
-        knowledge: &knowledge,
-    };
+    for groups in target_matrix.visual_bounds.g_min..=target_matrix.visual_bounds.g_max {
+        for group_size in target_matrix.visual_bounds.p_min..=target_matrix.visual_bounds.p_max {
+            let target = target_matrix
+                .target_for(groups, group_size)
+                .expect("visual bounds should have target cell");
+            let cell = if target_matrix.is_scored_cell(groups, group_size) {
+                let upper_bound = counting_bound(groups, group_size);
+                let target_weeks = match target {
+                    MatrixCellTarget::Finite(value) => *value,
+                    MatrixCellTarget::Infinite => upper_bound,
+                };
+                let scored_cell = best_constructed_scored_cell(
+                    groups,
+                    group_size,
+                    upper_bound,
+                    target_weeks,
+                    &target_matrix,
+                );
+                let constructed_weeks = scored_cell.constructed_weeks.unwrap_or(0);
+                accumulate_benchmark_metrics(
+                    group_size,
+                    upper_bound,
+                    constructed_weeks,
+                    &mut total_constructed_weeks,
+                    &mut frontier_gap_sum,
+                    &mut solved_cells,
+                    &mut exact_frontier_cells,
+                    &mut benchmark_cell_count,
+                    &mut per_p_totals,
+                );
+                scored_cell
+            } else {
+                visual_only_cell(groups, group_size, target, &target_matrix)
+            };
+            cells.push(cell);
+        }
+    }
 
-    let matrices = vec![
-        build_matrix_view(
-            "Coverage view: g=1..10, p=1..10",
-            "Range view over the global cell universe. Universal glyph grammar: center=W, top-left=O, top-right=T, bottom-left=U, bottom-right=M.",
+    let supplementary_matrices = vec![
+        build_supplementary_matrix(
+            "Supplementary coverage: g=11..20, p=1..10",
+            "Additional benchmark region. Center = current constructed weeks, top-right = conservative literature target T when curated from the 2026 paper, bottom-left = counting upper bound U when a curated target exists, and bottom-right = achieving family. Fill grades against T when present, otherwise against U. Only the trivial p=1 column stays excluded from the objective.",
+            11,
+            20,
             1,
             10,
-            1,
-            10,
-            &resolver,
+            &supplementary_targets,
+            &target_matrix,
         ),
-        build_matrix_view(
-            "Coverage view: g=11..20, p=1..10",
-            "Range view over the same global cell universe. Universal glyph grammar: center=W, top-left=O, top-right=T, bottom-left=U, bottom-right=M.",
-            11,
-            20,
-            1,
-            10,
-            &resolver,
-        ),
-        build_matrix_view(
-            "Coverage view: g=11..20, p=11..20",
-            "Range view over the same global cell universe. Universal glyph grammar: center=W, top-left=O, top-right=T, bottom-left=U, bottom-right=M.",
+        build_supplementary_matrix(
+            "Supplementary coverage: g=11..20, p=11..20",
+            "Additional benchmark diagonal/high-p region. Center = current constructed weeks, top-right = conservative literature target T when curated from the 2026 paper, bottom-left = counting upper bound U when a curated target exists, and bottom-right = achieving family. Fill grades against T when present, otherwise against U. Blank T means no clean paper-derived target is curated yet for that cell, but the cell still counts in the benchmark via its current constructed weeks and counting upper bound.",
             11,
             20,
             11,
             20,
-            &resolver,
+            &supplementary_targets,
+            &target_matrix,
         ),
     ];
 
-    for matrix in &matrices {
+    for matrix in &supplementary_matrices {
         for cell in &matrix.cells {
             if let (Some(upper_bound), Some(constructed_weeks)) =
-                (cell.upper_bound_weeks, cell.constructed_weeks)
+                (cell.upper_bound, cell.constructed_weeks)
             {
                 accumulate_benchmark_metrics(
                     cell.p,
@@ -242,14 +279,16 @@ fn main() {
     println!("METRIC frontier_gap_sum={frontier_gap_sum}");
     println!("METRIC solved_cells={solved_cells}");
     println!("METRIC exact_frontier_cells={exact_frontier_cells}");
-    println!(
-        "METRIC unsolved_cells={}",
-        benchmark_cell_count - solved_cells
-    );
+    println!("METRIC unsolved_cells={}", benchmark_cell_count - solved_cells);
     for (group_size, total) in per_p_totals {
         println!("METRIC p{}_constructed_weeks={}", group_size, total);
     }
-    for matrix in &matrices {
+    for cell in &cells {
+        if let Some(constructed_weeks) = cell.constructed_weeks {
+            println!("METRIC W_{}_{}={}", cell.g, cell.p, constructed_weeks);
+        }
+    }
+    for matrix in &supplementary_matrices {
         for cell in &matrix.cells {
             if let Some(constructed_weeks) = cell.constructed_weeks {
                 println!("METRIC W_{}_{}={}", cell.g, cell.p, constructed_weeks);
@@ -261,359 +300,26 @@ fn main() {
         let artifact = MatrixArtifact {
             matrix_name: &target_matrix.name,
             matrix_version: target_matrix.version,
+            visual_bounds: BoundsArtifact {
+                g_min: target_matrix.visual_bounds.g_min,
+                g_max: target_matrix.visual_bounds.g_max,
+                p_min: target_matrix.visual_bounds.p_min,
+                p_max: target_matrix.visual_bounds.p_max,
+            },
+            scored_bounds: BoundsArtifact {
+                g_min: target_matrix.scored_bounds.g_min,
+                g_max: target_matrix.scored_bounds.g_max,
+                p_min: target_matrix.scored_bounds.p_min,
+                p_max: target_matrix.scored_bounds.p_max,
+            },
             benchmark_regions,
-            matrices,
+            cells,
+            supplementary_matrices,
             literature_references,
         };
         let json = serde_json::to_string_pretty(&artifact)
             .expect("matrix artifact should serialize cleanly");
         fs::write(path, json).expect("should write coverage matrix json");
-    }
-}
-
-struct CellKnowledgeLayer<'a> {
-    target_matrix: &'a gm_core::solver5::reporting::Solver5TargetMatrix,
-    extended_targets: &'a ExtendedLiteratureTargets,
-}
-
-impl CellKnowledgeLayer<'_> {
-    fn resolve_target_info(
-        &self,
-        groups: usize,
-        group_size: usize,
-        upper_bound: usize,
-    ) -> TargetInfo {
-        if let Some(cell) = self.target_matrix.target_for(groups, group_size) {
-            let weeks = Some(match cell {
-                MatrixCellTarget::Finite(value) => *value,
-                MatrixCellTarget::Infinite => upper_bound,
-            });
-            let target_method_label = self.target_matrix.target_method_for(groups, group_size);
-            let desired_method_abbreviation = target_method_label
-                .and_then(|label| self.target_matrix.abbreviation_for(label))
-                .map(str::to_string);
-            let basis = target_method_label.map(|label| {
-                let abbreviation = self.target_matrix.abbreviation_for(label).unwrap_or(label);
-                format!("Target family: {abbreviation}")
-            });
-            return TargetInfo {
-                weeks,
-                desired_method_abbreviation,
-                kind: Some("roadmap".into()),
-                basis,
-                reference_keys: canonical_reference_keys_for_label(target_method_label),
-            };
-        }
-
-        let weeks = self.extended_targets.target_for(groups, group_size);
-        let basis = self
-            .extended_targets
-            .basis_for(groups, group_size)
-            .map(str::to_string);
-        let reference_keys = if weeks.is_some() {
-            vec!["mva2026".to_string()]
-        } else {
-            Vec::new()
-        };
-        TargetInfo {
-            weeks,
-            desired_method_abbreviation: None,
-            kind: Some("literature".into()),
-            basis,
-            reference_keys,
-        }
-    }
-
-    fn heuristic_target_weeks(&self, groups: usize, group_size: usize) -> Option<usize> {
-        self.target_matrix
-            .heuristic_target_weeks_for(groups, group_size)
-    }
-
-    fn proven_optimal_weeks(&self, groups: usize, group_size: usize) -> Option<usize> {
-        self.target_matrix
-            .proven_optimal_weeks_for(groups, group_size)
-    }
-
-    fn optimality_lower_bound_weeks(&self, groups: usize, group_size: usize) -> Option<usize> {
-        self.target_matrix
-            .optimality_lower_bound_weeks_for(groups, group_size)
-    }
-}
-
-struct CellResolver<'a> {
-    knowledge: &'a CellKnowledgeLayer<'a>,
-}
-
-impl CellResolver<'_> {
-    fn resolve_cell(&self, groups: usize, group_size: usize) -> CellSummary {
-        if is_visual_only_cell(groups, group_size) {
-            return self.resolve_visual_only_cell(groups, group_size);
-        }
-
-        let upper_bound = global_upper_bound(groups, group_size);
-        let target = self
-            .knowledge
-            .resolve_target_info(groups, group_size, upper_bound);
-        let heuristic_target_weeks = self.knowledge.heuristic_target_weeks(groups, group_size);
-        let proven_optimal_weeks = self
-            .knowledge
-            .proven_optimal_weeks(groups, group_size)
-            .or_else(|| {
-                target
-                    .weeks
-                    .filter(|target_weeks| *target_weeks == upper_bound)
-            })
-            .or_else(|| {
-                if is_pigeonhole_one_week_exact(groups, group_size) {
-                    Some(1)
-                } else {
-                    None
-                }
-            });
-        let optimality_lower_bound_weeks = self
-            .knowledge
-            .optimality_lower_bound_weeks(groups, group_size);
-        let (constructed_weeks, method_abbreviation, inspection) = best_constructed_summary(
-            groups,
-            group_size,
-            upper_bound,
-            self.knowledge.target_matrix,
-        );
-        let (family_label, operator_labels, quality_label) = inspection
-            .map(|inspection| {
-                (
-                    Some(inspection.family_label),
-                    inspection.operator_labels,
-                    Some(inspection.quality_label),
-                )
-            })
-            .unwrap_or((None, Vec::new(), None));
-        let method_preference = resolve_method_preference(
-            method_abbreviation.as_deref(),
-            target.desired_method_abbreviation.as_deref(),
-            groups,
-            group_size,
-            target.basis.as_deref(),
-        );
-
-        build_cell_summary(
-            groups,
-            group_size,
-            self.knowledge
-                .target_matrix
-                .is_scored_cell(groups, group_size),
-            false,
-            Some(constructed_weeks),
-            target.weeks,
-            Some(upper_bound),
-            proven_optimal_weeks,
-            method_abbreviation,
-            method_preference.desired_method_abbreviation,
-            method_preference.policy_status,
-            method_preference.reason_code,
-            method_preference.reason,
-            target.kind,
-            target.basis,
-            target.reference_keys,
-            Some(upper_bound_basis(groups, group_size, upper_bound)),
-            heuristic_target_weeks,
-            optimality_lower_bound_weeks,
-            family_label,
-            operator_labels,
-            quality_label,
-            visual_note_for(groups, group_size),
-            None,
-        )
-    }
-
-    fn resolve_visual_only_cell(&self, groups: usize, group_size: usize) -> CellSummary {
-        let display = if groups == 1 && group_size == 1 {
-            MatrixCellTarget::Infinite.display_text()
-        } else {
-            "1".into()
-        };
-        build_cell_summary(
-            groups,
-            group_size,
-            false,
-            true,
-            None,
-            None,
-            None,
-            None,
-            Some(
-                self.knowledge
-                    .target_matrix
-                    .abbreviation_for("visual_only")
-                    .unwrap_or("VIS")
-                    .to_string(),
-            ),
-            None,
-            "none".into(),
-            None,
-            None,
-            None,
-            None,
-            Vec::new(),
-            None,
-            None,
-            None,
-            Some("visual_only".into()),
-            Vec::new(),
-            Some("visual_only".into()),
-            visual_note_for(groups, group_size),
-            Some(display),
-        )
-    }
-}
-
-struct TargetInfo {
-    weeks: Option<usize>,
-    desired_method_abbreviation: Option<String>,
-    kind: Option<String>,
-    basis: Option<String>,
-    reference_keys: Vec<String>,
-}
-
-struct MethodPreference {
-    policy_status: String,
-    desired_method_abbreviation: Option<String>,
-    reason_code: Option<String>,
-    reason: Option<String>,
-}
-
-fn approved_method_upgrade(current: &str, desired: &str) -> Option<(&'static str, &'static str)> {
-    match (current, desired) {
-        ("PSB", "P4") => Some((
-            "instance_bank_to_general_family",
-            "replace the published schedule bank with the reusable p=4 family",
-        )),
-        ("RTD+G", "KTS") => Some((
-            "composite_to_direct_family",
-            "replace the grouped transversal extension with the direct Kirkman triple-system family",
-        )),
-        ("RTD", "P4") => Some((
-            "transversal_to_dedicated_p4_family",
-            "replace the transversal-derived construction with the dedicated p=4 family",
-        )),
-        ("AP", "P4") => Some((
-            "diagonal_to_dedicated_p4_family",
-            "prefer the dedicated p=4 family over the diagonal affine-plane-only realization",
-        )),
-        _ => None,
-    }
-}
-
-fn inferred_basis_family_abbreviation(
-    groups: usize,
-    group_size: usize,
-    basis: Option<&str>,
-) -> Option<&'static str> {
-    let basis = basis?;
-    if basis.contains("round-robin") || basis.contains("1-factorization") {
-        Some("RR")
-    } else if basis.contains("NKTS$(") || basis.contains("KP(") {
-        Some("NKTS")
-    } else if basis.contains("KTS$(") || basis.contains("Kirkman") {
-        Some("KTS")
-    } else if basis.contains("RGDD$(") && group_size == 4 {
-        Some("P4")
-    } else if basis.contains("ownSG$(") {
-        Some("ownSG")
-    } else if basis.contains("RITD") {
-        Some("RITD")
-    } else if basis.contains("MOLRs$(") || basis.contains("MOLR lower bound") {
-        Some("MOLR")
-    } else if basis.contains("RTD$(") || basis.contains("RTD lower bound") {
-        Some("RTD")
-    } else if basis.contains("RBIBD$(") {
-        if groups == group_size && basis.contains("affine plane") {
-            Some("AP")
-        } else {
-            Some("RBIBD")
-        }
-    } else if basis.contains("affine plane") {
-        Some("AP")
-    } else {
-        None
-    }
-}
-
-fn method_matches_basis_family(
-    current_method_abbreviation: &str,
-    basis_family_abbreviation: &str,
-    groups: usize,
-    group_size: usize,
-) -> bool {
-    current_method_abbreviation == basis_family_abbreviation
-        || (basis_family_abbreviation == "KTS" && current_method_abbreviation.starts_with("KTS"))
-        || (basis_family_abbreviation == "AP"
-            && current_method_abbreviation == "AP"
-            && groups == group_size)
-        || (basis_family_abbreviation == "RBIBD"
-            && groups == group_size
-            && current_method_abbreviation == "AP")
-        || (basis_family_abbreviation == "RBIBD"
-            && group_size == 4
-            && current_method_abbreviation == "P4")
-}
-
-fn is_pigeonhole_one_week_exact(groups: usize, group_size: usize) -> bool {
-    groups > 1 && group_size > 1 && group_size > groups
-}
-
-fn resolve_method_preference(
-    current_method_abbreviation: Option<&str>,
-    desired_method_abbreviation: Option<&str>,
-    groups: usize,
-    group_size: usize,
-    basis: Option<&str>,
-) -> MethodPreference {
-    match (current_method_abbreviation, desired_method_abbreviation) {
-        (Some(current), Some(desired)) if current == desired => MethodPreference {
-            policy_status: "accepted".to_string(),
-            desired_method_abbreviation: Some(desired.to_string()),
-            reason_code: None,
-            reason: None,
-        },
-        (Some(current), Some(desired)) => {
-            if let Some((reason_code, reason)) = approved_method_upgrade(current, desired) {
-                MethodPreference {
-                    policy_status: "upgrade_pending".to_string(),
-                    desired_method_abbreviation: Some(desired.to_string()),
-                    reason_code: Some(reason_code.to_string()),
-                    reason: Some(reason.to_string()),
-                }
-            } else {
-                MethodPreference {
-                    policy_status: "unresolved".to_string(),
-                    desired_method_abbreviation: None,
-                    reason_code: None,
-                    reason: None,
-                }
-            }
-        }
-        (Some(_current), None) => MethodPreference {
-            policy_status: if (_current == "1W" && is_pigeonhole_one_week_exact(groups, group_size))
-                || inferred_basis_family_abbreviation(groups, group_size, basis).is_some_and(
-                    |basis_family| {
-                        method_matches_basis_family(_current, basis_family, groups, group_size)
-                    },
-                ) {
-                "accepted".to_string()
-            } else {
-                "unresolved".to_string()
-            },
-            desired_method_abbreviation: None,
-            reason_code: None,
-            reason: None,
-        },
-        _ => MethodPreference {
-            policy_status: "none".to_string(),
-            desired_method_abbreviation: None,
-            reason_code: None,
-            reason: None,
-        },
     }
 }
 
@@ -645,162 +351,136 @@ fn counting_bound(groups: usize, group_size: usize) -> usize {
     ((groups * group_size) - 1) / (group_size - 1)
 }
 
-fn global_upper_bound(groups: usize, group_size: usize) -> usize {
-    if is_pigeonhole_one_week_exact(groups, group_size) {
-        1
-    } else {
-        counting_bound(groups, group_size)
-    }
-}
-
-fn upper_bound_basis(groups: usize, group_size: usize, upper_bound: usize) -> String {
-    if is_pigeonhole_one_week_exact(groups, group_size) {
-        format!(
-            "Global upper bound: pigeonhole barrier for p>g forces W<=1 (g={}, p={})",
-            groups, group_size
-        )
-    } else {
-        format!(
-            "Counting upper bound: floor(({}*{} - 1)/({} - 1)) = {}",
-            groups, group_size, group_size, upper_bound
-        )
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn build_cell_summary(
+fn best_constructed_scored_cell(
     groups: usize,
     group_size: usize,
-    scored: bool,
-    visual_only: bool,
-    constructed_weeks: Option<usize>,
-    target_weeks: Option<usize>,
-    upper_bound_weeks: Option<usize>,
-    proven_optimal_weeks: Option<usize>,
-    method_abbreviation: Option<String>,
-    desired_method_abbreviation: Option<String>,
-    method_policy_status: String,
-    method_preference_reason_code: Option<String>,
-    method_preference_reason: Option<String>,
-    target_kind: Option<String>,
-    target_basis: Option<String>,
-    target_reference_keys: Vec<String>,
-    upper_bound_basis: Option<String>,
-    heuristic_target_weeks: Option<usize>,
-    optimality_lower_bound_weeks: Option<usize>,
-    family_label: Option<String>,
-    operator_labels: Vec<String>,
-    quality_label: Option<String>,
-    visual_note: Option<String>,
-    center_override: Option<String>,
+    upper_bound: usize,
+    target_weeks: usize,
+    target_matrix: &gm_core::solver5::reporting::Solver5TargetMatrix,
 ) -> CellSummary {
-    let effective_constructed_weeks = constructed_weeks.unwrap_or(0);
-    let glyph_center_text = center_override.unwrap_or_else(|| {
-        if effective_constructed_weeks == 0 {
-            "·".into()
-        } else {
-            effective_constructed_weeks.to_string()
+    for weeks in (1..=upper_bound).rev() {
+        let input = pure_sgp_input(groups, group_size, weeks);
+        match inspect_construction(&input) {
+            Ok(inspection) if inspection.solved_canonically() => {
+                let method_abbreviation = Some(target_matrix.compose_method_abbreviation(
+                    &inspection.family_label,
+                    &inspection.operator_labels,
+                ));
+                return summarize_scored_cell(
+                    groups,
+                    group_size,
+                    upper_bound,
+                    target_weeks,
+                    weeks,
+                    method_abbreviation,
+                    target_matrix,
+                    Some(inspection),
+                );
+            }
+            Ok(_) | Err(_) => {}
         }
-    });
-    let glyph_top_left_text = if visual_only {
-        None
-    } else {
-        proven_optimal_weeks.map(|value| format!("O{value}"))
-    };
-    let glyph_top_right_text = if visual_only {
-        None
-    } else {
-        target_weeks.map(|value| format!("T{value}"))
-    };
-    let glyph_bottom_left_text = if visual_only {
-        None
-    } else {
-        upper_bound_weeks.map(|value| format!("U{value}"))
-    };
-    let fill_basis = if visual_only {
-        (None, None)
-    } else if let Some(target_weeks) = target_weeks {
-        (Some(target_weeks), Some("target".to_string()))
-    } else if let Some(upper_bound_weeks) = upper_bound_weeks {
-        (Some(upper_bound_weeks), Some("upper_bound".to_string()))
-    } else {
-        (None, None)
-    };
-    let border_kind = if visual_only {
-        "visual_only".to_string()
-    } else if let Some(optimal_weeks) = proven_optimal_weeks {
-        if effective_constructed_weeks >= optimal_weeks {
-            "optimal_reached".to_string()
-        } else {
-            "optimal_known_unreached".to_string()
-        }
-    } else {
-        "optimal_unknown".to_string()
-    };
+    }
 
-    let glyph_bottom_right_text = match (
-        method_abbreviation.as_deref(),
-        desired_method_abbreviation.as_deref(),
-    ) {
-        (Some(current), Some(desired)) if current != desired => {
-            Some(format!("{current}→{desired}"))
-        }
-        (Some(current), _) => Some(current.to_string()),
-        _ => None,
-    };
+    summarize_scored_cell(
+        groups,
+        group_size,
+        upper_bound,
+        target_weeks,
+        0,
+        None,
+        target_matrix,
+        None,
+    )
+}
+
+fn summarize_scored_cell(
+    groups: usize,
+    group_size: usize,
+    upper_bound: usize,
+    target_weeks: usize,
+    constructed_weeks: usize,
+    method_abbreviation: Option<String>,
+    target_matrix: &gm_core::solver5::reporting::Solver5TargetMatrix,
+    inspection: Option<Solver5ConstructionInspection>,
+) -> CellSummary {
+    let gap_to_target = target_weeks.saturating_sub(constructed_weeks);
+    let roadmap_target_method_label = target_matrix.target_method_for(groups, group_size);
+    let target_method_abbreviation = target_matrix
+        .heuristic_target_method_for(groups, group_size)
+        .and_then(|label| target_matrix.abbreviation_for(label))
+        .map(str::to_string);
+    let target_basis = roadmap_target_method_label.map(|label| {
+        let abbreviation = target_matrix.abbreviation_for(label).unwrap_or(label);
+        format!("Roadmap target family: {abbreviation}")
+    });
+    let target_reference_keys = canonical_reference_keys_for_label(roadmap_target_method_label);
+    let heuristic_target_weeks = target_matrix.heuristic_target_weeks_for(groups, group_size);
+    let heuristic_gap_to_target =
+        heuristic_target_weeks.map(|best_known| best_known.saturating_sub(target_weeks));
+    let proven_optimal_weeks = target_matrix.proven_optimal_weeks_for(groups, group_size);
+    let proven_optimal_gap =
+        proven_optimal_weeks.map(|proven_optimal| proven_optimal.saturating_sub(target_weeks));
+    let optimality_lower_bound_weeks =
+        target_matrix.optimality_lower_bound_weeks_for(groups, group_size);
+    let (family_label, operator_labels, quality_label) = inspection
+        .map(|inspection| {
+            (
+                Some(inspection.family_label),
+                inspection.operator_labels,
+                Some(inspection.quality_label),
+            )
+        })
+        .unwrap_or((None, Vec::new(), None));
 
     CellSummary {
         g: groups,
         p: group_size,
-        scored,
-        visual_only,
-        constructed_weeks,
-        target_weeks,
-        upper_bound_weeks,
-        proven_optimal_weeks,
-        glyph_center_text,
-        glyph_top_left_text,
-        glyph_top_right_text,
-        glyph_bottom_left_text,
-        glyph_bottom_right_text,
-        fill_basis_weeks: fill_basis.0,
-        fill_basis_kind: fill_basis.1,
-        border_kind,
-        target_kind,
+        scored: true,
+        upper_bound: Some(upper_bound),
+        constructed_weeks: Some(constructed_weeks),
+        target_weeks: Some(target_weeks),
+        gap_to_target,
+        current_display: constructed_weeks.to_string(),
+        target_display: target_weeks.to_string(),
         method_abbreviation,
-        desired_method_abbreviation,
-        method_policy_status,
-        method_preference_reason_code,
-        method_preference_reason,
+        target_method_abbreviation,
         target_basis,
         target_reference_keys,
-        upper_bound_basis,
         heuristic_target_weeks,
+        heuristic_gap_to_target,
+        proven_optimal_weeks,
+        proven_optimal_gap,
         optimality_lower_bound_weeks,
         family_label,
         operator_labels,
         quality_label,
-        visual_note,
+        visual_note: None,
     }
 }
 
-fn build_matrix_view(
+fn build_supplementary_matrix(
     title: &str,
     subtitle: &str,
     g_min: usize,
     g_max: usize,
     p_min: usize,
     p_max: usize,
-    resolver: &CellResolver<'_>,
-) -> MatrixViewArtifact {
+    supplementary_targets: &SupplementaryLiteratureTargets,
+    target_matrix: &gm_core::solver5::reporting::Solver5TargetMatrix,
+) -> SupplementaryMatrixArtifact {
     let mut cells = Vec::new();
     for groups in g_min..=g_max {
         for group_size in p_min..=p_max {
-            cells.push(resolver.resolve_cell(groups, group_size));
+            cells.push(build_supplementary_cell(
+                groups,
+                group_size,
+                supplementary_targets,
+                target_matrix,
+            ));
         }
     }
 
-    MatrixViewArtifact {
+    SupplementaryMatrixArtifact {
         title: title.into(),
         subtitle: subtitle.into(),
         bounds: BoundsArtifact {
@@ -813,13 +493,85 @@ fn build_matrix_view(
     }
 }
 
+fn build_supplementary_cell(
+    groups: usize,
+    group_size: usize,
+    supplementary_targets: &SupplementaryLiteratureTargets,
+    target_matrix: &gm_core::solver5::reporting::Solver5TargetMatrix,
+) -> SupplementaryCellSummary {
+    let literature_target_weeks = supplementary_targets.target_for(groups, group_size);
+    let literature_target_basis = supplementary_targets
+        .basis_for(groups, group_size)
+        .map(str::to_string);
+    let literature_reference_keys = if literature_target_weeks.is_some() {
+        vec!["mva2026".to_string()]
+    } else {
+        Vec::new()
+    };
+    if group_size == 1 {
+        return SupplementaryCellSummary {
+            g: groups,
+            p: group_size,
+            upper_bound: None,
+            constructed_weeks: None,
+            literature_target_weeks,
+            current_display: "∞".into(),
+            upper_display: "∞".into(),
+            literature_target_display: None,
+            method_abbreviation: Some(
+                target_matrix
+                    .abbreviation_for("visual_only")
+                    .unwrap_or("VIS")
+                    .to_string(),
+            ),
+            family_label: Some("visual_only".into()),
+            operator_labels: Vec::new(),
+            quality_label: Some("visual_only".into()),
+            literature_target_basis,
+            literature_reference_keys,
+            visual_note: Some("trivial single-player groups; excluded from objective".into()),
+        };
+    }
+
+    let upper_bound = counting_bound(groups, group_size);
+    let (constructed_weeks, method_abbreviation, inspection) =
+        best_constructed_summary(groups, group_size, upper_bound, target_matrix);
+    let (family_label, operator_labels, quality_label) = inspection
+        .map(|inspection| {
+            (
+                Some(inspection.family_label),
+                inspection.operator_labels,
+                Some(inspection.quality_label),
+            )
+        })
+        .unwrap_or((None, Vec::new(), None));
+
+    SupplementaryCellSummary {
+        g: groups,
+        p: group_size,
+        upper_bound: Some(upper_bound),
+        constructed_weeks: Some(constructed_weeks),
+        literature_target_weeks,
+        current_display: constructed_weeks.to_string(),
+        upper_display: upper_bound.to_string(),
+        literature_target_display: literature_target_weeks.map(|value| value.to_string()),
+        method_abbreviation,
+        family_label,
+        operator_labels,
+        quality_label,
+        literature_target_basis,
+        literature_reference_keys,
+        visual_note: Some("report-only exploratory cell; excluded from objective".into()),
+    }
+}
+
 fn supplementary_literature_references() -> Vec<LiteratureReferenceArtifact> {
     vec![LiteratureReferenceArtifact {
         key: "mva2026".into(),
         short_label: "[1]".into(),
         citation: "Miller, A.; Valkov, I.; Abel, R.J.R. (2026). Combinatorial solutions to the Social Golfer Problem and Social Golfer Problem with adjacent group sizes. arXiv:2507.23376.".into(),
         url: "https://arxiv.org/abs/2507.23376".into(),
-        notes: "Used for the extended literature-backed target coverage via Appendix B tables (including the additional v>150 examples), for roadmap family-backed targets, for Algorithm 1/2 family-selection rules, and for the paper's MOLS summary table.".into(),
+        notes: "Used for the supplementary literature targets via Appendix B tables (including the additional v>150 examples), for canonical matrix family-backed roadmap targets, for Algorithm 1/2 family-selection rules, and for the paper's MOLS summary table.".into(),
     }]
 }
 
@@ -841,17 +593,19 @@ fn canonical_reference_keys_for_label(label: Option<&str>) -> Vec<String> {
     }
 }
 
-fn load_extended_literature_targets() -> Result<ExtendedLiteratureTargets, String> {
-    let file: ExtendedLiteratureTargetFile = serde_json::from_str(EXTENDED_LITERATURE_TARGETS_JSON)
-        .map_err(|error| format!("failed to parse extended literature targets: {error}"))?;
+fn load_supplementary_literature_targets() -> Result<SupplementaryLiteratureTargets, String> {
+    let file: SupplementaryLiteratureTargetFile =
+        serde_json::from_str(SUPPLEMENTARY_LITERATURE_TARGETS_JSON).map_err(|error| {
+            format!("failed to parse supplementary literature targets: {error}")
+        })?;
     if file.version == 0 {
-        return Err("extended literature target version must be positive".into());
+        return Err("supplementary literature target version must be positive".into());
     }
     let expected_height = file.bounds.height();
     let expected_width = file.bounds.width();
     if file.target_rows.len() != expected_height {
         return Err(format!(
-            "extended literature target_rows height {} does not match bounds height {} for {}",
+            "supplementary literature target_rows height {} does not match bounds height {} for {}",
             file.target_rows.len(),
             expected_height,
             file.name
@@ -859,7 +613,7 @@ fn load_extended_literature_targets() -> Result<ExtendedLiteratureTargets, Strin
     }
     if file.basis_rows.len() != expected_height {
         return Err(format!(
-            "extended literature basis_rows height {} does not match bounds height {} for {}",
+            "supplementary literature basis_rows height {} does not match bounds height {} for {}",
             file.basis_rows.len(),
             expected_height,
             file.name
@@ -868,7 +622,7 @@ fn load_extended_literature_targets() -> Result<ExtendedLiteratureTargets, Strin
     for (row_idx, row) in file.target_rows.iter().enumerate() {
         if row.len() != expected_width {
             return Err(format!(
-                "extended literature target row {} width {} does not match bounds width {} for {}",
+                "supplementary literature target row {} width {} does not match bounds width {} for {}",
                 row_idx + file.bounds.g_min,
                 row.len(),
                 expected_width,
@@ -879,7 +633,7 @@ fn load_extended_literature_targets() -> Result<ExtendedLiteratureTargets, Strin
     for (row_idx, row) in file.basis_rows.iter().enumerate() {
         if row.len() != expected_width {
             return Err(format!(
-                "extended literature basis row {} width {} does not match bounds width {} for {}",
+                "supplementary literature basis row {} width {} does not match bounds width {} for {}",
                 row_idx + file.bounds.g_min,
                 row.len(),
                 expected_width,
@@ -888,7 +642,7 @@ fn load_extended_literature_targets() -> Result<ExtendedLiteratureTargets, Strin
         }
     }
 
-    Ok(ExtendedLiteratureTargets {
+    Ok(SupplementaryLiteratureTargets {
         bounds: file.bounds,
         target_rows: file.target_rows,
         basis_rows: file.basis_rows,
@@ -918,17 +672,41 @@ fn best_constructed_summary(
     (0, None, None)
 }
 
-fn is_visual_only_cell(groups: usize, group_size: usize) -> bool {
-    groups == 1 || group_size == 1
-}
-
-fn visual_note_for(groups: usize, group_size: usize) -> Option<String> {
-    if groups == 1 || group_size == 1 {
-        Some("visual-only cell; excluded from objective".into())
-    } else if groups >= 11 {
-        Some("same global cell semantics; this matrix is another range view over the report universe".into())
-    } else {
-        None
+fn visual_only_cell(
+    groups: usize,
+    group_size: usize,
+    target: &MatrixCellTarget,
+    target_matrix: &gm_core::solver5::reporting::Solver5TargetMatrix,
+) -> CellSummary {
+    let display = target.display_text();
+    CellSummary {
+        g: groups,
+        p: group_size,
+        scored: false,
+        upper_bound: None,
+        constructed_weeks: None,
+        target_weeks: None,
+        gap_to_target: 0,
+        current_display: display.clone(),
+        target_display: display,
+        method_abbreviation: Some(
+            target_matrix
+                .abbreviation_for("visual_only")
+                .unwrap_or("VIS")
+                .to_string(),
+        ),
+        target_method_abbreviation: None,
+        target_basis: None,
+        target_reference_keys: Vec::new(),
+        heuristic_target_weeks: None,
+        heuristic_gap_to_target: None,
+        proven_optimal_weeks: None,
+        proven_optimal_gap: None,
+        optimality_lower_bound_weeks: None,
+        family_label: Some("visual_only".into()),
+        operator_labels: Vec::new(),
+        quality_label: Some("visual_only".into()),
+        visual_note: Some("visual-only cell; excluded from objective".into()),
     }
 }
 

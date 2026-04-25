@@ -76,7 +76,7 @@ const resultsModel = {
   sessions: sessionData,
   participants: effectiveScenario.people.map((person) => ({
     personId: person.id,
-    displayName: person.attributes.name,
+    displayName: person.name,
     person,
     assignedSessions: 2,
     unassignedSessions: 0,

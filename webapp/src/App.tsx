@@ -10,7 +10,9 @@ import { SolverWorkspace } from './components/SolverWorkspace/SolverWorkspace';
 import MainApp from './MainApp';
 import ToolLandingPage from './pages/ToolLandingPage';
 import LegalPage from './pages/LegalPage';
+import GuidePage from './pages/GuidePage';
 import { DEFAULT_LOCALE, SUPPORTED_LOCALES, TOOL_PAGE_ROUTES } from './pages/toolPageConfigs';
+import { GUIDE_PAGE_ROUTES } from './pages/guidePageConfigs';
 import { getScenarioSetupPath, resolveScenarioSetupSection } from './components/ScenarioEditor/navigation/scenarioSetupNav';
 import { useAppStore } from './store';
 import { initializeThemeStore, useThemeStore } from './store/theme';
@@ -27,7 +29,27 @@ function LegacySetupRouteRedirect() {
 }
 
 function SolverRouteRedirect() {
+  const advancedModeEnabled = useAppStore((state) => state.ui.advancedModeEnabled ?? false);
+  const solution = useAppStore((state) => state.solution);
+  const lastScenarioSetupSection = useAppStore((state) => state.ui.lastScenarioSetupSection);
+
+  if (!advancedModeEnabled) {
+    return <Navigate to={solution ? '/app/results' : getScenarioSetupPath(lastScenarioSetupSection)} replace />;
+  }
+
   return <Navigate to="/app/solver/run" replace />;
+}
+
+function SolverRouteGuard() {
+  const advancedModeEnabled = useAppStore((state) => state.ui.advancedModeEnabled ?? false);
+  const solution = useAppStore((state) => state.solution);
+  const lastScenarioSetupSection = useAppStore((state) => state.ui.lastScenarioSetupSection);
+
+  if (!advancedModeEnabled) {
+    return <Navigate to={solution ? '/app/results' : getScenarioSetupPath(lastScenarioSetupSection)} replace />;
+  }
+
+  return <SolverWorkspace />;
 }
 
 function App() {
@@ -42,6 +64,9 @@ function App() {
         {TOOL_PAGE_ROUTES.map(({ key, locale, path }) => (
           <Route key={`${locale}:${key}`} path={path} element={<ToolLandingPage pageKey={key} locale={locale} />} />
         ))}
+        {GUIDE_PAGE_ROUTES.map(({ key, path }) => (
+          <Route key={`guide:${key}`} path={path} element={<GuidePage pageKey={key} />} />
+        ))}
         <Route path="/legal" element={<LegalPage locale={DEFAULT_LOCALE} />} />
         {SUPPORTED_LOCALES.filter((locale) => locale !== DEFAULT_LOCALE).map((locale) => (
           <Route key={`legal:${locale}`} path={`/${locale}/legal`} element={<LegalPage locale={locale} />} />
@@ -54,7 +79,7 @@ function App() {
           <Route path="scenario" element={<SetupRouteRedirect />} />
           <Route path="scenario/:section" element={<ScenarioEditor />} />
           <Route path="solver" element={<SolverRouteRedirect />} />
-          <Route path="solver/:section" element={<SolverWorkspace />} />
+          <Route path="solver/:section" element={<SolverRouteGuard />} />
           <Route path="results" element={<ResultsView />} />
           <Route path="editor" element={<ManualEditor />} />
           <Route path="history" element={<ResultsHistory />} />

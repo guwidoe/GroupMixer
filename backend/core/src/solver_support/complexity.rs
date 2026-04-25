@@ -52,6 +52,7 @@ pub struct ConstraintComplexityBreakdown {
     pub immovable_person_events: f64,
     pub immovable_people_events: f64,
     pub must_stay_together_events: f64,
+    pub must_stay_apart_events: f64,
     pub should_stay_together_events: f64,
     pub should_not_be_together_events: f64,
     pub pair_meeting_count_events: f64,
@@ -360,6 +361,16 @@ impl<'a> ComplexityContext<'a> {
                     breakdown.must_stay_together_events +=
                         sessions.len() as f64 * unordered_pair_count(people.len()) as f64 * 2.5;
                 }
+                Constraint::MustStayApart { people, sessions } => {
+                    self.ensure_people_exist(people, "MustStayApart")?;
+                    let sessions = normalized_sessions(
+                        sessions.as_ref(),
+                        self.session_count,
+                        "MustStayApart",
+                    )?;
+                    breakdown.must_stay_apart_events +=
+                        sessions.len() as f64 * unordered_pair_count(people.len()) as f64 * 2.5;
+                }
                 Constraint::ShouldStayTogether {
                     people,
                     penalty_weight,
@@ -421,6 +432,7 @@ impl<'a> ComplexityContext<'a> {
             + breakdown.immovable_person_events
             + breakdown.immovable_people_events
             + breakdown.must_stay_together_events
+            + breakdown.must_stay_apart_events
             + breakdown.should_stay_together_events
             + breakdown.should_not_be_together_events
             + breakdown.pair_meeting_count_events;
@@ -615,6 +627,7 @@ fn count_session_specific_constraints(constraints: &[Constraint]) -> usize {
             Constraint::AttributeBalance(params) => params.sessions.is_some(),
             Constraint::ImmovablePerson(params) => params.sessions.is_some(),
             Constraint::MustStayTogether { sessions, .. } => sessions.is_some(),
+            Constraint::MustStayApart { sessions, .. } => sessions.is_some(),
             Constraint::ShouldStayTogether { sessions, .. } => sessions.is_some(),
             Constraint::ShouldNotBeTogether { sessions, .. } => sessions.is_some(),
             Constraint::ImmovablePeople(params) => params.sessions.is_some(),

@@ -27,8 +27,8 @@ type Story = StoryObj<typeof PersonCard>;
 
 const samplePerson: Person = {
   id: 'person-001',
+  name: 'Alice Johnson',
   attributes: {
-    name: 'Alice Johnson',
     gender: 'female',
     department: 'Engineering',
   },
@@ -44,18 +44,19 @@ export const LongName: Story = {
   args: {
     person: {
       id: 'person-002',
+      name: 'Dr. Bartholomew Constantine Fitzgerald III',
       attributes: {
-        name: 'Dr. Bartholomew Constantine Fitzgerald III',
         department: 'Research',
       },
     },
   },
 };
 
-export const NoNameAttribute: Story = {
+export const IdOnlyLegacyFallback: Story = {
   args: {
     person: {
       id: 'person-003',
+      name: '',
       attributes: {
         department: 'Sales',
       },
@@ -64,7 +65,7 @@ export const NoNameAttribute: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'When no name attribute exists, the person ID is displayed.',
+        story: 'Legacy incomplete data falls back to showing the ID.',
       },
     },
   },
@@ -74,6 +75,7 @@ export const MinimalPerson: Story = {
   args: {
     person: {
       id: 'bob',
+      name: 'Bob',
       attributes: {},
     },
   },
@@ -89,11 +91,11 @@ export const WithCustomClass: Story = {
 export const MultipleCards: Story = {
   render: () => (
     <div className="flex flex-wrap gap-2">
-      <PersonCard person={{ id: 'p1', attributes: { name: 'Alice' } }} />
-      <PersonCard person={{ id: 'p2', attributes: { name: 'Bob' } }} />
-      <PersonCard person={{ id: 'p3', attributes: { name: 'Charlie' } }} />
-      <PersonCard person={{ id: 'p4', attributes: { name: 'Diana' } }} />
-      <PersonCard person={{ id: 'p5', attributes: { name: 'Eve' } }} />
+      <PersonCard person={{ id: 'p1', name: 'Alice', attributes: {} }} />
+      <PersonCard person={{ id: 'p2', name: 'Bob', attributes: {} }} />
+      <PersonCard person={{ id: 'p3', name: 'Charlie', attributes: {} }} />
+      <PersonCard person={{ id: 'p4', name: 'Diana', attributes: {} }} />
+      <PersonCard person={{ id: 'p5', name: 'Eve', attributes: {} }} />
     </div>
   ),
 };
@@ -102,9 +104,8 @@ export const SessionRestricted: Story = {
   args: {
     person: {
       id: 'person-late-joiner',
-      attributes: {
-        name: 'Late Joiner',
-      },
+      name: 'Late Joiner',
+      attributes: {},
       sessions: [2, 3, 4], // Only joins from session 3 onwards
     },
   },

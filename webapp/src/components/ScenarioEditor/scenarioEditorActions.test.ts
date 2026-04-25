@@ -9,6 +9,7 @@ function createControllers() {
     setShowImmovableModal: vi.fn(),
     setEditingConstraintIndex: vi.fn(),
     setShowMustStayTogetherModal: vi.fn(),
+    setShowMustStayApartModal: vi.fn(),
     setShowRepeatEncounterModal: vi.fn(),
     setShowAttributeBalanceModal: vi.fn(),
     setShowShouldNotBeTogetherModal: vi.fn(),
@@ -76,6 +77,10 @@ describe('createScenarioEditorActions', () => {
     expect(constraints.setEditingImmovableIndex).toHaveBeenCalledWith(null);
     expect(constraints.setShowImmovableModal).toHaveBeenCalledWith(true);
 
+    actions.handleHardConstraintAdd('MustStayApart');
+    expect(constraints.setEditingConstraintIndex).toHaveBeenCalledWith(null);
+    expect(constraints.setShowMustStayApartModal).toHaveBeenCalledWith(true);
+
     const mustStayTogether: Constraint = {
       type: 'MustStayTogether',
       people: ['p1', 'p2'],
@@ -84,9 +89,17 @@ describe('createScenarioEditorActions', () => {
     expect(constraints.setEditingConstraintIndex).toHaveBeenCalledWith(4);
     expect(constraints.setShowMustStayTogetherModal).toHaveBeenCalledWith(true);
 
+    const mustStayApart: Constraint = {
+      type: 'MustStayApart',
+      people: ['p1', 'p3'],
+    };
+    actions.handleHardConstraintEdit(mustStayApart, 5);
+    expect(constraints.setEditingConstraintIndex).toHaveBeenCalledWith(5);
+    expect(constraints.setShowMustStayApartModal).toHaveBeenCalledWith(true);
+
     actions.handleCancelPersonForm();
     expect(entities.setShowPersonForm).toHaveBeenCalledWith(false);
-    expect(entities.setPersonForm).toHaveBeenCalledWith({ attributes: {}, sessions: [] });
+    expect(entities.setPersonForm).toHaveBeenCalledWith({ name: '', attributes: {}, sessions: [] });
 
     actions.handleCloseConstraintForm();
     expect(constraints.setShowConstraintForm).toHaveBeenCalledWith(false);

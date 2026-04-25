@@ -10,6 +10,7 @@ export type ScenarioSetupSectionId =
   | 'people'
   | 'immovable-people'
   | 'must-stay-together'
+  | 'must-stay-apart'
   | 'repeat-encounter'
   | 'should-not-be-together'
   | 'should-stay-together'

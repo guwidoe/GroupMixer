@@ -1,8 +1,5 @@
-import type { AttributeDefinition, Person, Scenario } from '../../../types';
-import {
-  reconcileScenarioAttributeDefinitions,
-  reconcileScenarioAttributeState,
-} from '../../../services/scenarioAttributes';
+import type { AttributeDefinition, Person, Scenario, ScenarioDocument } from '../../../types';
+import { reconcileScenarioAttributeDefinitions } from '../../../services/scenarioAttributes';
 import { generateUniquePersonId } from '../helpers';
 import type { ScenarioEditorBulkNotification } from './scenarioEditorBulkNotifications';
 import { buildScenarioWithPeople } from './scenarioEditorBulkUtils';
@@ -11,22 +8,24 @@ interface UseScenarioEditorBulkUpdatePeopleArgs {
   scenario: Scenario | null;
   attributeDefinitions: AttributeDefinition[];
   addNotification: (notification: ScenarioEditorBulkNotification) => void;
-  setAttributeDefinitions: (definitions: AttributeDefinition[]) => void;
-  setScenario: (scenario: Scenario) => void;
+  setScenarioDocument: (document: ScenarioDocument) => void;
 }
 
 function sanitizeGridPeopleRows(people: Person[]): Person[] {
+  const seenNames = new Map<string, number>();
   return people.map((person) => {
     const cleanedAttributes = Object.fromEntries(
       Object.entries(person.attributes ?? {}).filter(([key, value]) => {
-        if (key === 'name') {
-          return true;
-        }
+        if (key.toLowerCase() === 'name') return false;
         return String(value ?? '').trim().length > 0;
       }),
     );
 
-    cleanedAttributes.name = String(cleanedAttributes.name ?? '').trim() || person.id;
+    const baseName = String(person.name ?? '').trim() || person.id;
+    const normalizedName = baseName.toLowerCase();
+    const seenCount = (seenNames.get(normalizedName) ?? 0) + 1;
+    seenNames.set(normalizedName, seenCount);
+    const name = seenCount === 1 ? baseName : `${baseName} (${seenCount})`;
 
     const normalizedSessions = Array.isArray(person.sessions)
       ? Array.from(new Set(person.sessions.filter((session) => Number.isFinite(session)).sort((left, right) => left - right)))
@@ -34,6 +33,7 @@ function sanitizeGridPeopleRows(people: Person[]): Person[] {
 
     return {
       ...person,
+      name,
       attributes: cleanedAttributes,
       sessions: normalizedSessions && normalizedSessions.length > 0 ? normalizedSessions : undefined,
     } satisfies Person;
@@ -44,12 +44,12 @@ export function useScenarioEditorBulkUpdatePeople({
   scenario,
   attributeDefinitions,
   addNotification,
-  setAttributeDefinitions,
-  setScenario,
+  setScenarioDocument,
 }: UseScenarioEditorBulkUpdatePeopleArgs) {
-  const createRow = () => ({
-    id: generateUniquePersonId(scenario?.people),
-    attributes: { name: '' },
+  const createRow = (currentRows: Person[] = []) => ({
+    id: generateUniquePersonId(currentRows.length > 0 ? currentRows : scenario?.people),
+    name: '',
+    attributes: {},
     sessions: undefined,
   } satisfies Person);
 
@@ -58,8 +58,10 @@ export function useScenarioEditorBulkUpdatePeople({
     const nextScenario = buildScenarioWithPeople(scenario, normalizedPeople);
     const nextDefinitions = reconcileScenarioAttributeDefinitions(nextScenario, attributeDefinitions);
 
-    setAttributeDefinitions(nextDefinitions);
-    setScenario(reconcileScenarioAttributeState(nextScenario, nextDefinitions));
+    setScenarioDocument({
+      scenario: nextScenario,
+      attributeDefinitions: nextDefinitions,
+    });
     addNotification({
       type: 'success',
       title: 'People Updated',

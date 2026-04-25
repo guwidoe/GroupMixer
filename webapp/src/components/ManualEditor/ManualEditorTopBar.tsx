@@ -1,9 +1,10 @@
 import React from 'react';
-import { Gavel, Redo2, Save, Undo2, UserPlus } from 'lucide-react';
+import { ArrowLeft, Gavel, Redo2, Save, Undo2, UserPlus } from 'lucide-react';
 import type { Mode } from './types';
 
 interface ManualEditorTopBarProps {
   mode: Mode;
+  onBackToResults: () => void;
   onModeChange: (mode: Mode) => void;
   onPullNewPeople: () => void;
   onPullNewConstraints: () => void;
@@ -14,6 +15,7 @@ interface ManualEditorTopBarProps {
 
 export function ManualEditorTopBar({
   mode,
+  onBackToResults,
   onModeChange,
   onPullNewPeople,
   onPullNewConstraints,
@@ -27,6 +29,14 @@ export function ManualEditorTopBar({
       style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--border-primary)' }}
     >
       <div className="flex items-center gap-2">
+        <button
+          onClick={onBackToResults}
+          className="px-2 py-1 rounded text-xs border inline-flex items-center gap-1"
+          title="Back to results"
+          style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-primary)' }}
+        >
+          <ArrowLeft className="w-4 h-4" /> Back to Results
+        </button>
         <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
           Mode:
         </span>

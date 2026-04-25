@@ -7,13 +7,25 @@ const TRUST_BULLETS = [
 ];
 
 const OPTIMIZER_FEATURES = [
-  '保持在一起',
-  '避免同组',
-  '多轮分组',
-  '最大化混合',
-  '性别平衡',
-  '按任意属性平衡',
-  '手动微调结果',
+  '部分出席',
+  '按小组和场次设置容量',
+  '按场次设置规则',
+  '加权软约束',
+  '配对见面目标',
+  '高级约束调优',
+  '求解器设置',
+  '结果分析',
+];
+
+const OPTIMIZER_FEATURE_EXPLANATIONS = [
+  '为每位参与者设置参加哪些场次，而不是默认每个人每轮都在场。',
+  '为每个小组设置容量，并在房间或主持人安排变化时按场次覆盖容量。',
+  '只在需要的场次应用同组、分开、固定分配、重复限制和属性平衡规则。',
+  '添加必要时可以被违反的偏好，并调整它们相对于其他目标的权重。',
+  '设置特定两人应见面的次数目标，包括精确、至少或至多。',
+  '进一步调整重复限制、属性平衡模式、惩罚权重和其他约束细节。',
+  '调整运行限制、确定性种子、求解器类型以及其他优化设置。',
+  '更详细地查看分数拆解、约束满足情况、惩罚和保存的结果。',
 ];
 
 const CHROME = {
@@ -57,33 +69,6 @@ const USE_CASES_SECTION = {
   ],
 };
 
-const ADVANCED_SECTION = {
-  title: '需要更强的控制吗？',
-  description:
-    'GroupMixer 不只是一个随机打散工具。当简单分组不够用时，你可以直接启用更高级的规则。',
-  cards: [
-    {
-      title: '让某些人保持同组',
-      body: '确保朋友、同事或预先指定的搭档始终分在同一组。',
-    },
-    {
-      title: '让某些人不要同组',
-      body: '避免特定的人出现在同一组，适合处理冲突规避或多样性需求。',
-    },
-    {
-      title: '避免重复搭配',
-      body: '在多轮分组中减少同样两个人反复在一起的情况。',
-    },
-    {
-      title: '按属性平衡分组',
-      body: '通过 CSV 按角色、技能、部门或任意自定义列来平衡每个小组。',
-    },
-  ],
-  buttonLabel: '打开场景编辑器',
-  supportingText:
-    '场景编辑器可以完整控制轮次、约束、求解器设置以及更详细的结果分析。',
-};
-
 const FAQS = {
   free: {
     question: 'GroupMixer 免费吗？',
@@ -108,7 +93,7 @@ const FAQS = {
   workspace: {
     question: '什么是场景编辑器？',
     answer:
-      '场景编辑器提供更细致的控制，包括轮次、约束、求解器设置、基于历史结果继续优化，以及更完整的结果分析。',
+      '场景编辑器用于这页没有暴露的控制项，例如部分出席、按小组和场次设置容量、按轮次设置约束、加权软约束、配对见面目标、高级约束调优、求解器设置、历史结果以及结果分析。',
   },
 };
 
@@ -139,16 +124,16 @@ function createContent({
       trustBullets: TRUST_BULLETS,
     },
     optimizerCta: {
-      eyebrow: '想要比随机更好的分组？',
-      title: '使用完整的分组优化器。',
+      eyebrow: '还需要更多控制吗？',
+      title: '打开完整场景编辑器。',
       featureBullets: OPTIMIZER_FEATURES,
+      featureExplanations: OPTIMIZER_FEATURE_EXPLANATIONS,
       buttonLabel: '打开场景编辑器',
-      supportingText: '你在这个页面输入的内容可以直接带到场景编辑器。',
+      supportingText: '当你需要此页面未提供的高级控制时使用。参与者、小组、场次和规则会一起带过去。',
     },
     faqEntries,
     chrome: CHROME,
     useCasesSection: USE_CASES_SECTION,
-    advancedSection: ADVANCED_SECTION,
   };
 }
 
@@ -171,156 +156,6 @@ export const ZH_TOOL_PAGE_CONTENT: Partial<Record<ToolPageKey, ToolPageLocalized
       FAQS.privacy,
       FAQS.constraints,
       FAQS.multiSession,
-      FAQS.workspace,
-    ],
-  }),
-  'random-group-generator': createContent({
-    title: '随机分组生成器 — 从名单中快速创建小组 | GroupMixer',
-    description:
-      '免费随机分组生成器。粘贴名单，选择要分成多少组，即可立即完成分组。适合课堂、工作坊和活动场景。',
-    eyebrow: '适合快速随机分组',
-    heroTitle: '随机分组生成器',
-    subhead: '粘贴名单，选择需要的小组数量，立即完成分组。无需注册，也不会把数据发到服务器。',
-    audienceSummary:
-      '如果你需要为课堂活动、工作坊 breakout 或活动组织做一个快速又省事的分组工具，这一页最适合。',
-    faqEntries: [
-      {
-        question: '随机分组生成器是怎么工作的？',
-        answer:
-          '把名字逐行粘贴到输入框中，设置小组数量或每组人数，然后点击生成。GroupMixer 会立即给出更均衡的随机分组结果。',
-      },
-      {
-        question: '我可以控制小组数量或每组人数吗？',
-        answer:
-          '可以。你可以固定小组数量，也可以指定每组人数，其余由 GroupMixer 自动计算。',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'random-team-generator': createContent({
-    title: '随机团队生成器 — 快速创建更均衡的队伍 | GroupMixer',
-    description:
-      '免费随机团队生成器。粘贴名单后即可快速生成更均衡的队伍。需要时还可按技能、角色等条件做平衡。',
-    eyebrow: '适合教练、组织者和带队负责人',
-    heroTitle: '随机团队生成器',
-    subhead: '几秒钟内完成随机分队。粘贴名单、选择队伍数量即可生成；需要更公平时还可以加平衡规则。',
-    audienceSummary:
-      '适合那些公平性比纯随机更重要的团队活动，尤其是需要分散角色或技能时。',
-    faqEntries: [
-      {
-        question: '如何随机生成队伍？',
-        answer:
-          '粘贴参与者名单，设置队伍数量，然后点击生成。GroupMixer 会立即生成更均衡的队伍。',
-      },
-      {
-        question: '我可以按技能或角色来平衡队伍吗？',
-        answer:
-          '可以。切换到 CSV 输入模式，添加“角色”或“技能”等列后，就可以使用按属性平衡功能。',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.multiSession,
-    ],
-  }),
-  'breakout-room-generator': createContent({
-    title: 'Breakout Room 生成器 — 快速把参与者分到不同房间 | GroupMixer',
-    description:
-      '免费 breakout room 生成器。粘贴名单后即可把参与者快速分配到不同房间，适合课堂、工作坊和线上会议。',
-    eyebrow: '适合 Zoom、培训和工作坊',
-    heroTitle: 'Breakout Room 生成器',
-    subhead: '快速把参与者分到不同 breakout room。粘贴名单、设置房间数量，一键生成。',
-    audienceSummary:
-      '当你需要快速完成房间分配，同时又希望支持多轮轮换和减少重复搭配时，这一页非常适合。',
-    faqEntries: [
-      {
-        question: '如何创建 breakout rooms？',
-        answer:
-          '粘贴参与者名单，选择房间数量，然后点击生成。GroupMixer 会立即把所有人分配到不同房间。',
-      },
-      {
-        question: '可以在多轮 breakout 中轮换人员吗？',
-        answer:
-          '可以。在高级选项中设置轮次数，并启用“避免重复搭配”，就能让参与者每轮尽量认识新的人。',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'workshop-group-generator': createContent({
-    title: '工作坊分组生成器 — 为活动环节快速创建小组 | GroupMixer',
-    description:
-      '免费工作坊分组生成器。可为活动、小组讨论和多轮环节快速生成小组。需要时还可以添加约束规则。',
-    eyebrow: '适合主持协作型工作坊的人',
-    heroTitle: '工作坊分组生成器',
-    subhead: '几秒内创建工作坊分组。先简单开始，需要时再加入多轮、平衡或搭配规则。',
-    audienceSummary:
-      '当小组组成会直接影响讨论质量、参与热度和新连接的产生时，这一页尤其有价值。',
-    faqEntries: [
-      {
-        question: '如何为工作坊创建小组？',
-        answer:
-          '粘贴参与者名单，设置小组数量或每组人数，然后点击生成。GroupMixer 会立即给出适合工作坊使用的分组。',
-      },
-      {
-        question: '我可以在多轮工作坊里轮换人员吗？',
-        answer:
-          '可以。使用多轮设置和避免重复搭配功能，可以让参与者在整个流程中尽量认识新的人。',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.constraints,
-    ],
-  }),
-  'student-group-generator': createContent({
-    title: '学生分组生成器 — 快速创建课堂小组 | GroupMixer',
-    description:
-      '免费学生分组生成器。粘贴班级名单，几秒内生成更均衡的学生小组。也可添加某些学生必须同组或不能同组的规则。',
-    eyebrow: '适合老师和课堂活动',
-    heroTitle: '学生分组生成器',
-    subhead: '粘贴班级名单，立即生成学生小组。既可简单快速，也能在需要时加上同组或分开规则。',
-    audienceSummary:
-      '适合希望快速完成课堂分组、同时又想保留一定公平性和可控性的老师。',
-    faqEntries: [
-      {
-        question: '如何创建学生分组？',
-        answer:
-          '按每行一个名字粘贴学生名单，选择小组数量，然后点击生成。GroupMixer 会自动完成分组。',
-      },
-      {
-        question: '我可以让某些学生在一起或分开吗？',
-        answer:
-          '可以。在高级选项中设置“保持在一起”或“避免同组”规则即可。',
-      },
-      FAQS.free,
-      FAQS.privacy,
-      FAQS.multiSession,
-    ],
-  }),
-  'speed-networking-generator': createContent({
-    title: '快速社交分组生成器 — 多轮分组，减少重复搭配 | GroupMixer',
-    description:
-      '免费快速社交分组生成器。自动创建多轮分组，让参与者每轮尽量认识不同的人，并减少重复搭配。',
-    eyebrow: '适合社交活动、meetup 和 networking 场景',
-    heroTitle: '快速社交分组生成器',
-    subhead: '粘贴名单，设置轮次，快速生成每轮都尽量遇到新人的 networking 分组。',
-    audienceSummary:
-      '适合需要结构化社交的场景，目标是让更多新连接发生，而不是总在同样的小组里重复。',
-    faqEntries: [
-      {
-        question: '快速社交分组生成器是怎么工作的？',
-        answer:
-          '粘贴参与者名单，设置轮次数，并启用“避免重复搭配”。GroupMixer 会为每一轮生成尽量减少重复相遇的分组。',
-      },
-      {
-        question: '我可以控制每组人数吗？',
-        answer:
-          '可以。你可以设置每轮的小组数量，或者直接指定每组人数。',
-      },
-      FAQS.free,
-      FAQS.privacy,
       FAQS.workspace,
     ],
   }),

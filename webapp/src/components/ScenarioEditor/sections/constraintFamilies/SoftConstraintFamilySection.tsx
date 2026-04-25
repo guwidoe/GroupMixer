@@ -21,7 +21,7 @@ import {
 import { getConstraintDisplayName } from '../../../../utils/constraintDisplay';
 import { ScenarioDataGrid } from '../../shared/grid/ScenarioDataGrid';
 import { createOptionalSessionScopeColumn } from '../../shared/grid/sessionScopeColumn';
-import { SetupPersonListText, formatPersonDisplayList, formatPersonSearchList } from '../../shared/personDisplay';
+import { SetupPersonListText, createPersonListRawCodec, formatPersonDisplayList, formatPersonSearchList } from '../../shared/personDisplay';
 import type { SetupCollectionViewMode } from '../../shared/useSetupCollectionViewMode';
 import { AttributeBalanceTargetsEditor } from './AttributeBalanceTargetsEditor';
 import { SOFT_SECTION_COPY } from './copy';
@@ -77,6 +77,10 @@ export function SoftConstraintFamilySection({
   const copy = SOFT_SECTION_COPY[family];
   const items = getIndexedConstraints(scenario, family);
   const searchValue = search.trim().toLowerCase();
+  const getGroupMaxCapacity = (groupId?: string) => {
+    const group = scenario.groups.find((entry) => entry.id === groupId);
+    return group ? Math.max(group.size, ...(group.session_sizes ?? [])) : undefined;
+  };
 
   const filteredItems = viewMode === 'cards'
     ? items.filter(({ constraint }) => {
@@ -305,6 +309,7 @@ export function SoftConstraintFamilySection({
                   }
                   onOpen={() => onEdit(constraint, index)}
                   openLabel={`Edit ${copy.title.toLowerCase()} constraint`}
+                  allowInteractiveChildren={constraint.type === 'AttributeBalance'}
                   actions={
                     <>
                       {family === 'ShouldStayTogether' && isSelectingShould ? (
@@ -321,7 +326,9 @@ export function SoftConstraintFamilySection({
                   {constraint.type === 'ShouldNotBeTogether' || constraint.type === 'ShouldStayTogether'
                     ? renderPeopleConstraintContent(scenario, constraint, index, setScenario)
                     : null}
-                  {constraint.type === 'AttributeBalance' ? renderAttributeBalanceContent(constraint) : null}
+                  {constraint.type === 'AttributeBalance'
+                    ? renderAttributeBalanceContent(scenario, constraint, index, setScenario, attributeDefinitions)
+                    : null}
                   {constraint.type === 'PairMeetingCount' ? renderPairMeetingCountContent(scenario, constraint) : null}
                 </SetupItemCard>
               )}
@@ -343,17 +350,15 @@ export function SoftConstraintFamilySection({
                     draft: {
                       onApply: applyLocalGridRows,
                       createRow: createLocalGridRow,
+                      canDeleteRows: true,
+                      deleteRowLabel: () => `Delete ${copy.title.toLowerCase()} row`,
                       csv: {
                         ariaLabel: `${copy.title} CSV`,
-                        helperText: (
+                        helperText: family === 'AttributeBalance' ? (
                           <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-                            {family === 'AttributeBalance'
-                              ? <><strong>Targets</strong> use JSON objects and <strong>Sessions</strong> use JSON session-scope objects such as <code>{'{"mode":"all"}'}</code> or <code>{'{"mode":"selected","sessions":[0,1]}'}</code>.</>
-                              : family === 'ShouldNotBeTogether' || family === 'ShouldStayTogether'
-                                ? <><strong>Sessions</strong> use JSON session-scope objects such as <code>{'{"mode":"all"}'}</code> or <code>{'{"mode":"selected","sessions":[0,1]}'}</code>.</>
-                                : 'Use Edit table or CSV to update these constraints in bulk.'}
+                            <strong>Targets</strong> use JSON objects.
                           </div>
-                        ),
+                        ) : undefined,
                       },
                     },
                   }
@@ -444,10 +449,11 @@ export function SoftConstraintFamilySection({
                             disabled={disabled}
                             options={getAttributeBalanceTargetOptions(row.constraint, attributeDefinitions)}
                             value={(value as Record<string, number> | undefined) ?? {}}
+                            maxValue={getGroupMaxCapacity(row.constraint.group_id)}
                             onCommit={onCommit}
                           />
                         ),
-                        width: 260,
+                        width: 360,
                       },
                       {
                         kind: 'primitive' as const,
@@ -479,9 +485,14 @@ export function SoftConstraintFamilySection({
                           itemType: 'string' as const,
                           options: scenario.people.map((person) => ({
                             value: person.id,
-                            label: person.attributes.name,
+                            label: person.name,
                           })),
                           getValue: (item: IndexedConstraint<PairMeetingCountConstraint>) => item.constraint.people,
+                          rawCodec: createPersonListRawCodec({
+                            people: scenario.people,
+                            header: 'Pair',
+                            maxItems: 2,
+                          }),
                           setValue: (item: IndexedConstraint<PairMeetingCountConstraint>, value) => ({
                             ...item,
                             constraint: {
@@ -542,9 +553,13 @@ export function SoftConstraintFamilySection({
                           itemType: 'string' as const,
                           options: scenario.people.map((person) => ({
                             value: person.id,
-                            label: person.attributes.name,
+                            label: person.name,
                           })),
                           getValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>) => item.constraint.people,
+                          rawCodec: createPersonListRawCodec({
+                            people: scenario.people,
+                            header: 'People',
+                          }),
                           setValue: (item: IndexedConstraint<Extract<Constraint, { type: 'ShouldNotBeTogether' | 'ShouldStayTogether' }>>, value) => ({
                             ...item,
                             constraint: {
@@ -630,19 +645,6 @@ export function SoftConstraintFamilySection({
                           },
                         }),
                       })]),
-                {
-                  kind: 'display' as const,
-                  id: 'actions',
-                  header: 'Actions',
-                  cell: (item) => (
-                    <div className="flex justify-end">
-                      <SetupItemActions onDelete={() => onDelete(item.index)} />
-                    </div>
-                  ),
-                  align: 'right',
-                  hideable: false,
-                  width: 180,
-                },
               ]}
             />
           )

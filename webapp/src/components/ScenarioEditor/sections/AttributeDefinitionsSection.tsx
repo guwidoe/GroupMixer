@@ -80,6 +80,8 @@ function renderAttributeContent(
           draft: {
             onApply: onApplyGridAttributes,
             createRow: createGridAttributeRow,
+            canDeleteRows: true,
+            deleteRowLabel: (definition) => `Delete ${getAttributeDefinitionName(definition) || definition.key || 'attribute'}`,
             csv: {
               ariaLabel: 'Attribute definitions CSV',
               helperText: (
@@ -130,22 +132,6 @@ function renderAttributeContent(
               </div>
             ),
             width: 340,
-          },
-          {
-            kind: 'display' as const,
-            id: 'actions',
-            header: 'Actions',
-            cell: (definition: AttributeDefinition) => (
-              <div className="flex justify-end">
-                <SetupItemActions
-                  deleteLabel={`Delete ${definition.key}`}
-                  onDelete={() => onRemoveAttribute(definition.key)}
-                />
-              </div>
-            ),
-            align: 'right',
-            hideable: false,
-            width: 180,
           },
         ]}
       />
