@@ -1,394 +1,210 @@
 <p align="center">
-  <img src="logo.svg" alt="GroupMixer Logo" width="120"/>
+  <img src="logo.svg" alt="GroupMixer logo" width="120"/>
 </p>
 
 # GroupMixer
 
-A sophisticated Rust-based solution for optimally distributing people into groups across multiple sessions to maximize social interactions while respecting various constraints. Now featuring **GroupMixer**, a modern web application that makes group optimization accessible to everyone.
+GroupMixer is a group-assignment optimization tool for workshops, conferences,
+classrooms, networking rounds, and other multi-session events.
 
-## 🌟 Try GroupMixer
+The main product surface is a React webapp that runs the Rust solver in the
+browser through WebAssembly. It includes a landing-page quick tool, guide pages
+with preloaded examples, and a full scenario editor for advanced setup,
+constraint tuning, solving, result inspection, and export.
 
-**GroupMixer** is a user-friendly web application built on top of the GroupMixer engine. Perfect for conferences, workshops, team building, and any event where you need to create optimal group assignments.
+Production app: [groupmixer.app](https://groupmixer.app)
 
-🚀 **[Try GroupMixer Now](https://groupmixer.app)** - No installation required, runs entirely in your browser!
+## Repository Shape
 
-## Overview
+This repo is a Rust workspace plus a TypeScript webapp.
 
-GroupMixer solves the social group scheduling problem using advanced optimization algorithms. It distributes a given number of people into groups across multiple sessions, maximizing the number of unique contacts while respecting various hard and soft constraints.
+| Path | Purpose |
+| --- | --- |
+| `backend/core/` | Solver core, domain model, validation, scoring, search, and integration tests. |
+| `backend/wasm/` | `wasm-bindgen` wrapper used by the browser app and worker runtime. |
+| `backend/contracts/` | Shared operation registry, schemas, examples, and generated reference docs. |
+| `backend/api/` | Optional local Axum API surface for solve, validate, recommend, and evaluate flows. |
+| `backend/cli/` | CLI projection of the shared contract surface. |
+| `backend/benchmarking/` | Benchmark harnesses, objective suites, and research tooling. |
+| `webapp/` | React 19 + TypeScript + Vite app, Zustand store, scenario editor, landing tool, guides, and Playwright tests. |
+| `docs/` | Architecture notes, testing strategy, benchmarking docs, SEO plans, and repo doctrine. |
 
-## Architecture
+Historical/reference implementations live under `Archive/`. Treat
+`Archive/legacy_cpp/`, `Archive/legacy_rust/`, and `Archive/python/` as
+historical context unless a task explicitly says otherwise.
 
-The project is organized as a Rust workspace plus a web application with six main components:
+## Current Capabilities
 
-### 🧠 `gm-core` - Core Optimization Engine
+The webapp supports:
 
-The heart of the system, providing:
+- Quick group generation from names or structured participant columns.
+- Multiple sessions with repeat-pairing minimization.
+- Keep-together, keep-apart, pinned-person, and attribute-balance controls.
+- A full scenario editor for partial attendance, per-group/per-session
+  capacities, session-specific constraints, weighted soft constraints, solver
+  settings, and result analysis.
+- Scenario manager workflows for saving, selecting, exporting, and deleting
+  scenarios.
+- Grid, list, text, line-by-line, and CSV result views.
+- Local browser solving through WebAssembly and web workers.
+- Guide pages that embed the quick tool with curated example data.
 
-- **Simulated Annealing** algorithm for optimization
-- **Flexible constraint system** supporting:
-  - Repeat encounter limits (with configurable penalty functions)
-  - Attribute balance constraints (e.g., gender distribution)
-  - Immovable person assignments
-  - Must-stay-together constraints
-  - Cannot-be-together constraints
-- **Comprehensive scoring system** with detailed breakdowns
-- **Configurable stop conditions** (time limits, iteration limits, improvement thresholds)
-- **Extensive test suite** with data-driven tests
+The Rust solver supports richer scenario definitions than the landing quick tool.
+The scenario editor is the intended UI for advanced model control.
 
-### 🌐 `webapp` - GroupMixer Web Application
+## Prerequisites
 
-A modern, full-featured React application that provides:
+- Rust toolchain with `cargo`
+- Node.js and npm
+- `wasm-pack`
 
-- **Intuitive web interface** for scenario setup and visualization
-- **React 19 + TypeScript** with Vite for fast development
-- **Tailwind CSS** for beautiful, responsive design
-- **WebAssembly integration** for client-side optimization
-- **No data transmission** - everything runs locally in your browser
-- **Scenario management** with save/load functionality
-- **Real-time solving** with progress visualization
-- **Results export** to CSV and JSON formats
-- **Demo cases** with pre-configured examples
-- **Browser agent API** via `window.GroupMixerAgent` for agent/operator integrations
-- **Vercel deployment** for production hosting
-
-Key features:
-
-- Landing page with feature overview and use cases
-- Interactive scenario editor for people, groups, and constraints
-- Advanced solver configuration panel
-- Results visualization with detailed score breakdowns
-- History tracking and result comparison
-- Dark/light theme support
-
-### 🌐 `gm-api` - Web API Server
-
-A high-performance HTTP server built with Axum that provides:
-
-- **Contract-native HTTP API** for solve/validate/recommend/evaluate flows
-- **Local discovery/help endpoints** derived from `gm-contracts`
-- **JSON-based request/response payloads** for easy integration
-- **Canonical public error envelopes** shared with other surfaces
-
-### 📜 `gm-contracts` - Shared Contract Registry
-
-The transport-neutral semantic registry that defines:
-
-- **Operation IDs and help metadata**
-- **Shared schemas and examples**
-- **Canonical public errors**
-- **Generated reference documentation**
-
-### 🖥️ `gm-cli` - Command-Line Interface
-
-A CLI projection of the same shared contract surface for:
-
-- **Local solver execution**
-- **Schema/help/error inspection**
-- **Operator-friendly scripting and automation**
-
-### ⚡ `gm-wasm` - WebAssembly Module
-
-WebAssembly compilation of the core solver for:
-
-- **Client-side optimization** in web browsers
-- **Offline processing capabilities**
-- **Integration with the webapp frontend**
-- **Contract-native browser discovery and execution APIs**
-
-## Key Features
-
-### Advanced Optimization
-
-- **Simulated Annealing** with configurable temperature schedules
-- **Multiple objective functions** for different problem sizes
-- **Penalty-based constraint handling** with adjustable weights
-- **Detailed score breakdown** for debugging and analysis
-
-### Flexible Constraints
-
-- **Repeat encounter limits** with squared or linear penalty functions
-- **Attribute balance** (e.g., gender distribution per group)
-- **Immovable assignments** (fixed person-group-session assignments)
-- **Grouping constraints** (must-stay-together, cannot-be-together)
-- **Configurable penalty weights** for fine-tuning
-
-### User-Friendly Web Interface
-
-- **No installation required** - runs entirely in your browser
-- **Modern, responsive design** built with React and Tailwind CSS
-- **Real-time optimization** with progress tracking
-- **Interactive scenario setup** with validation and error handling
-- **Results visualization** with exportable schedules
-- **Scenario templates** and demo cases for quick start
-
-### Production Ready
-
-- **Comprehensive test suite** with 20+ test cases
-- **Benchmark scenarios** for performance validation
-- **Error handling** with detailed error messages
-- **Documentation** and examples
-- **Deployed web application** ready for production use
-
-## Quick Start
-
-### 🎯 Using GroupMixer (Recommended)
-
-The easiest way to get started is with the web application:
-
-1. **Visit the deployed app** at [GroupMixer](https://groupmixer.app)
-2. **Try a demo case** from the dropdown to see the tool in action
-3. **Create your own scenario** by defining people, groups, and constraints
-4. **Run the solver** and view optimized results
-5. **Export schedules** in CSV or JSON format
-
-### 💻 Running Locally
-
-To run the webapp locally:
+Install `wasm-pack` if it is missing:
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/GroupMixer.git
-cd GroupMixer
+cargo install wasm-pack
+```
 
-# Install deps, generate WASM, and run the webapp
+## Run Locally
+
+Install web dependencies and start Vite:
+
+```bash
 cd webapp
 npm ci
-npm run build-wasm
 npm run dev
 ```
 
-The webapp will be available at `http://localhost:5173`
+`npm run dev` builds the WASM package first through the `predev` script, then
+starts the app. The default Vite URL is `http://localhost:5173`.
 
-### 🤖 Browser Agent API
+To rebuild only the WASM package:
 
-The webapp exposes a browser-side agent/operator surface for local integrations.
-
-- global: `window.GroupMixerAgent`
-- ready event: `groupmixer:agent-ready`
-- preferred transport: `worker`
-- available transports: `worker`, `wasm`
-- bootstrap entrypoint: `capabilities()`
-
-Example:
-
-```js
-window.addEventListener('groupmixer:agent-ready', async () => {
-  const api = window.GroupMixerAgent;
-  const capabilities = await api.worker.capabilities();
-  console.log(capabilities.top_level_operations);
-});
+```bash
+cd webapp
+npm run build-wasm
 ```
 
-Implementation lives in `webapp/src/services/browserAgentApi.ts`.
+Equivalent direct command:
 
-### 🔧 Using the Web Server
-
-1. **Start the server:**
-
-   ```bash
-   cd backend/api
-   cargo run
-   ```
-
-2. **Call the contract-native solve endpoint via HTTP POST to `http://localhost:3000/api/v1/solve`:**
-   ```json
-   {
-     "scenario": {
-       "people": [
-         { "id": "Alice", "attributes": { "gender": "female" } },
-         { "id": "Bob", "attributes": { "gender": "male" } }
-       ],
-       "groups": [{ "id": "Group1", "size": 2 }],
-       "num_sessions": 3
-     },
-     "constraints": [
-       {
-         "type": "RepeatEncounter",
-         "max_allowed_encounters": 1,
-         "penalty_function": "squared",
-         "penalty_weight": 100.0
-       }
-     ],
-     "solver": {
-       "solver_type": "SimulatedAnnealing",
-       "stop_conditions": {
-         "max_iterations": 10000,
-         "time_limit_seconds": 30
-       },
-       "solver_params": {
-         "SimulatedAnnealing": {
-           "initial_temperature": 100.0,
-           "final_temperature": 0.1,
-           "cooling_schedule": "geometric"
-         }
-       }
-     }
-   }
-   ```
-
-3. **Use `POST /api/v1/validate-scenario` to validate the same request body without running optimization, or `GET /api/v1/help` to discover the rest of the public contract surface.**
-
-### 📚 Using the Core Library
-
-```rust
-use gm_core::{run_solver, models::ApiInput};
-
-let input = ApiInput {
-    // ... configuration
-};
-
-match run_solver(&input) {
-    Ok(result) => {
-        println!("Final score: {}", result.final_score);
-        println!("Schedule:\n{}", result.display());
-    }
-    Err(e) => eprintln!("Error: {:?}", e),
-}
+```bash
+cd backend/wasm
+wasm-pack build --target web --out-dir ../../webapp/public/pkg
 ```
 
-## Use Cases
+## Build
 
-GroupMixer is perfect for:
-
-### 📚 Conferences & Workshops
-
-- Breakout sessions with rotating groups
-- Networking mixers and speed networking
-- Workshop rotations with skill-based grouping
-- Panel discussions with diverse representation
-
-### 🏢 Team Building & Training
-
-- Cross-departmental collaboration sessions
-- Training groups with balanced skill levels
-- Mentorship program pairings
-- Leadership development cohorts
-
-### 🎓 Educational Settings
-
-- Student project groups with diverse skills
-- Study groups across different majors
-- Peer review assignments
-- Discussion circles with varied perspectives
-
-### 🎉 Social Events
-
-- Dinner party table arrangements
-- Game tournament brackets
-- Dating events and mixers
-- Community building activities
-
-## Development
-
-### Building the Webapp
+Build the webapp and prerender SEO assets:
 
 ```bash
 cd webapp
 npm run build
 ```
 
-This builds both the WebAssembly module and the React application.
-
-You can also rebuild just the wasm by using
+Build Rust crates:
 
 ```bash
+cargo build --workspace
+```
+
+Run the optional local API:
+
+```bash
+cargo run -p gm-api
+```
+
+Run the CLI:
+
+```bash
+cargo run -p gm-cli -- --help
+```
+
+## Verification
+
+The repo-level gate is:
+
+```bash
+./gate.sh
+```
+
+Useful focused checks:
+
+```bash
+# Rust workspace
+cargo fmt --all -- --check
+cargo clippy --all --all-targets -- -D warnings
+cargo test --workspace
+
+# Contract reference artifacts
+./tools/contracts_reference.sh check
+
+# Webapp
 cd webapp
-npm run build-wasm
+npx tsc --noEmit
+npm run lint
+npm run test:unit -- --run
+npm run test:e2e
 ```
 
-### Building Individual Components
+For testing expectations and choosing the right verification level, see:
+
+- [`docs/TESTING_STRATEGY.md`](docs/TESTING_STRATEGY.md)
+- [`docs/TEST_PYRAMID_AND_REFACTOR_WORKFLOW.md`](docs/TEST_PYRAMID_AND_REFACTOR_WORKFLOW.md)
+
+## Benchmarking And Solver Research
+
+Solver benchmark cases are part of the product’s correctness and performance
+contract. Do not simplify or proxy canonical benchmark cases just to make a lane
+pass.
+
+Relevant docs:
+
+- [`docs/benchmarking/README.md`](docs/benchmarking/README.md)
+- [`docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md`](docs/benchmarking/OBJECTIVE_CASE_PORTFOLIO.md)
+- [`docs/benchmarking/WORKFLOW.md`](docs/benchmarking/WORKFLOW.md)
+
+## Contracts
+
+Shared operation metadata, schemas, examples, and public errors are generated
+from `gm-contracts`.
+
+Generated reference docs live in:
+
+- [`docs/reference/generated/gm-contracts/README.md`](docs/reference/generated/gm-contracts/README.md)
+- [`docs/reference/generated/gm-contracts/operations.md`](docs/reference/generated/gm-contracts/operations.md)
+- [`docs/reference/generated/gm-contracts/schemas.md`](docs/reference/generated/gm-contracts/schemas.md)
+- [`docs/reference/generated/gm-contracts/errors.md`](docs/reference/generated/gm-contracts/errors.md)
+
+Regenerate or check them with:
 
 ```bash
-# Core solver library
-cd backend/core
-cargo build --release
-
-# WebAssembly module
-cd backend/wasm
-wasm-pack build --target web --out-dir ../webapp/public/pkg
-
-# HTTP server
-cd backend/api
-cargo run
+./tools/contracts_reference.sh check
 ```
-
-## Testing
-
-The authoritative repo-wide testing policy lives in [`docs/TESTING_STRATEGY.md`](docs/TESTING_STRATEGY.md).
-For practical "what should I run before I commit this refactor?" guidance, see [`docs/TEST_PYRAMID_AND_REFACTOR_WORKFLOW.md`](docs/TEST_PYRAMID_AND_REFACTOR_WORKFLOW.md).
-
-Current baseline commands:
-
-```bash
-# Run the fast Rust gate
-./scripts/test-rust-fast.sh
-
-# Generate the Rust coverage artifacts + summary gate
-./scripts/coverage-rust.sh
-
-# Run frontend unit/component coverage with CI thresholds
-cd webapp && npm run test:coverage:ci
-
-# Run browser workflow tests
-cd webapp && npm run test:e2e:workflows
-```
-
-Coverage outputs are published in standard formats for review:
-- Rust: `target/coverage/rust-summary.txt`, `target/coverage/rust.lcov`, `target/coverage/rust-html/`
-- Frontend: `webapp/coverage/unit/`
-
-Test cases cover:
-
-- Basic functionality
-- Constraint handling
-- Performance benchmarks
-- Edge cases and stress tests
-- Comparison with Google CP-SAT solver
 
 ## Deployment
 
-The webapp is configured for easy deployment on Vercel:
+The hosted webapp is built for Vercel:
 
 ```bash
 cd webapp
 npm run vercel-build
 ```
 
-The build process automatically:
+The normal production build path compiles the WASM module, type-checks the
+webapp, builds Vite output, and prerenders SEO assets.
 
-1. Installs Rust toolchain
-2. Builds the WebAssembly module
-3. Compiles TypeScript
-4. Creates optimized production bundle
+## Development Notes
 
-## Legacy Components
-
-The project also includes:
-
-- **Legacy C++ implementation** (`legacy_cpp/`)
-- **Legacy Rust implementation** (`legacy_rust/`)
-- **Python Google CP-SAT solver** (`python/`) for comparison
-
-## Performance
-
-The Rust implementation provides significant performance improvements over the original C++ version, with:
-
-- **Faster execution** through optimized algorithms
-- **Better memory management** with Rust's ownership system
-- **Client-side processing** with WebAssembly
-- **Scalable architecture** for large problem sizes
-
-## Contributing
-
-The project welcomes contributions! Areas for improvement include:
-
-- Additional optimization algorithms (Hill Climbing, Genetic Algorithms)
-- More constraint types
-- Performance optimizations
-- UI/UX improvements for the webapp
-- Additional export formats
-- Mobile app development
+- Repo doctrine lives in
+  [`docs/reference/principles/AGENTIC_ENGINEERING_PRINCIPLES.md`](docs/reference/principles/AGENTIC_ENGINEERING_PRINCIPLES.md).
+- `AGENTS.md` contains project-specific agent workflow instructions.
+- The main Rust integration surface is `backend/core/tests/` and its
+  data-driven fixtures.
+- The webapp consumes the solver through WASM and browser workers; frontend
+  regressions can come from conversion, persistence, store, or worker code as
+  much as from React components.
+- Avoid hidden fallback behavior unless a task explicitly asks for it. Prefer a
+  single intended path with explicit errors or capability gating.
 
 ## License
 
-See [LICENSE.md](LICENSE.md) for details.
+See [`LICENSE.md`](LICENSE.md).
