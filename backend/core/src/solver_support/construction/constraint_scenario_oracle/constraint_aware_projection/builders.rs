@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use crate::models::PairMeetingMode;
 use crate::solver3::compiled_problem::{CompiledProblem, PackedSchedule};
 
@@ -383,31 +385,30 @@ fn build_capacity_atoms(
     candidate: &OracleTemplateCandidate,
     oracle_schedule: &PackedSchedule,
 ) -> Vec<ProjectionAtom> {
-    if capacities_are_uniform(compiled) {
+    let symmetry_breaking_slots = capacity_symmetry_breaking_slots(compiled, candidate);
+    if symmetry_breaking_slots.is_empty() {
         return Vec::new();
     }
+
     let mut atoms = Vec::new();
-    for &real_session in &candidate.sessions {
-        for real_group in 0..compiled.num_groups {
-            let real_capacity = compiled.group_capacity(real_session, real_group);
-            for (oracle_session_pos, session) in oracle_schedule
-                .iter()
-                .enumerate()
-                .take(candidate.num_sessions())
+    for (real_session, real_group, real_capacity) in symmetry_breaking_slots {
+        for (oracle_session_pos, session) in oracle_schedule
+            .iter()
+            .enumerate()
+            .take(candidate.num_sessions())
+        {
+            for (oracle_group_idx, oracle_group) in
+                session.iter().enumerate().take(candidate.num_groups)
             {
-                for (oracle_group_idx, oracle_group) in
-                    session.iter().enumerate().take(candidate.num_groups)
-                {
-                    if oracle_group.len() <= real_capacity {
-                        atoms.push(ProjectionAtom::Capacity(CapacityProjectionAtom {
-                            real_session,
-                            real_group,
-                            oracle_session_pos,
-                            oracle_group_idx,
-                            real_capacity,
-                            oracle_group_size: oracle_group.len(),
-                        }));
-                    }
+                if oracle_group.len() <= real_capacity {
+                    atoms.push(ProjectionAtom::Capacity(CapacityProjectionAtom {
+                        real_session,
+                        real_group,
+                        oracle_session_pos,
+                        oracle_group_idx,
+                        real_capacity,
+                        oracle_group_size: oracle_group.len(),
+                    }));
                 }
             }
         }
@@ -452,12 +453,120 @@ fn desired_people_count(desired_counts: &[(usize, u32)]) -> usize {
         .sum()
 }
 
-fn capacities_are_uniform(compiled: &CompiledProblem) -> bool {
-    let Some(&first) = compiled.effective_group_capacities.first() else {
-        return true;
+fn capacity_symmetry_breaking_slots(
+    compiled: &CompiledProblem,
+    candidate: &OracleTemplateCandidate,
+) -> Vec<(usize, usize, usize)> {
+    let mut capacity_frequency = BTreeMap::<usize, usize>::new();
+    for &capacity in &compiled.effective_group_capacities {
+        *capacity_frequency.entry(capacity).or_default() += 1;
+    }
+    if capacity_frequency.len() <= 1 {
+        return Vec::new();
+    }
+
+    let dominant_frequency = capacity_frequency.values().copied().max().unwrap_or(0);
+    let dominant_capacity_count = capacity_frequency
+        .values()
+        .filter(|&&frequency| frequency == dominant_frequency)
+        .count();
+
+    let include_capacity = |capacity: usize| {
+        let frequency = capacity_frequency.get(&capacity).copied().unwrap_or(0);
+        dominant_capacity_count > 1 || frequency < dominant_frequency
     };
-    compiled
-        .effective_group_capacities
-        .iter()
-        .all(|&capacity| capacity == first)
+
+    let mut slots = Vec::new();
+    for &real_session in &candidate.sessions {
+        for real_group in 0..compiled.num_groups {
+            let real_capacity = compiled.group_capacity(real_session, real_group);
+            if include_capacity(real_capacity) {
+                slots.push((real_session, real_group, real_capacity));
+            }
+        }
+    }
+    slots
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::{ApiInput, Group, Objective, Person, ProblemDefinition, SolverKind};
+    use std::collections::HashMap;
+
+    fn capacity_test_candidate() -> OracleTemplateCandidate {
+        OracleTemplateCandidate {
+            sessions: vec![0, 1],
+            groups_by_session: vec![vec![0, 1], vec![0, 1]],
+            num_groups: 2,
+            group_size: 2,
+            oracle_capacity: 4,
+            stable_people_count: 4,
+            high_attendance_people_count: 4,
+            dummy_oracle_people: 0,
+            omitted_high_attendance_people: 0,
+            omitted_group_count: 0,
+            scaffold_disruption_risk: 0.0,
+            estimated_score: 0.0,
+        }
+    }
+
+    fn capacity_test_oracle_schedule() -> PackedSchedule {
+        vec![vec![vec![0, 1], vec![2, 3]], vec![vec![0, 2], vec![1, 3]]]
+    }
+
+    fn capacity_test_input() -> ApiInput {
+        ApiInput {
+            problem: ProblemDefinition {
+                people: (0..4)
+                    .map(|idx| Person {
+                        id: format!("p{idx}"),
+                        attributes: HashMap::new(),
+                        sessions: None,
+                    })
+                    .collect(),
+                groups: vec![
+                    Group {
+                        id: "g0".into(),
+                        size: 2,
+                        session_sizes: None,
+                    },
+                    Group {
+                        id: "g1".into(),
+                        size: 2,
+                        session_sizes: Some(vec![3, 2]),
+                    },
+                ],
+                num_sessions: 2,
+            },
+            initial_schedule: None,
+            construction_seed_schedule: None,
+            objectives: vec![Objective {
+                r#type: "maximize_unique_contacts".into(),
+                weight: 1.0,
+            }],
+            constraints: Vec::new(),
+            solver: crate::default_solver_configuration_for(SolverKind::Solver3),
+        }
+    }
+
+    #[test]
+    fn capacity_atoms_only_use_capacity_classes_that_break_symmetry() {
+        let input = capacity_test_input();
+        let compiled = CompiledProblem::compile(&input).expect("compile");
+        let candidate = capacity_test_candidate();
+        let oracle_schedule = capacity_test_oracle_schedule();
+
+        let atoms = build_capacity_atoms(&compiled, &candidate, &oracle_schedule);
+
+        assert_eq!(atoms.len(), 4);
+        for atom in atoms {
+            let ProjectionAtom::Capacity(atom) = atom else {
+                panic!("expected capacity atom");
+            };
+            assert_eq!(atom.real_session, 0);
+            assert_eq!(atom.real_group, 1);
+            assert_eq!(atom.real_capacity, 3);
+        }
+    }
 }
