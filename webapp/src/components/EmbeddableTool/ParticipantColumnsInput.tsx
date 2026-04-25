@@ -44,10 +44,10 @@ interface EditableTextBlockProps {
   focusToken?: number | null;
 }
 
-const NAME_COLUMN_WIDTH = 120;
-const ATTRIBUTE_COLUMN_WIDTH = 140;
-const MIN_NAME_WIDTH = 96;
-const MIN_ATTRIBUTE_WIDTH = 64;
+const NAME_COLUMN_WIDTH = 112;
+const ATTRIBUTE_COLUMN_WIDTH = 128;
+const MIN_NAME_WIDTH = 88;
+const MIN_ATTRIBUTE_WIDTH = 58;
 const HEADER_HEIGHT = 32;
 const LINE_HEIGHT = 26;
 const BODY_PADDING = 18;
