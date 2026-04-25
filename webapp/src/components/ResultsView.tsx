@@ -11,6 +11,7 @@ import ConstraintComplianceCards from './ConstraintComplianceCards';
 import { buildResultsViewModel } from '../services/results/buildResultsModel';
 import { ResultsHeader } from './ResultsView/ResultsHeader';
 import { ResultsMetrics } from './ResultsView/ResultsMetrics';
+import { ResultsPairMeetingMatrix } from './ResultsView/ResultsPairMeetingMatrix';
 import { ResultsSchedule } from './ResultsView/ResultsSchedule';
 import { Button } from './ui';
 
@@ -305,6 +306,13 @@ export function ResultsView() {
       />
 
       <ConstraintComplianceCards scenario={effectiveScenario} solution={solution} />
+
+      {resultsModel ? (
+        <ResultsPairMeetingMatrix
+          matrix={resultsModel.pairMeetingMatrix}
+          sessionCount={resultsModel.summary.totalSessions}
+        />
+      ) : null}
 
       <ResultsSchedule
         viewMode={viewMode}
