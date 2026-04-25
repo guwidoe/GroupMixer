@@ -247,14 +247,23 @@ fn build_pair_meeting_atoms(
         if real_sessions.is_empty() {
             continue;
         }
+        let oracle_session_scope =
+            representative_oracle_session_scope(candidate, real_sessions.len());
         let mut emitted = 0usize;
         for left in 0..candidate.oracle_capacity {
             for right in (left + 1)..candidate.oracle_capacity {
-                let oracle_meetings = oracle_pair_meeting_count(
+                let total_oracle_meetings = oracle_pair_meeting_count(
                     oracle_group_by_session_person,
                     left,
                     right,
                     0..candidate.num_sessions(),
+                );
+                let oracle_meetings = best_scoped_pair_meeting_count(
+                    total_oracle_meetings,
+                    real_sessions.len(),
+                    candidate.num_sessions(),
+                    constraint.mode,
+                    constraint.target_meetings,
                 );
                 let projected_penalty = pair_meeting_penalty(
                     constraint.mode,
@@ -267,7 +276,7 @@ fn build_pair_meeting_atoms(
                     real_people: [constraint.people.0, constraint.people.1],
                     real_sessions: real_sessions.clone(),
                     oracle_people: [left, right],
-                    oracle_session_positions: (0..candidate.num_sessions()).collect(),
+                    oracle_session_positions: oracle_session_scope.clone(),
                     target_meetings: constraint.target_meetings,
                     oracle_meetings,
                     mode: constraint.mode,
@@ -344,21 +353,32 @@ fn build_soft_pair_atoms_for_constraint(
     oracle_group_by_session_person: &[Vec<usize>],
 ) -> Vec<ProjectionAtom> {
     let mut atoms = Vec::new();
+    let oracle_session_scope = representative_oracle_session_scope(candidate, real_sessions.len());
     let mut emitted = 0usize;
     for left in 0..candidate.oracle_capacity {
         for right in (left + 1)..candidate.oracle_capacity {
-            let oracle_meetings = oracle_pair_meeting_count(
+            let total_oracle_meetings = oracle_pair_meeting_count(
                 oracle_group_by_session_person,
                 left,
                 right,
                 0..candidate.num_sessions(),
             );
+            let (min_scoped_meetings, max_scoped_meetings) = scoped_meeting_range(
+                total_oracle_meetings,
+                real_sessions.len(),
+                candidate.num_sessions(),
+            );
+            let oracle_meetings = if prefers_together {
+                max_scoped_meetings
+            } else {
+                min_scoped_meetings
+            };
             let atom = SoftPairProjectionAtom {
                 constraint_idx,
                 real_people: [real_people.0, real_people.1],
                 real_sessions: real_sessions.clone(),
                 oracle_people: [left, right],
-                oracle_session_positions: (0..candidate.num_sessions()).collect(),
+                oracle_session_positions: oracle_session_scope.clone(),
                 penalty_weight,
                 oracle_meetings,
                 prefers_together,
@@ -414,6 +434,47 @@ fn build_capacity_atoms(
         }
     }
     atoms
+}
+
+fn best_scoped_pair_meeting_count(
+    total_oracle_meetings: u32,
+    real_scope_len: usize,
+    oracle_session_count: usize,
+    mode: PairMeetingMode,
+    target_meetings: u32,
+) -> u32 {
+    let (min_meetings, max_meetings) =
+        scoped_meeting_range(total_oracle_meetings, real_scope_len, oracle_session_count);
+    (min_meetings..=max_meetings)
+        .min_by_key(|&actual| {
+            let target = target_meetings as i32;
+            let actual = actual as i32;
+            match mode {
+                PairMeetingMode::AtLeast => (target - actual).max(0),
+                PairMeetingMode::Exact => (actual - target).abs(),
+                PairMeetingMode::AtMost => (actual - target).max(0),
+            }
+        })
+        .unwrap_or(min_meetings)
+}
+
+fn scoped_meeting_range(
+    total_oracle_meetings: u32,
+    real_scope_len: usize,
+    oracle_session_count: usize,
+) -> (u32, u32) {
+    let scope_len = real_scope_len.min(oracle_session_count) as u32;
+    let outside_scope_len = oracle_session_count.saturating_sub(real_scope_len) as u32;
+    let min_meetings = total_oracle_meetings.saturating_sub(outside_scope_len);
+    let max_meetings = total_oracle_meetings.min(scope_len);
+    (min_meetings, max_meetings.max(min_meetings))
+}
+
+fn representative_oracle_session_scope(
+    candidate: &OracleTemplateCandidate,
+    real_scope_len: usize,
+) -> Vec<usize> {
+    (0..real_scope_len.min(candidate.num_sessions())).collect()
 }
 
 fn pair_meeting_penalty(
