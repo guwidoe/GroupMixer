@@ -2,6 +2,7 @@
 
 ## Symmetry-breaking directions
 
+- User explicitly expects major rewrites, not micro-optimizations: treat the existing atoms/relabeling logic as vague scaffolding that should be replaced by a factor/component reconciliation model.
 - Replace greedy atom acceptance with a bounded beam/backtracking solver over typed factors. State should be partial bijections for oracle people, oracle sessions, and oracle `(session, group)` slots; internal mapping contradictions remain hard rejects.
 - Score factors as a weighted CSP/Max-SAT objective: accepted compatible factors earn structure/contact rewards; uncovered factors add finite hard/soft costs; raw scenario-hard violations are tradeable repair costs, not proof of final infeasibility.
 - Build informative connected components first: combine immovable triples, cliques, hard-apart edges, pair-meeting factors, attribute group-slot factors, non-uniform attendance, and capacity asymmetry into factor components before exploring weak symmetric factors.

@@ -175,15 +175,18 @@ Interpretation: the metric now needs to drive smarter factor reconciliation and 
 
 ### Preferred next experiments
 
-1. Replace greedy single-state atom scan with a small beam search that keeps multiple partial bijections, ordered by finalized `RelabelingScore` including uncovered penalties and mapping completeness.
-2. Prioritize atom/factor ordering by symmetry-breaking power: immovable triples and clique/group-slot factors first, then hard-apart/pair factors, then softer attribute/pair polishing.
-3. Group atoms into connected components over real people/session/slot variables and solve each component independently before composing maps.
-4. Add lazy weak-factor generation to avoid over-anchoring isolated immovables and symmetric soft pairs.
-5. Make best relabeling affect projection in the diagnostic path, initially by permuting candidate/oracle labels before delegating to legacy projection.
-6. Add telemetry metrics for relabeler score breakdowns into benchmark reports once useful.
+User direction after setup: do **not** start with micro-optimizations. The current atoms/relabeling logic is only vague scaffolding; expect major rewrites to atom generation, factor representation, and reconciliation.
+
+1. Replace raw enumerated atoms with symmetry-breaking factors/components. Build connected components over real people, real sessions, real group slots, oracle people, oracle sessions, and oracle group slots before enumerating candidate embeddings.
+2. Generate lazy candidate embeddings per factor family instead of huge flat caps such as the current pair/immovable atom caps. Isolated low-information constraints should remain lazy until connected to stronger asymmetry.
+3. Replace greedy single-state atom scan with a beam/backtracking or assignment/CSP reconciler that keeps multiple partial bijections, ordered by finalized `RelabelingScore` including uncovered penalties and mapping completeness.
+4. Prioritize factor families by symmetry-breaking power: coupled immovable triples, clique components, capacity/attendance asymmetry, hard-apart graph structure, pair-meeting structure, then soft pair/attribute polishing.
+5. Make best relabeling affect projection only once the mapping is coherent enough. Avoid hard-overlaying sparse relabeling maps onto legacy projection; the first attempt destroyed contact structure.
+6. Add telemetry metrics for factor counts, component sizes, accepted/covered/uncovered factors, mapping completeness, and score breakdowns once useful.
 
 ### Strong negative guidance from prior construction work
 
+- Do not do sparse hard overlays from the current greedy relabeler. Experiment #3 overlaid accepted partial relabeling maps onto legacy projection; it regressed `relabeling_relative_score` from `3000.840` to `3125.666`, blew up previously good zero/low-score cases, and kept the same three failures. A pending group-only overlay follow-up was abandoned before running after user feedback because it was still too small/micro relative to the needed rewrite.
 - Do not try to solve this with late runtime repair or blunt per-session relabeling in every construction phase; a previous blunt session-local group relabeling fixed one minor attribute diagnostic but regressed broad construction badly because it perturbed solver3's internal coordinate system too early.
 - Do not use arbitrary scalar local objective hacks for attributes/contacts. Use constraint-induced structure and assignment/factor reconciliation.
 - Do not treat group IDs as purely cosmetic once constraints exist. Relabel official group IDs deliberately at projection/merge boundaries.
