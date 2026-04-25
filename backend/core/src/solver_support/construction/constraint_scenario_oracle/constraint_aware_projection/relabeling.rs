@@ -598,9 +598,17 @@ impl ProjectionRelabeling {
         ) {
             return None;
         }
-        Some(RelabelingScoreImpact::structural_reward(
-            (atom.real_capacity.saturating_sub(atom.oracle_group_size) + 1) as f64,
-        ))
+        let over_capacity = atom.oracle_group_size.saturating_sub(atom.real_capacity);
+        let mut impact = if over_capacity == 0 {
+            RelabelingScoreImpact::default()
+        } else {
+            RelabelingScoreImpact::hard_cost(
+                RelabelingAtomFamily::Capacity,
+                over_capacity as f64 * 4.0,
+            )
+        };
+        impact.structural_reward = (atom.real_capacity.abs_diff(atom.oracle_group_size) + 1) as f64;
+        Some(impact)
     }
 
     fn bind_person_if_already_anchored(

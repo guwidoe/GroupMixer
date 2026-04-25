@@ -423,16 +423,14 @@ fn build_capacity_atoms(
             for (oracle_group_idx, oracle_group) in
                 session.iter().enumerate().take(candidate.num_groups)
             {
-                if oracle_group.len() <= real_capacity {
-                    atoms.push(ProjectionAtom::Capacity(CapacityProjectionAtom {
-                        real_session,
-                        real_group,
-                        oracle_session_pos,
-                        oracle_group_idx,
-                        real_capacity,
-                        oracle_group_size: oracle_group.len(),
-                    }));
-                }
+                atoms.push(ProjectionAtom::Capacity(CapacityProjectionAtom {
+                    real_session,
+                    real_group,
+                    oracle_session_pos,
+                    oracle_group_idx,
+                    real_capacity,
+                    oracle_group_size: oracle_group.len(),
+                }));
             }
         }
     }
