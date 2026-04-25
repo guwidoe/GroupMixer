@@ -642,7 +642,9 @@ impl RuntimeState {
             budget.scaffold_budget_seconds,
         )?;
         ensure_constructor_budget_remaining(started_at, budget.total_budget_seconds)?;
-        if scaffold.score <= f64::EPSILON {
+        if scaffold.score <= f64::EPSILON
+            || attribute_only_contact_scenario_prefers_scaffold(&self.compiled)
+        {
             return Ok(ConstraintScenarioOracleConstructionResult {
                 schedule: scaffold.schedule,
                 telemetry: ConstraintScenarioOracleTelemetry {
@@ -1152,6 +1154,18 @@ impl ConstraintScenarioConstructionBudget {
             oracle_budget_seconds: None,
         }
     }
+}
+
+fn attribute_only_contact_scenario_prefers_scaffold(compiled: &CompiledProblem) -> bool {
+    compiled.maximize_unique_contacts_weight > 0.0
+        && compiled.repeat_encounter.is_none()
+        && !compiled.attribute_balance_constraints.is_empty()
+        && compiled.cliques.is_empty()
+        && compiled.hard_apart_pairs.is_empty()
+        && compiled.soft_apart_pairs.is_empty()
+        && compiled.should_together_pairs.is_empty()
+        && compiled.immovable_assignments.is_empty()
+        && compiled.pair_meeting_constraints.is_empty()
 }
 
 fn classify_auto_constructor_failure(failure: &str) -> AutoConstructorOutcome {
