@@ -427,7 +427,7 @@ impl ProjectionRelabeling {
         ) {
             return None;
         }
-        if immovable_person_occurrence_count(compiled, atom.real_person) > 1 {
+        if immovable_person_occurrence_count(compiled, atom.real_person) > 2 {
             if !self.bind_person(candidate, atom.oracle_person, atom.real_person) {
                 return None;
             }
