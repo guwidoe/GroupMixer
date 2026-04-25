@@ -417,9 +417,6 @@ impl ProjectionRelabeling {
         candidate: &OracleTemplateCandidate,
         atom: &ImmovableTripleProjectionAtom,
     ) -> Option<RelabelingScoreImpact> {
-        if !self.bind_person(candidate, atom.oracle_person, atom.real_person) {
-            return None;
-        }
         if !self.bind_group_slot(
             compiled,
             candidate,
@@ -427,6 +424,17 @@ impl ProjectionRelabeling {
             atom.oracle_group_idx,
             atom.real_session,
             atom.real_group,
+        ) {
+            return None;
+        }
+        if immovable_person_occurrence_count(compiled, atom.real_person) > 1 {
+            if !self.bind_person(candidate, atom.oracle_person, atom.real_person) {
+                return None;
+            }
+        } else if !self.bind_person_if_already_anchored(
+            candidate,
+            atom.oracle_person,
+            atom.real_person,
         ) {
             return None;
         }
@@ -497,6 +505,25 @@ impl ProjectionRelabeling {
         Some(RelabelingScoreImpact::structural_reward(
             (atom.real_capacity.saturating_sub(atom.oracle_group_size) + 1) as f64,
         ))
+    }
+
+    fn bind_person_if_already_anchored(
+        &mut self,
+        candidate: &OracleTemplateCandidate,
+        oracle_person: usize,
+        real_person: usize,
+    ) -> bool {
+        if oracle_person >= candidate.oracle_capacity
+            || real_person >= self.oracle_person_by_real_person.len()
+        {
+            return false;
+        }
+        let has_existing_person_anchor = self.real_person_by_oracle_person[oracle_person].is_some()
+            || self.oracle_person_by_real_person[real_person].is_some();
+        if !has_existing_person_anchor {
+            return true;
+        }
+        self.bind_person(candidate, oracle_person, real_person)
     }
 
     fn bind_weak_pair_factor(
@@ -861,6 +888,14 @@ fn compare_relabeling_with_context(
         })
 }
 
+fn immovable_person_occurrence_count(compiled: &CompiledProblem, real_person: usize) -> usize {
+    compiled
+        .immovable_assignments
+        .iter()
+        .filter(|assignment| assignment.person_idx == real_person)
+        .count()
+}
+
 fn build_uncovered_penalty_by_key(
     compiled: &CompiledProblem,
     atoms: &ProjectionAtomSet,
@@ -1030,10 +1065,7 @@ mod tests {
         assert!(!result.timed_out);
         assert_eq!(result.atoms_considered, 1);
         assert_eq!(result.atoms_accepted, 1);
-        assert!(matches!(
-            result.best.real_person_by_oracle_person[0],
-            Some(0) | Some(1)
-        ));
+        assert_eq!(result.best.real_person_by_oracle_person[0], None);
         assert_eq!(result.best.real_session_by_oracle_session[0], Some(0));
         assert_eq!(
             result.best.real_group_by_oracle_session_group[0][0],
@@ -1042,14 +1074,14 @@ mod tests {
         assert_eq!(result.best.score.coverage.covered_constraint_units, 1);
         assert_eq!(result.best.score.coverage.uncovered_constraint_units, 0);
         assert_eq!(result.best.score.hard_compatibility_cost, 0.0);
-        assert_eq!(result.best.score.mapping.mapped_people, 1);
+        assert_eq!(result.best.score.mapping.mapped_people, 0);
         assert_eq!(result.best.score.mapping.mapped_sessions, 1);
         assert_eq!(result.best.score.mapping.mapped_slots, 1);
         assert!(result.best.score.structural_reward > 0.0);
     }
 
     #[test]
-    fn incompatible_mapping_atom_is_rejected_but_scored_as_uncovered() {
+    fn unanchored_immovable_atoms_defer_person_mapping_but_cover_slots() {
         let input = test_input();
         let compiled = CompiledProblem::compile(&input).expect("compile");
         let candidate = test_candidate();
@@ -1069,7 +1101,7 @@ mod tests {
                     real_person: 1,
                     real_session: 0,
                     real_group: 1,
-                    oracle_person: 0,
+                    oracle_person: 2,
                     oracle_session_pos: 0,
                     oracle_group_idx: 1,
                 }),
@@ -1084,14 +1116,27 @@ mod tests {
         );
 
         assert!(result.atoms_considered >= 2);
-        assert_eq!(result.atoms_accepted, 1);
-        assert!(matches!(
-            result.best.real_person_by_oracle_person[0],
-            Some(0) | Some(1)
-        ));
-        assert_eq!(result.best.score.coverage.covered_constraint_units, 1);
-        assert_eq!(result.best.score.coverage.uncovered_constraint_units, 1);
-        assert!(result.best.score.hard.immovable_cost > 0.0);
+        assert_eq!(result.atoms_accepted, 2);
+        assert_eq!(result.best.real_person_by_oracle_person[0], None);
+        assert_eq!(result.best.real_person_by_oracle_person[2], None);
+        assert_eq!(result.best.score.coverage.covered_constraint_units, 2);
+        assert_eq!(result.best.score.coverage.uncovered_constraint_units, 0);
+        assert_eq!(result.best.score.mapping.mapped_people, 0);
+        assert_eq!(result.best.score.mapping.mapped_slots, 2);
+        assert_eq!(result.best.score.hard.immovable_cost, 0.0);
+    }
+
+    #[test]
+    fn anchored_person_mapping_conflicts_remain_hard_rejects() {
+        let input = test_input();
+        let compiled = CompiledProblem::compile(&input).expect("compile");
+        let candidate = test_candidate();
+        let mut relabeling = ProjectionRelabeling::empty(&compiled, &candidate);
+
+        assert!(relabeling.bind_person(&candidate, 0, 0));
+        assert!(!relabeling.bind_person_if_already_anchored(&candidate, 0, 1));
+        assert!(!relabeling.bind_person_if_already_anchored(&candidate, 1, 0));
+        assert!(relabeling.bind_person_if_already_anchored(&candidate, 0, 0));
     }
 
     #[test]
