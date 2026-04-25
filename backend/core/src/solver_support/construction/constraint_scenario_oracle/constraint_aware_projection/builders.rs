@@ -194,15 +194,18 @@ fn build_immovable_atoms(
             continue;
         }
         let mut emitted = 0usize;
-        for (oracle_session_pos, session) in oracle_schedule
-            .iter()
-            .enumerate()
-            .take(candidate.num_sessions())
-        {
-            for (oracle_group_idx, oracle_group) in
-                session.iter().enumerate().take(candidate.num_groups)
+        for person_offset in 0..candidate.group_size.max(1) {
+            for (oracle_session_pos, session) in oracle_schedule
+                .iter()
+                .enumerate()
+                .take(candidate.num_sessions())
             {
-                for &oracle_person in oracle_group {
+                for (oracle_group_idx, oracle_group) in
+                    session.iter().enumerate().take(candidate.num_groups)
+                {
+                    let Some(&oracle_person) = oracle_group.get(person_offset) else {
+                        continue;
+                    };
                     atoms.push(ProjectionAtom::ImmovableTriple(
                         ImmovableTripleProjectionAtom {
                             constraint_idx,
